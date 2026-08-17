@@ -1,0 +1,74 @@
+# FICTICIO. Cobertura declarada del corpus de prueba. Ver LEEME.md.
+#
+# Declara exactamente lo que hay en disco bajo este directorio, ni más ni
+# menos: la validación 17 corta los dos errores opuestos, y el test
+# `test_manifiesto_del_fixture_cuadra_con_el_disco` lo comprueba sobre este
+# fichero. Un fixture que declarase cobertura inexistente estaría enseñándole
+# al motor a mentir con datos de prueba.
+version: 1
+
+cobertura:
+  - ambito: es
+    materias:
+      seguridad_incendio:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+      seguridad_utilizacion:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+      accesibilidad:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+      salubridad:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+      ahorro_energia:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+      proteccion_ruido:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+      seguridad_estructural:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+
+  - ambito: es.13
+    materias:
+      habitabilidad_superficies:
+        estado: completo
+        verificado: "2026-08-06"
+        por: fixture
+      habitabilidad_dimensional:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+      habitabilidad_programa:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+      accesibilidad:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+
+  - ambito: es.13.28.28115
+    materias:
+      urbanismo_parametros:
+        estado: completo
+        verificado: "2026-08-06"
+        por: fixture
+      urbanismo_estetica:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture
+      patrimonio:
+        estado: parcial
+        verificado: "2026-08-06"
+        por: fixture

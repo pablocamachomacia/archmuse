@@ -1,0 +1,128 @@
+# FICTICIO. Ver LEEME.md.
+#
+# Habitabilidad es competencia AUTONÓMICA EXCLUSIVA: el CTE no la regula
+# (competencias.yaml, `estatal_regula: false`). Es el hallazgo M1 de
+# NORMATIVE_AUDIT.md convertido en corpus: aquí no hay dos capas que comparar.
+version: 1
+
+norma:
+  concept_id: es.13.ficticio_decreto.norma
+  instance_id: es.13.ficticio_decreto.norma@1
+  ambito: es.13
+  fuente:
+    rango: Decreto
+    organismo: Comunidad ficticia de pruebas
+    identificador_oficial: FICTICIO-000/1997
+    titulo: Decreto ficticio de condiciones de habitabilidad
+    boletin: FICTICIO-CM-1997-0001
+  articulo:
+    seccion: "Capítulo II"
+    apartado: "art. 5"
+  vigencia:
+    vigencia_desde: 1997-06-01
+
+reglas:
+  - concept_id: es.13.ficticio_decreto.habitabilidad_superficies.superficie_minima
+    instance_id: es.13.ficticio_decreto.habitabilidad_superficies.superficie_minima@1
+    nombre: Superficie útil mínima de vivienda (FICTICIA)
+    materia: habitabilidad_superficies
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es.13
+      usos: [residencial]
+    parametro:
+      ejes: [tipologia]
+      repliegue: [tipologia, todos, ninguno]
+      unidad: m2
+      valores:
+        - tipologia: plurifamiliar
+          valor: 38
+        - tipologia: unifamiliar_aislada
+          valor: 60
+        - valor: 38
+    mensaje: La vivienda no alcanza la superficie útil mínima aplicable.
+    vigencia:
+      vigencia_desde: 1997-06-01
+
+  # Solo vivienda protegida: en un proyecto de vivienda libre debe salir
+  # `no_aplica` CON MOTIVO, no desaparecer.
+  - concept_id: es.13.ficticio_decreto.habitabilidad_superficies.superficie_vpo
+    instance_id: es.13.ficticio_decreto.habitabilidad_superficies.superficie_vpo@1
+    nombre: Superficie máxima computable en vivienda protegida (FICTICIA)
+    materia: habitabilidad_superficies
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es.13
+      usos: [residencial.vivienda_protegida]
+    parametro:
+      ejes: []
+      repliegue: [todos, ninguno]
+      unidad: m2
+      valores:
+        - valor: 90
+    vigencia:
+      vigencia_desde: 1997-06-01
+
+  - concept_id: es.13.ficticio_decreto.habitabilidad_programa.programa_minimo
+    instance_id: es.13.ficticio_decreto.habitabilidad_programa.programa_minimo@1
+    nombre: Programa mínimo de la vivienda (FICTICIO)
+    materia: habitabilidad_programa
+    tipo: exigencia_de_presencia
+    patron: PRESENCIA_OBLIGATORIA
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es.13
+      usos: [residencial]
+    vigencia:
+      vigencia_desde: 1997-06-01
+
+  # --- El par que provoca el conflicto del paso 8 -------------------------
+  # Misma materia, mismo ámbito, mismo patrón, perfiles que SE SOLAPAN sin ser
+  # idénticos: la validación 14 no puede rechazarlo en carga (su clave incluye
+  # la lista de usos, y aquí difieren) y ambas caen sobre el mismo proyecto
+  # residencial. El resolver las expone; no desempata.
+  - concept_id: es.13.ficticio_decreto.habitabilidad_dimensional.altura_libre_general
+    instance_id: es.13.ficticio_decreto.habitabilidad_dimensional.altura_libre_general@1
+    nombre: Altura libre mínima, régimen general (FICTICIA)
+    materia: habitabilidad_dimensional
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es.13
+    parametro:
+      ejes: []
+      repliegue: [todos, ninguno]
+      unidad: m
+      valores:
+        - valor: 2.50
+    vigencia:
+      vigencia_desde: 1997-06-01
+
+  - concept_id: es.13.ficticio_decreto.habitabilidad_dimensional.altura_libre_residencial
+    instance_id: es.13.ficticio_decreto.habitabilidad_dimensional.altura_libre_residencial@1
+    nombre: Altura libre mínima en uso residencial (FICTICIA)
+    materia: habitabilidad_dimensional
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es.13
+      usos: [residencial]
+    parametro:
+      ejes: []
+      repliegue: [todos, ninguno]
+      unidad: m
+      valores:
+        - valor: 2.70
+    vigencia:
+      vigencia_desde: 1997-06-01

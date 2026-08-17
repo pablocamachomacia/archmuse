@@ -1,0 +1,335 @@
+{
+  "escala_origen": "acuerdo",
+  "escala_unidad": "metros",
+  "etiquetas_vt": [
+    "VT1/3",
+    "VT2/2",
+    "VT22/1",
+    "VT3/3",
+    "VT4/2",
+    "VT5/1",
+    "VT6/2"
+  ],
+  "habitaciones": [
+    {
+      "area": 3.027,
+      "cx": -534.0521,
+      "cy": -294.7077,
+      "etiqueta": "Aseo"
+    },
+    {
+      "area": 3.1358,
+      "cx": -576.5742,
+      "cy": -294.9598,
+      "etiqueta": "Aseo"
+    },
+    {
+      "area": 3.7656,
+      "cx": -490.5045,
+      "cy": -295.453,
+      "etiqueta": "Baño"
+    },
+    {
+      "area": 3.9974,
+      "cx": -470.3684,
+      "cy": -295.3776,
+      "etiqueta": "Baño"
+    },
+    {
+      "area": 4.006,
+      "cx": -575.0634,
+      "cy": -295.1785,
+      "etiqueta": "Baño"
+    },
+    {
+      "area": 4.0561,
+      "cx": -532.476,
+      "cy": -294.8496,
+      "etiqueta": "Baño"
+    },
+    {
+      "area": 4.1114,
+      "cx": -511.9747,
+      "cy": -296.9274,
+      "etiqueta": "Baño"
+    },
+    {
+      "area": 4.1777,
+      "cx": -554.0766,
+      "cy": -294.851,
+      "etiqueta": "Baño"
+    },
+    {
+      "area": 12.0897,
+      "cx": -492.6302,
+      "cy": -294.1146,
+      "etiqueta": "Dormitorio 1"
+    },
+    {
+      "area": 12.5259,
+      "cx": -535.0047,
+      "cy": -292.8656,
+      "etiqueta": "Dormitorio 1"
+    },
+    {
+      "area": 12.7245,
+      "cx": -577.4806,
+      "cy": -292.9606,
+      "etiqueta": "Dormitorio 1"
+    },
+    {
+      "area": 13.039,
+      "cx": -472.5048,
+      "cy": -293.9252,
+      "etiqueta": "Dormitorio 1"
+    },
+    {
+      "area": 14.6681,
+      "cx": -509.9411,
+      "cy": -298.7376,
+      "etiqueta": "Dormitorio 1"
+    },
+    {
+      "area": 15.072,
+      "cx": -552.0014,
+      "cy": -293.1538,
+      "etiqueta": "Dormitorio 1"
+    },
+    {
+      "area": 7.1671,
+      "cx": -532.0681,
+      "cy": -291.6462,
+      "etiqueta": "Dormitorio 2"
+    },
+    {
+      "area": 7.2401,
+      "cx": -469.6058,
+      "cy": -292.7729,
+      "etiqueta": "Dormitorio 2"
+    },
+    {
+      "area": 8.3439,
+      "cx": -554.9053,
+      "cy": -291.8957,
+      "etiqueta": "Dormitorio 2"
+    },
+    {
+      "area": 8.4826,
+      "cx": -574.506,
+      "cy": -291.9053,
+      "etiqueta": "Dormitorio 2"
+    },
+    {
+      "area": 8.8336,
+      "cx": -512.7896,
+      "cy": -299.9353,
+      "etiqueta": "Dormitorio 2"
+    },
+    {
+      "area": 8.4733,
+      "cx": -528.9824,
+      "cy": -291.7938,
+      "etiqueta": "Dormitorio 3"
+    },
+    {
+      "area": 8.5345,
+      "cx": -571.4001,
+      "cy": -300.1045,
+      "etiqueta": "Dormitorio 3"
+    },
+    {
+      "area": 21.9003,
+      "cx": -575.5295,
+      "cy": -297.9516,
+      "etiqueta": "Salón/cocina"
+    },
+    {
+      "area": 21.9487,
+      "cx": -470.715,
+      "cy": -298.2339,
+      "etiqueta": "Salón/cocina"
+    },
+    {
+      "area": 23.2997,
+      "cx": -511.708,
+      "cy": -294.0363,
+      "etiqueta": "Salón/cocina"
+    },
+    {
+      "area": 23.3833,
+      "cx": -553.8678,
+      "cy": -297.8543,
+      "etiqueta": "Salón/cocina"
+    },
+    {
+      "area": 23.8498,
+      "cx": -532.9634,
+      "cy": -297.716,
+      "etiqueta": "Salón/cocina"
+    },
+    {
+      "area": 25.1915,
+      "cx": -490.9156,
+      "cy": -298.471,
+      "etiqueta": "Salón/cocina"
+    },
+    {
+      "area": 4.1982,
+      "cx": -534.7251,
+      "cy": -301.1434,
+      "etiqueta": "Tendedero"
+    },
+    {
+      "area": 4.2085,
+      "cx": -552.161,
+      "cy": -301.1453,
+      "etiqueta": "Tendedero"
+    },
+    {
+      "area": 4.2166,
+      "cx": -510.0578,
+      "cy": -290.7702,
+      "etiqueta": "Tendedero"
+    },
+    {
+      "area": 4.2201,
+      "cx": -577.2319,
+      "cy": -301.1519,
+      "etiqueta": "Tendedero"
+    },
+    {
+      "area": 4.2681,
+      "cx": -487.456,
+      "cy": -300.2838,
+      "etiqueta": "Tendedero"
+    },
+    {
+      "area": 3.2505,
+      "cx": -531.9309,
+      "cy": -301.0238,
+      "etiqueta": "Terraza"
+    },
+    {
+      "area": 3.2575,
+      "cx": -554.9942,
+      "cy": -301.0256,
+      "etiqueta": "Terraza"
+    },
+    {
+      "area": 3.3248,
+      "cx": -574.4059,
+      "cy": -301.0331,
+      "etiqueta": "Terraza"
+    },
+    {
+      "area": 3.3402,
+      "cx": -512.9204,
+      "cy": -290.8824,
+      "etiqueta": "Terraza"
+    },
+    {
+      "area": 4.9297,
+      "cx": -471.0805,
+      "cy": -290.688,
+      "etiqueta": "Terraza"
+    },
+    {
+      "area": 5.3635,
+      "cx": -471.3155,
+      "cy": -301.1773,
+      "etiqueta": "Terraza"
+    },
+    {
+      "area": 6.2975,
+      "cx": -471.0699,
+      "cy": -290.465,
+      "etiqueta": "Terraza"
+    },
+    {
+      "area": 11.5536,
+      "cx": -469.2427,
+      "cy": -300.8734,
+      "etiqueta": "Terraza"
+    }
+  ],
+  "n_etiquetas_vt": 7,
+  "n_habitaciones": 40,
+  "viviendas": [
+    {
+      "area_total": 66.3287,
+      "habitaciones": [
+        "Aseo",
+        "Baño",
+        "Dormitorio 1",
+        "Dormitorio 2",
+        "Dormitorio 3",
+        "Salón/cocina",
+        "Tendedero",
+        "Terraza"
+      ],
+      "nombre": "VT1/3"
+    },
+    {
+      "area_total": 58.4428,
+      "habitaciones": [
+        "Baño",
+        "Dormitorio 1",
+        "Dormitorio 2",
+        "Salón/cocina",
+        "Tendedero",
+        "Terraza"
+      ],
+      "nombre": "VT2/2"
+    },
+    {
+      "area_total": 66.5479,
+      "habitaciones": [
+        "Aseo",
+        "Baño",
+        "Dormitorio 1",
+        "Dormitorio 2",
+        "Dormitorio 3",
+        "Salón/cocina",
+        "Tendedero",
+        "Terraza"
+      ],
+      "nombre": "VT3/3"
+    },
+    {
+      "area_total": 58.4695,
+      "habitaciones": [
+        "Baño",
+        "Dormitorio 1",
+        "Dormitorio 2",
+        "Salón/cocina",
+        "Tendedero",
+        "Terraza"
+      ],
+      "nombre": "VT4/2"
+    },
+    {
+      "area_total": 45.3149,
+      "habitaciones": [
+        "Baño",
+        "Dormitorio 1",
+        "Salón/cocina",
+        "Tendedero"
+      ],
+      "nombre": "VT5/1"
+    },
+    {
+      "area_total": 74.3696,
+      "habitaciones": [
+        "Baño",
+        "Dormitorio 1",
+        "Dormitorio 2",
+        "Salón/cocina",
+        "Terraza",
+        "Terraza",
+        "Terraza",
+        "Terraza"
+      ],
+      "nombre": "VT6/2"
+    }
+  ]
+}

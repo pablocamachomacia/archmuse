@@ -1,0 +1,46 @@
+# Generado por extraccion/terminologia.py (determinista, sin IA).
+# NO editar el campo `literal` a mano: es transcripcion de una norma.
+version: 1
+_comentario_de_diseno: Glosario comun a todo el CTE. El Anejo SI A remite aqui para terminos de uso general.
+norma:
+  concept_id: es.cte.parte_1.anejo_3
+  instance_id: es.cte.parte_1.anejo_3@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: 314/2006
+    titulo: Real Decreto 314/2006, por el que se aprueba el Codigo Tecnico de la Edificacion
+    boletin: BOE-A-2006-5515
+    url_oficial: https://www.boe.es/buscar/act.php?id=BOE-A-2006-5515
+    hash_texto: 0c92cd9f89fe31b12f4ba18030032936b9af80bfec7b5e0c5145e1ea05625af8
+  articulo:
+    documento_basico: CTE Parte I
+    anejo: III
+    titulo_anejo: Terminologia
+  vigencia:
+    vigencia_desde: '2006-03-28'
+definiciones:
+- concept_id: es.cte.parte_1.anejo_3.uso_previsto
+  termino: Uso previsto
+  literal: uso específico para el que se proyecta y realiza un edificio y que se debe reflejar documentalmente.
+    El uso previsto se caracteriza por las actividades que se han de desarrollar en el edificio y por
+    el tipo de usuario.
+  transcripcion:
+    metodo: extraccion_determinista_boe_xml
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: 'CAP-2. Dice que se debe reflejar documentalmente: declararlo no es exigencia nuestra.'
+- concept_id: es.cte.parte_1.anejo_3.uso_del_edificio
+  termino: Uso del edificio
+  literal: Actividades que se realizan en un edificio, o determinadas zonas de un edificio, después de
+    su puesta en servicio.
+  transcripcion:
+    metodo: extraccion_determinista_boe_xml
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-2. Distinto de uso previsto; se guarda para que no se confundan.

@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://archmuse.local/normativa/regla.schema.json",
+  "title": "Fichero de corpus normativo: una NormaFuente y sus ReglaNormativa",
+  "description": "Contrato ESTRUCTURAL. Comprueba forma, tipos y catálogos cerrados. Las 17 validaciones SEMÁNTICAS (competencia por materia, coherencia DB/materia, aristas resolubles, aciclicidad de derogaciones, manifiesto de cobertura) viven en normativa/validacion.py: JSON Schema no puede expresarlas porque cruzan varios ficheros.",
+  "type": "object",
+  "required": ["version", "norma", "reglas"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+
+    "norma": {
+      "description": "Un fichero declara UNA sola NormaFuente. Es un hecho externo: se cita, nunca se evalúa.",
+      "type": "object",
+      "required": ["concept_id", "instance_id", "fuente", "articulo", "vigencia"],
+      "additionalProperties": false,
+      "properties": {
+        "concept_id": { "$ref": "#/$defs/concept_id" },
+        "instance_id": { "type": "string", "minLength": 1 },
+        "ambito": { "$ref": "#/$defs/ambito" },
+        "literal": { "type": "string" },
+        "fuente": {
+          "type": "object",
+          "description": "Sin boletín e identificador oficial no hay norma citable, y sin norma no hay regla activable.",
+          "required": ["rango", "organismo", "identificador_oficial", "titulo", "boletin"],
+          "additionalProperties": false,
+          "properties": {
+            "rango": {
+              "type": "string",
+              "enum": ["Ley", "Real Decreto", "Decreto", "Orden", "Ordenanza", "Plan", "Documento técnico"]
+            },
+            "organismo": { "type": "string", "minLength": 1 },
+            "identificador_oficial": { "type": "string", "minLength": 1 },
+            "titulo": { "type": "string", "minLength": 1 },
+            "boletin": { "type": "string", "minLength": 1 },
+            "url_oficial": { "type": "string" },
+            "hash_texto": { "type": "string" }
+          }
+        },
+        "articulo": {
+          "type": "object",
+          "description": "Localizador jerárquico, no un string: permite ordenar, comparar y validar contra la materia.",
+          "additionalProperties": false,
+          "properties": {
+            "documento_basico": {
+              "type": ["string", "null"],
+              "enum": ["DB-SI", "DB-SUA", "DB-HS", "DB-HE", "DB-HR", "DB-SE", null]
+            },
+            "seccion": { "type": ["string", "null"] },
+            "apartado": { "type": ["string", "null"] },
+            "punto": { "type": ["string", "null"] },
+            "tabla": { "type": ["string", "null"] }
+          }
+        },
+        "vigencia": { "$ref": "#/$defs/vigencia" }
+      }
+    },
+
+    "reglas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "concept_id", "instance_id", "nombre", "materia", "tipo",
+          "prioridad", "nivel_de_conocimiento", "aplicabilidad", "vigencia"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "concept_id": { "$ref": "#/$defs/concept_id" },
+          "instance_id": { "type": "string", "minLength": 1 },
+          "nombre": { "type": "string", "minLength": 1 },
+          "materia": { "type": "string", "minLength": 1 },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "exigencia_cuantitativa", "exigencia_de_presencia", "exigencia_compuesta",
+              "exigencia_cualitativa", "definicion", "remision", "procedimental"
+            ]
+          },
+          "prioridad": {
+            "description": "Escala de DECISION_ENGINE.md §3. Nunca un número. No confundir con jerarquía normativa: son ejes distintos.",
+            "type": "string",
+            "enum": ["bloqueante", "riesgo_variable", "recomendable", "preferencial"]
+          },
+          "nivel_de_conocimiento": {
+            "description": "1 hecho objetivo · 2 normativa verificable · 3 buena práctica · 4 criterio. Sin esto, EVIDENCE_MODEL.md §3 no puede calcular la fuerza de un tramo.",
+            "type": "integer", "enum": [1, 2, 3, 4]
+          },
+          "patron": {
+            "description": "Catálogo CERRADO de 5 (CONSTRAINT_MODEL.md §3.1). Añadir un sexto es gobernanza, nunca la reacción a una norma que no encaja.",
+            "type": ["string", "null"],
+            "enum": ["UMBRAL_SIMPLE", "UMBRAL_CON_EXCEPCION", "PRESENCIA_OBLIGATORIA", "COMBINACION_LOGICA", "AGREGACION_AMBITO", null]
+          },
+          "aplicabilidad": {
+            "type": "object",
+            "required": ["ambito"],
+            "additionalProperties": false,
+            "properties": {
+              "ambito": { "$ref": "#/$defs/ambito" },
+              "tipos_de_intervencion": { "type": "array", "items": { "type": "string" } },
+              "usos": { "type": "array", "items": { "type": "string" } },
+              "tipologias": { "type": "array", "items": { "type": "string" } },
+              "sectoriales": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "parametro": {
+            "description": "Nunca un escalar: tabla por ejes con cadena de repliegue explícita. Cada repliegue usado se escribe en la Evidence.",
+            "type": ["object", "null"],
+            "required": ["ejes", "valores", "repliegue"],
+            "additionalProperties": false,
+            "properties": {
+              "ejes": { "type": "array", "items": { "type": "string" } },
+              "valores": {
+                "type": "array", "minItems": 1,
+                "items": { "type": "object", "required": ["valor"] }
+              },
+              "repliegue": {
+                "type": "array", "minItems": 1,
+                "items": { "type": "string" }
+              },
+              "unidad": { "type": ["string", "null"] }
+            }
+          },
+          "condiciones": { "type": ["object", "null"] },
+          "mensaje": { "type": "string" },
+          "explicacion_tecnica": { "type": "string" },
+          "explicacion_cliente": { "type": "string" },
+          "resumen_operativo": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "aristas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["tipo", "destino"],
+              "additionalProperties": false,
+              "properties": {
+                "tipo": {
+                  "type": "string",
+                  "enum": ["deroga", "modifica", "desarrolla", "endurece", "remite_a", "exime_de", "se_mide_segun", "corrige_erratum"]
+                },
+                "destino": { "type": "string", "minLength": 1 },
+                "vigencia": { "$ref": "#/$defs/vigencia" }
+              }
+            }
+          },
+          "vigencia": { "$ref": "#/$defs/vigencia" }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "concept_id": {
+      "description": "Namespacing <ambito>.<fuente>.<materia>.<concepto>. El prefijo de ámbito hace visible el nivel territorial en el propio id, que es lo que permite ver que dos reglas compiten por la misma materia en niveles distintos.",
+      "type": "string",
+      "pattern": "^[a-z0-9_]+(\\.[a-z0-9_]+)+$"
+    },
+    "ambito": {
+      "description": "Ruta jerárquica de códigos INE: es · es.13 · es.13.28.28115. Profundidad variable por diseño.",
+      "type": "string",
+      "pattern": "^[a-z]{2}(\\.[0-9]{2})?(\\.[0-9]{2})?(\\.[0-9]{5})?$"
+    },
+    "vigencia": {
+      "type": "object",
+      "required": ["vigencia_desde"],
+      "additionalProperties": false,
+      "properties": {
+        "vigencia_desde": { "type": "string", "format": "date" },
+        "vigencia_hasta": { "type": ["string", "null"], "format": "date" },
+        "registro_desde": { "type": ["string", "null"], "format": "date" },
+        "registro_hasta": { "type": ["string", "null"], "format": "date" }
+      }
+    }
+  }
+}

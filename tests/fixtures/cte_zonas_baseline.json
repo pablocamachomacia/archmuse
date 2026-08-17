@@ -1,0 +1,158 @@
+{
+ "a coruna": [
+  "C",
+  "media"
+ ],
+ "alicante": [
+  "B",
+  "media"
+ ],
+ "almeria": [
+  "A",
+  "media"
+ ],
+ "badajoz": [
+  "C",
+  "media"
+ ],
+ "barcelona": [
+  "C",
+  "alta"
+ ],
+ "bilbao": [
+  "C",
+  "media"
+ ],
+ "burgos": [
+  "E",
+  "media"
+ ],
+ "caceres": [
+  "C",
+  "baja"
+ ],
+ "cordoba": [
+  "B",
+  "media"
+ ],
+ "elche": [
+  "B",
+  "media"
+ ],
+ "gijon": [
+  "C",
+  "media"
+ ],
+ "granada": [
+  "C",
+  "media"
+ ],
+ "las palmas de gran canaria": [
+  "A",
+  "media"
+ ],
+ "madrid": [
+  "D",
+  "alta"
+ ],
+ "malaga": [
+  "A",
+  "alta"
+ ],
+ "murcia": [
+  "B",
+  "media"
+ ],
+ "oviedo": [
+  "C",
+  "media"
+ ],
+ "palma de mallorca": [
+  "B",
+  "media"
+ ],
+ "pamplona": [
+  "D",
+  "media"
+ ],
+ "salamanca": [
+  "D",
+  "media"
+ ],
+ "san sebastian": [
+  "C",
+  "media"
+ ],
+ "santa cruz de tenerife": [
+  "A",
+  "media"
+ ],
+ "santander": [
+  "C",
+  "media"
+ ],
+ "sevilla": [
+  "B",
+  "alta"
+ ],
+ "toledo": [
+  "D",
+  "baja"
+ ],
+ "valencia": [
+  "B",
+  "alta"
+ ],
+ "valladolid": [
+  "E",
+  "media"
+ ],
+ "vigo": [
+  "C",
+  "media"
+ ],
+ "vitoria-gasteiz": [
+  "D",
+  "media"
+ ],
+ "zaragoza": [
+  "D",
+  "alta"
+ ],
+ "Madrid": [
+  "D",
+  "alta"
+ ],
+ "MADRID": [
+  "D",
+  "alta"
+ ],
+ "Málaga": [
+  "A",
+  "alta"
+ ],
+ "A Coruña": [
+  "C",
+  "media"
+ ],
+ "Vitoria-Gasteiz": [
+  "D",
+  "media"
+ ],
+ "": [
+  "C",
+  "media"
+ ],
+ "Ciudad Que No Existe": [
+  "C",
+  "media"
+ ],
+ "Pozuelo de Alarcón": [
+  "C",
+  "media"
+ ],
+ "  madrid  ": [
+  "D",
+  "alta"
+ ]
+}

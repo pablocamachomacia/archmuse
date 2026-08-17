@@ -1,0 +1,244 @@
+{
+  "es_pliego": true,
+  "hechos": {
+    "municipio": {
+      "nombre": "municipio",
+      "estado": "KNOWN",
+      "valor": "Madrid",
+      "unidad": "",
+      "confianza": "Alta",
+      "cita": "Municipio: Madrid.",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "parcela": {
+      "nombre": "parcela",
+      "estado": "KNOWN",
+      "valor": "RC.2.8.1",
+      "unidad": "",
+      "confianza": "Alta",
+      "cita": "Parcela: RC.2.8.1",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "referencia_catastral": {
+      "nombre": "referencia_catastral",
+      "estado": "UNKNOWN",
+      "valor": null,
+      "unidad": "",
+      "confianza": null,
+      "cita": null,
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": true,
+      "motivo": "El pliego identifica la parcela por su código urbanístico (RC.2.8.1) dentro del ámbito UZPp.02.04, pero no aporta referencia catastral."
+    },
+    "num_viviendas_minimo": {
+      "nombre": "num_viviendas_minimo",
+      "estado": "KNOWN",
+      "valor": 83,
+      "unidad": "viviendas",
+      "confianza": "Alta",
+      "cita": "NÚMERO DE VIVIENDAS MÍNIMO DE LA PROMOCIÓN: 83",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "num_viviendas_maximo": {
+      "nombre": "num_viviendas_maximo",
+      "estado": "UNKNOWN",
+      "valor": null,
+      "unidad": "viviendas",
+      "confianza": null,
+      "cita": null,
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": true,
+      "motivo": "El pliego solo establece un número mínimo de viviendas (83); no se menciona un máximo explícito, aunque la edificabilidad y otros parámetros lo condicionan indirectamente."
+    },
+    "edificabilidad_maxima_m2": {
+      "nombre": "edificabilidad_maxima_m2",
+      "estado": "KNOWN",
+      "valor": 6250.0,
+      "unidad": "m²",
+      "confianza": "Alta",
+      "cita": "EDIFICABILIDAD máxima de la parcela: Uso Residencial (VPPA): 6.250,00 m²e",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "altura_maxima_plantas": {
+      "nombre": "altura_maxima_plantas",
+      "estado": "KNOWN",
+      "valor": 6,
+      "unidad": "plantas",
+      "confianza": "Alta",
+      "cita": "ALTURAS: VI plantas",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "pem_maximo_euros": {
+      "nombre": "pem_maximo_euros",
+      "estado": "KNOWN",
+      "valor": 11513729.7,
+      "unidad": "€",
+      "confianza": "Alta",
+      "cita": "Presupuesto de ejecución material máximo: 11.513.729,70 €",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "ratio_construido_util_max": {
+      "nombre": "ratio_construido_util_max",
+      "estado": "KNOWN",
+      "valor": 1.45,
+      "unidad": "",
+      "confianza": "Alta",
+      "cita": "La relación superficie construida/superficie útil de viviendas será ≤ 1,45.",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "tipologia_edificio": {
+      "nombre": "tipologia_edificio",
+      "estado": "KNOWN",
+      "valor": "plurifamiliar",
+      "unidad": "",
+      "confianza": "Media",
+      "cita": "TIPOLOGÍA DEL EDIFICIO: Manzana cerrada o semicerrada con fachadas alineadas a viario al menos en dos frentes de la parcela.",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "regimen_proteccion": {
+      "nombre": "regimen_proteccion",
+      "estado": "KNOWN",
+      "valor": "VPPA",
+      "unidad": "",
+      "confianza": "Alta",
+      "cita": "RÉGIMEN DE PROTECCIÓN DE LA PROMOCIÓN: VPPA",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "parking_plazas_por_vivienda": {
+      "nombre": "parking_plazas_por_vivienda",
+      "estado": "KNOWN",
+      "valor": 1,
+      "unidad": "plazas/vivienda",
+      "confianza": "Alta",
+      "cita": "Uso Residencial: mínimo 1 plaza de aparcamiento por vivienda VPP (conforme al artículo primero de la Ley 3/2024, de 28 de junio, de medidas urbanísticas para la promoción de vivienda protegida).",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "trasteros": {
+      "nombre": "trasteros",
+      "estado": "KNOWN",
+      "valor": "1 trastero por vivienda",
+      "unidad": "",
+      "confianza": "Alta",
+      "cita": "TRASTEROS: 1 trastero por vivienda",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "porcentaje_accesibilidad": {
+      "nombre": "porcentaje_accesibilidad",
+      "estado": "KNOWN",
+      "valor": 4,
+      "unidad": "%",
+      "confianza": "Alta",
+      "cita": "Viviendas para personas con discapacidad: 4 %",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "normativa_aplicable": {
+      "nombre": "normativa_aplicable",
+      "estado": "KNOWN",
+      "valor": [
+        "Normativa de contratación pública vigente.",
+        "Normas urbanísticas del Plan General de Ordenación Urbana de Madrid en vigor.",
+        "Normas Pormenorizadas del Ámbito de Ordenación: UZPp.02.04. \"Desarrollo del Este-Los Berrocales\" del Plan General de Ordenación Urbana de Madrid (PGOUM).",
+        "Ordenanzas Municipales del Ayuntamiento de Madrid en la materia.",
+        "Pliego de condiciones técnicas generales aplicables a la redacción de proyectos y ejecución de las obras municipales aprobadas por el Pleno del Ayuntamiento de Madrid.",
+        "Ley 9/2022, de 14 de junio, de Calidad de la Arquitectura.",
+        "Ley 38/1999, de 5 de noviembre, de Ordenación de la Edificación.",
+        "Código Técnico de la Edificación aprobado por Real Decreto 314/2006, de 17 de marzo y sus posteriores modificaciones.",
+        "Ley 2/1999, de 17 de marzo, de medidas para la calidad de la Edificación.",
+        "Normativa vigente sobre accesibilidad y barreras arquitectónicas.",
+        "Normativa vigente sobre calificación energética.",
+        "Normativa vigente sobre telecomunicaciones.",
+        "Normas Técnicas de Diseño y Calidad de las viviendas con protección pública de la Comunidad de Madrid.",
+        "Normativa de viviendas de protección pública.",
+        "Ley 31/1995, de 8 de noviembre, sobre prevención de riesgos laborales y Ley 54/2003, de 12 de diciembre, de reforma del marco normativo de la prevención de riesgos laborales.",
+        "Real Decreto 1627/1997, de 24 de octubre, por el que se establecen disposiciones mínimas de seguridad y de salud en obras de construcción.",
+        "Normativa sobre la producción y gestión de los residuos de construcción y demolición vigente estatal, normativa de la Comunidad de Madrid vigente y local.",
+        "Ley 3/2024, de 28 de junio, de medidas urbanísticas para la promoción de vivienda protegida."
+      ],
+      "unidad": "",
+      "confianza": "Alta",
+      "cita": "3. MARCO NORMATIVO a. Normativa de contratación pública vigente. b. Normas urbanísticas del Plan General de Ordenación Urbana de Madrid en vigor...",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "criterios_sostenibilidad": {
+      "nombre": "criterios_sostenibilidad",
+      "estado": "KNOWN",
+      "valor": [
+        "Baja demanda energética, reducción de consumo de energía primaria total y no renovable y contribución de renovables.",
+        "Análisis de ciclo de vida para reducción de emisiones de CO2, incluida la prescripción de materiales constructivos sostenibles.",
+        "Demanda de calefacción máxima de 20 kWh/m2·año.",
+        "Optimización de la relación entre la superficie construida de zonas comunes y la superficie construida de viviendas.",
+        "Accesibilidad y supresión de barreras arquitectónicas.",
+        "Iluminación natural.",
+        "Transmitancia térmica de la envolvente.",
+        "Permeabilidad al aire.",
+        "Rendimiento de los equipos e instalaciones.",
+        "Fuentes energéticas utilizadas.",
+        "Fuentes renovables utilizadas: generación eléctrica o térmica y su contribución a las demandas de ACS, calefacción y refrigeración.",
+        "Medidas para la reducción de la temperatura exterior a través del tratamiento de los espacios libres de parcela.",
+        "Medidas para la gestión del agua."
+      ],
+      "unidad": "",
+      "confianza": "Alta",
+      "cita": "El conjunto de criterios de sostenibilidad y eficiencia energética con el fin de que las viviendas sean ecológicas y eficientes... La demanda energética deberá respetar los parámetros aprobados en el Pleno Municipal del Ayuntamiento de Madrid de fecha 25 de mayo de 2016, especialmente en lo referente al cumplimiento de la demanda de calefacción máxima de 20 kWh/m2·año.",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    },
+    "mix_tipologias": {
+      "nombre": "mix_tipologias",
+      "estado": "KNOWN",
+      "valor": [
+        {
+          "tipo": "1 Dormitorio",
+          "porcentaje": 20,
+          "sup_util_min": 45,
+          "sup_util_max": 45
+        },
+        {
+          "tipo": "2 Dormitorios",
+          "porcentaje": 60,
+          "sup_util_min": 50,
+          "sup_util_max": 60
+        },
+        {
+          "tipo": "3 Dormitorios",
+          "porcentaje": 20,
+          "sup_util_min": 65,
+          "sup_util_max": 75
+        }
+      ],
+      "unidad": "",
+      "confianza": "Alta",
+      "cita": "Tipo Porcentaje Superficie Útil recomendada / 1 Dormitorio 20% 45 m2 / 2 Dormitorios 60% 50-60 m2 / 3 Dormitorios 20% 65-75 m2",
+      "fuente": "pliego:pliego_berrocales.pdf",
+      "no_encontrado": false,
+      "motivo": null
+    }
+  }
+}

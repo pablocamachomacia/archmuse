@@ -1,0 +1,23 @@
+# Comunidades autónomas y ciudades autónomas, con su código INE de 2 dígitos.
+# Nivel con competencia normativa real en habitabilidad y diseño de vivienda.
+version: 1
+comunidades:
+  - { codigo: "01", nombre: "Andalucía" }
+  - { codigo: "02", nombre: "Aragón" }
+  - { codigo: "03", nombre: "Principado de Asturias" }
+  - { codigo: "04", nombre: "Illes Balears" }
+  - { codigo: "05", nombre: "Canarias" }
+  - { codigo: "06", nombre: "Cantabria" }
+  - { codigo: "07", nombre: "Castilla y León" }
+  - { codigo: "08", nombre: "Castilla-La Mancha" }
+  - { codigo: "09", nombre: "Cataluña" }
+  - { codigo: "10", nombre: "Comunitat Valenciana" }
+  - { codigo: "11", nombre: "Extremadura" }
+  - { codigo: "12", nombre: "Galicia" }
+  - { codigo: "13", nombre: "Comunidad de Madrid" }
+  - { codigo: "14", nombre: "Región de Murcia" }
+  - { codigo: "15", nombre: "Comunidad Foral de Navarra" }
+  - { codigo: "16", nombre: "País Vasco" }
+  - { codigo: "17", nombre: "La Rioja" }
+  - { codigo: "18", nombre: "Ciudad Autónoma de Ceuta" }
+  - { codigo: "19", nombre: "Ciudad Autónoma de Melilla" }

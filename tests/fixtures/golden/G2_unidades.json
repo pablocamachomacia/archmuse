@@ -1,0 +1,254 @@
+{
+  "n_unidades": 6,
+  "recintos_huerfanos": 0,
+  "unidades": [
+    {
+      "n_recintos": 8,
+      "nombre": "VT1/3",
+      "orden": 0,
+      "recintos": [
+        {
+          "area_m2": 21.9,
+          "i": 0,
+          "rotulo": "Salón/cocina"
+        },
+        {
+          "area_m2": 12.725,
+          "i": 4,
+          "rotulo": "Dormitorio 1"
+        },
+        {
+          "area_m2": 8.483,
+          "i": 9,
+          "rotulo": "Dormitorio 2"
+        },
+        {
+          "area_m2": 8.534,
+          "i": 11,
+          "rotulo": "Dormitorio 3"
+        },
+        {
+          "area_m2": 4.22,
+          "i": 16,
+          "rotulo": "Tendedero"
+        },
+        {
+          "area_m2": 3.136,
+          "i": 23,
+          "rotulo": "Aseo"
+        },
+        {
+          "area_m2": 4.006,
+          "i": 24,
+          "rotulo": "Baño"
+        },
+        {
+          "area_m2": 3.325,
+          "i": 31,
+          "rotulo": "Terraza"
+        }
+      ],
+      "superficie_total_m2": 66.329
+    },
+    {
+      "n_recintos": 6,
+      "nombre": "VT2/2",
+      "orden": 1,
+      "recintos": [
+        {
+          "area_m2": 23.383,
+          "i": 1,
+          "rotulo": "Salón/cocina"
+        },
+        {
+          "area_m2": 15.072,
+          "i": 5,
+          "rotulo": "Dormitorio 1"
+        },
+        {
+          "area_m2": 8.344,
+          "i": 10,
+          "rotulo": "Dormitorio 2"
+        },
+        {
+          "area_m2": 4.208,
+          "i": 17,
+          "rotulo": "Tendedero"
+        },
+        {
+          "area_m2": 4.178,
+          "i": 25,
+          "rotulo": "Baño"
+        },
+        {
+          "area_m2": 3.257,
+          "i": 32,
+          "rotulo": "Terraza"
+        }
+      ],
+      "superficie_total_m2": 58.443
+    },
+    {
+      "n_recintos": 8,
+      "nombre": "VT3/3",
+      "orden": 2,
+      "recintos": [
+        {
+          "area_m2": 23.85,
+          "i": 2,
+          "rotulo": "Salón/cocina"
+        },
+        {
+          "area_m2": 12.526,
+          "i": 6,
+          "rotulo": "Dormitorio 1"
+        },
+        {
+          "area_m2": 7.167,
+          "i": 12,
+          "rotulo": "Dormitorio 2"
+        },
+        {
+          "area_m2": 8.473,
+          "i": 13,
+          "rotulo": "Dormitorio 3"
+        },
+        {
+          "area_m2": 4.198,
+          "i": 18,
+          "rotulo": "Tendedero"
+        },
+        {
+          "area_m2": 4.056,
+          "i": 26,
+          "rotulo": "Baño"
+        },
+        {
+          "area_m2": 3.027,
+          "i": 27,
+          "rotulo": "Aseo"
+        },
+        {
+          "area_m2": 3.251,
+          "i": 33,
+          "rotulo": "Terraza"
+        }
+      ],
+      "superficie_total_m2": 66.548
+    },
+    {
+      "n_recintos": 6,
+      "nombre": "VT4/2",
+      "orden": 3,
+      "recintos": [
+        {
+          "area_m2": 23.3,
+          "i": 3,
+          "rotulo": "Salón/cocina"
+        },
+        {
+          "area_m2": 14.668,
+          "i": 7,
+          "rotulo": "Dormitorio 1"
+        },
+        {
+          "area_m2": 8.834,
+          "i": 14,
+          "rotulo": "Dormitorio 2"
+        },
+        {
+          "area_m2": 4.217,
+          "i": 19,
+          "rotulo": "Tendedero"
+        },
+        {
+          "area_m2": 4.111,
+          "i": 28,
+          "rotulo": "Baño"
+        },
+        {
+          "area_m2": 3.34,
+          "i": 34,
+          "rotulo": "Terraza"
+        }
+      ],
+      "superficie_total_m2": 58.47
+    },
+    {
+      "n_recintos": 4,
+      "nombre": "VT5/1",
+      "orden": 4,
+      "recintos": [
+        {
+          "area_m2": 25.192,
+          "i": 20,
+          "rotulo": "Salón/cocina"
+        },
+        {
+          "area_m2": 12.09,
+          "i": 21,
+          "rotulo": "Dormitorio 1"
+        },
+        {
+          "area_m2": 4.268,
+          "i": 22,
+          "rotulo": "Tendedero"
+        },
+        {
+          "area_m2": 3.766,
+          "i": 29,
+          "rotulo": "Baño"
+        }
+      ],
+      "superficie_total_m2": 45.315
+    },
+    {
+      "n_recintos": 8,
+      "nombre": "VT6/2",
+      "orden": 5,
+      "recintos": [
+        {
+          "area_m2": 13.039,
+          "i": 8,
+          "rotulo": "Dormitorio 1"
+        },
+        {
+          "area_m2": 7.24,
+          "i": 15,
+          "rotulo": "Dormitorio 2"
+        },
+        {
+          "area_m2": 3.997,
+          "i": 30,
+          "rotulo": "Baño"
+        },
+        {
+          "area_m2": 4.93,
+          "i": 35,
+          "rotulo": "Terraza"
+        },
+        {
+          "area_m2": 5.364,
+          "i": 36,
+          "rotulo": "Terraza"
+        },
+        {
+          "area_m2": 21.949,
+          "i": 37,
+          "rotulo": "Salón/cocina"
+        },
+        {
+          "area_m2": 6.297,
+          "i": 38,
+          "rotulo": "Terraza"
+        },
+        {
+          "area_m2": 11.554,
+          "i": 39,
+          "rotulo": "Terraza"
+        }
+      ],
+      "superficie_total_m2": 74.37
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+# Qué materias son EXIGIBLES a un proyecto, y bajo qué condición.
+#
+# Este fichero es lo que hace computable el fail-closed. Sin él, "falta una
+# norma obligatoria" no se puede decidir: el sistema no sabría distinguir
+# "no tenemos patrimonio de Pozuelo y hace falta" de "no tenemos patrimonio de
+# Pozuelo y no hace falta porque el edificio no está catalogado".
+#
+# NO CONFUNDIR CON competencias.yaml. Son dos preguntas distintas:
+#   competencias.yaml  ->  QUIÉN regula esta materia (reparto territorial)
+#   exigibilidad.yaml  ->  A QUIÉN se le exige (perfil del proyecto)
+# Una materia puede ser competencia autonómica y no exigible a este proyecto,
+# y al revés. Fusionarlas obligaría a tocar el reparto competencial español
+# cada vez que aparece un tipo de proyecto nuevo.
+#
+# Modos:
+#   siempre        exigible a cualquier proyecto (salvo `excepto_*`)
+#   si_uso         exigible si el proyecto tiene alguno de `usos` (subárbol)
+#   si_sectorial   exigible si alguno de `sectoriales` está declarado presente.
+#                  Si NINGUNO está declarado presente pero alguno está SIN
+#                  declarar, la exigibilidad es DESCONOCIDA: se convierte en
+#                  pregunta pendiente, jamás en un "no aplica" silencioso
+#                  (INFERENCE_ENGINE.md §2.2).
+#   nunca          no exigible por sí misma
+#
+# `justificacion` no es documentación decorativa: es lo que el arquitecto lee
+# cuando el motor le bloquea el informe diciendo que falta esta materia.
+
+version: 1
+
+exigibilidad:
+  # --- Suelo estatal: el CTE aplica a toda obra de edificación -------------
+  - materia: seguridad_incendio
+    exigible: siempre
+    excepto_tipos_de_intervencion: [demolicion]
+    justificacion: >-
+      El CTE DB-SI es de aplicación a toda obra de edificación. Un informe que
+      no sepa qué exige en materia de incendios no puede afirmar nada sobre la
+      viabilidad del proyecto.
+
+  - materia: seguridad_utilizacion
+    exigible: siempre
+    excepto_tipos_de_intervencion: [demolicion]
+    justificacion: El CTE DB-SUA aplica a toda obra de edificación.
+
+  - materia: accesibilidad
+    exigible: siempre
+    excepto_tipos_de_intervencion: [demolicion]
+    justificacion: >-
+      Exigencia estatal con desarrollo autonómico y municipal. Es la materia
+      donde más frecuentemente la capa autonómica endurece el suelo estatal.
+
+  - materia: salubridad
+    exigible: siempre
+    excepto_tipos_de_intervencion: [demolicion]
+    justificacion: El CTE DB-HS aplica a toda obra de edificación.
+
+  - materia: ahorro_energia
+    exigible: siempre
+    excepto_tipos_de_intervencion: [demolicion, legalizacion]
+    justificacion: >-
+      El CTE DB-HE aplica a obra nueva y, con alcance distinto, a intervención
+      en edificio existente. El alcance por tipo de intervención lo fija cada
+      regla; aquí solo se decide si la materia es exigible.
+
+  - materia: proteccion_ruido
+    exigible: siempre
+    excepto_tipos_de_intervencion: [demolicion]
+    justificacion: El CTE DB-HR aplica a toda obra de edificación.
+
+  - materia: seguridad_estructural
+    exigible: siempre
+    justificacion: >-
+      Aplica incluso en demolición, donde la estabilidad durante el proceso es
+      precisamente el problema.
+
+  # --- Habitabilidad: autonómica exclusiva, solo para uso residencial ------
+  # El CTE no regula estas tres materias (competencias.yaml,
+  # `estatal_regula: false`). Es el hallazgo M1 de NORMATIVE_AUDIT.md: aquí no
+  # hay dos capas que comparar, hay una sola capa competente, y si no la
+  # tenemos transcrita no se puede afirmar nada sobre superficies mínimas.
+  - materia: habitabilidad_superficies
+    exigible: si_uso
+    usos: [residencial]
+    justificacion: >-
+      Superficie mínima de vivienda y de sus piezas. Competencia autonómica
+      exclusiva: sin el decreto de la comunidad correspondiente, cualquier
+      cifra que el sistema muestre viene de otro sitio y no es citable.
+
+  - materia: habitabilidad_dimensional
+    exigible: si_uso
+    usos: [residencial]
+    justificacion: Altura libre y anchuras mínimas de pieza. Competencia autonómica.
+
+  - materia: habitabilidad_programa
+    exigible: si_uso
+    usos: [residencial]
+    justificacion: Programa mínimo de la vivienda. Competencia autonómica.
+
+  # --- Urbanismo: municipal exclusivo --------------------------------------
+  - materia: urbanismo_parametros
+    exigible: siempre
+    justificacion: >-
+      Ocupación, edificabilidad, altura y retranqueos salen del planeamiento
+      municipal. Sin cobertura municipal, el informe no puede pronunciarse
+      sobre el aprovechamiento, que suele ser la primera pregunta del cliente.
+
+  - materia: urbanismo_estetica
+    exigible: siempre
+    justificacion: >-
+      Condiciones de composición de fachada. Rara vez bloqueantes, pero su
+      ausencia debe verse: son el motivo habitual de un reparo en licencia.
+
+  # --- Sectoriales: se superponen, y solo si el proyecto los activa --------
+  - materia: patrimonio
+    exigible: si_sectorial
+    sectoriales: [patrimonio]
+    justificacion: >-
+      Solo exigible si el edificio o su entorno están protegidos. Mientras no
+      se declare, la exigibilidad es una PREGUNTA, no un "no aplica": un
+      catálogo de protección no consultado es el motivo más caro de rehacer
+      un proyecto entero.
+
+  - materia: medio_ambiente
+    exigible: si_sectorial
+    sectoriales: [inundabilidad, aeroportuario, costas]
+    justificacion: >-
+      Afecciones sectoriales de cauce, servidumbre aeronáutica y costas.
+      Cualquiera de las tres la activa; ninguna declarada la deja en pregunta
+      pendiente.

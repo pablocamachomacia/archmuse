@@ -1,0 +1,52 @@
+# FICTICIO. Ver LEEME.md.
+#
+# Accesibilidad es materia de SUELO estatal con endurecimiento autorizado a la
+# capa autonómica. Esta regla declara con una arista `endurece` a qué regla
+# base afecta — que es lo que permite anotar la relación sin que el motor tenga
+# que deducir la dirección de la comparación comparando magnitudes ("gana la
+# más restrictiva", que §7.1 declara incorrecto).
+version: 1
+
+norma:
+  concept_id: es.13.ficticio_accesibilidad.norma
+  instance_id: es.13.ficticio_accesibilidad.norma@1
+  ambito: es.13
+  fuente:
+    rango: Ley
+    organismo: Comunidad ficticia de pruebas
+    identificador_oficial: FICTICIO-8/1993
+    titulo: Ley ficticia de promoción de la accesibilidad
+    boletin: FICTICIO-CM-1993-0002
+  articulo:
+    apartado: "art. 12"
+  vigencia:
+    vigencia_desde: 1993-07-01
+
+reglas:
+  - concept_id: es.13.ficticio_accesibilidad.accesibilidad.anchura_reforzada
+    instance_id: es.13.ficticio_accesibilidad.accesibilidad.anchura_reforzada@1
+    nombre: Anchura reforzada del itinerario accesible (FICTICIA)
+    materia: accesibilidad
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es.13
+    parametro:
+      ejes: []
+      repliegue: [todos, ninguno]
+      unidad: m
+      valores:
+        - valor: 1.20
+    aristas:
+      - tipo: endurece
+        destino: es.ficticio_dbsua.accesibilidad.anchura_itinerario
+    mensaje: El itinerario accesible debe cumplir la anchura reforzada autonómica.
+    vigencia:
+      vigencia_desde: 1993-07-01
+      # Única regla del fixture que declara el eje de REGISTRO: la norma está
+      # en vigor desde 1993, pero ArchMuse no la conocía hasta 2024. Un informe
+      # emitido antes de esa fecha no pudo tenerla en cuenta, y reconstruirlo
+      # como si la hubiera tenido sería reescribir la historia.
+      registro_desde: 2024-01-01

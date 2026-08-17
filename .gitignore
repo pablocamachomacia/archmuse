@@ -1,0 +1,39 @@
+# --- Secretos y configuración local ---
+# ANTHROPIC_API_KEY, MAPBOX_TOKEN, GEMINI_API_KEY y cualquier otra clave
+# viven SOLO en variables de entorno (ver app.py/JarvisApp.py) o en un
+# .env local -- nunca en el repo.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Entornos virtuales de Python ---
+venv/
+.venv/
+.venv-jarvis/
+env/
+
+# --- Artefactos de Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Logs y procesos locales (túnel, servidor de desarrollo) ---
+*.log
+venv_server_proc.xml
+
+# --- Índices/cachés derivados: se regeneran desde la fuente en git ---
+# Ver comentarios originales: la fuente de verdad es el YAML/ledger, no
+# el binario derivado.
+normativa/.indice.sqlite
+ingesta/estado/cache/
+
+# --- Editor / SO ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

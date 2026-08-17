@@ -1,0 +1,2872 @@
+/* Extraido de index.html el 2026-08-02 al dividir el archivo unico de
+   5.779 lineas. Contenido intacto: solo cambio de ubicacion. */
+
+/* ==========================================================================
+   Sistema de diseño — tokens
+   ==========================================================================
+   Un único tema: gris industrial oscuro (`docs/design/2026-08-01-sistema-
+   visual-industrial.md` §3.1). No hay modo claro ni conmutador — la app
+   siempre se ve igual. Los nombres de variable "heredados" (--bg,
+   --panel-bg, --panel-border, --raised, --text, --radius, --green,
+   --yellow, --red...) que ya usa el resto de esta hoja de estilos NO se
+   han eliminado uno a uno: se redefinen aquí como alias de los tokens
+   nuevos para que las ~200 reglas existentes que ya los usan seguían
+   funcionando sin tocarlas una por una. */
+
+:root {
+  /* --- Color: superficies -------------------------------------------------
+     Restyling "Apple Pro / vidrio esmerilado" (2026-08-17, segunda pasada
+     del mismo día -- a petición explícita revierte el restyling "software
+     profesional plano" aplicado unas horas antes en esta misma fecha, que a
+     su vez había sustituido este mismo look). Sigue siendo solo un cambio de
+     VALORES de los mismos tokens heredados (ningún nombre nuevo obliga a
+     tocar las ~200 reglas que ya los consumen): `--bg-card`/`--bg-sidebar`/
+     `--bg-toolbar` vuelven a ser superficies TRANSLÚCIDAS, y `--glass-blur`
+     deja de ser `none` — un único punto de cambio que reactiva el
+     `backdrop-filter` en los ~22 selectores que ya lo llevaban cableado
+     (dropdowns, modales, barras flotantes del visor, sidebar) sin tener que
+     tocarlos uno a uno. */
+  --bg-primary: #0a0a0c;     /* fondo principal de la app — negro profundo, pedido explícito */
+  --bg-secondary: #0a0a0c;   /* superficie opaca de reserva (scrollbars) */
+  --bg-tertiary: rgba(255, 255, 255, 0.06); /* relleno interior sutil (inputs, filas, chips) */
+  --bg-card: rgba(30, 30, 30, 0.75); /* tarjetas/paneles/dropdowns flotantes — vidrio, ver --glass-blur */
+  --bg-card-solid: #1c1c1e;  /* variante SÓLIDA y opaca para las pocas superficies que no deben dejar ver
+                                 nada detrás (tarjeta de proyecto en Inicio, etiqueta de cota sobre el
+                                 visor 3D en movimiento) — mismo gris neutro pedido explícito */
+  --bg-sidebar: rgba(28, 28, 30, 0.75); /* sidebar — vidrio */
+  --bg-toolbar: rgba(30, 30, 30, 0.75); /* cromo del visor 3D, sobre el degradado de cielo — vidrio */
+  --bg-canvas: #050505;      /* espacio modelo: el lienzo del plano */
+  --border: rgba(255, 255, 255, 0.1); /* separadores — línea sutil de 1px, pedido explícito */
+  --border-subtle: var(--border); /* la paleta cerrada da un único separador */
+  --text-primary: #ffffff;   /* blanco puro, pedido explícito */
+  --text-secondary: #8e8e93; /* gris suave de Apple, pedido explícito */
+  --text-tertiary: #6e6e73;  /* también el estado deshabilitado */
+
+  /* --- Color: único acento de interacción ---------------------------------
+     Azul muy desaturado (#4A90D9, sin cambios) — activo, foco, enlaces,
+     selección. Nunca decorativo. El botón PRIMARIO deja de usarlo (ver
+     `--btn-primary-*` más abajo): la petición de hoy solo redefine ese
+     botón (blanco sobre negro), no el acento del resto de la interfaz. */
+  --accent: #4A90D9;
+  /* Nombre por FUNCIÓN, que es lo que pedía la especificación §4.2 desde la
+     v2 y nunca se llegó a definir: el elemento con foco, uno a la vez. Se
+     usaba ya en el ribbon con valor de reserva; ahora existe de verdad. */
+  --selection: var(--accent);
+  --accent-hover: #6BA6E0;
+  --accent-soft: rgba(74, 144, 217, 0.14);
+  --on-accent: #ffffff; /* texto/icono legible sobre var(--accent) */
+
+  /* Botón primario: blanco sobre negro (2026-08-17, pedido explícito) — par
+     de tokens propio en vez de reutilizar --accent/--on-accent, así el resto
+     de elementos "de acento" (enlaces, foco, selección) no cambia de color
+     solo porque el botón primario lo haga. */
+  --btn-primary-bg: #ffffff;
+  --btn-primary-text: #000000;
+  --btn-primary-bg-hover: rgba(255, 255, 255, 0.85);
+
+  /* --- Overlays: los dos únicos estados de interfaz sin color ------------- */
+  --overlay-hover: rgba(255, 255, 255, 0.08);
+  --overlay-active: rgba(255, 255, 255, 0.12);
+  --overlay-subtle: var(--overlay-hover); /* alias: la paleta no distingue un tercer nivel */
+
+  /* Vidrio esmerilado REACTIVADO (2026-08-17, ver nota de cabecera de este
+     bloque) — antes en `none`, ahora el blur/saturate real que consumen los
+     ~22 selectores ya cableados a esta variable. */
+  --glass-blur: blur(20px) saturate(180%);
+  /* Curva de easing "Apple" pedida para las entradas de modales/ventanas. */
+  --ease-apple: cubic-bezier(0.16, 1, 0.3, 1);
+  --font-family-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
+
+  /* Alias de nombres heredados → tokens nuevos (ver nota arriba). */
+  --bg: var(--bg-primary);
+  --panel-bg: var(--bg-card);
+  --panel-border: var(--border);
+  --raised: var(--bg-card);
+  --text: var(--text-primary);
+
+  /* --- Color de estado: exactamente 3, más el acento -------------------
+     Crítico → rojo, Importante → ámbar, Éxito → verde discreto. La
+     RECOMENDACION (severidad más baja) y el antiguo "amarillo" del
+     semáforo no son un 4º/5º color — reutilizan, respectivamente, el
+     acento y el ámbar, para no introducir ningún tono nuevo. */
+  --color-critical: #dc2626;
+  --color-important: #d97706;
+  --color-warning: var(--color-important);
+  --color-recommendation: var(--accent);
+  --color-success: #16a34a;
+  /* Alias heredados (badges/semáforo/barras ya usaban estos 2 nombres;
+     el tercero, --yellow/--yellow-bg, se retiró al no quedar ningún
+     consumidor tras limpiar los badges muertos más abajo). */
+  --green: var(--color-success); --green-bg: rgba(22, 163, 74, 0.16);
+  --red: var(--color-critical); --red-bg: rgba(220, 38, 38, 0.16);
+  --on-success: var(--bg-primary); /* texto/icono legible sobre var(--color-success) */
+
+  /* --- Diagnósticos de capas AM_*: la única 4ª tinta, y a propósito NO
+     entra en el grupo de arriba -------------------------------------------
+     docs/prd/2026-08-13-visualizacion-diagnosticos-capas-am.md. Un aviso de
+     higiene de capas (`AM_UTIL_INT_` mal escrita, una envolvente ambigua...)
+     no es un incumplimiento normativo — reutilizar rojo/ámbar/verde los
+     volvería indistinguibles del semáforo de cumplimiento. Violeta, fuera
+     de la familia azul del acento y de los 3 colores de estado de arriba;
+     ver `.diag-capas-*` más abajo para cómo se matiza por peso, no por
+     tinta, entre ERROR/WARNING/INFO. */
+  --color-am-diag: #8b7cc7;
+  --color-am-diag-bg: rgba(139, 124, 199, 0.16);
+
+  /* --- Visor 3D: "tinta" sobre el degradado de cielo ----------------------
+     Los toolbars translúcidos del visor de edificio y del visor de vivienda
+     viven siempre sobre un fondo claro/foto (cielo), nunca sobre el gris de
+     la Shell — de ahí que necesiten su propia pareja texto/foco en vez de
+     los tokens --text-*. Antes de esta variable el mismo par de valores
+     estaba repetido más de 15 veces como literal (#f1f5f9/#fff) en todo el
+     bloque de estilos del visor. */
+  --scene-ink: #f1f5f9;
+  --scene-ink-bright: #ffffff;
+
+  /* --- Plano: color con propósito (iteración 3) --------------------------
+     El plano ya no se colorea permanentemente por tipo de uso. En reposo
+     todas las habitaciones comparten el mismo papel neutro y el color queda
+     reservado al ESTADO (normal / advertencia / problema). La lectura por
+     uso no se ha perdido: vive dentro del modo "Espacio", que es donde
+     sirve para decidir algo. Tinta clara sobre papel oscuro: los rellenos
+     bajan mucho más que los muros para que la geometría siga leyéndose
+     como línea.
+
+     Desde la paleta AutoCAD (2026-08-02) el muro sube a una tinta CLARA de
+     verdad (#d0d2d8, antes #8b8b93): sobre el espacio modelo casi negro, la
+     línea tiene que leerse como línea de plano, no como gris apagado. */
+  --plan-room: #26282f;
+  --plan-wall: #d0d2d8;
+  --plan-warning: #3a2c1a;
+  --plan-problem: #3a1f1f;
+  --plan-dim: 0.22;
+
+  /* --- Tipografía --------------------------------------------------------
+     Escala de tamaño. `--text-base` se aplica al `html` como tamaño raíz:
+     como el resto de la hoja ya usa `rem` casi todo (confirmado: 88
+     apariciones en rem contra solo 5 en px), esto reescala TODA la app de
+     forma proporcional y consistente sin tener que tocar cada `font-size`
+     uno a uno. Solo 500/600/700 — la fuente ya no carga el peso 400, así
+     que --font-normal vale 500 y no "regular": no hay un cuarto peso
+     disponible ni se pide uno. (Un interlineado por escalón, a la par de
+     cada tamaño, se intentó en una iteración anterior — se retiró de aquí
+     porque ningún selector llegó a consumir esos tokens; el interlineado
+     real de cada bloque de texto se fija donde se usa, con `line-height`
+     literal.) */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  /* Dos tamaños fuera de la escala base, con nombre propio en vez de un
+     rem suelto: el título de pantalla (H1 de Inicio/Generar — antes 1.85rem
+     y 1.6rem, dos valores distintos para el mismo rol) y la cifra del
+     informe ejecutivo (§4.2 de `sistema-visual-industrial.md`, la única
+     "Cifra" de toda la app). */
+  --text-2xl: 24px;
+  --text-score: 45.5px;
+  --font-normal: 500;
+  --font-medium: 600;
+  --font-semibold: 700;
+
+  /* --- Espaciado (sistema de 4px) ----------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* --- Bordes -------------------------------------------------------------
+     Escala Apple (2026-08-17, segunda pasada del mismo día, ver nota de
+     cabecera) — revierte la escala contenida ("sin bordes redondeados
+     excesivos") de la pasada plana de esta misma tarde. Tarjetas/paneles a
+     16px, modales/paneles grandes a 24px, botones en cápsula completa.
+     `--radius` (nombre heredado) sigue apuntando a `--radius-md`. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+  --radius: var(--radius-md);
+
+  /* Sombras suaves y muy difuminadas (2026-08-17, pedido explícito) —
+     revierte los bordes oscuros de poco radio ("sin sombras exageradas") de
+     la pasada plana de esta misma tarde. */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+html { font-size: var(--text-base); }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--font-family-ui);
+  -webkit-font-smoothing: antialiased;
+  font-weight: var(--font-normal);
+  /* Toda cifra de la app (m², plantas, coordenadas, presupuestos) alinea sus
+     dígitos en vez de tener anchura variable — pedido explícitamente para
+     inputs/etiquetas numéricas; se fija aquí en `body` en vez de perseguir
+     cada clase de etiqueta una a una, porque no tiene coste en texto no
+     numérico y así ninguna cifra nueva puede quedar sin cubrir. */
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  position: relative;
+}
+/* Rejilla arquitectónica de fondo (restyling "Apple Pro", 2026-08-16):
+   persistente en TODA la app (a diferencia de `.bg-technical`, la ilustración
+   con cubo isométrico que ya existía y que sigue reservada a las pantallas
+   vacías de Inicio/Configuración) -- fija en el viewport, muy sutil, y
+   atenuada con una máscara radial para que no compita con el contenido real
+   ni se note como una textura repetida cerca de los bordes. */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 35%, transparent 85%);
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 35%, transparent 85%);
+}
+/* Fila, no columna: el sidebar es la primera columna de la aplicación y no
+   una franja bajo una barra. Al desaparecer la barra superior (v3 de la
+   especificación de Shell) esta es la única regla de layout de primer nivel. */
+#app { height: 100vh; display: flex; flex-direction: row; position: relative; z-index: 1; }
+
+/* --- Shell: sidebar lateral -----------------------------------------------
+   Especificación `docs/design/2026-08-01-especificacion-shell.md` v3 §2, §5-6.
+   Sustituye por completo a la barra superior y a sus cinco menús, de los
+   cuales dos (Herramientas, Cuenta) nunca llegaron a implementarse.
+
+   Un solo panel izquierdo en toda la aplicación: en Inicio lista recientes,
+   con proyecto abierto lista sus viviendas. Nunca hay dos paneles a la
+   izquierda. */
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  background: var(--bg-sidebar);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--border-subtle);
+  position: relative; z-index: 40;
+  transition: width 0.14s ease;
+}
+
+.sidebar-top {
+  height: 44px; flex-shrink: 0;
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: 0 var(--space-2) 0 var(--space-3);
+}
+.sidebar-brand {
+  flex: 1; min-width: 0; text-align: left;
+  font-weight: var(--font-medium); font-size: var(--text-sm); color: var(--text-primary);
+  padding: 0 var(--space-1); height: 28px;
+  display: inline-flex; align-items: center;
+  border-radius: var(--radius-sm); cursor: pointer;
+  background: transparent; border: none; font-family: inherit;
+  white-space: nowrap; overflow: hidden;
+}
+.sidebar-brand:hover { background: var(--overlay-subtle); }
+
+/* El glifo se dibuja en CSS y gira con el estado: un solo control para
+   colapsar y expandir, no dos botones que se intercambian. */
+.sidebar-collapse {
+  width: 24px; height: 24px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  color: var(--text-tertiary); cursor: pointer; font-family: inherit;
+}
+.sidebar-collapse::before { content: "\00AB"; font-size: 14px; line-height: 1; }
+.sidebar-collapse:hover { background: var(--overlay-subtle); color: var(--text-primary); }
+
+.sidebar-acciones {
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sidebar-pie {
+  margin-top: auto;
+  padding: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sidebar-item {
+  display: flex; align-items: center; gap: var(--space-2);
+  width: 100%; height: 30px; padding: 0 var(--space-2);
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  font-family: inherit; font-size: var(--text-sm); color: var(--text-secondary);
+  cursor: pointer; text-align: left; white-space: nowrap;
+}
+.sidebar-item:hover:not(:disabled) { background: var(--overlay-subtle); color: var(--text-primary); }
+.sidebar-item[aria-expanded="true"] { background: var(--overlay-active); color: var(--text-primary); }
+/* No solo más apagado: `opacity` + `not-allowed` (mismo patrón que
+   `.btn-primary:disabled`) para que un vistazo rápido al icono, sin leer la
+   etiqueta, ya diga "esto no funciona todavía" — antes solo cambiaba de
+   color y `cursor` seguía en "default", indistinguible de un botón normal
+   sin querer moverlo. */
+.sidebar-item:disabled { color: var(--text-tertiary); cursor: not-allowed; opacity: 0.5; }
+.sidebar-item-primary { height: 32px; color: var(--text-primary); font-weight: var(--font-medium); }
+.sidebar-icono {
+  width: 16px; flex-shrink: 0; text-align: center;
+  font-size: var(--text-sm); line-height: 1;
+}
+.sidebar-etiqueta { overflow: hidden; text-overflow: ellipsis; }
+/* Visible sin pasar el ratón — el `title` sigue existiendo para quien sí
+   pase por encima, pero la explicación de "por qué no hace nada" no puede
+   depender solo de un tooltip nativo. Se oculta en colapsado (48px, ver
+   abajo): ahí `opacity` + `not-allowed` ya hacen el trabajo de decir
+   "deshabilitado", y no cabe una etiqueta legible. */
+/* Texto gris plano, sin pastilla ni fondo (2026-08-17, pedido explícito: "conviértelo en texto
+   gris desactivado sin llamar la atención") -- sigue siendo texto real, no solo `opacity` en el
+   icono/etiqueta (ver el comentario en `.sidebar-item:disabled` sobre por qué hace falta un
+   texto legible sin pasar el ratón), pero ya no es una pastilla que compite por atención. */
+.sidebar-badge-proximamente {
+  margin-left: auto; flex-shrink: 0;
+  font-size: 9px; text-transform: none; letter-spacing: 0.02em;
+  color: var(--text-tertiary);
+}
+
+/* Zona contextual (§6): recientes sin proyecto, viviendas con proyecto. */
+.sidebar-contexto {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 0 var(--space-2);
+}
+.sidebar-seccion {
+  font-size: var(--text-xs); color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+}
+
+/* --- Sidebar colapsado (48px) ---------------------------------------------
+   La zona contextual se oculta entera: a 48px no cabe ningún nombre, y un
+   nombre truncado a tres letras no es navegación (§6). Permanecen la marca
+   (como inicial), las dos acciones y Ajustes, en forma de icono. */
+.sidebar.is-colapsado { width: 48px; }
+.sidebar.is-colapsado .sidebar-etiqueta,
+.sidebar.is-colapsado .sidebar-contexto { display: none; }
+.sidebar.is-colapsado .sidebar-top { padding: 0; justify-content: center; }
+.sidebar.is-colapsado .sidebar-brand { display: none; }
+.sidebar.is-colapsado .sidebar-collapse::before { content: "\00BB"; }
+.sidebar.is-colapsado .sidebar-acciones,
+.sidebar.is-colapsado .sidebar-pie { padding-left: var(--space-1); padding-right: var(--space-1); }
+.sidebar.is-colapsado .sidebar-item { justify-content: center; padding: 0; }
+.sidebar.is-colapsado .sidebar-badge-proximamente { display: none; }
+
+/* Fila de la zona contextual: sirve tanto para un reciente como para una
+   vivienda. Misma anatomía, distinto contenido — el marcador de la derecha es
+   el porcentaje en el caso de la vivienda y nada en el del reciente. */
+.sidebar-fila {
+  display: flex; align-items: center; gap: var(--space-2);
+  width: 100%; height: 30px; padding: 0 var(--space-2);
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  font-family: inherit; font-size: var(--text-sm); color: var(--text-secondary);
+  cursor: pointer; text-align: left;
+}
+.sidebar-fila:hover { background: var(--overlay-subtle); color: var(--text-primary); }
+.sidebar-fila.is-activa { background: var(--overlay-active); color: var(--text-primary); }
+.sidebar-fila-nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-fila-meta {
+  flex-shrink: 0; font-size: var(--text-xs); color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+/* El color marca la excepción, no el estado normal: solo las viviendas que
+   no están en verde llevan la barra. `inset box-shadow` en vez de
+   border-left para no desplazar el contenido de la fila ni pelearse con el
+   radio de la esquina. */
+/* Barra de color por severidad retirada (2026-08-17, "sin colores de
+   semáforo" / puntuaciones en texto plano) — `.tiene-aviso` ya no se marca
+   en JS, esta regla queda sin selector que la dispare. */
+.sidebar-vacio {
+  padding: var(--space-2); font-size: var(--text-xs);
+  color: var(--text-tertiary); line-height: 1.5;
+}
+
+/* --- Inicio: parrilla de proyectos ----------------------------------------
+   Especificación v3 §2.2. Alineada a la izquierda y de ancho fluido, nunca
+   centrada: una parrilla centrada con tres elementos se lee como un cuadro
+   de diálogo y no como el contenido principal de la aplicación. */
+.inicio-screen { flex: 1; overflow-y: auto; padding: var(--space-8); }
+/* Cabecera de Inicio: identidad + acción principal en la misma línea visual,
+   nunca un título suelto sobre una parrilla — mejora de UX de esta noche
+   para que Inicio no se lea como un dashboard genérico de tarjetas. */
+.inicio-cabecera {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--space-6); flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+.inicio-titulo h1 { margin: 0 0 var(--space-1); font-size: var(--text-2xl); letter-spacing: -0.02em; }
+.inicio-subtitulo {
+  margin: 0; font-size: var(--text-sm); color: var(--text-tertiary);
+  line-height: 1.5; max-width: 560px;
+}
+.inicio-btn-nuevo { flex-shrink: 0; padding: 0.6rem 1.1rem; font-size: var(--text-sm); }
+.inicio-seccion-label {
+  font-size: var(--text-xs); font-weight: var(--font-medium);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-tertiary); margin: 0 0 var(--space-3);
+}
+
+/* `1fr` como máximo estiraría la tarjeta a todo el ancho cuando solo hay un
+   proyecto — el caso límite que el PRD §6 anticipaba ("una parrilla de una
+   tarjeta se ve rota"). Con un máximo de 320px las tarjetas conservan su
+   proporción sea cual sea el número, y `justify-content: start` las deja
+   alineadas a la izquierda en vez de repartidas. */
+.inicio-parrilla {
+  display: grid; gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 320px));
+  justify-content: start;
+  align-items: start;
+}
+
+.proyecto-card {
+  position: relative; display: flex; flex-direction: column;
+  /* Sólida, no vidrio (2026-08-17): es una tarjeta de contenido en una
+     parrilla, no un panel flotante -- usa la variante opaca para que la
+     miniatura del plano se lea siempre igual de nítida. */
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+  overflow: hidden; cursor: pointer;
+  text-align: left; padding: 0; font-family: inherit;
+  transition: border-color 0.14s ease;
+}
+.proyecto-card:hover { border-color: var(--text-tertiary); }
+
+/* La miniatura es el SVG que `plan_svg.py` ya generó para la primera
+   vivienda — no se dibuja nada nuevo en el backend. Se escala con el
+   contenedor y se recorta a 4:3. */
+/* Fondo de plano de corte técnico (2026-08-17, pedido explícito: "no solo vectores blancos sobre fondo
+   negro plano" -- cuadrícula CAD/blueprint sutil detrás del propio plano en blanco, sin depender de
+   ningún asset de imagen (dos `linear-gradient` repetidos, técnica CSS estándar de rejilla). Doble
+   escala (líneas finas cada 16px + una línea algo más marcada cada 80px, "cuadrícula mayor/menor" --
+   convención real de plano CAD) para que se lea como papel milimetrado técnico, no como un patrón
+   decorativo genérico. Opacidad muy baja a propósito: sigue siendo fondo, el plano blanco (`stroke:
+   var(--plan-wall)`) es lo único que debe leerse a primera vista. */
+.proyecto-card-mini {
+  aspect-ratio: 4 / 3; width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background-color: var(--bg-canvas);
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
+    linear-gradient(rgba(148, 163, 184, 0.28) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.28) 1px, transparent 1px);
+  background-size: 16px 16px, 16px 16px, 80px 80px, 80px 80px;
+  border-bottom: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+/* Miniatura en gris. El SVG que llega del backend trae el color por tipo de
+   uso, que en la parrilla no informa de nada: ahí no hay un modo activo que
+   le dé función, así que entra en la regla "gris en reposo". Se neutraliza
+   con CSS y no en `plan_svg.py`, del que dependen también el informe HTML de
+   la CLI y el PDF. */
+.proyecto-card-mini svg { width: 100%; height: 100%; display: block; }
+/* Sin relleno y con la misma tinta clara del espacio modelo: la miniatura se
+   lee como un plano CAD en pequeño, coherente con lo que el arquitecto verá
+   al abrirlo. Rellenar las habitaciones a este tamaño las convertía en
+   manchas y perdía la geometría, que es lo único que la miniatura tiene que
+   comunicar. */
+.proyecto-card-mini svg polygon { fill: none !important; stroke: var(--plan-wall) !important; }
+.proyecto-card-mini svg text { display: none; }
+.proyecto-card-mini.is-vacia { color: var(--text-tertiary); font-size: var(--text-xs); }
+
+.proyecto-card-cuerpo { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+.proyecto-card-nombre {
+  font-size: var(--text-sm); color: var(--text-primary); font-weight: var(--font-medium);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Tarjeta reducida a imagen + nombre + fecha (2026-08-17, pedido explícito:
+   "sin métricas adicionales en la tarjeta") — `.proyecto-card-punt` y
+   `.proyecto-card-aviso` (puntuación acentuada + punto de semáforo) se
+   retiran: `app.js` ya no las emite. La puntuación sigue viéndose dentro
+   del proyecto, en texto plano (riel de viviendas e informe). */
+.proyecto-card-meta {
+  font-size: var(--text-xs); color: var(--text-tertiary);
+}
+
+/* El borrado aparece con el hover de la tarjeta: presente cuando hace falta,
+   ausente el resto del tiempo. Nunca en el flujo del texto. */
+.proyecto-card-borrar {
+  position: absolute; top: var(--space-2); right: var(--space-2);
+  width: 24px; height: 24px; display: none;
+  align-items: center; justify-content: center;
+  background: var(--bg-card-solid); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); color: var(--text-secondary);
+  cursor: pointer; font-family: inherit; font-size: 14px; line-height: 1;
+}
+.proyecto-card:hover .proyecto-card-borrar { display: inline-flex; }
+.proyecto-card-borrar:hover { color: var(--color-critical); border-color: var(--color-critical); }
+
+/* --- Encabezado de proyecto (sustituye al breadcrumb de la barra) ---------
+   Vive dentro de la columna del lienzo, no en una franja que cruce toda la
+   ventana: es un dato del documento abierto, y se va con él (v3 §2.1). */
+.proyecto-header {
+  height: 44px; flex-shrink: 0;
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.proyecto-header-nombre {
+  flex: 1; min-width: 0;
+  font-size: var(--text-sm); color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* --- Desplegable de menú --------------------------------------------------
+   Único mecanismo para los 4 triggers de la barra (`wireShellMenu`). Sin
+   animación de entrada: un menú de aplicación debe sentirse instantáneo. */
+.shell-dropdown {
+  position: fixed; z-index: 41; min-width: 220px; max-width: 320px;
+  background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  padding: 4px 0;
+  animation: fade-in-up 0.2s var(--ease-apple);
+}
+.shell-dropdown-item {
+  display: flex; align-items: center; gap: var(--space-2);
+  height: 28px; padding: 0 var(--space-3);
+  font-size: var(--text-sm); color: var(--text-primary);
+  background: transparent; border: none; width: 100%; text-align: left;
+  font-family: inherit; cursor: pointer; white-space: nowrap;
+}
+.shell-dropdown-item:hover:not(:disabled) { background: var(--overlay-subtle); }
+.shell-dropdown-item:disabled { color: var(--text-tertiary); cursor: default; }
+.shell-dropdown-item-check { width: 14px; flex-shrink: 0; color: var(--text-primary); }
+.shell-dropdown-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: left; }
+.shell-dropdown-item-label { flex: 1; text-align: left; }
+.shell-dropdown-item-arrow { color: var(--text-tertiary); flex-shrink: 0; }
+.shell-dropdown-sep { height: 1px; background: var(--border-subtle); margin: 4px 0; }
+
+/* Ítems con descripción de una línea (hoy solo el menú "Nuevo"): pasan a dos
+   líneas y alto automático, el resto de menús (Exportar) no la usan y se
+   quedan pixel-igual a como estaban. */
+.shell-dropdown-item.has-desc {
+  height: auto; align-items: flex-start; white-space: normal;
+  padding: var(--space-2) var(--space-3);
+}
+.shell-dropdown-item.has-desc .shell-dropdown-item-check { margin-top: 2px; }
+.shell-dropdown-item-desc {
+  font-size: var(--text-xs); color: var(--text-tertiary); line-height: 1.4; margin-top: 2px;
+}
+
+/* --- Buttons -------------------------------------------------------------- */
+
+.btn-primary {
+  /* Blanco sobre negro, sin gradiente ni brillo interior (2026-08-17, pedido
+     explícito: "primarios en blanco con texto negro") — sustituye el relleno
+     de acento de la pasada plana de esta misma tarde. */
+  background: var(--btn-primary-bg); color: var(--btn-primary-text); border: none; border-radius: var(--radius-pill);
+  padding: 0.75rem 1.6rem; font-family: inherit; font-weight: var(--font-medium); font-size: var(--text-base);
+  cursor: pointer; transition: all 0.2s ease;
+}
+.btn-primary:hover:not(:disabled) { background: var(--btn-primary-bg-hover); }
+.btn-primary:active:not(:disabled) { transform: scale(0.96); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-ghost {
+  /* Secundario con fondo translúcido (2026-08-17, pedido explícito) —
+     sustituye el fondo transparente + borde de la pasada plana de esta misma
+     tarde. */
+  background: rgba(255, 255, 255, 0.08); color: var(--text); border: 1px solid var(--panel-border);
+  border-radius: var(--radius-pill); padding: 0.5rem 1.1rem; font-family: inherit;
+  font-size: var(--text-sm); font-weight: var(--font-normal); cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.btn-ghost:active { transform: scale(0.96); }
+
+#view-root { flex: 1; display: flex; min-height: 0; }
+
+/* --- Fondo geométrico técnico ----------------------------------------------
+   `docs/design/2026-08-01-sistema-visual-industrial.md` §1.3: retícula +
+   wireframes + un polígono arquitectónico + un cubo isométrico, en un tile
+   de 480px, opacidad 3% — solo sobre chrome vacío (Inicio, Configuración,
+   estados vacíos), nunca detrás del plano ni del lienzo de Workspace. Se
+   aplica como `::before` para no interferir con el contenido real (que
+   necesita su propio `position:relative` para quedar por encima). */
+.bg-technical { position: relative; }
+.bg-technical::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  opacity: 0.03;
+  background-repeat: repeat;
+  background-size: 480px 480px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='480' viewBox='0 0 480 480'%3E%3Cg fill='none' stroke='%23F2F2F2' stroke-width='1'%3E%3Cpath d='M0 60H480M0 180H480M0 300H480M0 420H480M60 0V480M180 0V480M300 0V480M420 0V480' stroke-width='0.5'/%3E%3Cpath d='M0 0L480 480M480 0L0 480' stroke-width='0.5'/%3E%3Cpath d='M40 340L40 260L110 220L180 260L180 340L110 380Z'/%3E%3Cpath d='M40 260L110 300L180 260M110 300L110 380'/%3E%3Cpath d='M300 80H430V170H370V230H300Z'/%3E%3Cpath d='M330 80V170M370 170V230'/%3E%3Ccircle cx='365' cy='330' r='55'/%3E%3Cpath d='M310 330H420M365 275V385'/%3E%3C/g%3E%3C/svg%3E");
+}
+.upload-screen > *, .generar-screen > *, .loading-screen > * { position: relative; z-index: 1; }
+
+/* --- Upload screen -------------------------------------------------------- */
+
+.upload-screen { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+.upload-card {
+  width: 100%; max-width: 540px; background: var(--panel-bg); border: 1px solid var(--panel-border);
+  border-radius: var(--radius-xl); padding: 3rem; box-shadow: var(--shadow-lg); text-align: center;
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  animation: fade-in-up 0.2s var(--ease-apple);
+}
+/* Entrada estándar de modales/tarjetas/desplegables (restyling "Apple Pro", 2026-08-16) -- `card-in` se
+   conserva como alias por compatibilidad con el resto de la hoja que ya lo usaba por su nombre antiguo. */
+@keyframes fade-in-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes card-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.upload-card h1 { margin: 0 0 0.5rem; font-size: var(--text-2xl); letter-spacing: -0.02em; }
+.upload-card .muted { color: var(--text-secondary); margin: 0 0 2rem; font-size: 1rem; line-height: 1.5; }
+
+.dropzone {
+  border: 2px dashed var(--panel-border); border-radius: var(--radius-xl); padding: 3rem 1.5rem;
+  cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.dropzone:hover { border-color: var(--accent); background: var(--overlay-subtle); }
+.dropzone:focus-visible {
+  border-color: var(--accent); background: var(--overlay-subtle); outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.dropzone.dragover {
+  border-color: var(--accent); background: var(--accent-soft);
+  transform: scale(1.015); box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.dropzone-icon { color: var(--accent); margin-bottom: 1rem; display: flex; justify-content: center; transition: transform 0.15s ease; }
+.dropzone.dragover .dropzone-icon { transform: translateY(-4px); }
+.dropzone-text { font-weight: var(--font-medium); font-size: 1.05rem; }
+.dropzone-text strong { color: var(--accent); }
+.dropzone-sub { color: var(--text-secondary); font-size: 0.86rem; margin-top: 0.35rem; }
+
+.dropzone-file {
+  margin: 1.1rem auto 0; display: inline-flex; align-items: center; gap: 0.5rem;
+  background: var(--green-bg); border: 1px solid rgba(22, 163, 74, 0.35); color: var(--green);
+  padding: 0.4rem 0.85rem; border-radius: 999px; font-size: 0.85rem; font-weight: var(--font-medium);
+  opacity: 0; transform: translateY(4px) scale(0.98);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.dropzone-file.visible { opacity: 1; transform: translateY(0) scale(1); }
+.dropzone-file.file-error { background: var(--red-bg); border-color: rgba(220, 38, 38, 0.35); color: var(--red); }
+.dropzone-file svg { flex-shrink: 0; }
+
+.form-row { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin: 1.75rem 0 0; }
+.form-row label { color: var(--text-secondary); font-size: 0.88rem; }
+.input-wrap { position: relative; display: inline-flex; align-items: center; }
+.input-wrap input {
+  width: 5rem; padding: 0.5rem 1.3rem 0.5rem 0.6rem; background: var(--bg); border: 1px solid var(--panel-border);
+  border-radius: var(--radius); color: var(--text); font-family: inherit; font-size: 0.92rem; text-align: center;
+}
+.input-wrap input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.input-wrap span { position: absolute; right: 0.6rem; color: var(--text-secondary); pointer-events: none; font-size: 0.85rem; }
+
+/* Ayuda contextual breve bajo un campo — una frase, nunca un párrafo, para
+   que un usuario nuevo entienda qué está configurando sin convertir el
+   formulario en un muro de texto. Hereda `text-align` de su contenedor
+   (centrado en `.upload-card`, izquierda en `.upload-context`), así que no
+   fija el suyo propio. */
+.form-field-ayuda { margin: 0.35rem 0 0; font-size: var(--text-xs); color: var(--text-tertiary); line-height: 1.4; }
+.form-row-ayuda { max-width: 26rem; margin-left: auto; margin-right: auto; }
+
+/* Segunda vía de entrada bajo el botón primario de "Analizar plano":
+   deliberadamente un link, no un botón — la jerarquía de la pantalla sigue
+   teniendo una sola acción principal. */
+.upload-alt-link { margin: 1.25rem 0 0; font-size: var(--text-sm); color: var(--text-tertiary); }
+.upload-alt-link a { color: var(--accent); text-decoration: none; }
+.upload-alt-link a:hover { text-decoration: underline; }
+.form-hint-boton { margin-top: 0.6rem; }
+
+.upload-context { display: flex; flex-direction: column; gap: 0.75rem; margin: 1.25rem 0 0; text-align: left; }
+
+.upload-card .btn-primary { width: 100%; margin-top: 2rem; padding: 0.9rem 1.5rem; font-size: 1rem; }
+.error-banner {
+  margin-top: 1.25rem; background: var(--red-bg); border: 1px solid rgba(220, 38, 38, 0.4); color: var(--red);
+  padding: 0.7rem 1rem; border-radius: var(--radius); font-size: 0.86rem; text-align: left; line-height: 1.4;
+}
+
+/* Ajustes de lectura: aparecen solo cuando ArchMuse no ha podido deducir la
+   capa de estancias o la unidad del dibujo y necesita preguntarlo. Van pegados
+   al banner de error, porque son su respuesta y no un apartado nuevo. */
+.ajuste-lectura {
+  margin-top: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1rem; text-align: left; display: flex; flex-direction: column; gap: 0.75rem;
+}
+.ajuste-lectura-titulo {
+  font-size: var(--text-xs); color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.ajuste-nota { margin: -0.4rem 0 0; font-size: var(--text-xs); color: var(--text-tertiary); line-height: 1.45; }
+
+/* --- Loading screen -------------------------------------------------------- */
+
+.loading-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.25rem; }
+.loading-title { font-size: 1.05rem; font-weight: var(--font-medium); }
+.loading-steps { display: flex; flex-direction: column; gap: 1rem; width: 280px; }
+.loading-step { display: flex; align-items: center; gap: 0.85rem; font-size: 0.9rem; color: var(--text-secondary); transition: color 0.15s ease; }
+.loading-step.active, .loading-step.done { color: var(--text); }
+.loading-step-icon {
+  width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--panel-border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; transition: border-color 0.15s ease, background 0.15s ease;
+}
+.loading-step.active .loading-step-icon { border-color: var(--accent); }
+.loading-step.active .loading-step-icon::after {
+  content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1s ease-in-out infinite;
+}
+.loading-step.done .loading-step-icon { border-color: var(--green); background: var(--green); }
+.loading-step.done .loading-step-icon::after { content: "\2713"; color: var(--on-success); font-size: 11px; font-weight: var(--font-semibold); line-height: 1; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.75); } }
+.loading-bar { width: 280px; height: 3px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
+.loading-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.35s ease; }
+
+/* --- Formulario "Generar proyecto" ----------------------------------------- */
+
+.generar-screen { flex: 1; overflow-y: auto; padding: 2.5rem 2rem; display: flex; justify-content: center; }
+.generar-card { width: 100%; max-width: 720px; animation: fade-in-up 0.2s var(--ease-apple); }
+.generar-card h1 { margin: 0 0 0.5rem; font-size: var(--text-2xl); letter-spacing: -0.02em; }
+.generar-card > .muted { margin: 0 0 2rem; font-size: 0.95rem; line-height: 1.5; }
+
+.form-section {
+  background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-xl);
+  padding: 1.5rem 1.75rem; margin-bottom: 1.25rem;
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.form-section h3 {
+  margin: 0 0 1.1rem; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--accent); font-weight: var(--font-semibold);
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.25rem; }
+.form-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.form-field label { font-size: 0.82rem; color: var(--text-secondary); }
+.form-field input, .form-field select {
+  background: var(--bg-tertiary); border: 1px solid var(--panel-border); border-radius: var(--radius-md);
+  color: var(--text); font-family: inherit; font-size: 0.92rem; padding: 0.55rem 0.7rem;
+  transition: border-color 0.15s var(--ease-apple), box-shadow 0.15s var(--ease-apple);
+}
+.form-field input:focus, .form-field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.form-field-full { grid-column: 1 / -1; }
+
+.generar-actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
+.generar-actions .btn-ghost { flex: 0 0 auto; padding-left: 1.5rem; padding-right: 1.5rem; }
+.generar-actions .btn-primary { flex: 1; }
+
+/* --- Workspace ------------------------------------------------------------
+   Rediseño "visual hierarchy first" (2026-08-01). Un único protagonista: el
+   plano. Los tres paneles ya no son cajas separadas por bordes — comparten
+   un mismo lienzo continuo y se distinguen solo por espacio y por peso
+   tipográfico. Reglas que gobiernan todo lo de abajo:
+     1. Ningún borde ni fondo separa paneles: la jerarquía la da el espacio.
+     2. El plano es el único elemento con color saturado; el resto vive en
+        grises, salvo el color que codifica severidad (y ahí, como texto o
+        punto, nunca como caja).
+     3. Lo secundario aparece con retardo (ver `chrome-in`): durante el
+        primer medio segundo el plano está solo en pantalla.
+   ------------------------------------------------------------------------- */
+
+.workspace { flex: 1; display: flex; min-height: 0; width: 100%; }
+
+.panel-left {
+  width: 168px; flex-shrink: 0; min-height: 0; background: var(--bg-sidebar);
+  display: flex; flex-direction: column; overflow: hidden;
+  padding: var(--space-4) 0 var(--space-4) var(--space-5);
+}
+
+/* --- Riel izquierdo: SOLO navegación entre viviendas -----------------------
+   Ya no lleva recuento de proyecto, ni filtros, ni enlace CSV (el CSV se
+   mudó a las acciones de la cabecera). Es el equivalente al panel de
+   páginas de Figma: una lista de destinos, nada más. Cada fila muestra
+   nombre y puntuación; la superficie y el desglose por categorías bajaron
+   a Nivel 3 (el tooltip al pasar el ratón y el desglose de la cabecera).
+   Sin rótulo "VIVIENDAS": seis nombres en columna no necesitan que nadie
+   los presente. */
+
+.vivienda-list { list-style: none; margin: 0; padding: 0; flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+.vivienda-card {
+  display: flex; flex-direction: column; padding: 9px 12px; margin-right: var(--space-4);
+  border-radius: var(--radius-md);
+  cursor: pointer; background: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.vivienda-card:hover { background: var(--overlay-subtle); }
+.vivienda-card.active { background: var(--bg-tertiary); }
+.vivienda-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.vivienda-card-name {
+  font-size: var(--text-sm); font-weight: var(--font-normal); color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.vivienda-card.active .vivienda-card-name { color: var(--text-primary); font-weight: var(--font-medium); }
+.vivienda-card-score { font-size: var(--text-sm); font-weight: var(--font-medium); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+/* Mini barra apilada de las 6 categorías de puntuación — ancho de cada
+   segmento = peso de la categoría, opacidad = su puntuación/100 (con suelo
+   de 0.25 para que una categoría a 0 siga siendo un segmento visible), así
+   una categoría floja se lee "apagada" de un vistazo. */
+
+/* --- Panel central: el protagonista ---------------------------------------
+   Es la única columna que crece, no tiene fondo propio ni barra separadora,
+   y su contenido respira: el plano se dibuja sobre un lienzo limpio con
+   márgenes amplios. Todo el peso visual de la pantalla debe caer aquí. */
+
+.panel-center { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: transparent; }
+.panel-center-toolbar {
+  flex-shrink: 0;
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4);
+  padding: var(--space-3) var(--space-5) 0;
+  background: transparent; border-bottom: none;
+}
+.toolbar-left { display: flex; align-items: baseline; gap: var(--space-3); min-width: 0; }
+/* Titular del panel central: nombra el objeto que se está viendo. Ya no
+   lleva la puntuación al lado — el informe de la derecha la da en grande,
+   y repetirla aquí era el mismo dato dos veces a un palmo de distancia. */
+.toolbar-left h2 {
+  margin: 0; font-size: 1.05rem; font-weight: var(--font-medium); color: var(--text-secondary);
+  letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* El aire alrededor del plano ya no lo da el padding sino el reencuadre
+   (`ajustarViewBox`): el dibujo se ajusta a su propio contorno real en vez
+   de quedar encajado dentro del viewBox fijo 800x600 del backend, que es lo
+   que producía las bandas vacías. Con eso, el padding puede ser mínimo. */
+.svg-container {
+  flex: 1; min-height: 0; min-width: 0; padding: 12px 16px; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative; transition: opacity 0.15s ease;
+  background: transparent;
+}
+/* Sin `transition` sobre el SVG: el paneo y el zoom escriben `viewBox` en
+   cada evento del ratón, y una transición ahí produce arrastre perceptible
+   en vez de que el plano siga al cursor. */
+.svg-container svg { width: 100%; height: 100%; display: block; }
+.svg-container .plan-room { cursor: pointer; }
+/* `pointer-events: all` mantiene el INTERIOR de cada habitación sensible al
+   ratón aunque no tenga relleno. Sin esto, apagar la capa "Rellenos" (que es
+   el estado por defecto en Resumen, y lo que hace que el plano se lea como
+   un plano CAD) dejaba `fill:none`, y en SVG un relleno nulo solo se puede
+   señalar por el trazo: se perdían el hover, la selección de habitación y la
+   lectura de coordenadas dentro de la habitación. */
+.svg-container .plan-room polygon { pointer-events: all; }
+
+/* El grosor de línea NO puede depender del zoom. Sin esto, `stroke-width` se
+   expresa en unidades del viewBox y el zoom lo multiplica: medido sobre
+   ejemplo.dxf, un muro pasaba de 1,12 px en reposo a 4,49 px a ×4 y a unos
+   22 px a ×20 — en reposo un dibujo por debajo del píxel, y de cerca losas
+   que se comen el interior de las habitaciones pequeñas. Ningún CAD se
+   comporta así: el grosor es constante en pantalla y es el que codifica la
+   jerarquía. Con `non-scaling-stroke`, `stroke-width` pasa a leerse
+   directamente en píxeles de pantalla. */
+.svg-container .plan-room polygon,
+.svg-container .plan-envolvente polygon,
+.proyecto-card-mini svg polygon { vector-effect: non-scaling-stroke; }
+
+/* Envolvente: el perímetro construido deducido de la unión de habitaciones
+   (`plan_svg._envelope_svg`). Mismo color que las particiones y más peso —
+   en un plano la jerarquía la marca el grosor, no el color. */
+.svg-container .plan-envolvente polygon {
+  stroke: var(--plan-wall); stroke-width: 2.2; fill: none;
+}
+/* Se atenúa con el resto del contexto al enfocar una habitación. */
+.svg-container.has-focus .plan-envolvente { opacity: var(--plan-dim); }
+/* En miniatura la envolvente es lo único que de verdad se lee a ese tamaño. */
+.proyecto-card-mini .plan-envolvente polygon { stroke-width: 1.6; }
+.proyecto-card-mini .plan-room polygon { stroke-width: 0.6; }
+
+/* Capas del workspace CAD. Se apagan por clase sobre el propio `<svg>`
+   (`aplicarCapas`), no borrando nodos: encender de nuevo es inmediato y no
+   hay que volver a pedir el SVG al backend. */
+/* Las etiquetas no interceptan el ratón. El `<text>` de cada habitación es
+   HERMANO de su `<g class="plan-room">`, no hijo (ver `plan_svg.py`), así que
+   sin esto `elementFromPoint` sobre el centro de una habitación devuelve el
+   texto y `closest('.plan-room')` da null: las coordenadas salían marcadas
+   como aproximadas justo encima de la habitación, y el hover de la propia
+   habitación se perdía sobre su nombre. */
+.svg-container svg text { pointer-events: none; }
+.svg-container svg.sin-etiquetas .plan-label { display: none; }
+.svg-container svg.sin-norte .plan-north { display: none; }
+.svg-container svg.sin-rellenos .plan-room polygon { fill: none !important; }
+.svg-container .plan-room polygon { transition: fill 0.15s ease, opacity 0.15s ease; }
+.svg-container .plan-room:hover polygon { filter: brightness(0.96); }
+
+/* Foco: se ATENÚA el contexto, no se ilumina el objeto. Es la diferencia
+   entre un visor profesional y una app que hace parpadear cosas — el
+   pulso azul de 2s que había antes era lo más "aplicación" del plano. */
+.svg-container.has-focus .plan-room { opacity: var(--plan-dim); }
+.svg-container.has-focus .plan-room.room-focus { opacity: 1; }
+/* `!important` porque `pintarPlano()` escribe `strokeWidth` como estilo EN
+   LÍNEA sobre cada polígono, y sin esto esta regla nunca llegaba a aplicarse:
+   el realce de la habitación enfocada llevaba tiempo sin hacer nada. */
+.svg-container.has-focus .plan-room.room-focus polygon { stroke-width: 2 !important; }
+.svg-container.has-focus text { opacity: var(--plan-dim); transition: opacity 0.15s ease; }
+
+/* Puntos numerados del informe ejecutivo sobre el plano: el mismo 1-2-3 que
+   la columna de la derecha. Ese emparejamiento es lo que hace que la
+   pantalla se lea como un diagnóstico y no como un dibujo junto a una
+   tabla. */
+.plan-pin circle { fill: var(--bg-primary); stroke: var(--plan-wall); stroke-width: 1.2; }
+.plan-pin text {
+  fill: var(--text-primary); font-size: 11px; font-weight: var(--font-medium);
+  font-family: inherit; pointer-events: none;
+}
+.plan-pin { cursor: pointer; transition: opacity 0.15s ease; }
+.plan-pin.pin-hi circle { fill: var(--text-primary); stroke: var(--text-primary); }
+.plan-pin.pin-hi text { fill: var(--bg-primary); }
+.svg-container.has-focus .plan-pin { opacity: var(--plan-dim); }
+
+.svg-container .empty-state { margin: auto; color: var(--text-secondary); font-size: 0.92rem; }
+
+/* --- Modos de análisis (bajo el plano) -------------------------------------
+   No son pestañas de panel: son vistas del proyecto. Lo que los convierte en
+   vistas y no en botones es una regla dura, aplicada en `pintarPlano()`:
+   NINGÚN modo deja el plano igual. Si un modo solo cambiara la columna
+   derecha, sería una pestaña disfrazada.
+
+   Siempre hay exactamente un modo activo — desaparece el estado "ninguno"
+   de la iteración anterior, porque ahora "Resumen" ES el estado de reposo y
+   tiene contenido propio (el informe ejecutivo). Al final, separado por un
+   hueco mayor, el 3D: no es un modo de análisis sino otra representación
+   del proyecto, y la separación visual lo dice. */
+
+/* --- Workspace tipo AutoCAD ------------------------------------------------
+   PRD `docs/prd/2026-08-02-workspace-tipo-autocad.md`. La barra de modos
+   (`.plan-modebar`) desaparece: sus 6 modos son ahora el grupo "Modos" de la
+   pestaña Vista del ribbon, y el botón 3D es una pestaña de la barra de
+   estado. Sin tokens de color nuevos — la decisión 3 de la Shell sigue en
+   pie y el color solo aparece dentro del lienzo cuando el modo lo usa. */
+
+.cad-ribbon { flex-shrink: 0; border-bottom: 1px solid var(--border-subtle); background: var(--bg-toolbar); }
+.cad-ribbon-tabs {
+  display: flex; align-items: flex-end; gap: 2px;
+  padding: 0 var(--space-3); border-bottom: 1px solid var(--border-subtle);
+}
+.cad-ribbon-tab {
+  background: transparent; border: none; border-bottom: 2px solid transparent;
+  padding: 7px 14px; font-family: inherit; font-size: var(--text-xs);
+  color: var(--text-tertiary); cursor: pointer; white-space: nowrap;
+}
+.cad-ribbon-tab:hover { color: var(--text-primary); }
+.cad-ribbon-tab.is-activa { color: var(--text-primary); border-bottom-color: var(--selection, var(--text-primary)); }
+
+.cad-ribbon-panel { display: flex; align-items: stretch; gap: 0; padding: var(--space-2) var(--space-3) 0; min-height: 56px; }
+.cad-ribbon-grupo {
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 0 var(--space-3); border-right: 1px solid var(--border-subtle);
+}
+.cad-ribbon-grupo:last-child { border-right: none; }
+.cad-ribbon-botones { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
+/* El título va DEBAJO del grupo, como en el ribbon de AutoCAD: nombra lo que
+   hay encima en vez de encabezarlo. */
+.cad-ribbon-grupo-titulo {
+  font-size: 10px; color: var(--text-tertiary); text-align: center;
+  padding: 3px 0 4px; letter-spacing: 0.04em;
+}
+.cad-ribbon-btn {
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm);
+  padding: 5px 10px; font-family: inherit; font-size: var(--text-xs);
+  color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+}
+.cad-ribbon-btn:hover { color: var(--text-primary); background: var(--overlay-subtle); }
+.cad-ribbon-btn.is-activa {
+  color: var(--text-primary); background: var(--bg-tertiary); border-color: var(--border-subtle);
+}
+
+/* Lienzo: contenedor del plano, del crosshair y del cursor de cruz. Tiene
+   fondo PROPIO (`--bg-canvas`), más oscuro que el cromo: en AutoCAD el
+   espacio modelo siempre se distingue de la interfaz que lo rodea, y es lo
+   que hace que el plano se lea como el objeto de trabajo y no como otro
+   panel más. */
+.cad-lienzo {
+  flex: 1; min-height: 0; position: relative; display: flex; cursor: crosshair;
+  background: var(--bg-canvas);
+}
+.cad-lienzo.is-paneable { cursor: grab; }
+.cad-lienzo.is-paneando { cursor: grabbing; }
+
+.cad-crosshair { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.cad-crosshair-h { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--border-subtle); }
+.cad-crosshair-v { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--border-subtle); }
+
+.cad-comando {
+  flex-shrink: 0; display: flex; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-3); height: 30px;
+  border-top: 1px solid var(--border-subtle); background: var(--bg-secondary);
+  font-size: var(--text-xs);
+}
+.cad-comando label { color: var(--text-tertiary); flex-shrink: 0; }
+.cad-comando input {
+  flex: 0 0 220px; background: transparent; border: none; outline: none;
+  font-family: inherit; font-size: var(--text-xs); color: var(--text-primary);
+}
+.cad-comando-eco { color: var(--text-tertiary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.cad-statusbar {
+  flex-shrink: 0; display: flex; align-items: center; gap: var(--space-4);
+  height: 28px; padding: 0 var(--space-3);
+  border-top: 1px solid var(--border-subtle); background: var(--bg-toolbar);
+  font-size: 11px; color: var(--text-tertiary);
+}
+.cad-tabs { display: flex; gap: 2px; }
+.cad-tab {
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  padding: 3px 10px; font-family: inherit; font-size: 11px;
+  color: var(--text-tertiary); cursor: pointer;
+}
+.cad-tab:hover { color: var(--text-primary); background: var(--overlay-subtle); }
+.cad-tab.is-activa { color: var(--text-primary); background: var(--bg-tertiary); }
+/* Ancho fijo y cifras tabulares: la lectura de coordenadas no debe bailar de
+   izquierda a derecha al moverse el cursor. */
+.cad-coords { font-variant-numeric: tabular-nums; min-width: 160px; }
+.cad-status-flags { display: flex; gap: var(--space-2); margin-left: auto; }
+.cad-flag { letter-spacing: 0.04em; }
+.cad-flag.is-apagada { color: var(--text-tertiary); opacity: 0.7; }
+
+.cad-titulo-vivienda { color: var(--text-tertiary); font-size: var(--text-xs); }
+
+/* Panel derecho plegado (§7.4, Ctrl+2). `display:none` y no un ancho 0: el
+   inspector no debe seguir midiendo ni reaccionando a nada mientras está
+   fuera de la vista. */
+.workspace.sin-inspector .panel-right { display: none; }
+
+/* --- Panel flotante (listas que se consultan y se cierran) -----------------
+   Para lo que no merece ocupar el inspector de forma permanente: la lista
+   completa de habitaciones. Se invoca desde un botón, se cierra con Escape
+   o pulsando fuera, y nunca desplaza el plano. */
+
+.float-panel-backdrop { position: fixed; inset: 0; z-index: 70; background: transparent; }
+.float-panel {
+  position: fixed; z-index: 71; right: var(--space-6); bottom: 96px; width: 300px;
+  max-height: 60vh; overflow-y: auto;
+  background: var(--bg-card); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border); border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md); padding: var(--space-4) var(--space-5) var(--space-5);
+  animation: float-panel-in 0.15s ease;
+}
+@keyframes float-panel-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.float-panel-title {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-tertiary); font-weight: var(--font-semibold); margin-bottom: var(--space-3);
+}
+@media (prefers-reduced-motion: reduce) { .float-panel { animation: none; } }
+
+/* --- Panel derecho: información de apoyo, nunca protagonista --------------
+   Sin borde izquierdo ni fondo: se lee como una columna de texto al margen
+   del plano, no como un panel. El título de sección (h4) en versalitas
+   grises basta para separar bloques; ya no hace falta ninguna línea. */
+
+/* --- Inspector -------------------------------------------------------------
+   Ya no es un panel con seis secciones apiladas y abiertas. Es un inspector
+   que muestra UNA cosa: lo que el arquitecto tiene seleccionado, o —si no
+   hay selección— la herramienta activa, o —si tampoco hay herramienta— el
+   estado de reposo (puntuación de la vivienda y su problema más grave).
+   La prioridad selección > herramienta > reposo la resuelve
+   `renderInspector()`. */
+
+.panel-right {
+  width: 320px; flex-shrink: 0; min-height: 0; background: transparent;
+  overflow-y: auto; scroll-behavior: smooth;
+  padding: var(--space-4) var(--space-6) var(--space-6) var(--space-3);
+}
+#inspector { transition: opacity 0.15s ease; }
+.inspector-label {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-tertiary); font-weight: var(--font-semibold); margin-bottom: var(--space-3);
+}
+.inspector-back {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  background: none; border: none; padding: 0; margin-bottom: var(--space-3);
+  font-family: inherit; font-size: var(--text-xs); color: var(--text-tertiary);
+  cursor: pointer; transition: color 0.15s ease;
+}
+.inspector-back:hover { color: var(--text-primary); }
+
+/* Leyenda de los modos que colorean el plano por categorías ("Espacio",
+   "Luz") — auditoría UX, P0-3. Discreta a propósito: una fila de chips de
+   texto pequeño, no una caja separada con su propio título ni un cuadro de
+   ayuda — es una aclaración de una línea, no una sección nueva. */
+.modo-legend {
+  display: flex; flex-wrap: wrap; gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+.legend-item {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: var(--text-xs); color: var(--text-tertiary);
+}
+.legend-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  /* Anillo sutil: los colores de "Espacio" son pasteles claros (la misma
+     paleta que ya usa el SVG del backend) y sin esto el punto se lava
+     contra el fondo oscuro del panel. */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+/* Mismos 3 colores semánticos que `.orient-badge-*` (Óptima/Aceptable/
+   Desfavorable) — aquí como relleno de punto, no de texto. */
+.legend-dot-optima { background: var(--color-success); }
+.legend-dot-aceptable { background: var(--color-warning); }
+.legend-dot-desfavorable { background: var(--color-critical); }
+
+/* --- Informe ejecutivo (modo Resumen) --------------------------------------
+   No es un inspector vacío esperando a que alguien seleccione algo: es la
+   conclusión del análisis, escrita antes de que el usuario pregunte.
+
+   La distinción que gobierna este bloque: una lista es lo que queda cuando
+   nadie ha decidido; un informe es el resultado de haber decidido. Por eso
+   son exactamente 3 puntos y NO hay contador de resto ("y 9 más"): en
+   cuanto aparece ese contador vuelve a leerse como una lista truncada y se
+   pierde el efecto. Los 12 siguen a un clic, en el modo Problemas. */
+
+/* --- Cabecera del informe -------------------------------------------------
+   El marcador pasa de trofeo a magnitud. El tamaño baja de 45px a 30px y el
+   peso de 700 a 600: sigue siendo el primer elemento del panel, pero deja de
+   ser el elemento más grande de la aplicación. El color del semáforo sale
+   del número (era el único texto saturado de toda la pantalla) y queda en
+   una barra de 3px, que informa igual sin gritar. */
+.report-eyebrow {
+  font-size: var(--text-xs); color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: var(--space-2);
+}
+/* La escala vive aquí, no colgando de la cifra. Un punto más apagada que el
+   rótulo para que se lea como unidad y no como parte del nombre. */
+.report-eyebrow-escala { margin-left: var(--space-2); opacity: 0.65; }
+/* La barra de color de 3px por severidad (`.report-flag`) se retira
+   (2026-08-17, pedido explícito: "las puntuaciones de calidad en texto
+   plano, no como badges de colores") — la cifra ya no lleva ningún
+   indicador de semáforo pegado, solo el propio número. */
+.report-score-row { display: flex; align-items: center; gap: var(--space-2); }
+.report-score {
+  font-size: 30px; font-weight: var(--font-medium); letter-spacing: -0.02em;
+  line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-primary);
+}
+.report-state { font-size: var(--text-base); color: var(--text-secondary); margin: var(--space-3) 0 0; }
+/* Los hechos que sustituyen al adjetivo. */
+.report-tally { font-size: var(--text-xs); color: var(--text-tertiary); margin: var(--space-1) 0 0; }
+/* Solo aparece cuando el veredicto es "insuficiente" pese a una puntuación
+   que, sola, no lo explicaría (auditoría UX, P0-5) — un tono más visible
+   que `.report-tally` porque es la explicación de una aparente
+   contradicción, no un dato suelto más. */
+.report-veredicto-nota { font-size: var(--text-xs); color: var(--text-secondary); margin: var(--space-2) 0 0; line-height: 1.45; max-width: 34ch; }
+/* Única línea divisoria de toda la pantalla, y se la gana: separa el
+   veredicto de sus causas. */
+.report-rule { border: 0; border-top: 1px solid var(--border-subtle); margin: var(--space-5) 0; }
+.report-lead {
+  font-size: var(--text-xs); color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin: 0 0 var(--space-3);
+}
+
+.report-points { list-style: none; margin: 0; padding: 0; }
+.report-point {
+  display: flex; gap: var(--space-3); width: 100%; text-align: left;
+  background: none; border: none; padding: var(--space-3) var(--space-2);
+  margin-left: calc(var(--space-2) * -1);
+  border-radius: var(--radius-md); cursor: pointer; font-family: inherit;
+  transition: background 0.15s ease;
+}
+.report-point:hover, .report-point.hi { background: var(--overlay-subtle); }
+.report-point-num {
+  flex-shrink: 0; width: 18px; font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary); padding-top: 2px;
+}
+/* Título y meta son dos <span>, o sea inline: sin esto quedaban pegados en
+   la misma línea ("…baño adaptadoImpacto alto") y el margin-top del meta no
+   se aplicaba. */
+.report-point-body { min-width: 0; display: flex; flex-direction: column; }
+/* El orden ya codifica la gravedad, así que el título va en texto normal:
+   pintar además el color de severidad sería decir lo mismo dos veces. */
+.report-point-title { font-size: var(--text-base); color: var(--text-primary); line-height: 1.45; }
+.report-point-meta { font-size: var(--text-xs); color: var(--text-tertiary); margin-top: 2px; }
+/* Salida hacia el detalle completo: texto, no botón. */
+.report-exit {
+  background: none; border: none; padding: var(--space-4) 0 0; margin: 0;
+  font-family: inherit; font-size: var(--text-xs); color: var(--text-tertiary);
+  cursor: pointer; transition: color 0.15s ease;
+}
+.report-exit:hover { color: var(--text-primary); }
+
+.inspector-title { font-size: var(--text-base); font-weight: var(--font-medium); color: var(--text-primary); line-height: 1.4; margin: 0 0 var(--space-1); }
+.inspector-sub { font-size: var(--text-xs); color: var(--text-tertiary); margin: 0 0 var(--space-4); }
+.inspector-empty { font-size: var(--text-sm); color: var(--text-tertiary); line-height: 1.6; }
+
+/* Botón de revelación: el único mecanismo para bajar un nivel. Sin borde —
+   el fondo tenue ya dice que es pulsable, y un rectángulo dibujado en el
+   margen del plano es exactamente la textura de "aplicación" que sobra. */
+.btn-reveal {
+  display: inline-flex; align-items: center; justify-content: center; width: 100%;
+  background: var(--overlay-subtle); color: var(--text-primary); border: none;
+  border-radius: var(--radius-md); padding: 9px 12px; font-family: inherit;
+  font-size: var(--text-sm); font-weight: var(--font-medium); cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btn-reveal:hover { background: var(--overlay-active); }
+
+/* Bloques del detalle (normativa, explicación, impacto, solución). */
+.detail-block { margin-bottom: var(--space-4); }
+.detail-block:last-child { margin-bottom: 0; }
+.detail-block-label {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-tertiary); font-weight: var(--font-semibold); margin-bottom: var(--space-1);
+}
+.detail-block-value { font-size: var(--text-sm); line-height: 1.6; color: var(--text-secondary); margin: 0; }
+.detail-block-value ol { margin: 0; padding-left: 1.1rem; }
+.detail-block-value li { margin-bottom: var(--space-1); }
+
+/* Nivel 3: lo técnico, plegado dentro del propio detalle. */
+.detail-more {
+  margin-top: var(--space-4); background: none; border: none; padding: 0;
+  font-family: inherit; font-size: var(--text-xs); color: var(--text-tertiary);
+  cursor: pointer; transition: color 0.15s ease;
+}
+.detail-more:hover { color: var(--text-secondary); }
+.detail-more-body { margin-top: var(--space-3); }
+.detail-more-body[hidden] { display: none; }
+
+/* --- Habitaciones: lista plana, una línea por habitación -------------------
+   Sin línea divisoria por fila (eran N bordes) y sin el cuadrito de color de
+   fondo del icono (eran N manchas de color compitiendo con la paleta del
+   propio plano): el icono queda como trazo gris. */
+
+.room-list { list-style: none; margin: 0; padding: 0; }
+.room-list li {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 5px 0; font-size: var(--text-sm);
+}
+
+.room-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.room-problem-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-critical); flex-shrink: 0; }
+.room-area { color: var(--text-secondary); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+/* --- Orientación y luz ------------------------------------------------------ */
+
+.orientation-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.orientation-list li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); font-size: var(--text-sm);
+}
+
+.orient-name { flex: 1 1 auto; min-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.orient-compass { color: var(--text-tertiary); flex-shrink: 0; font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.orient-neutral { color: var(--text-tertiary); font-size: var(--text-xs); flex-shrink: 0; }
+.orient-luz { color: var(--text-tertiary); font-size: var(--text-xs); flex-shrink: 0; margin-left: auto; }
+/* Sin fondo: una etiqueta por habitación son 10-16 pastillas de color en la
+   columna lateral — el color solo, como texto, transmite lo mismo. */
+.orient-badge { font-size: var(--text-xs); background: none; padding: 0; flex-shrink: 0; }
+.orient-badge-optima { color: var(--color-success); }
+.orient-badge-aceptable { color: var(--color-warning); }
+.orient-badge-desfavorable { color: var(--color-critical); }
+
+/* --- Problemas detectados --------------------------------------------------
+   Antes cada problema era una tarjeta (fondo propio + barra de color a la
+   izquierda), es decir una pila de N cajas. Ahora la severidad la codifica
+   un punto de color de 5px delante del título, y las filas se separan solo
+   con espacio. El detalle desplegado tampoco tiene fondo: se sangra. */
+
+.issues-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.issue-item { background: transparent; cursor: pointer; }
+.issue-summary {
+  width: 100%; text-align: left; background: transparent; border: none;
+  padding: 7px 0; cursor: pointer; font-family: inherit; color: inherit;
+  display: flex; flex-direction: column; gap: 2px;
+  transition: opacity 0.12s ease;
+}
+.issue-summary:hover { opacity: 0.65; }
+.issue-titulo { font-size: var(--text-sm); font-weight: var(--font-normal); color: var(--text-primary); }
+/* El punto sustituye a la barra lateral de la tarjeta: mismo dato
+   (severidad), sin dibujar una caja alrededor del texto. */
+.issue-titulo::before {
+  content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--issue-color, transparent); margin-right: 7px; vertical-align: middle;
+}
+.issue-meta { font-size: var(--text-xs); color: var(--text-tertiary); padding-left: 12px; }
+.issue-meta span + span::before { content: " · "; }
+.chain-icon { font-size: var(--text-xs); color: var(--text-tertiary); }
+
+/* --- Plan de acción (Requisito 6) ------------------------------------------ */
+
+.action-plan-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.action-plan-item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.action-plan-titulo {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--text-sm); color: var(--text-primary);
+}
+
+.action-plan-pts {
+  flex-shrink: 0; font-weight: var(--font-medium); font-size: var(--text-xs); color: var(--color-important);
+  background: none; padding: 0; font-variant-numeric: tabular-nums;
+}
+
+.problems-counter { font-size: var(--text-xs); margin-bottom: var(--space-2); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.problems-counter .count-critico { color: var(--color-critical); }
+.problems-counter .count-importante { color: var(--color-important); }
+.problems-counter .count-recomendacion { color: var(--color-recommendation); }
+.problems-counter .count-sep { color: var(--text-tertiary); }
+
+/* --- Diagnósticos de capas AM_* (contrato de clasificación DXF) -----------
+   docs/prd/2026-08-13-visualizacion-diagnosticos-capas-am.md. Usan
+   `--color-am-diag` (definida arriba, junto al resto de tokens de color) en
+   vez de --color-critical/--color-important/--color-success — el semáforo
+   de cumplimiento CTE, ya consumido por .orient-badge-*/.problems-counter/
+   .issue-titulo::before — para que un aviso de higiene de capas nunca se
+   lea como un incumplimiento normativo. Las 3 severidades (ERROR/WARNING/
+   INFO) matizan esa única tinta por PESO — relleno / contorno / texto
+   terciario — no por 3 tintas distintas. */
+.diag-capas-sev-error { --diag-capas-ink: var(--on-accent); --diag-capas-fill: var(--color-am-diag); --diag-capas-border: var(--color-am-diag); }
+.diag-capas-sev-warning { --diag-capas-ink: var(--color-am-diag); --diag-capas-fill: transparent; --diag-capas-border: var(--color-am-diag); }
+.diag-capas-sev-info { --diag-capas-ink: var(--text-tertiary); --diag-capas-fill: transparent; --diag-capas-border: var(--border); }
+
+/* Burbuja de conteo en los dos botones de entrada (local y de proyecto):
+   mismo lenguaje visual que el resto de contadores de la app
+   (`.problems-counter .count-*`), con la tinta del peor diagnóstico. */
+.diag-capas-conteo {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.4em; height: 1.4em; padding: 0 0.4em; border-radius: 999px;
+  font-size: var(--text-xs); font-weight: var(--font-semibold);
+  font-variant-numeric: tabular-nums; margin-right: var(--space-1);
+  background: var(--diag-capas-fill); color: var(--diag-capas-ink);
+  border: 1px solid var(--diag-capas-border);
+}
+.diag-capas-entrada { margin-top: var(--space-2); }
+/* La entrada de proyecto vive en el riel de viviendas (`renderViviendaList`),
+   fuera del inspector, por eso necesita separarse de la última fila. */
+.diag-capas-entrada-proyecto { margin-top: var(--space-3); }
+
+/* Listado dentro del panel flotante (mismo contenedor que ya usan
+   "Habitaciones"/"Orientación y luz", `.room-list`/`.orientation-list`
+   arriba: no se introduce ningún componente de superposición nuevo). */
+.diag-capas-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.diag-capas-item {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-2);
+  padding: var(--space-2); border-radius: var(--radius-sm); background: var(--bg-tertiary);
+  border-left: 2px solid var(--diag-capas-border);
+}
+/* Único uso de `--color-am-diag-bg`: un matiz apenas visible solo para
+   ERROR (geometría realmente descartada) — WARNING/INFO se quedan en el
+   fondo neutro de arriba, para no repetir la misma jerarquía por 3 vías
+   (borde + badge + fondo) cuando con borde + badge ya se distingue. */
+.diag-capas-item.diag-capas-sev-error { background: var(--color-am-diag-bg); }
+.diag-capas-badge {
+  flex-shrink: 0; font-size: var(--text-xs); font-weight: var(--font-semibold);
+  padding: 1px 7px; border-radius: 999px;
+  background: var(--diag-capas-fill); color: var(--diag-capas-ink); border: 1px solid var(--diag-capas-border);
+}
+.diag-capas-mensaje { flex: 1 1 100%; font-size: var(--text-sm); color: var(--text-primary); line-height: 1.5; }
+.diag-capas-meta { font-size: var(--text-xs); color: var(--text-tertiary); }
+
+/* --- Hechos CAP-1..5 (PRD "Tabla de hechos CAP-1..5", 2026-08-14) --------
+   Badge de estado epistémico del dato (KNOWN/ESTIMATED/UNKNOWN) -- eje
+   distinto del semáforo de cumplimiento CTE (.orient-badge-*/.problems-
+   counter/.issue-titulo::before) y del de higiene de capas AM_*
+   (.diag-capas-*): aquí "no determinado" no es un error ni un aviso, es
+   que ArchMuse no tiene el dato. Por eso UNKNOWN usa --text-tertiary --el
+   mismo tono neutro que .inspector-empty/.diag-capas-sev-info-- y NUNCA
+   --color-critical. Es el único color nuevo de esta pieza (ninguno: los
+   tres reutilizan tokens ya existentes). */
+.hecho-badge {
+  display: inline-block; font-size: var(--text-xs); font-weight: var(--font-semibold);
+  padding: 1px 7px; border-radius: 999px; margin-right: var(--space-2);
+}
+.hecho-badge-known { color: var(--color-success); border: 1px solid var(--color-success); }
+.hecho-badge-estimated { color: var(--color-warning); border: 1px solid var(--color-warning); }
+.hecho-badge-unknown { color: var(--text-tertiary); border: 1px solid var(--border); }
+.hecho-confianza { font-size: var(--text-xs); color: var(--text-tertiary); }
+.hecho-valor { font-size: var(--text-sm); color: var(--text-primary); margin: var(--space-1) 0; }
+.hecho-motivo { color: var(--text-tertiary); }
+.hecho-nota { font-style: italic; }
+
+/* Avisos informativos de evacuación (C11/C15/C18, CAP-5): deliberadamente
+   sin ninguna tinta de severidad -- ver `avisosEvacuacionListHtml` en
+   app.js. Mismo contenedor neutro que `.diag-capas-item`, sin badge de
+   color por regla (nunca --color-critical/--color-important). */
+.aviso-evacuacion-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.aviso-evacuacion-item {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-2);
+  padding: var(--space-2); border-radius: var(--radius-sm); background: var(--bg-tertiary);
+  border-left: 2px solid var(--border);
+}
+.aviso-evacuacion-badge {
+  flex-shrink: 0; font-size: var(--text-xs); font-weight: var(--font-semibold);
+  color: var(--text-tertiary); border: 1px solid var(--border); padding: 1px 7px; border-radius: 999px;
+}
+.aviso-evacuacion-mensaje { flex: 1 1 100%; font-size: var(--text-sm); color: var(--text-primary); line-height: 1.5; }
+.aviso-evacuacion-meta { font-size: var(--text-xs); color: var(--text-tertiary); }
+
+/* Los 9 chips de filtro + el botón de reset eran, en reposo, el bloque más
+   denso de la pantalla después del plano — y solo se usan cuando el
+   arquitecto ya está buceando en los problemas. Pasan a estar plegados
+   detrás de "Filtrar" (`.btn-toggle-filtros`): siguen a un clic de
+   distancia, pero no compiten al abrir la pantalla. */
+.btn-toggle-filtros {
+  font-family: inherit; font-size: var(--text-xs); font-weight: var(--font-normal);
+  padding: 0; border: none; background: transparent; color: var(--text-tertiary);
+  cursor: pointer; margin-bottom: var(--space-2); transition: color 0.15s ease;
+}
+.btn-toggle-filtros:hover { color: var(--text-secondary); }
+.btn-toggle-filtros.open { color: var(--text-secondary); }
+
+.problems-filters { margin-bottom: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.problems-filters[hidden] { display: none; }
+.filter-row { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); }
+.filter-chip {
+  font-family: inherit; font-size: var(--text-xs); font-weight: var(--font-normal); padding: 0;
+  border: none; background: transparent;
+  color: var(--text-tertiary); cursor: pointer; transition: color 0.15s ease;
+  opacity: 0.5;
+}
+.filter-chip.active { color: var(--text-primary); opacity: 1; }
+.filter-chip-count { font-variant-numeric: tabular-nums; color: var(--text-tertiary); }
+.btn-reset-filtros {
+  align-self: flex-start; font-family: inherit; font-size: var(--text-xs); font-weight: var(--font-normal);
+  padding: 0; border: none; background: transparent; color: var(--text-tertiary);
+  text-decoration: underline; cursor: pointer;
+}
+.btn-reset-filtros:hover { color: var(--text-secondary); }
+
+.chain-effects-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.chain-effects-list li { font-size: var(--text-xs); color: var(--text-secondary); }
+.chain-effects-list li::before { content: "→ "; color: var(--text-tertiary); }
+
+.muted { color: var(--text-secondary); }
+
+/* --- Floating tooltip ----------------------------------------------------- */
+
+.room-tooltip {
+  /* z-index 101: por encima de #viewer-3d / #room-viewer-3d (z-index 100), que
+     es donde lo usa el hover del visor de edificio (viewer-edificio.js);
+     antes quedaba oculto detrás del overlay del visor. */
+  position: fixed; z-index: 101; pointer-events: none; background: var(--raised);
+  border: 1px solid var(--panel-border); border-radius: var(--radius); padding: 0.65rem 0.8rem;
+  font-size: 0.8rem; max-width: 260px; box-shadow: var(--shadow-md);
+}
+.room-tooltip .tooltip-title { font-weight: var(--font-semibold); color: var(--text); margin-bottom: 0.2rem; }
+.room-tooltip .tooltip-area { color: var(--text-secondary); }
+.room-tooltip .tooltip-problems { color: var(--red); font-size: 0.76rem; line-height: 1.4; margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.room-tooltip .tooltip-problems div { display: flex; align-items: flex-start; gap: 0.35rem; }
+.room-tooltip .tooltip-problems svg { flex-shrink: 0; margin-top: 0.1rem; }
+
+/* --- Scrollbars ------------------------------------------------------------ */
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: var(--radius-sm); }
+
+@media (max-width: 980px) {
+  .panel-left { width: 220px; }
+  .panel-right { width: 280px; }
+}
+
+/* --- Visor 3D --------------------------------------------------------------
+   Pantalla completa superpuesta a todo #app; el fondo (cielo degradado) va
+   en el propio contenedor y el <canvas> de Three.js se pinta transparente
+   (alpha) encima, así el degradado CSS hace de "sky" sin necesidad de una
+   cúpula 3D aparte. */
+
+#viewer-3d {
+  position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column;
+  background: linear-gradient(180deg, #5b9bd5 0%, #a9d3e8 55%, #eef3e2 100%);
+}
+#viewer-3d.open { display: flex; }
+.viewer-3d-toolbar {
+  position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.6rem 1.5rem; background: var(--bg-toolbar); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-family: var(--font-family-ui);
+}
+.viewer-header-left { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; color: var(--scene-ink); }
+/* Colores fijos (no tokens --text-*) en todo este toolbar: vive siempre sobre
+   el degradado de cielo + barra oscura translúcida del visor 3D, que no
+   forma parte de la paleta gris de la Shell (es contenido, como el plano).
+   Los tamaños/pesos sí usan los tokens tipográficos del sistema. */
+.viewer-title {
+  font-size: var(--text-lg); font-weight: var(--font-semibold);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.viewer-meta {
+  font-size: var(--text-sm); color: rgba(241, 245, 249, 0.6);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.viewer-header-center {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: var(--space-1);
+}
+.cam-btn {
+  background: transparent; color: rgba(241, 245, 249, 0.75); border: 1px solid transparent;
+  border-radius: var(--radius-pill); padding: var(--space-1) var(--space-3); font-family: inherit;
+  font-size: var(--text-sm); font-weight: var(--font-medium);
+  cursor: pointer; transition: background 0.15s var(--ease-apple), border-color 0.15s var(--ease-apple), color 0.15s var(--ease-apple), transform 0.1s var(--ease-apple);
+}
+.cam-btn:hover { color: var(--scene-ink-bright); }
+.cam-btn.active { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.3); color: var(--scene-ink-bright); }
+.cam-btn:active { transform: scale(0.98); }
+
+.viewer-header-right { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.viewer-back-btn {
+  background: transparent; color: rgba(241, 245, 249, 0.7); border: none; padding: var(--space-1) var(--space-2);
+  font-family: inherit; font-size: var(--text-sm); font-weight: var(--font-normal);
+  cursor: pointer; transition: color 0.15s ease;
+}
+.viewer-back-btn:hover { color: var(--scene-ink); }
+.viewer-walk-btn {
+  background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: 8px 16px; font-family: inherit;
+  font-size: var(--text-sm); font-weight: var(--font-medium);
+  cursor: pointer; transition: background 0.15s var(--ease-apple), border-color 0.15s var(--ease-apple), transform 0.1s var(--ease-apple);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.viewer-walk-btn:hover { background: var(--bg-tertiary); }
+.viewer-walk-btn.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.viewer-walk-btn:active { transform: scale(0.98); }
+
+/* Toggles "Entorno urbano"/"Sombras" (2026-08-16, contexto real georreferenciado) -- mismo lenguaje
+   visual que `.viewer-walk-btn` pero más compactos (son dos, no uno) y con un estado "activo" sutil
+   (borde de acento) en vez del relleno sólido de `.viewer-walk-btn.active` -- ese relleno fuerte se
+   queda para la única acción "modal" real de la barra (Paseo); estos dos son ajustes de vista, no un
+   modo aparte. */
+/* Icono solo (2026-08-16): con "Perspectiva/Planta/Alzado/Lateral" centrados de forma absoluta encima
+   de este mismo toolbar, un tercer y cuarto botón de TEXTO en `.viewer-header-right` no cabía sin
+   solaparse con ellos a los anchos de ventana normales -- un icono compacto sí. `title`/`aria-label`
+   en el HTML llevan la descripción completa. */
+.viewer-toggle-btn {
+  background: var(--bg-card); color: rgba(241, 245, 249, 0.75); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); width: 34px; height: 34px; padding: 0; font-family: inherit;
+  font-size: 16px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s var(--ease-apple), border-color 0.15s var(--ease-apple), color 0.15s var(--ease-apple), transform 0.1s var(--ease-apple);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.viewer-toggle-btn:hover { background: var(--bg-tertiary); }
+.viewer-toggle-btn.active { border-color: var(--accent); color: var(--scene-ink-bright); }
+.viewer-toggle-btn:not(.active) { opacity: 0.55; }
+.viewer-toggle-btn:active { transform: scale(0.94); }
+
+.viewer-3d-mount { position: relative; flex: 1; min-height: 0; }
+.viewer-3d-mount canvas { display: block; width: 100%; height: 100%; }
+.viewer-3d-loading {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: rgba(241, 245, 249, 0.8); font-size: 0.92rem; pointer-events: none; text-align: center; padding: 2rem;
+}
+.viewer-3d-loading[hidden] { display: none; }
+
+/* --- Modo Sandbox / Lienzo Libre (2026-08-17, a petición explícita) --------------------------------
+   Mismo criterio exacto que #viewer-3d (overlay fijo a pantalla completa, clase .open muestra/oculta,
+   mismo toolbar) -- overlay PROPIO en vez de reutilizar #viewer-3d porque ese otro asume siempre un
+   edificio ya generado; aquí puede no haber ninguno.
+   Degradado propio (2026-08-17, "estética de impacto" pedida explícitamente): antes era un cielo
+   diurno claro (azul cielo → crema), pero NUNCA se veía de verdad -- el canvas de Three.js se pintaba
+   opaco encima con `clearColor` (bug real, ver `clearAlpha` en `presentationRendererSettings`,
+   `viewer-materials.js`), así que este degradado quedaba tapado sin que nadie lo notara. Con el canvas
+   ya transparente de verdad, este SÍ es el fondo visible -- degradado "estudio" oscuro/atmosférico
+   (azul noche desaturado → gris cálido cerca del horizonte), el lenguaje visual de una presentación
+   archviz profesional en vez de una postal de cielo despejado de mediodía. */
+#viewer-sandbox {
+  position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column;
+  background: linear-gradient(180deg, #10141c 0%, #232f3d 45%, #435361 75%, #5c6a63 100%);
+}
+#viewer-sandbox.open { display: flex; }
+
+/* Spinner del overlay de carga del Sandbox (2026-08-16, a petición explícita): antes solo había
+   texto centrado -- el usuario se desubicaba varios segundos mirando un plano liso sin ningún
+   indicador de que algo seguía cargando. Clase propia (`.sandbox-loading-con-spinner`), no se toca
+   `.viewer-3d-loading` compartida con los otros visores (edificio/vivienda), que no pidieron esto. */
+.sandbox-loading-con-spinner { flex-direction: column; gap: var(--space-3); }
+.sandbox-loading-spinner {
+  width: 2.5rem; height: 2.5rem; border-radius: 50%;
+  border: 3px solid rgba(241, 245, 249, 0.25); border-top-color: rgba(241, 245, 249, 0.9);
+  animation: sandbox-loading-girar 0.9s linear infinite;
+}
+@keyframes sandbox-loading-girar { to { transform: rotate(360deg); } }
+/* La barra de progreso con % (docs/prd/2026-08-16-presets-progreso-y-zocalo-sandbox.md) se retiró
+   2026-08-17 -- ver el comentario junto a `loadingTextoEl` en viewer-sandbox.js:open(). El spinner de
+   arriba y el texto de `.viewer-3d-loading` (color heredado, ya gris claro sobre el fondo oscuro del
+   visor) son ahora el único indicador de carga del Sandbox. */
+
+.sandbox-panel {
+  position: absolute; top: 4.5rem; right: var(--space-4); z-index: 10; width: 260px;
+  background: var(--bg-card); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-md);
+  display: flex; flex-direction: column; gap: var(--space-3); color: rgba(241, 245, 249, 0.92);
+  animation: fade-in-up 0.2s var(--ease-apple);
+}
+.sandbox-panel[hidden] { display: none; }
+.sandbox-panel-titulo { font-size: var(--text-sm); font-weight: var(--font-semibold); }
+.sandbox-panel-campo { display: flex; flex-direction: column; gap: 2px; font-size: var(--text-xs); color: rgba(241, 245, 249, 0.7); }
+.sandbox-panel-campo input[type="range"] { width: 100%; accent-color: var(--accent); }
+.sandbox-panel-valor { font-size: var(--text-xs); color: rgba(241, 245, 249, 0.55); }
+.sandbox-panel-borrar {
+  background: transparent; border: 1px solid rgba(220, 90, 90, 0.5); color: #f2a3a3;
+  border-radius: var(--radius-pill); padding: var(--space-2); font-family: inherit; font-size: var(--text-xs);
+  cursor: pointer; transition: background 0.15s var(--ease-apple), transform 0.1s var(--ease-apple);
+}
+.sandbox-panel-borrar:hover { background: rgba(220, 90, 90, 0.15); }
+.sandbox-panel-borrar:active { transform: scale(0.98); }
+
+/* --- Visor georreferenciado (Mapbox GL JS + Threebox), Pieza 4 ------------
+   Mismo criterio exacto que #viewer-3d (overlay fijo, clase .open muestra/
+   oculta) -- reutiliza .viewer-title/.viewer-back-btn tal cual, sin
+   redefinirlas. Fondo neutro oscuro en vez del degradado de cielo de
+   #viewer-3d: aquí el "cielo" lo pinta Mapbox de verdad (`map.setFog`),
+   no hace falta simularlo en CSS mientras carga. */
+#viewer-mapa {
+  position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column;
+  background: #14161c;
+}
+#viewer-mapa.open { display: flex; }
+.viewer-mapa-toolbar {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.6rem 1.5rem; background: var(--bg-toolbar); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-family: var(--font-family-ui);
+}
+.viewer-mapa-mount { position: relative; flex: 1; min-height: 0; }
+.viewer-mapa-mount canvas { display: block; }
+.viewer-mapa-loading {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: rgba(241, 245, 249, 0.8); font-size: 0.92rem; pointer-events: none; text-align: center; padding: 2rem;
+}
+.viewer-mapa-loading[hidden] { display: none; }
+
+/* --- Checklist de inspección en campo (2026-08-16,
+   docs/prd/2026-08-16-checklist-inspeccion-campo.md) -------------------------------------------
+   Overlay a pantalla completa, mismo patrón exacto que #viewer-mapa (position:fixed, .open,
+   .viewer-mapa-toolbar reutilizada tal cual en el HTML) -- fondo neutro claro (a diferencia del
+   fondo oscuro de los visores 3D): esto es un documento de trabajo para leer/rellenar en el
+   terreno, no una escena. */
+/* Paleta PROPIA, deliberadamente NO la de `--text-primary`/`--bg-card` del resto de la app: esos
+   tokens son claros-sobre-oscuro (la app entera es de tema oscuro), y este panel es al revés a
+   propósito -- un documento tipo "papel" que se lee y se marca en el terreno, y que además tiene que
+   imprimirse bien (§ `@media print` más abajo). Mezclar los dos temas en el mismo panel fue un bug
+   real encontrado en la verificación en vivo: el título de bloque quedaba casi invisible (texto casi
+   blanco sobre fondo claro) -- por eso aquí todo usa colores fijos, autoconsistentes, en vez de los
+   tokens de tema oscuro del resto de la aplicación. */
+#checklist-campo {
+  position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column;
+  background: #f4f2ee; color: #1a1a18;
+}
+#checklist-campo.open { display: flex; }
+.checklist-campo-toolbar-acciones { display: flex; gap: 0.6rem; }
+.checklist-campo-mount { flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-6) var(--space-4); }
+.checklist-campo-contenido { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-6); }
+
+.checklist-campo-estado { color: #6b6b64; text-align: center; padding: var(--space-6); }
+.checklist-campo-error { color: #b91c1c; }
+.checklist-campo-aviso {
+  background: rgba(217, 119, 6, 0.12); border: 1px solid rgba(180, 95, 6, 0.4);
+  border-radius: var(--radius-md); padding: var(--space-3); font-size: var(--text-sm); color: #6b3f06;
+}
+
+.checklist-campo-bloque-titulo {
+  margin: 0 0 var(--space-3); font-size: var(--text-lg); font-weight: var(--font-semibold); color: #1a1a18;
+  border-bottom: 1px solid #d8d5cc; padding-bottom: var(--space-2);
+}
+.checklist-campo-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.checklist-campo-item {
+  background: #fff; border: 1px solid #ddd9cf; border-radius: var(--radius-md);
+  padding: var(--space-3); transition: background 0.15s ease, border-color 0.15s ease;
+}
+.checklist-campo-item.is-marcado { background: rgba(46, 160, 90, 0.08); border-color: rgba(46, 160, 90, 0.4); }
+.checklist-campo-item-cabecera {
+  display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; font-size: var(--text-sm); color: #1a1a18;
+}
+.checklist-campo-item-cabecera input[type="checkbox"] { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; }
+.checklist-campo-item-nota {
+  margin: 0.4rem 0 0 1.6rem; font-size: var(--text-xs); color: #6b6b64; font-style: italic;
+}
+.checklist-campo-item-libre {
+  display: block; width: calc(100% - 1.6rem); margin: 0.5rem 0 0 1.6rem; resize: vertical; min-height: 2.2rem;
+  background: #fbfaf7; border: 1px solid #ddd9cf; border-radius: var(--radius-sm);
+  padding: 0.4rem 0.6rem; font-family: inherit; font-size: var(--text-xs); color: #1a1a18;
+}
+.checklist-campo-item-libre::placeholder { color: #9a978c; }
+
+/* Viabilidad económica y exportación (2026-08-17,
+   docs/prd/2026-08-17-viabilidad-economica-y-exportacion-dxf.md). Mismo shell que #checklist-campo
+   (comparte position/inset/paleta arriba y las clases `.checklist-campo-mount`/`-contenido`) --
+   aquí solo las clases de contenido propias del panel. */
+#viabilidad-economica {
+  position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column;
+  background: #f4f2ee; color: #1a1a18;
+}
+#viabilidad-economica.open { display: flex; }
+
+#checklist-cte {
+  position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column;
+  background: #f4f2ee; color: #1a1a18;
+}
+#checklist-cte.open { display: flex; }
+
+#comparador-opciones {
+  position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column;
+  background: #f4f2ee; color: #1a1a18;
+}
+#comparador-opciones.open { display: flex; }
+
+/* Comparador de opciones (docs/prd/2026-08-17-optimizacion-generativa-multi-opcion.md) -- misma
+   paleta "papel" que el resto de estos paneles de comprobación/decisión. */
+.comparador-opciones-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+@media (max-width: 720px) { .comparador-opciones-grid { grid-template-columns: 1fr; } }
+.comparador-opcion-card {
+  background: #fff; border: 1px solid #ddd9cf; border-radius: var(--radius-md); padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+.comparador-opcion-card h3 { margin: 0; font-size: var(--text-lg); font-weight: var(--font-semibold); color: #1a1a18; }
+.comparador-opcion-error { color: #b91c1c; font-size: var(--text-sm); }
+.comparador-opcion-metricas { display: flex; flex-direction: column; gap: 0.3rem; }
+.comparador-opcion-metrica { display: flex; justify-content: space-between; font-size: var(--text-sm); color: #1a1a18; }
+.comparador-opcion-mix { font-size: var(--text-sm); color: #6b6a63; }
+.comparador-opcion-aplicar {
+  margin-top: auto; background: var(--accent); color: var(--on-accent); border: none;
+  border-radius: var(--radius-pill); padding: 8px 18px; font-family: inherit; font-size: var(--text-sm);
+  font-weight: var(--font-medium); cursor: pointer; transition: opacity 0.15s ease;
+}
+.comparador-opcion-aplicar:hover { opacity: 0.88; }
+
+/* Checklist CTE (docs/prd/2026-08-17-checklist-cumplimiento-cte.md) -- misma paleta clara "papel"
+   que el resto de estos paneles de comprobación (deliberado, ver nota de style.css sobre
+   .checklist-campo/.viabilidad-economica). */
+.checklist-cte-dos-salidas {
+  display: flex; align-items: flex-start; gap: 0.6rem; font-size: var(--text-sm); color: #1a1a18;
+  background: #fbfaf7; border: 1px solid #ddd9cf; border-radius: var(--radius-sm);
+  padding: 0.6rem 0.8rem; margin-bottom: var(--space-4); cursor: pointer;
+}
+.checklist-cte-dos-salidas input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; }
+.checklist-cte-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.checklist-cte-item {
+  background: #fff; border: 1px solid #ddd9cf; border-radius: var(--radius-md); padding: var(--space-3) var(--space-4);
+  border-left: 4px solid #b8b4a8;
+}
+.checklist-cte-item--cumple { border-left-color: #2e9d5a; }
+.checklist-cte-item--no_cumple { border-left-color: #c0392b; }
+.checklist-cte-item--no_evaluable { border-left-color: #b8860b; }
+.checklist-cte-item-cabecera { display: flex; align-items: center; gap: 0.5rem; }
+.checklist-cte-indicador { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: #b8b4a8; }
+.checklist-cte-item--cumple .checklist-cte-indicador { background: #2e9d5a; }
+.checklist-cte-item--no_cumple .checklist-cte-indicador { background: #c0392b; }
+.checklist-cte-item--no_evaluable .checklist-cte-indicador { background: #b8860b; }
+.checklist-cte-estado {
+  margin-left: auto; font-size: var(--text-xs); font-weight: var(--font-semibold); text-transform: uppercase;
+  color: #6b6a63;
+}
+.checklist-cte-item-detalle { margin: 0.4rem 0 0.2rem; font-size: var(--text-sm); color: #3a3934; }
+.checklist-cte-item-referencia { margin: 0; font-size: var(--text-xs); color: #8a8880; font-style: italic; }
+
+.viabilidad-seccion {
+  background: #fff; border: 1px solid #ddd9cf; border-radius: var(--radius-md); padding: var(--space-4);
+}
+.viabilidad-seccion h3 {
+  margin: 0 0 var(--space-2); font-size: var(--text-lg); font-weight: var(--font-semibold); color: #1a1a18;
+}
+.viabilidad-badge {
+  display: inline-block; margin: 0 0 var(--space-4); font-size: var(--text-xs); font-weight: var(--font-semibold);
+  color: #6b3f06; background: rgba(217, 119, 6, 0.12); border: 1px solid rgba(180, 95, 6, 0.4);
+  border-radius: var(--radius-sm); padding: 0.2rem 0.6rem;
+}
+.viabilidad-campo-solo-lectura {
+  display: flex; justify-content: space-between; align-items: center; font-size: var(--text-sm);
+  color: #1a1a18; background: #fbfaf7; border: 1px solid #ddd9cf; border-radius: var(--radius-sm);
+  padding: 0.5rem 0.8rem; margin-bottom: var(--space-4);
+}
+.viabilidad-campos { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); }
+.viabilidad-campo { display: flex; flex-direction: column; gap: 0.3rem; font-size: var(--text-sm); color: #1a1a18; }
+.viabilidad-campo input {
+  background: #fbfaf7; border: 1px solid #ddd9cf; border-radius: var(--radius-sm);
+  padding: 0.4rem 0.6rem; font-family: inherit; font-size: var(--text-sm); color: #1a1a18;
+}
+.viabilidad-resultados {
+  display: flex; flex-direction: column; gap: 0.3rem; border-top: 1px solid #d8d5cc; padding-top: var(--space-3);
+}
+.viabilidad-resultado-fila {
+  display: flex; justify-content: space-between; font-size: var(--text-sm); color: #1a1a18;
+}
+.viabilidad-btn-exportar {
+  margin-top: var(--space-3); background: var(--accent); color: var(--on-accent); border: none;
+  border-radius: var(--radius-pill); padding: 8px 18px; font-family: inherit; font-size: var(--text-sm);
+  font-weight: var(--font-medium); cursor: pointer; transition: opacity 0.15s ease;
+}
+.viabilidad-btn-exportar:hover { opacity: 0.88; }
+
+/* Dossier de Inversión (docs/prd/2026-08-17-dossier-inversion-pdf.md) */
+.viabilidad-dossier { margin-top: var(--space-4); border-top: 1px solid #d8d5cc; padding-top: var(--space-4); }
+.viabilidad-dossier h4 { margin: 0 0 var(--space-2); font-size: var(--text-sm); font-weight: var(--font-semibold); color: #1a1a18; }
+.viabilidad-dossier input[type="file"] { font-size: var(--text-sm); }
+
+/* "Análisis Avanzado" (docs/prd/2026-08-17-analisis-de-viabilidad-financiera.md) -- bloque plegable
+   dentro de la misma pestaña, misma paleta clara "papel" que el resto de este panel a propósito. */
+.viabilidad-avanzado { margin-top: var(--space-4); border-top: 1px solid #d8d5cc; padding-top: var(--space-4); }
+.viabilidad-avanzado summary {
+  cursor: pointer; font-weight: var(--font-semibold); font-size: var(--text-md); color: #1a1a18; margin-bottom: var(--space-3);
+}
+.viabilidad-avanzado .viabilidad-badge { display: block; margin-top: var(--space-2); }
+.viabilidad-avanzado-estado { font-size: var(--text-sm); color: #6b6a63; font-style: italic; }
+.viabilidad-resultados h4 {
+  margin: var(--space-2) 0 0.3rem; font-size: var(--text-sm); font-weight: var(--font-semibold); color: #1a1a18;
+}
+.viabilidad-cash-flow, .viabilidad-sensibilidad { margin-top: var(--space-2); }
+
+/* Impresión/exportar (2026-08-17, corrección de bug: "vista previa de impresión sale en blanco").
+   `window.print()` sin backend nuevo -- dos escenarios según qué haya abierto el arquitecto en el
+   momento de imprimir:
+     1) el Checklist de visita (overlay a pantalla completa), o
+     2) el workspace principal ("resumen del proyecto": métricas del informe ejecutivo o normativa
+        a la derecha, datos catastrales del proyecto, y la planta seleccionada en el centro).
+   Antes de esta versión la regla ocultaba TODO body>* salvo #checklist-campo de forma
+   INCONDICIONAL -- forzaba ese contenedor a `display:block` aunque no estuviera abierto (sin
+   `.open`, sin contenido cargado nunca). Resultado real: imprimir desde cualquier otro sitio de la
+   app (Ctrl+P sobre el workspace, que es justo el caso que faltaba) mostraba ese contenedor vacío y
+   ocultaba lo que sí había en pantalla -- página en blanco. La condición ahora depende de `.open` de
+   verdad, con `:has()` para decidir la rama sin duplicar marcado.
+   No se contemplan aquí el visor 3D, el mapa ni el sandbox: son escenas WebGL, no un documento, y
+   no es lo que pidió este encargo -- se ocultan igual que el resto de la app en ambas ramas. */
+@media print {
+  /* Paleta propia para papel: los mismos tokens que consume TODA la app (fondo, texto, bordes,
+     tinta del plano) pasan a valores claros-sobre-blanco solo dentro de esta media query -- un
+     único punto de cambio (mismo patrón que ya usa esta hoja para temas, ver cabecera de :root),
+     en vez de perseguir cada selector con fondo oscuro uno a uno. El plano en concreto (`--plan-*`)
+     y sus habitaciones se pintan siempre releyendo estas variables en caliente (`poly.style.fill =
+     "var(--plan-room)"`, `app.js`), así que basta con redefinirlas aquí para que la planta impresa
+     salga en tinta oscura sobre papel, sin tocar el JS que la dibuja. */
+  :root {
+    --bg-primary: #fff; --bg-secondary: #fff; --bg-tertiary: rgba(0, 0, 0, 0.04);
+    --bg-card: #fff; --bg-sidebar: #fff; --bg-toolbar: #fff; --bg-canvas: #fff;
+    --border: #ccc; --border-subtle: #ccc;
+    --text-primary: #000; --text-secondary: rgba(0, 0, 0, 0.64); --text-tertiary: rgba(0, 0, 0, 0.4);
+    --overlay-hover: rgba(0, 0, 0, 0.05); --overlay-active: rgba(0, 0, 0, 0.08); --overlay-subtle: rgba(0, 0, 0, 0.05);
+    --accent-soft: rgba(74, 144, 217, 0.12);
+    --green-bg: rgba(22, 163, 74, 0.12); --red-bg: rgba(220, 38, 38, 0.12); --on-success: #fff;
+    --plan-room: #f2f2f2; --plan-wall: #111; --plan-warning: #fdecc8; --plan-problem: #fbdada;
+    --shadow-sm: none; --shadow-md: none; --shadow-lg: none;
+  }
+  body { background: #fff; color: #000; }
+  /* Rejilla de fondo (`body::before`): pensada para pantalla, `position:fixed` no pagina bien. */
+  body::before { display: none; }
+
+  /* --- Caso 1: Checklist de visita abierto -- se imprime SOLO el checklist, igual que antes. --- */
+  body:has(#checklist-campo.open) > *:not(#checklist-campo) { display: none !important; }
+  #checklist-campo.open { position: static; display: block; background: #fff; color: #000; }
+  .viewer-mapa-toolbar, .checklist-campo-toolbar-acciones { display: none !important; }
+  #checklist-campo.open .checklist-campo-mount { overflow: visible; padding: 0; }
+  #checklist-campo.open .checklist-campo-item { break-inside: avoid; border-color: #999; }
+  #checklist-campo.open .checklist-campo-item-libre { border-color: #999; background: #fff; }
+
+  /* --- Caso 2: checklist cerrado -- se imprime el workspace principal. -------------------------- */
+  body:not(:has(#checklist-campo.open)) > *:not(#app) { display: none !important; }
+  body:not(:has(#checklist-campo.open)) #app { display: block; height: auto; position: static; }
+  body:not(:has(#checklist-campo.open)) .sidebar,
+  body:not(:has(#checklist-campo.open)) .panel-left,
+  body:not(:has(#checklist-campo.open)) .cad-ribbon,
+  body:not(:has(#checklist-campo.open)) .cad-comando,
+  body:not(:has(#checklist-campo.open)) .cad-statusbar,
+  body:not(:has(#checklist-campo.open)) .cad-crosshair { display: none !important; }
+  body:not(:has(#checklist-campo.open)) .workspace { display: block; height: auto; }
+  body:not(:has(#checklist-campo.open)) .proyecto-header {
+    border-bottom: 1px solid var(--border); padding-bottom: var(--space-3); margin-bottom: var(--space-4);
+  }
+  /* Altura fija en vez de heredarla del flex 100vh de pantalla (que aquí no pagina, solo recorta):
+     suficiente para que la planta se lea, y sale ANTES de los datos de la derecha, no encajonada. */
+  body:not(:has(#checklist-campo.open)) .svg-container {
+    height: 480px; overflow: visible; padding: 0; break-inside: avoid;
+  }
+  body:not(:has(#checklist-campo.open)) .panel-right {
+    width: auto; height: auto; overflow: visible; break-inside: avoid;
+    border-top: 1px solid var(--border); margin-top: var(--space-5); padding: var(--space-4) 0 0;
+  }
+}
+
+/* --- Fase 6d: formulario "Datos necesarios para completar el cuadro" ------
+   Ya NO es un modal aparte (Fase 5) -- vive EN LA PROPIA TABLA, debajo,
+   dentro del lienzo grande (`.cad-cuadro-grande`, más abajo). Mismos
+   tokens de superficie/borde que el resto de la Shell. */
+
+.cuadro-formulario-inline {
+  margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--panel-border);
+}
+.cuadro-formulario-inline h2 { margin: 0 0 var(--space-1); font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--text-primary); }
+.cuadro-formulario-inline > p.muted { margin: 0 0 var(--space-4); }
+.cuadro-solicitud-bloque { border-top: 1px solid var(--panel-border); padding-top: var(--space-3); margin-top: var(--space-3); }
+.cuadro-solicitud-bloque:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+.cuadro-solicitud-titulo { font-weight: var(--font-medium); color: var(--text-primary); margin-bottom: 0.2rem; }
+.cuadro-solicitud-ayuda { font-size: var(--text-sm); margin: 0 0 var(--space-2); }
+.cuadro-solicitud-input-row { display: flex; align-items: center; gap: var(--space-2); }
+.cuadro-input-numerico {
+  flex: 1; min-width: 0; font-family: inherit; font-size: var(--text-sm); color: var(--text-primary);
+  background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+.cuadro-unidad { color: var(--text-secondary); font-size: var(--text-sm); }
+.cuadro-asignacion-fila { display: flex; flex-direction: column; gap: 0.2rem; margin-bottom: var(--space-2); }
+.cuadro-asignacion-fila label { font-size: var(--text-sm); color: var(--text-secondary); }
+.cuadro-asignacion-fila select {
+  font-family: inherit; font-size: var(--text-sm); color: var(--text-primary);
+  background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+.cuadro-conflicto {
+  margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-critical);
+  background: var(--red-bg); border-radius: var(--radius-sm); padding: var(--space-2);
+}
+.cuadro-formulario-inline #btn-aplicar-respuestas-cuadro { margin-top: var(--space-4); }
+.cuadro-formulario-inline button[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* --- Fase 6: tabla del cuadro de superficies, modo "Cuadro" del inspector -- */
+
+.cuadro-tabla-wrap { overflow-x: auto; margin: var(--space-2) 0 var(--space-3); }
+.cuadro-tabla { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.cuadro-tabla th {
+  text-align: left; font-weight: var(--font-medium); color: var(--text-secondary);
+  padding: var(--space-2); border-bottom: 1px solid var(--panel-border);
+  /* Cabecera fija mientras se hace scroll de una tabla larga (18 filas +
+     formulario no caben siempre en una pantalla) -- sin esto, se pierde de
+     vista qué columna es cuál. `--raised`, no `--bg-canvas`: el fondo real
+     de `.cad-cuadro-grande` (la tarjeta que contiene la tabla), para que no
+     se note una costura de color al hacer scroll por debajo. */
+  position: sticky; top: 0; background: var(--raised); z-index: 1;
+}
+.cuadro-tabla td { padding: var(--space-2); border-bottom: 1px solid var(--panel-border); color: var(--text-primary); }
+.cuadro-tabla tr:last-child td { border-bottom: none; }
+.cuadro-tabla tbody tr:not(.cuadro-tabla-grupo):hover td { background: var(--overlay-hover); }
+.cuadro-tabla-valor { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.cuadro-tabla-origen { white-space: nowrap; }
+.cuadro-fila-pendiente td:first-child, .cuadro-fila-pendiente .cuadro-tabla-valor { color: var(--color-important); }
+
+/* Fila de cabecera de grupo ("Interior", "Exterior", "Totales", "Datos de
+   proyecto") -- agrupación puramente visual, ver `_GRUPO_CAMPO_CUADRO`
+   (app.js): ordena lo que el backend ya devuelve, no reclasifica nada. */
+.cuadro-tabla-grupo td {
+  padding: var(--space-3) var(--space-2) var(--space-1);
+  font-size: var(--text-xs); font-weight: var(--font-semibold); letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-tertiary); border-bottom: none;
+}
+.cuadro-tabla tbody tr.cuadro-tabla-grupo:first-child td { padding-top: 0; }
+
+/* Insignia de procedencia: mismo criterio de color que el resto de la Shell
+   (--color-success/--color-important/--accent), nunca un tono nuevo. */
+.cuadro-origen-badge {
+  display: inline-block; font-size: var(--text-xs); font-weight: var(--font-medium);
+  padding: 2px var(--space-2); border-radius: 999px; white-space: nowrap;
+}
+.cuadro-origen-calculado { color: var(--text-secondary); background: var(--overlay-hover); }
+.cuadro-origen-dxf { color: var(--accent); background: var(--accent-soft); }
+.cuadro-origen-declarado { color: var(--color-success); background: var(--green-bg); }
+.cuadro-origen-pendiente { color: var(--color-important); background: rgba(217, 119, 6, 0.14); }
+
+/* --- Fase 6c: el cuadro en el LIENZO PRINCIPAL, en vez de solo en el
+   inspector lateral -- mismo sitio donde vive el plano en el resto de
+   modos ("quiero que se vea como el plano, pero en vez del plano el
+   cuadro"). Hermano de `.svg-container` dentro de `.cad-lienzo`, que ya es
+   `display:flex`; `flex:1` aquí para que ocupe exactamente el mismo hueco
+   cuando `#svg-container` está `hidden` (ver `aplicarModoLienzo`, app.js). */
+.cad-cuadro-lienzo {
+  flex: 1; min-height: 0; min-width: 0; overflow-y: auto;
+  padding: var(--space-6, 2rem) var(--space-4);
+  display: flex; justify-content: center;
+}
+/* El atributo `hidden` por sí solo NO gana: tanto esta regla como
+   `.svg-container` fijan su propio `display`, y una clase de autor con la
+   misma especificidad que `[hidden]` (la hoja de estilos del navegador)
+   siempre gana -- así que sin esto, plano y cuadro quedaban repartiéndose
+   el lienzo a medias en vez de sustituirse el uno al otro (bug real,
+   encontrado al verificar en el navegador). Especificidad más alta
+   (`.clase[hidden]`) fuerza el `display: none` de verdad. */
+.cad-cuadro-lienzo[hidden], .svg-container[hidden] { display: none; }
+.cad-cuadro-grande {
+  width: 100%; max-width: 760px; height: fit-content;
+  background: var(--raised); border: 1px solid var(--panel-border); border-radius: var(--radius-md);
+  padding: var(--space-6, 2rem); box-shadow: var(--shadow-md);
+}
+.cad-cuadro-grande h1 {
+  margin: 0 0 var(--space-1); font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--text-primary);
+}
+.cad-cuadro-grande .cuadro-tabla { font-size: var(--text-sm); }
+.cad-cuadro-grande .cuadro-tabla th, .cad-cuadro-grande .cuadro-tabla td { padding: var(--space-2) var(--space-3); }
+.cad-cuadro-grande .btn-reveal { margin-top: var(--space-3); }
+
+/* --- Visor 3D simple de vivienda (extrusión de habitaciones) --------------- */
+
+#room-viewer-3d {
+  position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column;
+  background: linear-gradient(180deg, #5b9bd5 0%, #a9d3e8 55%, #eef3e2 100%);
+}
+#room-viewer-3d.open { display: flex; }
+.room-viewer-toolbar {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.6rem 1.5rem; background: var(--bg-toolbar); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-family: var(--font-family-ui);
+}
+.room-viewer-title { color: var(--scene-ink); font-size: 1rem; font-weight: var(--font-semibold); flex-shrink: 0; }
+.room-viewer-controls { display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap; }
+.room-viewer-toggle {
+  background: transparent; color: var(--scene-ink); border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius); padding: 0.45rem 0.9rem; font-family: "Inter", sans-serif;
+  font-size: 0.8rem; font-weight: var(--font-medium); cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.room-viewer-toggle:hover { border-color: var(--scene-ink-bright); }
+.room-viewer-toggle.active { background: var(--color-critical); border-color: var(--color-critical); color: var(--scene-ink-bright); }
+.room-viewer-hora { display: flex; align-items: center; gap: 0.5rem; color: rgba(241, 245, 249, 0.85); font-size: 0.8rem; }
+.room-viewer-hora input[type="range"] { width: 130px; accent-color: var(--accent); }
+.room-viewer-hora-valor { font-variant-numeric: tabular-nums; min-width: 2.6em; }
+.room-viewer-close {
+  background: transparent; color: var(--scene-ink); border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-lg); width: 32px; height: 32px; font-size: 1.2rem; line-height: 1; cursor: pointer;
+  flex-shrink: 0; transition: border-color 0.15s ease, background 0.15s ease;
+}
+.room-viewer-close:hover { border-color: var(--scene-ink-bright); background: rgba(255, 255, 255, 0.12); }
+
+.room-viewer-mount { position: relative; flex: 1; min-height: 0; }
+.room-viewer-mount canvas { display: block; width: 100%; height: 100%; }
+.room-viewer-loading {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: rgba(241, 245, 249, 0.85); font-size: 0.92rem; pointer-events: none; text-align: center; padding: 2rem;
+}
+.room-viewer-loading[hidden] { display: none; }
+.room-viewer-tooltip {
+  position: fixed; z-index: 105; pointer-events: none; background: rgba(15, 17, 23, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.15); border-radius: var(--radius-md); padding: 0.4rem 0.6rem;
+  color: var(--scene-ink); font-size: 0.78rem; line-height: 1.4; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+.room-viewer-tooltip[hidden] { display: none; }
+
+/* --- Fade de entrada (CAMBIO 3) --------------------------------------------- */
+.viewer-intro-fade {
+  position: absolute; inset: 0; background: #000; z-index: 30; pointer-events: none;
+  opacity: 1; transition: opacity 0.3s ease;
+}
+/* Overlays flotantes (panel de plantas, brújula): arrancan invisibles y el
+   módulo JS añade `.intro-in` cuando toca su turno en la secuencia. */
+.floor-panel, .viewer-compass { opacity: 0; transition: opacity 0.3s ease; }
+.floor-panel.intro-in, .viewer-compass.intro-in { opacity: 1; }
+
+/* --- Panel selector de plantas (visor 3D) ---------------------------------- */
+
+.floor-panel {
+  position: absolute; right: 1.25rem; bottom: 1.25rem; z-index: 20;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  padding: 12px; color: var(--text-primary); font-family: var(--font-family-ui);
+  box-shadow: var(--shadow-md); max-width: 220px;
+}
+.floor-panel-label {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text-tertiary); font-weight: var(--font-semibold); margin-bottom: var(--space-2);
+}
+
+.floor-panel-step {
+  display: flex; align-items: center; justify-content: center; width: 100%;
+  padding: 0.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary); font-family: inherit; font-size: var(--text-xs); line-height: 1; cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.floor-panel-step:hover:not(:disabled) { background: var(--bg-secondary); color: var(--text-primary); }
+.floor-panel-step:disabled { opacity: 0.3; cursor: not-allowed; }
+.floor-panel-step.step-up { margin-bottom: 0.3rem; }
+.floor-panel-step.step-down { margin: 0.3rem 0 0.6rem; }
+
+.floor-panel-list {
+  display: flex; flex-direction: column; gap: 0.2rem; max-height: 220px; overflow-y: auto;
+}
+.floor-panel-row {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%; text-align: left;
+  padding: 0.4rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid transparent;
+  background: transparent; color: var(--text-secondary); font-family: inherit; font-size: var(--text-xs); cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.floor-panel-row:hover { background: var(--bg-secondary); color: var(--text-primary); }
+.floor-panel-row.active { background: var(--bg-tertiary); color: var(--text-primary); }
+.floor-row-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: transparent; }
+.floor-panel-row.active .floor-row-dot { background: var(--accent); }
+.floor-row-label { font-size: var(--text-xs); font-weight: var(--font-semibold); flex-shrink: 0; width: 1.7rem; color: inherit; }
+.floor-row-meta {
+  font-size: var(--text-xs); color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.floor-panel-reset {
+  width: 100%; padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary); font-family: inherit; font-size: var(--text-xs);
+  font-weight: var(--font-medium); cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.floor-panel-reset:hover { background: var(--bg-secondary); color: var(--text-primary); }
+.floor-panel-reset.active { background: var(--bg-tertiary); color: var(--text-primary); }
+
+/* --- Brújula (visor 3D) ----------------------------------------------------- */
+
+.viewer-compass {
+  position: absolute; top: 1.25rem; left: 1.25rem; z-index: 20;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  font-family: var(--font-family-ui);
+  /* Navegación fluida (2026-08-16): clicable (antes `pointer-events:none`, decorativa) — vuelve al
+     norte sin cambiar zoom/elevación, ver `buildCompass`. */
+  cursor: pointer; transition: background 0.15s ease;
+}
+.viewer-compass:hover { background: rgba(255, 255, 255, 0.2); }
+.viewer-compass-needle { width: 100%; height: 100%; pointer-events: none; }
+.viewer-compass-needle svg { width: 100%; height: 100%; display: block; }
+
+/* --- HUD de navegación: zoom +/- y recentrar (2026-08-16) ------------------- */
+
+.viewer-nav-hud {
+  position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%); z-index: 20;
+  display: flex; flex-direction: column; gap: 0.3rem;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  padding: 6px; box-shadow: var(--shadow-md);
+}
+.viewer-nav-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary); font-family: var(--font-family-ui);
+  font-size: 1.05rem; line-height: 1; cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+}
+.viewer-nav-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+.viewer-nav-btn-recentrar { font-size: 1rem; }
+
+/* --- Barra de herramientas flotante del Sandbox (2026-08-16) --------------- */
+
+.sandbox-toolbar {
+  position: absolute; left: 1.25rem; bottom: 1.25rem; z-index: 20;
+  display: flex; gap: 0.4rem;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  padding: 8px; box-shadow: var(--shadow-md);
+}
+.sandbox-toolbar-btn {
+  padding: 0.45rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary); font-family: var(--font-family-ui);
+  font-size: var(--text-xs); font-weight: var(--font-medium); white-space: nowrap; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sandbox-toolbar-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+.sandbox-toolbar-btn.active { background: var(--bg-tertiary); color: var(--text-primary); }
+
+/* --- HUD de métricas urbanísticas + límites (Sandbox, 2026-08-16,
+   docs/prd/2026-08-16-conexion-3d-hallazgos-motor-reglas.md) ---------------
+   Un único panel (no dos separados) para no tener que gestionar solapes con
+   `.viewer-compass` (arriba-izquierda) y `.sandbox-toolbar` (abajo-izquierda)
+   -- "top: 5.5rem" deja hueco de sobra bajo el compás (52px + 1.25rem). */
+.sandbox-hud-urbanismo {
+  position: absolute; top: 5.5rem; left: 1.25rem; z-index: 20; width: 230px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  padding: var(--space-3); box-shadow: var(--shadow-md);
+  display: flex; flex-direction: column; gap: 6px; color: rgba(241, 245, 249, 0.92);
+  font-family: var(--font-family-ui); font-size: var(--text-xs);
+}
+.sandbox-hud-titulo { font-size: var(--text-xs); font-weight: var(--font-semibold); color: rgba(241, 245, 249, 0.6); text-transform: uppercase; letter-spacing: 0.03em; }
+.sandbox-hud-fila { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; }
+/* `display: flex` de arriba, al ser una regla de autor, pisa el `display: none` de la hoja de estilos
+   del propio navegador para `[hidden]` (mismo bug ya conocido en este proyecto para `.sandbox-panel`,
+   que ya tiene su propia regla `[hidden]` -- aquí faltaba la equivalente). Sin esto, una fila oculta
+   (límite no informado) se ve vacía en vez de desaparecer. */
+.sandbox-hud-fila[hidden] { display: none; }
+.sandbox-hud-fila-label { color: rgba(241, 245, 249, 0.65); }
+.sandbox-hud-fila-valor { font-weight: var(--font-medium); font-variant-numeric: tabular-nums; }
+/* Excede el máximo: la propia fila se resalta, no cada volumen (una métrica agregada no tiene un
+   único volumen "culpable" -- ver PRD §7, atribución al último volumen tocado, que sí se resalta en
+   el propio canvas 3D). */
+.sandbox-hud-fila.excede .sandbox-hud-fila-valor { color: #f2a3a3; }
+.sandbox-hud-aviso { color: rgba(241, 245, 249, 0.5); font-style: italic; line-height: 1.35; }
+/* Referencia real de PGOUM 97 (piloto Madrid, docs/prd/2026-08-16-integracion-normativa-catastro-pgou.md)
+   -- deliberadamente distinta de `.sandbox-hud-aviso` (borde de acento en vez de solo cursiva): esto es
+   un dato real encontrado (grado/norma zonal), no una advertencia de "falta algo", aunque tampoco sea un
+   límite numérico listo para usar -- matiz visual a propósito, no solo texto. */
+/* Borde gris, no azul de acento (2026-08-17, pedido explícito: "mensajes de error o estado
+   escritos en azul brillante... usar texto gris #888") -- es un dato encontrado, no requiere
+   ningún matiz de color para leerse como tal. */
+.sandbox-hud-normativa-madrid {
+  color: #888888; line-height: 1.4; font-size: var(--text-xs);
+  border-left: 2px solid #444444; padding-left: 6px;
+}
+/* Siempre expandido, ya no es un `<details>` (2026-08-17, docs/prd/2026-08-17-normativa-urbanistica-
+   capas-fallback.md, Fase A, decisión explícita: "el formulario... directamente expandido, no
+   colapsado") -- `.sandbox-hud-limites-titulo` sustituye a `summary`, ya no es interactivo (sin
+   `cursor: pointer`, es solo una etiqueta de sección). */
+.sandbox-hud-limites { border-top: 1px solid rgba(255, 255, 255, 0.1); margin-top: 2px; padding-top: 6px; }
+.sandbox-hud-limites-titulo { color: rgba(241, 245, 249, 0.65); font-size: var(--text-xs); }
+.sandbox-hud-limites-campos { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.sandbox-hud-limite-campo { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.sandbox-hud-limite-campo label { color: rgba(241, 245, 249, 0.6); flex: 1; }
+.sandbox-hud-limite-campo input {
+  width: 64px; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: rgba(241, 245, 249, 0.92); font-family: inherit;
+  font-size: var(--text-xs); padding: 2px 5px;
+}
+.sandbox-hud-limite-campo input::placeholder { color: rgba(241, 245, 249, 0.35); }
+
+/* Botón "Calcular sólido capaz" (2026-08-17, docs/prd/2026-08-17-solido-capaz-sandbox.md): `.btn-primary`
+   existe pero está pensado para botones grandes de pantalla completa -- este panel es de 260px y todo su
+   texto va en `--text-xs`; un botón propio, compacto, mismo lenguaje plano (sin gradiente, hover sutil)
+   que ya pide el resto del proyecto. */
+.sandbox-hud-boton {
+  width: 100%; margin-top: 8px; padding: 6px 10px; background: var(--accent); color: var(--on-accent);
+  border: none; border-radius: var(--radius-sm); font-family: inherit; font-size: var(--text-xs);
+  font-weight: var(--font-medium); cursor: pointer; transition: background 0.15s var(--ease-apple);
+}
+.sandbox-hud-boton:hover:not(:disabled) { background: var(--accent-hover); }
+.sandbox-hud-boton:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Bloqueo de "Generar plantas con IA" sin Sólido Capaz calculado / sin viviendas objetivo (2026-08-17,
+   encargo explícito) -- reutiliza el mismo rojo que ya marca "excede el máximo" en las filas de
+   urbanismo (`.sandbox-hud-fila.excede`, más abajo), no el gris neutro por defecto de `.sandbox-hud-
+   aviso`: aquí sí es un bloqueo real que impide generar, no un dato meramente informativo. */
+.sandbox-hud-aviso.es-error { color: #f2a3a3; font-style: normal; font-weight: var(--font-medium); }
+@keyframes sandbox-resaltar-error {
+  0%, 100% { box-shadow: none; }
+  20%, 60% { box-shadow: 0 0 0 2px #f2a3a3; }
+  40%, 80% { box-shadow: 0 0 0 2px rgba(242, 163, 163, 0.3); }
+}
+.sandbox-resaltar-error { animation: sandbox-resaltar-error 1s ease; }
+
+/* "X edificios en contexto · X m² construidos" (2026-08-17, encargo explícito, "línea discreta en
+   texto gris #888"): mismo tono/tamaño que `.sandbox-hud-normativa-madrid` (dato encontrado, no un
+   aviso), sin el borde de acento -- es un recuento, no una referencia legal citada. */
+.sandbox-hud-contexto-edificios {
+  color: #888888; line-height: 1.4; font-size: var(--text-xs); margin-top: 8px;
+}
+
+/* Cota de altura del sólido capaz (2026-08-17, encargo explícito -- "Fase 2: cotas y alturas en
+   pantalla"): etiqueta 2D anclada sobre el vértice superior del volumen, reposicionada cada fotograma
+   en JS (`actualizarEtiquetaAlturaSolidoCapaz`, viewer-sandbox.js) -- no hay `CSS2DRenderer` en este
+   visor, así que es un `<span>` normal posicionado con `left`/`top` en píxeles sobre `#sandbox-mount`
+   (ya `position: relative` vía `.viewer-3d-mount`). `pointer-events: none` -- nunca debe robarle un
+   clic/arrastre al canvas que tiene debajo. `translate(-50%, -100%)` centra horizontalmente y apoya el
+   borde inferior de la etiqueta sobre el punto anclado, en vez de taparlo. */
+.sandbox-etiqueta-3d {
+  position: absolute; z-index: 15; pointer-events: none; transform: translate(-50%, -100%);
+  /* Sólida, no vidrio: etiqueta de cota numérica sobre una escena 3D en
+     movimiento -- el blur sin nada estable detrás perjudicaría la lectura
+     rápida de la cifra. */
+  background: var(--bg-card-solid); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 2px 7px; font-family: var(--font-family-ui); font-size: var(--text-xs);
+  font-weight: var(--font-medium); font-variant-numeric: tabular-nums;
+  color: rgba(241, 245, 249, 0.92); white-space: nowrap;
+}
+.sandbox-etiqueta-3d[hidden] { display: none; }
+
+/* --- Programa de Necesidades (Sandbox, 2026-08-17, docs/prd/2026-08-17-programa-de-necesidades.md,
+   aprobado) -------------------------------------------------------------------------------------
+   Panel propio, no una sección dentro de `.sandbox-hud-urbanismo` -- abajo-derecha (el urbanismo ya
+   ocupa arriba-izquierda, el editor de volumen `#sandbox-panel` arriba-derecha, la barra de
+   herramientas abajo-izquierda). `<details>` nativo: es el panel "colapsable" que pide el encargo,
+   `open` por defecto porque es la acción principal de esta pantalla, no algo secundario que deba
+   empezar oculto. `max-height` + `overflow-y: auto` porque tiene bastantes más campos que el resto
+   de paneles HUD y no debe empujar el borde inferior de la ventana. */
+.sandbox-hud-programa {
+  position: absolute; bottom: 1.25rem; right: 1.25rem; z-index: 20; width: 260px;
+  max-height: calc(100vh - 8rem); overflow-y: auto;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  padding: var(--space-3); box-shadow: var(--shadow-md);
+  color: rgba(241, 245, 249, 0.92); font-family: var(--font-family-ui); font-size: var(--text-xs);
+}
+.sandbox-hud-programa-titulo {
+  font-size: var(--text-xs); font-weight: var(--font-semibold); color: rgba(241, 245, 249, 0.85);
+  text-transform: uppercase; letter-spacing: 0.03em; cursor: pointer; list-style: revert;
+}
+.sandbox-hud-programa-cuerpo { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.sandbox-hud-boton-secundario {
+  background: transparent; border: 1px solid var(--border); color: rgba(241, 245, 249, 0.85);
+  margin-top: 0;
+}
+.sandbox-hud-boton-secundario:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
+.sandbox-hud-programa-cuerpo select {
+  width: 140px; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: rgba(241, 245, 249, 0.92); font-family: inherit;
+  font-size: var(--text-xs); padding: 2px 5px;
+}
+.sandbox-hud-programa-mix-titulo {
+  color: rgba(241, 245, 249, 0.65); font-size: var(--text-xs); border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 2px; padding-top: 6px;
+}
+/* Suma del mix -- gris mientras sume 100% (dato correcto, no hace falta gritarlo), rojo de acento
+   limpio (mismo #f2a3a3 que el resto del HUD) en cuanto se desvía. */
+#programa-mix-suma { color: rgba(241, 245, 249, 0.5); }
+#programa-mix-suma.invalida { color: #f2a3a3; font-weight: var(--font-medium); }
+.sandbox-hud-programa-mix { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+.sandbox-hud-programa-mix-fila { display: flex; align-items: center; gap: 4px; }
+.sandbox-hud-programa-mix-label { flex: 1; color: rgba(241, 245, 249, 0.6); }
+.sandbox-hud-programa-mix-pct, .sandbox-hud-programa-mix-sup {
+  width: 40px; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: rgba(241, 245, 249, 0.92); font-family: inherit;
+  font-size: var(--text-xs); padding: 2px 3px; text-align: right;
+}
+/* Superficie media por tipología (decisión 3, edición secundaria): más pequeña y apagada que el
+   input de % -- es un ajuste fino, no el dato principal de cada fila. */
+.sandbox-hud-programa-mix-sup { opacity: 0.7; width: 34px; }
+.sandbox-hud-programa-mix-signo { color: rgba(241, 245, 249, 0.4); font-size: 10px; }
+/* Alerta de exceso de edificabilidad (encargo explícito: "rojo de acento limpio, sin estridentes") --
+   mismo lenguaje visual que `.sandbox-hud-normativa-madrid` (borde de acento + texto), color de exceso
+   ya establecido (#f2a3a3) en vez de un rojo saturado nuevo. */
+.sandbox-hud-programa-alerta {
+  color: #f2a3a3; line-height: 1.4; font-size: var(--text-xs);
+  border-left: 2px solid rgba(242, 163, 163, 0.6); padding-left: 6px; margin: 4px 0 0;
+}
+
+/* --- Escala gráfica (visor 3D, vistas Planta/Alzado/Lateral) --------------- */
+
+.viewer-scale-bar {
+  position: absolute; left: 1.25rem; bottom: 1.25rem; z-index: 20;
+  display: none; flex-direction: column; align-items: flex-start; gap: 0.3rem;
+  font-family: var(--font-family-ui); color: var(--scene-ink-bright); pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.viewer-scale-bar.visible { display: flex; }
+.scale-bar-label { font-size: var(--text-xs); font-weight: var(--font-semibold); }
+.scale-bar-line {
+  height: 3px; background: var(--scene-ink-bright); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+  position: relative;
+}
+.scale-bar-line::before, .scale-bar-line::after {
+  content: ""; position: absolute; top: -3px; width: 1px; height: 9px;
+  background: var(--scene-ink-bright); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+.scale-bar-line::before { left: 0; }
+.scale-bar-line::after { right: 0; }
+
+/* --- Crosshair y overlays del modo Paseo ----------------------------------- */
+
+.viewer-crosshair {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 18px; height: 18px; z-index: 25; display: none; pointer-events: none;
+}
+.viewer-crosshair.visible { display: block; }
+.viewer-crosshair::before, .viewer-crosshair::after {
+  content: ""; position: absolute; background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+}
+.viewer-crosshair::before { left: 50%; top: 0; width: 2px; height: 100%; margin-left: -1px; }
+.viewer-crosshair::after { top: 50%; left: 0; height: 2px; width: 100%; margin-top: -1px; }
+
+.viewer-room-hud {
+  position: absolute; top: 1.25rem; left: 50%; transform: translateX(-50%); z-index: 25;
+  background: var(--bg-toolbar); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-pill); padding: 0.35rem 0.9rem; color: var(--scene-ink);
+  font-family: var(--font-family-ui); font-size: var(--text-sm); font-weight: var(--font-medium);
+  display: none; pointer-events: none;
+}
+.viewer-room-hud.visible { display: block; }
+
+.viewer-walk-instructions {
+  position: absolute; bottom: 2.25rem; left: 50%; transform: translateX(-50%); z-index: 25;
+  background: rgba(10, 14, 24, 0.7); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-pill); padding: 0.5rem 1.1rem; color: var(--scene-ink);
+  font-family: var(--font-family-ui); font-size: var(--text-sm); pointer-events: none;
+  opacity: 0; transition: opacity 0.5s ease;
+}
+.viewer-walk-instructions.visible { opacity: 1; }
+
+.viewer-minimap {
+  position: absolute; right: 1.25rem; bottom: 1.25rem; z-index: 20;
+  width: 120px; height: 120px; border-radius: var(--radius-lg); overflow: hidden;
+  background: var(--bg-toolbar); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.25); display: none;
+}
+.viewer-minimap.visible { display: block; }
+.viewer-minimap canvas { display: block; width: 100%; height: 100%; }
+
+/* La barra de contexto bajo el header (contadores "3 críticos · 5
+   importantes · 2 recomendaciones") se ha eliminado en la iteración 3. Era
+   una segunda franja administrativa cruzando la parte alta de la pantalla,
+   justo donde aterriza la mirada, y no respondía a ninguna decisión: saber
+   que hay 5 importantes no dice cuáles ni dónde. Lo que sí responde a eso
+   —los 3 puntos que bajan la nota— vive ahora en el informe ejecutivo.
+   `#dashboard-panel` ya no existe en el marcado ni se referencia desde JS
+   (confirmado por búsqueda en todo el archivo) — el nodo muerto que este
+   comentario describía se limpió en algún punto posterior a la iteración 3. */
+
+/* --- Entrada escalonada: el plano primero ---------------------------------
+   Mecanismo que persigue el objetivo del rediseño ("que la mirada vaya al
+   plano en los primeros segundos"): al montarse el workspace, el panel
+   central aparece de inmediato y todo lo secundario (rieles laterales,
+   barra de contexto, acciones sobre el plano) entra medio segundo después.
+   Durante ese medio segundo el plano es literalmente lo único visible, así
+   que la mirada no tiene dónde ir salvo a él.
+
+   Cuidado al tocar esto: la animación NO puede ir sobre `.svg-container` ni
+   sobre `#inspector`, porque `fadeSwap()` les escribe `opacity` inline
+   al cambiar de vivienda y una animación con `fill-mode: both` ganaría a
+   ese inline para siempre, dejando el fundido roto a partir del primer
+   cambio. Por eso `plan-reveal` va en `.panel-center` (sin fill-mode, para
+   no fijar ningún valor final) y `chrome-in` solo en contenedores cuya
+   opacidad no manipula nadie más. */
+@keyframes plan-reveal { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes chrome-in { from { opacity: 0; } to { opacity: 1; } }
+
+.panel-center { animation: plan-reveal 0.45s ease; }
+.panel-left, .panel-right, .panel-center-toolbar { animation: chrome-in 0.5s ease 0.45s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-center, .panel-left, .panel-right, .panel-center-toolbar { animation: none; }
+}
+
+/* ==========================================================================
+   Entrevistador (Fase E) — `static/entrevista.js`
+   ==========================================================================
+   Reutiliza los tokens y patrones ya existentes de `.generar-screen`/
+   `.upload-card`/`.btn-primary`/`.btn-ghost`/`.error-banner`/`.form-field-
+   ayuda` en vez de inventar un segundo lenguaje visual — es una pantalla
+   más de ArchMuse, no un widget aparte. */
+
+.entrevista-screen {
+  flex: 1; overflow-y: auto; padding: 2.5rem 2rem;
+  display: flex; flex-direction: column; align-items: center;
+}
+.entrevista-screen > * { position: relative; z-index: 1; }
+
+.entrevista-card {
+  width: 100%; max-width: 640px; animation: fade-in-up 0.2s var(--ease-apple);
+  background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-xl);
+  padding: var(--space-8); box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.entrevista-card-ancha { max-width: 820px; }
+.entrevista-card-centrado { text-align: center; padding: var(--space-8) var(--space-6); }
+
+.entrevista-cabecera {
+  width: 100%; max-width: 820px; margin: 0 auto var(--space-4);
+  display: flex; align-items: center; gap: var(--space-3);
+}
+.entrevista-titulo { flex: 1; margin: 0; font-size: var(--text-xl); letter-spacing: -0.01em; }
+.entrevista-volver {
+  background: transparent; border: none; color: var(--text-secondary); font-family: inherit;
+  font-size: var(--text-sm); cursor: pointer; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
+}
+.entrevista-volver:hover { color: var(--text-primary); background: var(--overlay-subtle); }
+.entrevista-link-sutil {
+  background: transparent; border: none; color: var(--text-tertiary); font-family: inherit;
+  font-size: var(--text-xs); cursor: pointer; text-decoration: underline; padding: 0;
+}
+.entrevista-link-sutil:hover { color: var(--text-secondary); }
+
+.entrevista-intro { margin: 0 0 var(--space-6); }
+
+/* --- Elección: guiada / experta ------------------------------------------ */
+/* 3 tarjetas desde 2026-08-16 (guiada / experta / sandbox) -- `1fr 1fr` se quedó corto al añadir la
+   tercera, ahora se colapsa a 1 columna en el mismo breakpoint que ya existía más abajo. */
+.entrevista-eleccion-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-4); }
+.eleccion-opcion {
+  text-align: left; background: var(--bg-tertiary); border: 1px solid var(--panel-border); border-radius: var(--radius-lg);
+  padding: var(--space-5); cursor: pointer; font-family: inherit; color: var(--text-primary);
+  transition: border-color 0.15s var(--ease-apple), background 0.15s var(--ease-apple), transform 0.1s var(--ease-apple), box-shadow 0.15s var(--ease-apple);
+}
+.eleccion-opcion:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.eleccion-opcion:active { transform: scale(0.98) translateY(-2px); }
+.eleccion-opcion h3 { margin: var(--space-2) 0 var(--space-1); font-size: var(--text-lg); }
+.eleccion-opcion .muted { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
+/* `.eleccion-icono` (los tres emoji 💬/🔧/🏗️ de cabecera) se retiró (2026-08-17, pedido
+   explícito: "elimina todos los emojis") -- el título de cada tarjeta ya identifica la opción. */
+
+/* --- Cargando -------------------------------------------------------------- */
+.entrevista-spinner {
+  width: 34px; height: 34px; margin: 0 auto var(--space-4); border-radius: 50%;
+  border: 3px solid var(--panel-border); border-top-color: var(--accent);
+  animation: entrevista-girar 0.8s linear infinite;
+}
+@keyframes entrevista-girar { to { transform: rotate(360deg); } }
+.entrevista-cargando-texto { color: var(--text-secondary); margin: 0; }
+
+/* --- Progreso --------------------------------------------------------------- */
+.entrevista-progreso-wrap { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-6); }
+.entrevista-progreso-texto { font-size: var(--text-xs); color: var(--text-tertiary); white-space: nowrap; }
+.entrevista-progreso-bar { flex: 1; height: 4px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
+.entrevista-progreso-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+
+.entrevista-aviso {
+  margin: 0 0 var(--space-4); background: rgba(217, 119, 6, 0.14); border: 1px solid rgba(217, 119, 6, 0.4);
+  color: var(--color-important); padding: 0.65rem 0.9rem; border-radius: var(--radius); font-size: var(--text-sm); line-height: 1.4;
+}
+
+/* --- Turno: preguntas -------------------------------------------------------- */
+.entrevista-pregunta-bloque { display: flex; flex-direction: column; gap: var(--space-6); }
+.entrevista-pregunta-item { display: flex; flex-direction: column; gap: var(--space-2); }
+.entrevista-pregunta-texto { font-size: var(--text-lg); font-weight: var(--font-medium); line-height: 1.4; }
+
+.entrevista-textarea, .entrevista-input, .entrevista-select {
+  width: 100%; background: var(--bg-tertiary); border: 1px solid var(--panel-border); border-radius: var(--radius-md);
+  color: var(--text); font-family: inherit; font-size: var(--text-base); padding: 0.65rem 0.85rem; resize: vertical;
+  transition: border-color 0.15s var(--ease-apple), box-shadow 0.15s var(--ease-apple), background 0.15s var(--ease-apple);
+}
+.entrevista-textarea:focus, .entrevista-input:focus, .entrevista-select:focus {
+  outline: none; border-color: var(--accent); background: var(--bg-secondary); box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.entrevista-textarea-secundaria { margin-top: var(--space-2); }
+
+.entrevista-opciones-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.entrevista-opcion-btn {
+  background: var(--bg-tertiary); border: 1px solid var(--panel-border); border-radius: var(--radius-pill);
+  color: var(--text-primary); font-family: inherit; font-size: var(--text-sm); padding: 0.5rem 1rem; cursor: pointer;
+  transition: border-color 0.15s var(--ease-apple), background 0.15s var(--ease-apple), transform 0.1s var(--ease-apple);
+}
+.entrevista-opcion-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+.entrevista-opcion-btn:active { transform: scale(0.97); }
+.entrevista-opcion-btn.seleccionada { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* Chips con asesoramiento (2026-08-15, "Materiales y Calidades" -- a petición explícita): la pill de una
+   línea no encaja con una etiqueta + una frase de ayuda debajo, así que estas se apilan en columna, a todo
+   lo ancho, como tarjetas rectangulares en vez de píldoras -- el resto de preguntas de opción (sin
+   `asesoramiento`) no se ven afectadas. */
+.entrevista-opciones-grid-ayuda { flex-direction: column; }
+.entrevista-opcion-btn-con-ayuda {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); text-align: left;
+}
+.entrevista-opcion-etiqueta { font-weight: var(--font-medium); }
+.entrevista-opcion-ayuda { font-size: var(--text-xs); color: var(--text-tertiary); line-height: 1.35; }
+.entrevista-opcion-btn-con-ayuda.seleccionada .entrevista-opcion-ayuda { color: var(--on-accent); opacity: 0.85; }
+
+.entrevista-delegar-link {
+  align-self: flex-start; background: transparent; border: none; color: var(--text-tertiary); font-family: inherit;
+  font-size: var(--text-xs); cursor: pointer; text-decoration: underline; padding: 0; margin-top: 2px;
+}
+.entrevista-delegar-link:hover { color: var(--text-secondary); }
+
+.entrevista-sin-preguntas { color: var(--text-secondary); }
+
+/* "Pantalla Final de Resumen y Acción" (2026-08-15, a petición explícita) -- estado de transición cuando ya
+   no quedan preguntas pendientes, antes de pasar al resumen categorizado real (`vistaResumen()`). */
+.entrevista-fin { text-align: center; padding: var(--space-6) 0; }
+.entrevista-fin-titulo { font-size: var(--text-lg); font-weight: var(--font-medium); margin: 0 0 var(--space-2); }
+
+/* Botón "Anterior" (2026-08-15, a petición explícita): mismo `.btn-ghost` que el resto de acciones
+   secundarias, sin clase visual propia -- `.entrevista-boton-anterior` existe solo como selector estable
+   por si hiciera falta ajustarlo aparte más adelante. */
+.entrevista-boton-anterior { }
+
+.entrevista-contradiccion-box {
+  border: 1px solid rgba(217, 119, 6, 0.5); background: rgba(217, 119, 6, 0.08); border-radius: var(--radius-lg);
+  padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2);
+}
+.entrevista-contradiccion-titulo { font-weight: var(--font-medium); color: var(--color-important); }
+
+.entrevista-error-banner { display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; }
+
+.entrevista-acciones { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); }
+.entrevista-acciones-turno { justify-content: space-between; }
+/* Agrupa "Terminar"/"Continuar" (o "Revisar"/"Generar" en la pantalla final) a la derecha, separados de
+   "Anterior" a la izquierda -- así `.entrevista-acciones-turno` sigue teniendo siempre 2 hijos directos
+   (el botón Anterior o un `<span>` vacío que ocupa su sitio, y este grupo), sin que 3 botones sueltos con
+   `space-between` queden descentrados. */
+.entrevista-acciones-derecha { display: flex; gap: var(--space-3); }
+
+.entrevista-lista-pendientes { margin: 0 0 var(--space-3); padding-left: 1.2rem; color: var(--text-secondary); }
+
+/* --- Modo experto / puente de datos técnicos -------------------------------- */
+.entrevista-experto-seccion { margin-bottom: var(--space-6); }
+.entrevista-experto-seccion h3 {
+  font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary);
+  margin: 0 0 var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border);
+}
+.entrevista-experto-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.entrevista-campo-experto { display: flex; flex-direction: column; gap: var(--space-1); }
+.entrevista-campo-etiqueta { font-size: var(--text-sm); color: var(--text-secondary); }
+/* Texto gris pequeño, sin pastilla ni color de acento (2026-08-17, pedido explícito:
+   "simplifícalos a texto gris pequeño") -- antes era una pastilla azul con borde, competía
+   visualmente con el propio campo que acompaña. */
+.entrevista-badge-imprescindible {
+  display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-tertiary); vertical-align: middle;
+}
+
+/* --- "Parámetros avanzados" (modo experto) ---------------------------------
+   <details> nativo: colapsado por defecto (sin atributo "open"), sin JS de
+   apertura/cierre que mantener. `.entrevista-experto-seccion` de dentro no
+   se toca -- el toggle solo envuelve, no redefine su aspecto. */
+.entrevista-avanzado {
+  margin-top: var(--space-2); margin-bottom: var(--space-6);
+  border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4);
+}
+.entrevista-avanzado > summary {
+  cursor: pointer; font-size: var(--text-sm); font-weight: var(--font-medium); color: var(--text-secondary);
+  list-style: none;
+}
+.entrevista-avanzado > summary::-webkit-details-marker { display: none; }
+.entrevista-avanzado > summary::before { content: "▸ "; color: var(--text-tertiary); }
+.entrevista-avanzado[open] > summary::before { content: "▾ "; }
+.entrevista-avanzado[open] > summary { margin-bottom: var(--space-3); }
+.entrevista-avanzado-nota { margin: 0 0 var(--space-4); }
+.entrevista-avanzado .entrevista-experto-seccion { margin-bottom: 0; }
+.entrevista-mix-grid { display: flex; gap: var(--space-2); }
+.entrevista-mix-grid label { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: var(--text-xs); color: var(--text-tertiary); }
+
+/* --- "Mapa/Parcela Primero" (Paso 0): buscador + mapa Leaflet + estado de Catastro --------
+   Rediseño 2026-08-17 ("pantalla completa real", a petición explícita -- ver el comentario grande junto
+   a `vistaParcelaInicial()` en `entrevista.js`): la tarjeta oscura con marco que encajonaba el mapa
+   (`.entrevista-card`/`.entrevista-card-mapa`) YA NO EXISTE en esta pantalla -- `.parcela-mapa-
+   envoltorio` es ahora el único hijo en el flujo normal de `.entrevista-screen-mapa`, sin fondo/borde/
+   padding propios, así que el mapa (`.parcela-mapa-mount`, `height/width: 100%`, sin borde ni
+   `border-radius`) llega literalmente hasta los 4 bordes del área de contenido. La cabecera pasa de
+   bloque en el flujo a panel acristalado `position: absolute` anclado sobre el propio mapa (mismo
+   lenguaje visual que el buscador/estado/acciones, que ya eran overlays) -- al salir del flujo normal
+   deja de "restar" alto al mapa, que es justo lo que permite el 100% de arriba. */
+/* Cero scroll (2026-08-17, pedido explícito): en el resto de pantallas `.entrevista-screen` puede crecer
+   y hacer scroll (`overflow-y: auto`, ver más arriba) -- el Paso 0 es la excepción: el mapa ES la
+   pantalla, así que en vez de desbordar y generar una barra de scroll, se ENCAJA exacto en el alto
+   visible. `render()` (`entrevista.js`) añade este modificador SOLO cuando `E.vista === "parcela_
+   inicial"`; el resto de vistas conserva el `overflow-y: auto`/padding de siempre. `padding: 0` +
+   `position: relative` (ancla de la cabecera flotante de abajo) son exclusivos de esta pantalla. */
+.entrevista-screen-mapa { overflow: hidden; padding: 0; position: relative; }
+
+/* Cabecera flotante (2026-08-17): antes ocupaba su propia fila fija (`flex-shrink: 0`) encima de la
+   tarjeta del mapa -- ahora flota COMO PANEL ACRISTALADO sobre él, `position: absolute` para no
+   consumir ningún alto del layout (de ahí que el mapa pueda llegar al 100%). Mismo lenguaje visual
+   exacto que `.parcela-buscador`/`.parcela-acciones-flotantes` (fondo `--panel-bg`, blur, sombra) en vez
+   de inventar un cuarto estilo de panel flotante en la misma pantalla. */
+.entrevista-cabecera-mapa {
+  position: absolute; top: var(--space-4); left: var(--space-4); z-index: 950;
+  max-width: calc(100% - 2 * var(--space-4)); margin: 0; width: auto;
+  background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3); box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.entrevista-cabecera-mapa .entrevista-titulo { font-size: var(--text-lg); }
+
+.parcela-mapa-envoltorio { position: absolute; inset: 0; }
+
+/* Barra flotante tipo "Spotlight" (restyling "Apple Pro", 2026-08-16): cápsula acristalada suspendida
+   sobre el mapa satelital, en vez del panel rectangular anterior.
+   `.parcela-buscador-panel` (2026-08-16, presets): envoltorio que posiciona el conjunto (antes lo
+   posicionaba directamente `.parcela-buscador`) -- necesario para apilar los chips de presets DEBAJO
+   de la cápsula del buscador sin que ninguno de los dos tenga que adivinar la altura del otro. La
+   cápsula (`.parcela-buscador`) pasa a `position: relative` (ya no `absolute`) para seguir siendo el
+   ancla de `.parcela-resultados-dropdown` (`top: calc(100% + 8px)`, sin cambios). */
+/* top: 84px (2026-08-17, corregido en vivo -- bug real de solapamiento tras el rediseño "pantalla
+   completa"): antes `.parcela-buscador-panel` y `.entrevista-cabecera-mapa` anclaban los dos a `top:
+   var(--space-4); left: var(--space-4)` porque estaban en corredores distintos (cabecera en el flujo
+   normal ENCIMA del mapa, buscador ya flotando sobre el mapa) -- ahora que la cabecera TAMBIÉN es
+   flotante sobre el mismo mapa (mismo cambio de "pantalla completa"), las dos anclas coincidían y el
+   buscador quedaba tapado debajo de la cabecera. 84px despeja la cabecera (título + padding + borde,
+   ~68px de alto real) con un margen visible antes de empezar la cápsula del buscador. */
+.parcela-buscador-panel {
+  position: absolute; top: 84px; left: var(--space-4); z-index: 900;
+  width: min(420px, calc(100% - 2 * var(--space-4)));
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+/* Pulido "premium" (2026-08-17, pedido explícito): la cápsula ya tenía el fondo acristalado y la sombra
+   de elevación -- lo que faltaba era que reaccionara al recibir el foco, en vez de quedarse idéntica
+   escribiendo o no. `:focus-within` (no `:focus` -- el foco real cae en el `<input>` hijo, no en esta
+   cápsula) sube la sombra a `--shadow-lg` y añade un halo sutil con el color de acento, con una
+   transición fluida en vez de un cambio brusco. */
+.parcela-buscador {
+  position: relative;
+  display: flex; align-items: center; gap: var(--space-2);
+  background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  transition: box-shadow 0.25s var(--ease-apple), border-color 0.25s var(--ease-apple);
+}
+.parcela-buscador:focus-within {
+  border-color: var(--accent); box-shadow: var(--shadow-lg), 0 0 0 3px var(--accent-soft);
+}
+/* Icono de lupa + botón de flecha (2026-08-17, "iconos finos... sin bloques pesados" pedido
+   explícitamente, sustituyen al bloque de texto "Buscar" anterior): ambos `width/height` fijos y
+   `flex-shrink: 0` para no deformarse cuando el input crece/encoge; `color: var(--text-tertiary)` en
+   reposo (discreto, es contexto) que sube a `--text-primary` solo en el botón interactivo al pasar el
+   ratón/foco -- el icono decorativo de la izquierda nunca cambia de color, no es clicable. */
+.parcela-buscador-icono {
+  width: 18px; height: 18px; flex-shrink: 0; color: var(--text-tertiary);
+}
+.parcela-buscador .entrevista-input {
+  flex: 1; margin-bottom: 0; background: transparent; border-color: transparent; padding-left: 0;
+}
+.parcela-buscador .entrevista-input:focus { background: transparent; box-shadow: none; }
+.parcela-buscador-btn {
+  flex-shrink: 0; width: 34px; height: 34px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--overlay-subtle); border: none; border-radius: 50%;
+  color: var(--text-secondary); cursor: pointer;
+  transition: background 0.15s var(--ease-apple), color 0.15s var(--ease-apple);
+}
+.parcela-buscador-btn svg { width: 17px; height: 17px; }
+.parcela-buscador-btn:hover, .parcela-buscador-btn:focus-visible { background: var(--accent); color: var(--on-accent); }
+
+/* Chips de presets (2026-08-16, docs/prd/2026-08-16-presets-progreso-y-zocalo-sandbox.md): misma
+   estética acristalada que el resto de esta pantalla, en una fila que envuelve si no caben (móvil). */
+.parcela-presets { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* Solapamiento con el dropdown de sugerencias (2026-08-17): `entrevista.js` oculta los chips con el
+   atributo `hidden` mientras el desplegable de sugerencias está abierto (ver `abrirDropdown`), pero el
+   `display: flex` de arriba es una regla de autor y pisa el `display: none` por defecto de `[hidden]`
+   -- sin este override los chips seguían pintándose (y viéndose, traslúcidos, DEBAJO del propio
+   dropdown) pese a tener el atributo puesto. */
+.parcela-presets[hidden] { display: none; }
+/* Minimalistas de verdad (2026-08-17, pedido explícito): en reposo quedan a media opacidad -- son un
+   atajo secundario, no deben competir visualmente con el buscador -- y solo ganan brillo/opacidad plena
+   al pasar el ratón o recibir foco. `opacity` en su propia transición (no agrupada con `background`/
+   `color`) para que la subida sea uniforme independientemente de qué otras propiedades cambien a la vez.
+   El `:disabled` (mientras `activarPreset()` resuelve) se queda claramente MÁS apagado que el reposo
+   normal (0.4 vs 0.7) -- si quedaran parecidos, "deshabilitado mientras busca" dejaría de leerse como tal. */
+.parcela-preset-chip {
+  background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3); font-family: inherit; font-size: var(--text-xs);
+  color: var(--text-secondary); cursor: pointer; box-shadow: var(--shadow-sm); opacity: 0.7;
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  transition: background 0.15s var(--ease-apple), color 0.15s var(--ease-apple), transform 0.1s var(--ease-apple), opacity 0.15s var(--ease-apple);
+}
+.parcela-preset-chip:hover, .parcela-preset-chip:focus-visible { background: var(--overlay-active); color: var(--text-primary); opacity: 1; }
+.parcela-preset-chip:active { transform: scale(0.97); }
+.parcela-preset-chip:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+/* Dropdown de sugerencias: posicionado ABSOLUTO bajo el buscador flotante (que ya es `position: absolute`,
+   así que sirve de ancla) -- se queda por encima del mapa sin desplazar nada a su alrededor. Acristalado
+   ("desplegable de sugerencias acristalado", pedido explícitamente) en vez del panel opaco anterior.
+   Sombra subida a `--shadow-lg` (2026-08-17, "sombra profunda" pedida explícitamente) -- con `--shadow-md`
+   quedaba casi al mismo nivel de elevación que la propia cápsula del buscador (que también usa `--shadow-
+   md`), y el dropdown SIEMPRE flota por encima de ella, no al mismo plano. */
+.parcela-resultados-dropdown {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+  z-index: 1000; max-height: 280px; overflow-y: auto;
+  background: var(--bg-card); border: 1px solid var(--panel-border); border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-lg);
+  animation: fade-in-up 0.2s var(--ease-apple);
+}
+.parcela-resultado-item {
+  display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left;
+  padding: var(--space-2) var(--space-3); background: transparent; border: none; border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-primary); font-family: inherit; cursor: pointer; transition: background 0.15s var(--ease-apple);
+}
+.parcela-resultado-item:first-child { border-top-left-radius: var(--radius-lg); border-top-right-radius: var(--radius-lg); }
+.parcela-resultado-item:last-child { border-bottom: none; border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg); }
+.parcela-resultado-item:hover, .parcela-resultado-item:focus-visible { background: var(--overlay-active); }
+.parcela-resultado-principal { font-size: var(--text-sm); font-weight: var(--font-medium); }
+.parcela-resultado-contexto { font-size: var(--text-xs); color: var(--text-tertiary); }
+.parcela-resultados-vacio { margin: 0; padding: var(--space-2) var(--space-3); }
+
+/* Historial de búsquedas recientes (2026-08-17) -- mismo `.parcela-resultado-item` que los resultados
+   de búsqueda reales (misma lista, mismo comportamiento al hacer clic), solo con una cabecera propia
+   y el badge "Última" en la primera entrada. */
+.parcela-historial-cabecera {
+  padding: var(--space-2) var(--space-3) var(--space-1); font-size: var(--text-xs); font-weight: var(--font-medium);
+  color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em;
+}
+/* Texto gris, sin pastilla de acento (2026-08-17, mismo criterio que `.entrevista-badge-
+   imprescindible`: "simplifícalos a texto gris pequeño"). */
+.parcela-historial-badge {
+  display: inline-block; font-size: 10px; font-weight: var(--font-medium); text-transform: uppercase;
+  letter-spacing: 0.03em; color: var(--text-tertiary);
+  margin-left: var(--space-2); vertical-align: middle;
+}
+.parcela-historial-borrar {
+  display: block; width: 100%; text-align: center; padding: var(--space-2) var(--space-3);
+  background: transparent; border: none; border-top: 1px solid var(--panel-border);
+  color: var(--text-tertiary); font-family: inherit; font-size: var(--text-xs); cursor: pointer;
+}
+.parcela-historial-borrar:hover { color: var(--color-critical); background: var(--overlay-active); }
+
+/* Pantalla completa real (2026-08-17, a petición explícita -- "de borde a borde"): sin borde ni
+   `border-radius` ni fondo propio -- esos tres eran justo el "marco oscuro que encajona el mapa" del
+   encargo. `width/height: 100%` sobre `.parcela-mapa-envoltorio` (`position: absolute; inset: 0`, ver
+   arriba) hace que el mapa llegue exacto a los 4 bordes del área de contenido, no solo se aproxime.
+   `min-height` se conserva como suelo de seguridad para viewports muy bajos. */
+.parcela-mapa-mount {
+  height: 100%; width: 100%; min-height: 360px;
+  position: relative;
+}
+
+/* Estado de Catastro: flota como una tarjeta propia abajo a la izquierda del mapa (mismo criterio que el
+   buscador arriba) -- vacío no ocupa ningún espacio ni pinta ningún fondo (los `<p>` con contenido son los
+   que llevan el panel visual, no el contenedor). */
+.parcela-estado-sitio-flotante {
+  position: absolute; left: var(--space-4); bottom: var(--space-4); z-index: 900;
+  width: min(420px, calc(100% - 2 * var(--space-4)));
+}
+.parcela-estado-sitio-flotante .parcela-estado-sitio {
+  margin: 0 0 var(--space-2); background: var(--panel-bg); border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg); padding: var(--space-2) var(--space-3); box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.parcela-estado-sitio-flotante .parcela-estado-sitio:last-child { margin-bottom: 0; }
+/* Gris, no verde/ámbar de semáforo (2026-08-17, pedido explícito de limpieza general: "sin
+   iconos ni colores de alerta" en los estados de la app) -- son confirmaciones/avisos rutinarios
+   de un paso intermedio, no un resultado normativo que necesite leerse por color. */
+.parcela-estado-sitio-ok { color: #888888; }
+.parcela-estado-sitio-aviso { color: #888888; }
+.parcela-estado-sitio-cargando { color: var(--text-secondary); display: flex; flex-direction: column; gap: var(--space-2); }
+.entrevista-spinner-inline { width: 14px; height: 14px; margin: 0; border-width: 2px; display: inline-block; vertical-align: middle; }
+
+/* Acciones flotantes (2026-08-17, pedido explícito): "Continuar"/"Laboratorio" ya no viven en
+   `.entrevista-acciones` DEBAJO de la tarjeta -- ahora son un overlay acristalado DENTRO de la esquina
+   inferior derecha del mapa, mismo lenguaje visual que `.parcela-buscador`/`.parcela-estado-sitio-
+   flotante` (los otros dos overlays de esta pantalla) en vez de un cuarto estilo de panel flotante
+   distinto. Esquina opuesta al estado de Catastro (que flota abajo A LA IZQUIERDA) para no competir por
+   el mismo rincón del mapa. */
+.parcela-acciones-flotantes {
+  position: absolute; right: var(--space-4); bottom: var(--space-4); z-index: 1000;
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2);
+  max-width: min(280px, calc(100% - 2 * var(--space-4)));
+  background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4); box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+/* Solo lleva "Continuar" desde que se retiró el enlace "Laboratorio..." (2026-08-17, pedido
+   explícito: ya no hace falta como control aparte -- ver el comentario en `wireParcelaInicial`). */
+.parcela-acciones-flotantes .btn-primary { white-space: nowrap; }
+
+/* Barra de progreso real del Paso 0 (2026-08-16, docs/prd/2026-08-16-resiliencia-catastro-paso0.md) --
+   mismo lenguaje visual que `.sandbox-loading-barra` (visor 3D), adaptado a los tokens del panel flotante
+   oscuro de `.parcela-estado-sitio-flotante` (no la paleta clara de `#checklist-campo`, que es un panel
+   distinto -- ver el bug de contraste documentado en `docs/prd/2026-08-16-checklist-inspeccion-campo.md`,
+   la lección de no mezclar lenguajes visuales aplica igual en sentido contrario). */
+.parcela-progreso-texto { margin: 0; display: flex; align-items: center; gap: var(--space-2); }
+.parcela-progreso-barra { display: flex; align-items: center; gap: var(--space-2); }
+.parcela-progreso-barra-track {
+  flex: 1; height: 6px; border-radius: var(--radius-pill); overflow: hidden;
+  background: rgba(241, 245, 249, 0.15);
+}
+.parcela-progreso-barra-fill {
+  height: 100%; border-radius: var(--radius-pill);
+  background: var(--accent); transition: width 0.35s var(--ease-apple);
+}
+/* Barra indeterminada (2026-08-17): a partir de la Fase 3/4 (avisos "Procesando…" / "Sigue
+   buscando…") el ancho ya no se mueve -- se queda clavado en 75%/90% mientras Overpass/Catastro
+   siguen respondiendo, así que sin esto el usuario ve una barra congelada que parece atascada.
+   En vez de seguir prometiendo un avance que no existe (ver la etiqueta de % eliminada más abajo),
+   se añade un brillo en barrido continuo sobre el propio relleno -- comunica "sigue en marcha" sin
+   afirmar ningún porcentaje de progreso real que no tenemos forma de medir. */
+.parcela-progreso-barra-fill.is-indefinite {
+  background-color: var(--accent);
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  background-size: 50px 100%;
+  background-repeat: no-repeat;
+  animation: parcela-progreso-brillo 1.1s linear infinite;
+}
+@keyframes parcela-progreso-brillo {
+  0% { background-position: -50px 0; }
+  100% { background-position: 160px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .parcela-progreso-barra-fill.is-indefinite { animation: none; }
+}
+
+/* --- Controles de Leaflet dentro de `.parcela-mapa-mount`, a juego con el tema oscuro de ArchMuse -------
+   El propio contenido cartográfico (tiles, marcador) NO se toca -- es un mapa real, no forma parte del
+   "look" de la app -- pero los controles SÍ son chrome de ArchMuse y deben leerse como tal. Ya no hay
+   toggle Mapa/Satélite (a petición explícita, 2026-08-15: solo satélite) -- solo quedan zoom y atribución. */
+.parcela-mapa-mount .leaflet-bar, .parcela-mapa-mount .leaflet-bar a {
+  background: var(--bg-tertiary); border-color: var(--panel-border); color: var(--text-primary);
+}
+.parcela-mapa-mount .leaflet-bar a:hover { background: var(--overlay-active); color: var(--accent); }
+.parcela-mapa-mount .leaflet-control-attribution {
+  background: rgba(20, 20, 24, 0.75); color: var(--text-tertiary); font-size: 10px;
+}
+.parcela-mapa-mount .leaflet-control-attribution a { color: var(--text-secondary); }
+.parcela-mapa-mount .leaflet-popup-content-wrapper, .parcela-mapa-mount .leaflet-popup-tip {
+  background: var(--bg-tertiary); color: var(--text-primary);
+}
+
+/* --- Resumen ---------------------------------------------------------------- */
+.entrevista-resumen-categoria { margin-bottom: var(--space-6); }
+.entrevista-resumen-categoria h3 {
+  font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary);
+  margin: 0 0 var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border);
+}
+.entrevista-campo-card {
+  background: var(--bg-tertiary); border-radius: var(--radius); padding: 0.65rem 0.9rem; margin-bottom: var(--space-2);
+}
+.entrevista-campo-card p { margin: 0; line-height: 1.45; }
+.entrevista-campo-card-aviso { border: 1px solid rgba(217, 119, 6, 0.4); }
+.entrevista-nota-destino { margin-top: 0.3rem !important; font-size: var(--text-xs); }
+.entrevista-badge-dura, .entrevista-badge-blanda {
+  display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+  border-radius: 999px; padding: 1px 6px; margin-right: 0.35rem;
+}
+.entrevista-badge-dura { color: var(--color-critical); border: 1px solid var(--color-critical); }
+.entrevista-badge-blanda { color: var(--text-tertiary); border: 1px solid var(--border); }
+
+@media (max-width: 720px) {
+  .entrevista-screen { padding: 1.25rem 1rem; }
+  .entrevista-card, .entrevista-card-ancha { max-width: 100%; padding: var(--space-5); }
+  .entrevista-cabecera { max-width: 100%; }
+  /* `.entrevista-cabecera-mapa` NO entra en la regla de arriba (2026-08-17): ya no es un bloque a ancho
+     completo, es el panel flotante -- su propio `calc(100% - 2 * var(--space-4))` (definido junto a la
+     regla base) ya funciona igual de bien en móvil sin necesitar override aquí. */
+  .parcela-mapa-mount { min-height: 320px; }
+  .parcela-buscador-panel, .parcela-estado-sitio-flotante { width: calc(100% - 2 * var(--space-4)); }
+  .parcela-acciones-flotantes { max-width: calc(100% - 2 * var(--space-4)); }
+  .entrevista-eleccion-grid, .entrevista-experto-grid { grid-template-columns: 1fr; }
+  .entrevista-acciones { flex-direction: column-reverse; align-items: stretch; }
+  .entrevista-acciones .btn-primary, .entrevista-acciones .btn-ghost { width: 100%; }
+  .entrevista-acciones-derecha { flex-direction: column-reverse; width: 100%; }
+}

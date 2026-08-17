@@ -1,0 +1,37 @@
+# Densidad urbana orientativa por CÓDIGO INE ("alta" >500k hab., "media"
+# 100k-500k, "baja" <100k). Proxy de exposición a ruido de tráfico. Tabla
+# independiente de la zona climática, sobre los mismos municipios.
+#
+# Migrado desde `analyzer/cte_zonas.py` (CIUDADES_DENSIDAD).
+version: 1
+densidades:
+  "01059": "media"   # vitoria-gasteiz
+  "03014": "media"   # alicante
+  "03065": "media"   # elche
+  "04013": "media"   # almeria
+  "06015": "media"   # badajoz
+  "07040": "media"   # palma de mallorca
+  "08019": "alta"   # barcelona
+  "09059": "media"   # burgos
+  "10037": "baja"   # caceres
+  "14021": "media"   # cordoba
+  "15030": "media"   # a coruna
+  "18087": "media"   # granada
+  "20069": "media"   # san sebastian
+  "28079": "alta"   # madrid
+  "29067": "alta"   # malaga
+  "30030": "media"   # murcia
+  "31201": "media"   # pamplona
+  "33024": "media"   # gijon
+  "33044": "media"   # oviedo
+  "35016": "media"   # las palmas de gran canaria
+  "36057": "media"   # vigo
+  "37274": "media"   # salamanca
+  "38038": "media"   # santa cruz de tenerife
+  "39075": "media"   # santander
+  "41091": "alta"   # sevilla
+  "45168": "baja"   # toledo
+  "46250": "alta"   # valencia
+  "47186": "media"   # valladolid
+  "48020": "media"   # bilbao
+  "50297": "alta"   # zaragoza

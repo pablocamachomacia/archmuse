@@ -1,0 +1,109 @@
+{
+  "campos_con_nombre_de_formato": [
+    "G1_plano.capa_elegida",
+    "G1_plano.recintos[0].capa",
+    "G1_plano.recintos[10].capa",
+    "G1_plano.recintos[11].capa",
+    "G1_plano.recintos[12].capa",
+    "G1_plano.recintos[13].capa",
+    "G1_plano.recintos[14].capa",
+    "G1_plano.recintos[15].capa",
+    "G1_plano.recintos[16].capa",
+    "G1_plano.recintos[17].capa",
+    "G1_plano.recintos[18].capa",
+    "G1_plano.recintos[19].capa",
+    "G1_plano.recintos[1].capa",
+    "G1_plano.recintos[20].capa",
+    "G1_plano.recintos[21].capa",
+    "G1_plano.recintos[22].capa",
+    "G1_plano.recintos[23].capa",
+    "G1_plano.recintos[24].capa",
+    "G1_plano.recintos[25].capa",
+    "G1_plano.recintos[26].capa",
+    "G1_plano.recintos[27].capa",
+    "G1_plano.recintos[28].capa",
+    "G1_plano.recintos[29].capa",
+    "G1_plano.recintos[2].capa",
+    "G1_plano.recintos[30].capa",
+    "G1_plano.recintos[31].capa",
+    "G1_plano.recintos[32].capa",
+    "G1_plano.recintos[33].capa",
+    "G1_plano.recintos[34].capa",
+    "G1_plano.recintos[35].capa",
+    "G1_plano.recintos[36].capa",
+    "G1_plano.recintos[37].capa",
+    "G1_plano.recintos[38].capa",
+    "G1_plano.recintos[39].capa",
+    "G1_plano.recintos[3].capa",
+    "G1_plano.recintos[4].capa",
+    "G1_plano.recintos[5].capa",
+    "G1_plano.recintos[6].capa",
+    "G1_plano.recintos[7].capa",
+    "G1_plano.recintos[8].capa",
+    "G1_plano.recintos[9].capa",
+    "G6_api_analizar.proyecto.capa"
+  ],
+  "fixtures_no_canonicos": [],
+  "floats_con_mas_de_3_decimales": [],
+  "manifiesto": [
+    {
+      "bytes": 12825,
+      "crlf": false,
+      "lineas": 730,
+      "nombre": "G1_plano",
+      "sha256": "8abbcc51897541a930a1df0ca79c57d7c91414d414a6ab7eb121d733ab2d1762"
+    },
+    {
+      "bytes": 4931,
+      "crlf": false,
+      "lineas": 254,
+      "nombre": "G2_unidades",
+      "sha256": "da935710589c842d3b66fa271afcc03bf63a1f9301551650e7c5351af7c65995"
+    },
+    {
+      "bytes": 15506,
+      "crlf": false,
+      "lineas": 648,
+      "nombre": "G3_adyacencia",
+      "sha256": "a6760f11fe2f6b4746b03a7f92510553b8ae82f0ac30c50bd005871242380e5a"
+    },
+    {
+      "bytes": 9836,
+      "crlf": false,
+      "lineas": 347,
+      "nombre": "G4_circulacion",
+      "sha256": "dfce1fabf2c3e4239a7cfa524ccbb2bcc52fd10ebecf6994b33f72790e535c71"
+    },
+    {
+      "bytes": 25866,
+      "crlf": false,
+      "lineas": 929,
+      "nombre": "G5_hechos_cap",
+      "sha256": "4b615dc396ec4b46754998cce2626b4fe18f3192759104db66326d868d51c7df"
+    },
+    {
+      "bytes": 12138,
+      "crlf": false,
+      "lineas": 422,
+      "nombre": "G6_api_analizar",
+      "sha256": "32c439e7d438d6d668df4164836798d76e37cd1cf4cf8a81c1bc7b3867c5b035"
+    },
+    {
+      "bytes": 19935,
+      "crlf": false,
+      "lineas": 814,
+      "nombre": "G7_grafo_experimento",
+      "sha256": "e6452dd8dba5f0ecc845b670a4b942ffe4318f92a6b6b92107af4333b3c9f945"
+    },
+    {
+      "bytes": 114476,
+      "crlf": false,
+      "lineas": 5454,
+      "nombre": "G9_modelo",
+      "sha256": "6d49117534590ad39094b2bd3c5accddbf7ccd6fbb5faba3f054538feafbcc75"
+    }
+  ],
+  "modelo_sin_deuda_de_formato": true,
+  "n_campos_de_formato_en_procedencia": 41,
+  "n_fixtures": 8
+}

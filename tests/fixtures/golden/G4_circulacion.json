@@ -1,0 +1,347 @@
+{
+  "n_problemas_total": 14,
+  "n_unidades": 6,
+  "nota": "VT6/2 'bano_sin_antesala' es un FALSO POSITIVO conocido (tramo enfrentado 0,000 m: contacto en esquina). Congelado deliberadamente. Desaparece en E1; su diff exige aprobacion explicita (PRD paso E1.14).",
+  "unidades": [
+    {
+      "n_problemas": 5,
+      "n_rutas": 9,
+      "nombre": "VT1/3",
+      "rutas": [
+        {
+          "camino": [
+            "Salón/cocina",
+            "Aseo"
+          ],
+          "message": "Aseo: acceso directo desde Salón/cocina, sin antesala/pasillo intermedio",
+          "metrica": null,
+          "passed": false,
+          "tipo": "bano_sin_antesala"
+        },
+        {
+          "camino": [
+            "Salón/cocina",
+            "Baño"
+          ],
+          "message": "Baño: acceso directo desde Salón/cocina, sin antesala/pasillo intermedio",
+          "metrica": null,
+          "passed": false,
+          "tipo": "bano_sin_antesala"
+        },
+        {
+          "camino": [
+            "Salón/cocina"
+          ],
+          "message": "Salón/cocina: funciona como paso obligado entre otras estancias sin ser un espacio de circulación dedicado",
+          "metrica": null,
+          "passed": false,
+          "tipo": "espacio_de_paso"
+        },
+        {
+          "camino": [
+            "Dormitorio 1",
+            "Aseo"
+          ],
+          "message": "Dormitorio 1 → Aseo: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 1",
+            "Baño"
+          ],
+          "message": "Dormitorio 1 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 2",
+            "Aseo"
+          ],
+          "message": "Dormitorio 2 → Aseo: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 2",
+            "Baño"
+          ],
+          "message": "Dormitorio 2 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 3",
+            "Salón/cocina",
+            "Aseo"
+          ],
+          "message": "Dormitorio 3 → Aseo: el recorrido cruza Salón/cocina — hay que atravesar una pieza social para llegar al baño",
+          "metrica": null,
+          "passed": false,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 3",
+            "Salón/cocina",
+            "Baño"
+          ],
+          "message": "Dormitorio 3 → Baño: el recorrido cruza Salón/cocina — hay que atravesar una pieza social para llegar al baño",
+          "metrica": null,
+          "passed": false,
+          "tipo": "recorrido_absurdo"
+        }
+      ],
+      "score_pct": 30.0
+    },
+    {
+      "n_problemas": 1,
+      "n_rutas": 3,
+      "nombre": "VT2/2",
+      "rutas": [
+        {
+          "camino": [
+            "Salón/cocina",
+            "Baño"
+          ],
+          "message": "Baño: acceso directo desde Salón/cocina, sin antesala/pasillo intermedio",
+          "metrica": null,
+          "passed": false,
+          "tipo": "bano_sin_antesala"
+        },
+        {
+          "camino": [
+            "Dormitorio 1",
+            "Baño"
+          ],
+          "message": "Dormitorio 1 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 2",
+            "Baño"
+          ],
+          "message": "Dormitorio 2 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        }
+      ],
+      "score_pct": 85.0
+    },
+    {
+      "n_problemas": 5,
+      "n_rutas": 9,
+      "nombre": "VT3/3",
+      "rutas": [
+        {
+          "camino": [
+            "Salón/cocina",
+            "Aseo"
+          ],
+          "message": "Aseo: acceso directo desde Salón/cocina, sin antesala/pasillo intermedio",
+          "metrica": null,
+          "passed": false,
+          "tipo": "bano_sin_antesala"
+        },
+        {
+          "camino": [
+            "Salón/cocina",
+            "Baño"
+          ],
+          "message": "Baño: acceso directo desde Salón/cocina, sin antesala/pasillo intermedio",
+          "metrica": null,
+          "passed": false,
+          "tipo": "bano_sin_antesala"
+        },
+        {
+          "camino": [
+            "Salón/cocina"
+          ],
+          "message": "Salón/cocina: funciona como paso obligado entre otras estancias sin ser un espacio de circulación dedicado",
+          "metrica": null,
+          "passed": false,
+          "tipo": "espacio_de_paso"
+        },
+        {
+          "camino": [
+            "Dormitorio 1",
+            "Aseo"
+          ],
+          "message": "Dormitorio 1 → Aseo: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 1",
+            "Baño"
+          ],
+          "message": "Dormitorio 1 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 2",
+            "Aseo"
+          ],
+          "message": "Dormitorio 2 → Aseo: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 2",
+            "Baño"
+          ],
+          "message": "Dormitorio 2 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 3",
+            "Salón/cocina",
+            "Aseo"
+          ],
+          "message": "Dormitorio 3 → Aseo: el recorrido cruza Salón/cocina — hay que atravesar una pieza social para llegar al baño",
+          "metrica": null,
+          "passed": false,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 3",
+            "Salón/cocina",
+            "Baño"
+          ],
+          "message": "Dormitorio 3 → Baño: el recorrido cruza Salón/cocina — hay que atravesar una pieza social para llegar al baño",
+          "metrica": null,
+          "passed": false,
+          "tipo": "recorrido_absurdo"
+        }
+      ],
+      "score_pct": 30.0
+    },
+    {
+      "n_problemas": 1,
+      "n_rutas": 3,
+      "nombre": "VT4/2",
+      "rutas": [
+        {
+          "camino": [
+            "Salón/cocina",
+            "Baño"
+          ],
+          "message": "Baño: acceso directo desde Salón/cocina, sin antesala/pasillo intermedio",
+          "metrica": null,
+          "passed": false,
+          "tipo": "bano_sin_antesala"
+        },
+        {
+          "camino": [
+            "Dormitorio 1",
+            "Baño"
+          ],
+          "message": "Dormitorio 1 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 2",
+            "Baño"
+          ],
+          "message": "Dormitorio 2 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        }
+      ],
+      "score_pct": 85.0
+    },
+    {
+      "n_problemas": 1,
+      "n_rutas": 2,
+      "nombre": "VT5/1",
+      "rutas": [
+        {
+          "camino": [
+            "Salón/cocina",
+            "Baño"
+          ],
+          "message": "Baño: acceso directo desde Salón/cocina, sin antesala/pasillo intermedio",
+          "metrica": null,
+          "passed": false,
+          "tipo": "bano_sin_antesala"
+        },
+        {
+          "camino": [
+            "Dormitorio 1",
+            "Baño"
+          ],
+          "message": "Dormitorio 1 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        }
+      ],
+      "score_pct": 85.0
+    },
+    {
+      "n_problemas": 1,
+      "n_rutas": 3,
+      "nombre": "VT6/2",
+      "rutas": [
+        {
+          "camino": [
+            "Salón/cocina",
+            "Baño"
+          ],
+          "message": "Baño: acceso directo desde Salón/cocina, sin antesala/pasillo intermedio",
+          "metrica": null,
+          "passed": false,
+          "tipo": "bano_sin_antesala"
+        },
+        {
+          "camino": [
+            "Dormitorio 1",
+            "Baño"
+          ],
+          "message": "Dormitorio 1 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        },
+        {
+          "camino": [
+            "Dormitorio 2",
+            "Baño"
+          ],
+          "message": "Dormitorio 2 → Baño: recorrido directo, sin cruzar piezas sociales",
+          "metrica": null,
+          "passed": true,
+          "tipo": "recorrido_absurdo"
+        }
+      ],
+      "score_pct": 85.0
+    }
+  ]
+}

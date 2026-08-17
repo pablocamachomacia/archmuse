@@ -1,0 +1,61 @@
+# FICTICIO. Ver LEEME.md.
+#
+# Urbanismo es competencia MUNICIPAL EXCLUSIVA. Ojo con lo que este fichero NO
+# contiene: el VALOR del coeficiente de ocupación es un dato de la parcela y no
+# vive en el corpus (NORMATIVE_RESOLUTION.md §14). La regla dice que existe un
+# máximo aplicable; cuál es, lo dice la ficha urbanística.
+version: 1
+
+norma:
+  concept_id: es.13.28115.ficticio_pgou.norma
+  instance_id: es.13.28115.ficticio_pgou.norma@1
+  ambito: es.13.28.28115
+  fuente:
+    rango: Plan
+    organismo: Ayuntamiento ficticio de pruebas
+    identificador_oficial: FICTICIO-PGOU-2002
+    titulo: Plan General ficticio de Ordenación Urbana
+    boletin: FICTICIO-BOCM-2002-0001
+  articulo:
+    seccion: "Título VI"
+    apartado: "art. 6.3.2"
+  vigencia:
+    vigencia_desde: 2002-01-01
+
+reglas:
+  - concept_id: es.13.28115.ficticio_pgou.urbanismo_parametros.ocupacion_maxima
+    instance_id: es.13.28115.ficticio_pgou.urbanismo_parametros.ocupacion_maxima@1
+    nombre: Ocupación máxima de parcela (FICTICIA)
+    materia: urbanismo_parametros
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es.13.28.28115
+    parametro:
+      ejes: [tipologia]
+      repliegue: [tipologia, todos, ninguno]
+      unidad: "%"
+      valores:
+        - tipologia: unifamiliar_aislada
+          valor: 30
+        - tipologia: plurifamiliar
+          valor: 60
+        - valor: 50
+    mensaje: La ocupación no puede superar el máximo aplicable a la parcela.
+    vigencia:
+      vigencia_desde: 2002-01-01
+
+  - concept_id: es.13.28115.ficticio_pgou.urbanismo_estetica.composicion_fachada
+    instance_id: es.13.28115.ficticio_pgou.urbanismo_estetica.composicion_fachada@1
+    nombre: Condiciones de composición de fachada (FICTICIAS)
+    materia: urbanismo_estetica
+    tipo: exigencia_cualitativa
+    prioridad: riesgo_variable
+    nivel_de_conocimiento: 4
+    aplicabilidad:
+      ambito: es.13.28.28115
+    mensaje: La composición de fachada debe adecuarse al entorno.
+    vigencia:
+      vigencia_desde: 2002-01-01

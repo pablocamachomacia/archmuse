@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://archmuse.local/normativa/definicion.schema.json",
+  "title": "Corpus de terminología normativa",
+  "description": "Un anejo de terminología transcrito. NO es un corpus de reglas: ver `_comentario_de_diseno`. Lo carga `normativa/definiciones.py`, nunca `normativa/loader.py`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "norma", "definiciones"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+
+    "_comentario_de_diseno": {
+      "type": "string",
+      "description": "Por qué esta terminología no usa `regla.schema.json`: aquel exige `prioridad` y `nivel_de_conocimiento` en toda entrada. Una definición no tiene ninguno de los dos — no hay consecuencia de incumplirla porque no se cumple ni se incumple: se usa. Rellenar esos campos con un valor plausible sería convertirla artificialmente en regla evaluable, que es justo lo que `docs/design/DB-SI_DECISIONS.md` D5.b prohíbe. `regla.schema.json` conserva intacto su tipo `definicion` para la definición suelta que viva dentro de un fichero de reglas; este esquema cubre el caso distinto de un glosario completo."
+    },
+
+    "norma": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concept_id", "instance_id", "fuente", "articulo", "vigencia"],
+      "description": "De dónde sale el glosario. Mismos campos que `regla.schema.json` para que una arista `se_mide_segun` pueda apuntar aquí sin traducción.",
+      "properties": {
+        "concept_id": { "type": "string", "minLength": 1 },
+        "instance_id": { "type": "string", "minLength": 1 },
+        "ambito": { "type": "string", "minLength": 1 },
+        "fuente": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rango", "organismo", "titulo", "url_oficial"],
+          "properties": {
+            "rango": { "type": "string", "minLength": 1 },
+            "organismo": { "type": "string", "minLength": 1 },
+            "identificador_oficial": { "type": "string" },
+            "titulo": { "type": "string", "minLength": 1 },
+            "boletin": { "type": "string" },
+            "url_oficial": { "type": "string", "minLength": 1 },
+            "hash_texto": {
+              "type": "string",
+              "description": "Hash del documento de origen. Detecta deriva silenciosa: si el Ministerio republica el PDF, deja de coincidir."
+            }
+          }
+        },
+        "articulo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["documento_basico", "anejo"],
+          "description": "Localizador jerárquico, nunca un string suelto (`NORMATIVE_ENGINE.md` §3.2).",
+          "properties": {
+            "documento_basico": { "type": "string", "minLength": 1 },
+            "anejo": { "type": "string", "minLength": 1 },
+            "titulo_anejo": { "type": "string" }
+          }
+        },
+        "vigencia": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["vigencia_desde"],
+          "properties": {
+            "vigencia_desde": { "type": "string" },
+            "vigencia_hasta": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+
+    "precedencia": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "concept_id de los glosarios a los que este remite para términos que no define. No es invención nuestra: el Anejo SI A lo dice literalmente ('...o bien en el Anejo III de la Parte I de este CTE, cuando sean términos de uso común en el conjunto del Código')."
+    },
+
+    "definiciones": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["concept_id", "termino", "literal", "transcripcion"],
+        "properties": {
+          "concept_id": { "type": "string", "minLength": 1 },
+          "termino": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Tal como aparece en el anejo, sin normalizar."
+          },
+          "literal": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Transcripción literal. NUNCA se reescribe ni se resume: cambiarlo es una versión nueva de la norma (`NORMATIVE_ENGINE.md` §5.3)."
+          },
+          "transcripcion": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["metodo", "verificada_por_humano"],
+            "description": "Procedencia de ESTE texto, separada de la procedencia de la norma. Sin esto no se puede distinguir un literal verificado de uno recién extraído por una máquina.",
+            "properties": {
+              "metodo": {
+                "type": "string",
+                "enum": ["extraccion_determinista_pdf", "extraccion_determinista_boe_xml", "transcripcion_manual"],
+                "description": "Ningún valor admite IA: una definición se copia, no se infiere."
+              },
+              "verificada_por_humano": {
+                "type": "boolean",
+                "description": "Regla de dos personas (`NORMATIVE_ENGINE.md` §12). Una máquina no es la segunda, así que la extracción automática SIEMPRE deja esto en false."
+              },
+              "anomalias_conocidas": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Defectos observados en el literal que NO se han corregido, porque corregirlos sería editar el texto de una norma."
+              }
+            }
+          },
+          "notas_de_uso": {
+            "type": "string",
+            "description": "Para qué necesita ArchMuse este término. Contexto nuestro, nunca contenido normativo — por eso vive en un campo aparte del `literal`."
+          }
+        }
+      }
+    }
+  }
+}

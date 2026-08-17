@@ -1,0 +1,110 @@
+{
+  "status": {
+    "code": "200",
+    "text": "ok"
+  },
+  "data": {
+    "sumario": {
+      "metadatos": {
+        "publicacion": "BOE",
+        "fecha_publicacion": "20260805"
+      },
+      "diario": [
+        {
+          "numero": "190",
+          "sumario_diario": {
+            "identificador": "BOE-S-2026-190",
+            "url_pdf": {
+              "szBytes": "376895",
+              "szKBytes": "368",
+              "texto": "https://www.boe.es/boe/dias/2026/08/05/pdfs/BOE-S-2026-190.pdf"
+            }
+          },
+          "seccion": [
+            {
+              "codigo": "1",
+              "nombre": "I. Disposiciones generales",
+              "departamento": {
+                "codigo": "9585",
+                "nombre": "MINISTERIO DE LA PRESIDENCIA, JUSTICIA Y RELACIONES CON LAS CORTES",
+                "texto": {
+                  "epigrafe": [
+                    {
+                      "nombre": "Contaminación atmosférica. Subvenciones",
+                      "item": {
+                        "identificador": "BOE-A-2026-17003",
+                        "control": "2026/12838",
+                        "titulo": "Corrección de errores de la Orden PJC/678/2026, de 6 de julio, por la que se modifican los anexos I, II y III del Real Decreto 309/2022, de 3 de mayo, por el que se establece el mecanismo de compensación de costes indirectos para los sectores y subsectores industriales a los que se considera expuestos a un riesgo significativo de fuga de carbono durante el periodo 2021-2030.",
+                        "url_pdf": {
+                          "szBytes": "192816",
+                          "szKBytes": "188",
+                          "pagina_inicial": "109607",
+                          "pagina_final": "109607",
+                          "texto": "https://www.boe.es/boe/dias/2026/08/05/pdfs/BOE-A-2026-17003.pdf"
+                        },
+                        "url_html": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-17003",
+                        "url_xml": "https://www.boe.es/diario_boe/xml.php?id=BOE-A-2026-17003"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "codigo": "2A",
+              "nombre": "II. Autoridades y personal. - A. Nombramientos, situaciones e incidencias",
+              "departamento": [
+                {
+                  "codigo": "9585",
+                  "nombre": "MINISTERIO DE LA PRESIDENCIA, JUSTICIA Y RELACIONES CON LAS CORTES",
+                  "epigrafe": [
+                    {
+                      "nombre": "Destinos",
+                      "item": {
+                        "identificador": "BOE-A-2026-17004",
+                        "control": "2026/12890",
+                        "titulo": "Resolución de 30 de julio de 2026, de la Subsecretaría, por la que se resuelve parcialmente la convocatoria de libre designación, efectuada por Resolución de 4 de mayo de 2026.",
+                        "url_pdf": {
+                          "szBytes": "213397",
+                          "szKBytes": "208",
+                          "pagina_inicial": "109608",
+                          "pagina_final": "109609",
+                          "texto": "https://www.boe.es/boe/dias/2026/08/05/pdfs/BOE-A-2026-17004.pdf"
+                        },
+                        "url_html": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-17004",
+                        "url_xml": "https://www.boe.es/diario_boe/xml.php?id=BOE-A-2026-17004"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "codigo": "5140",
+                  "nombre": "MINISTERIO DE HACIENDA",
+                  "epigrafe": [
+                    {
+                      "nombre": "Destinos",
+                      "item": {
+                        "identificador": "BOE-A-2026-17005",
+                        "control": "2026/12749",
+                        "titulo": "Resolución de 30 de julio de 2026, de la Subsecretaría, por la que se resuelve la convocatoria de libre designación, efectuada por Resolución de 23 de junio de 2026.",
+                        "url_pdf": {
+                          "szBytes": "211490",
+                          "szKBytes": "207",
+                          "pagina_inicial": "109610",
+                          "pagina_final": "109611",
+                          "texto": "https://www.boe.es/boe/dias/2026/08/05/pdfs/BOE-A-2026-17005.pdf"
+                        },
+                        "url_html": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-17005",
+                        "url_xml": "https://www.boe.es/diario_boe/xml.php?id=BOE-A-2026-17005"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

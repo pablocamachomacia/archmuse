@@ -1,0 +1,103 @@
+# Matriz de competencia: qué nivel territorial regula cada materia y cómo se
+# componen las capas cuando más de una tiene algo que decir.
+#
+# ESTE ES EL ÚNICO FICHERO DEL SISTEMA QUE CODIFICA EL REPARTO COMPETENCIAL
+# ESPAÑOL. Se toca cuando cambia el reparto competencial, no cuando se añade
+# un municipio. Cambiarlo para que encaje un caso concreto es el fallo de
+# gobernanza que NORMATIVE_RESOLUTION.md §16 nombra como riesgo 5.
+#
+# La regla que este fichero existe para impedir: "gana la más restrictiva".
+# Es incorrecta. El CTE no regula la superficie mínima de vivienda, así que
+# ahí no hay dos normas que comparar: hay una sola capa competente.
+#
+# Modos:
+#   exclusivo  Solo la capa competente aplica. Las demás se descartan con
+#              motivo registrado, nunca en silencio.
+#   suelo      La capa superior fija un mínimo. La inferior puede endurecer,
+#              nunca relajar.
+#   acumula    Todas aplican a la vez. Ninguna desplaza a otra.
+#   exime      Bajo condición, retira la aplicabilidad de otra.
+
+version: 1
+
+niveles: [estatal, autonomico, municipal, sectorial]
+
+competencias:
+  - materia: seguridad_incendio
+    competencia: estatal
+    modo: suelo
+    permite_endurecer: [autonomico, municipal]
+
+  - materia: seguridad_utilizacion
+    competencia: estatal
+    modo: suelo
+    permite_endurecer: [autonomico, municipal]
+
+  - materia: seguridad_estructural
+    competencia: estatal
+    modo: suelo
+    permite_endurecer: []
+
+  - materia: salubridad
+    competencia: estatal
+    modo: suelo
+    permite_endurecer: [autonomico]
+
+  - materia: ahorro_energia
+    competencia: estatal
+    modo: suelo
+    permite_endurecer: [autonomico]
+
+  - materia: proteccion_ruido
+    competencia: estatal
+    modo: suelo
+    permite_endurecer: [autonomico, municipal]
+
+  - materia: accesibilidad
+    competencia: estatal
+    modo: suelo
+    permite_endurecer: [autonomico, municipal]
+
+  # Competencia autonómica exclusiva: el CTE no regula esta materia.
+  # `estatal_regula: false` es lo que permite a la validación 11 rechazar una
+  # regla estatal o municipal que intente fijar una superficie mínima.
+  - materia: habitabilidad_superficies
+    competencia: autonomico
+    modo: exclusivo
+    estatal_regula: false
+
+  - materia: habitabilidad_dimensional
+    competencia: autonomico
+    modo: exclusivo
+    estatal_regula: false
+
+  - materia: habitabilidad_programa
+    competencia: autonomico
+    modo: exclusivo
+    estatal_regula: false
+
+  # Municipal exclusivo, dentro del marco autonómico de suelo. Ojo: la REGLA
+  # es municipal ("la ocupación no puede superar el máximo aplicable"); el
+  # VALOR del máximo es un dato de la parcela y NO vive en este corpus
+  # (NORMATIVE_RESOLUTION.md §14).
+  - materia: urbanismo_parametros
+    competencia: municipal
+    modo: exclusivo
+    estatal_regula: false
+
+  - materia: urbanismo_estetica
+    competencia: municipal
+    modo: exclusivo
+    estatal_regula: false
+
+  # Sectoriales: se superponen a todo lo demás y pueden eximir de otras
+  # reglas bajo condición. No cuelgan del municipio: lo atraviesan.
+  - materia: patrimonio
+    competencia: sectorial
+    modo: acumula
+    puede_eximir: true
+
+  - materia: medio_ambiente
+    competencia: sectorial
+    modo: acumula
+    puede_eximir: false

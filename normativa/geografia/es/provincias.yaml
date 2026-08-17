@@ -1,0 +1,60 @@
+# Provincias, con código INE de 2 dígitos y la comunidad a la que pertenecen.
+#
+# NINGUNA provincia española tiene competencia normativa en edificación. Están
+# aquí porque el usuario las declara y porque desambiguan homónimos
+# ("Villanueva de..." aparece en varias provincias), no porque aporten reglas.
+# Por eso tampoco existe un nivel de directorio de provincia en el corpus.
+version: 1
+provincias:
+  - { codigo: "01", nombre: "Araba/Álava", comunidad: "16" }
+  - { codigo: "02", nombre: "Albacete", comunidad: "08" }
+  - { codigo: "03", nombre: "Alicante/Alacant", comunidad: "10" }
+  - { codigo: "04", nombre: "Almería", comunidad: "01" }
+  - { codigo: "05", nombre: "Ávila", comunidad: "07" }
+  - { codigo: "06", nombre: "Badajoz", comunidad: "11" }
+  - { codigo: "07", nombre: "Illes Balears", comunidad: "04" }
+  - { codigo: "08", nombre: "Barcelona", comunidad: "09" }
+  - { codigo: "09", nombre: "Burgos", comunidad: "07" }
+  - { codigo: "10", nombre: "Cáceres", comunidad: "11" }
+  - { codigo: "11", nombre: "Cádiz", comunidad: "01" }
+  - { codigo: "12", nombre: "Castellón/Castelló", comunidad: "10" }
+  - { codigo: "13", nombre: "Ciudad Real", comunidad: "08" }
+  - { codigo: "14", nombre: "Córdoba", comunidad: "01" }
+  - { codigo: "15", nombre: "A Coruña", comunidad: "12" }
+  - { codigo: "16", nombre: "Cuenca", comunidad: "08" }
+  - { codigo: "17", nombre: "Girona", comunidad: "09" }
+  - { codigo: "18", nombre: "Granada", comunidad: "01" }
+  - { codigo: "19", nombre: "Guadalajara", comunidad: "08" }
+  - { codigo: "20", nombre: "Gipuzkoa", comunidad: "16" }
+  - { codigo: "21", nombre: "Huelva", comunidad: "01" }
+  - { codigo: "22", nombre: "Huesca", comunidad: "02" }
+  - { codigo: "23", nombre: "Jaén", comunidad: "01" }
+  - { codigo: "24", nombre: "León", comunidad: "07" }
+  - { codigo: "25", nombre: "Lleida", comunidad: "09" }
+  - { codigo: "26", nombre: "La Rioja", comunidad: "17" }
+  - { codigo: "27", nombre: "Lugo", comunidad: "12" }
+  - { codigo: "28", nombre: "Madrid", comunidad: "13" }
+  - { codigo: "29", nombre: "Málaga", comunidad: "01" }
+  - { codigo: "30", nombre: "Murcia", comunidad: "14" }
+  - { codigo: "31", nombre: "Navarra", comunidad: "15" }
+  - { codigo: "32", nombre: "Ourense", comunidad: "12" }
+  - { codigo: "33", nombre: "Asturias", comunidad: "03" }
+  - { codigo: "34", nombre: "Palencia", comunidad: "07" }
+  - { codigo: "35", nombre: "Las Palmas", comunidad: "05" }
+  - { codigo: "36", nombre: "Pontevedra", comunidad: "12" }
+  - { codigo: "37", nombre: "Salamanca", comunidad: "07" }
+  - { codigo: "38", nombre: "Santa Cruz de Tenerife", comunidad: "05" }
+  - { codigo: "39", nombre: "Cantabria", comunidad: "06" }
+  - { codigo: "40", nombre: "Segovia", comunidad: "07" }
+  - { codigo: "41", nombre: "Sevilla", comunidad: "01" }
+  - { codigo: "42", nombre: "Soria", comunidad: "07" }
+  - { codigo: "43", nombre: "Tarragona", comunidad: "09" }
+  - { codigo: "44", nombre: "Teruel", comunidad: "02" }
+  - { codigo: "45", nombre: "Toledo", comunidad: "08" }
+  - { codigo: "46", nombre: "Valencia/València", comunidad: "10" }
+  - { codigo: "47", nombre: "Valladolid", comunidad: "07" }
+  - { codigo: "48", nombre: "Bizkaia", comunidad: "16" }
+  - { codigo: "49", nombre: "Zamora", comunidad: "07" }
+  - { codigo: "50", nombre: "Zaragoza", comunidad: "02" }
+  - { codigo: "51", nombre: "Ceuta", comunidad: "18" }
+  - { codigo: "52", nombre: "Melilla", comunidad: "19" }

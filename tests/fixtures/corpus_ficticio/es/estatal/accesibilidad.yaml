@@ -1,0 +1,42 @@
+# FICTICIO. Ver LEEME.md.
+# Base estatal de una materia en modo `suelo`: existe para que la regla
+# autonómica de `13-madrid/autonomico/accesibilidad.yaml` la endurezca con una
+# arista declarada, y para comprobar que endurecer NO borra el suelo.
+version: 1
+
+norma:
+  concept_id: es.ficticio_dbsua.norma
+  instance_id: es.ficticio_dbsua.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio ficticio de pruebas
+    identificador_oficial: FICTICIO-000/2010
+    titulo: Documento Básico ficticio de seguridad de utilización y accesibilidad
+    boletin: FICTICIO-A-2010-0002
+  articulo:
+    documento_basico: DB-SUA
+    seccion: SUA-9
+  vigencia:
+    vigencia_desde: 2010-04-11
+
+reglas:
+  - concept_id: es.ficticio_dbsua.accesibilidad.anchura_itinerario
+    instance_id: es.ficticio_dbsua.accesibilidad.anchura_itinerario@1
+    nombre: Anchura mínima del itinerario accesible (FICTICIA)
+    materia: accesibilidad
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    parametro:
+      ejes: []
+      repliegue: [todos, ninguno]
+      unidad: m
+      valores:
+        - valor: 1.10
+    mensaje: El itinerario accesible debe tener la anchura mínima aplicable.
+    vigencia:
+      vigencia_desde: 2010-04-11

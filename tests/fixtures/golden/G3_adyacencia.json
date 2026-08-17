@@ -1,0 +1,648 @@
+{
+  "margen_del_umbral": {
+    "n_pares_contiguos": 66,
+    "n_pares_no_contiguos": 54,
+    "separacion_maxima_contigua_m": 0.41,
+    "separacion_minima_no_contigua_m": 1.158
+  },
+  "n_aristas_total": 66,
+  "tolerancia_muro_m": 0.5,
+  "unidades": [
+    {
+      "aristas": [
+        {
+          "distancia_m": 5.359,
+          "i": 0,
+          "j": 4,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 1",
+          "separacion_m": 0.1,
+          "tramo_m": 2.265
+        },
+        {
+          "distancia_m": 6.132,
+          "i": 0,
+          "j": 9,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 2",
+          "separacion_m": 0.099,
+          "tramo_m": 1.901
+        },
+        {
+          "distancia_m": 4.657,
+          "i": 0,
+          "j": 11,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 3",
+          "separacion_m": 0.09,
+          "tramo_m": 2.061
+        },
+        {
+          "distancia_m": 3.625,
+          "i": 0,
+          "j": 16,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Tendedero",
+          "separacion_m": 0.053,
+          "tramo_m": 3.449
+        },
+        {
+          "distancia_m": 3.169,
+          "i": 0,
+          "j": 23,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Aseo",
+          "separacion_m": 0.134,
+          "tramo_m": 1.385
+        },
+        {
+          "distancia_m": 2.812,
+          "i": 0,
+          "j": 24,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.035,
+          "tramo_m": 5.291
+        },
+        {
+          "distancia_m": 3.28,
+          "i": 0,
+          "j": 31,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.049,
+          "tramo_m": 3.078
+        },
+        {
+          "distancia_m": 3.156,
+          "i": 4,
+          "j": 9,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Dormitorio 2",
+          "separacion_m": 0.1,
+          "tramo_m": 4.005
+        },
+        {
+          "distancia_m": 2.195,
+          "i": 4,
+          "j": 23,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Aseo",
+          "separacion_m": 0.035,
+          "tramo_m": 5.246
+        },
+        {
+          "distancia_m": 3.281,
+          "i": 4,
+          "j": 24,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.262,
+          "tramo_m": 0.567
+        },
+        {
+          "distancia_m": 3.689,
+          "i": 9,
+          "j": 23,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Aseo",
+          "separacion_m": 0.137,
+          "tramo_m": 0.82
+        },
+        {
+          "distancia_m": 3.32,
+          "i": 9,
+          "j": 24,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.135,
+          "tramo_m": 2.106
+        },
+        {
+          "distancia_m": 3.146,
+          "i": 11,
+          "j": 31,
+          "rotulo_i": "Dormitorio 3",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.35,
+          "tramo_m": 1.479
+        },
+        {
+          "distancia_m": 2.828,
+          "i": 16,
+          "j": 31,
+          "rotulo_i": "Tendedero",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.1,
+          "tramo_m": 1.983
+        },
+        {
+          "distancia_m": 1.526,
+          "i": 23,
+          "j": 24,
+          "rotulo_i": "Aseo",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.15,
+          "tramo_m": 2.497
+        }
+      ],
+      "n_aristas": 15,
+      "n_recintos": 8,
+      "nombre": "VT1/3"
+    },
+    {
+      "aristas": [
+        {
+          "distancia_m": 5.057,
+          "i": 1,
+          "j": 5,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 1",
+          "separacion_m": 0.1,
+          "tramo_m": 2.589
+        },
+        {
+          "distancia_m": 6.048,
+          "i": 1,
+          "j": 10,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 2",
+          "separacion_m": 0.101,
+          "tramo_m": 1.985
+        },
+        {
+          "distancia_m": 3.707,
+          "i": 1,
+          "j": 17,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Tendedero",
+          "separacion_m": 0.063,
+          "tramo_m": 3.45
+        },
+        {
+          "distancia_m": 3.011,
+          "i": 1,
+          "j": 25,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.035,
+          "tramo_m": 4.779
+        },
+        {
+          "distancia_m": 3.365,
+          "i": 1,
+          "j": 32,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.049,
+          "tramo_m": 3.083
+        },
+        {
+          "distancia_m": 3.165,
+          "i": 5,
+          "j": 10,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Dormitorio 2",
+          "separacion_m": 0.099,
+          "tramo_m": 4.002
+        },
+        {
+          "distancia_m": 2.681,
+          "i": 5,
+          "j": 25,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.134,
+          "tramo_m": 2.906
+        },
+        {
+          "distancia_m": 3.069,
+          "i": 10,
+          "j": 25,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.136,
+          "tramo_m": 2.205
+        },
+        {
+          "distancia_m": 2.836,
+          "i": 17,
+          "j": 32,
+          "rotulo_i": "Tendedero",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.1,
+          "tramo_m": 1.987
+        }
+      ],
+      "n_aristas": 9,
+      "n_recintos": 6,
+      "nombre": "VT2/2"
+    },
+    {
+      "aristas": [
+        {
+          "distancia_m": 5.262,
+          "i": 2,
+          "j": 6,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 1",
+          "separacion_m": 0.094,
+          "tramo_m": 1.786
+        },
+        {
+          "distancia_m": 6.135,
+          "i": 2,
+          "j": 12,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 2",
+          "separacion_m": 0.098,
+          "tramo_m": 2.757
+        },
+        {
+          "distancia_m": 7.136,
+          "i": 2,
+          "j": 13,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 3",
+          "separacion_m": 0.101,
+          "tramo_m": 1.756
+        },
+        {
+          "distancia_m": 3.854,
+          "i": 2,
+          "j": 18,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Tendedero",
+          "separacion_m": 0.064,
+          "tramo_m": 3.444
+        },
+        {
+          "distancia_m": 2.908,
+          "i": 2,
+          "j": 26,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.035,
+          "tramo_m": 5.224
+        },
+        {
+          "distancia_m": 3.199,
+          "i": 2,
+          "j": 27,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Aseo",
+          "separacion_m": 0.136,
+          "tramo_m": 1.389
+        },
+        {
+          "distancia_m": 3.465,
+          "i": 2,
+          "j": 33,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.05,
+          "tramo_m": 3.09
+        },
+        {
+          "distancia_m": 3.18,
+          "i": 6,
+          "j": 12,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Dormitorio 2",
+          "separacion_m": 0.1,
+          "tramo_m": 3.85
+        },
+        {
+          "distancia_m": 3.214,
+          "i": 6,
+          "j": 26,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.261,
+          "tramo_m": 0.57
+        },
+        {
+          "distancia_m": 2.074,
+          "i": 6,
+          "j": 27,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Aseo",
+          "separacion_m": 0.035,
+          "tramo_m": 5.007
+        },
+        {
+          "distancia_m": 3.089,
+          "i": 12,
+          "j": 13,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Dormitorio 3",
+          "separacion_m": 0.1,
+          "tramo_m": 2.986
+        },
+        {
+          "distancia_m": 3.229,
+          "i": 12,
+          "j": 26,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.133,
+          "tramo_m": 2.294
+        },
+        {
+          "distancia_m": 3.648,
+          "i": 12,
+          "j": 27,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Aseo",
+          "separacion_m": 0.135,
+          "tramo_m": 0.822
+        },
+        {
+          "distancia_m": 2.797,
+          "i": 18,
+          "j": 33,
+          "rotulo_i": "Tendedero",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.1,
+          "tramo_m": 1.985
+        },
+        {
+          "distancia_m": 1.582,
+          "i": 26,
+          "j": 27,
+          "rotulo_i": "Baño",
+          "rotulo_j": "Aseo",
+          "separacion_m": 0.15,
+          "tramo_m": 2.541
+        }
+      ],
+      "n_aristas": 15,
+      "n_recintos": 8,
+      "nombre": "VT3/3"
+    },
+    {
+      "aristas": [
+        {
+          "distancia_m": 5.022,
+          "i": 3,
+          "j": 7,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 1",
+          "separacion_m": 0.099,
+          "tramo_m": 3.067
+        },
+        {
+          "distancia_m": 5.997,
+          "i": 3,
+          "j": 14,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 2",
+          "separacion_m": 0.1,
+          "tramo_m": 1.994
+        },
+        {
+          "distancia_m": 3.659,
+          "i": 3,
+          "j": 19,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Tendedero",
+          "separacion_m": 0.044,
+          "tramo_m": 3.443
+        },
+        {
+          "distancia_m": 2.903,
+          "i": 3,
+          "j": 28,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.035,
+          "tramo_m": 4.736
+        },
+        {
+          "distancia_m": 3.379,
+          "i": 3,
+          "j": 34,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.051,
+          "tramo_m": 3.092
+        },
+        {
+          "distancia_m": 3.09,
+          "i": 7,
+          "j": 14,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Dormitorio 2",
+          "separacion_m": 0.1,
+          "tramo_m": 4.15
+        },
+        {
+          "distancia_m": 2.723,
+          "i": 7,
+          "j": 28,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.134,
+          "tramo_m": 2.854
+        },
+        {
+          "distancia_m": 3.116,
+          "i": 14,
+          "j": 28,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.135,
+          "tramo_m": 2.272
+        },
+        {
+          "distancia_m": 2.865,
+          "i": 19,
+          "j": 34,
+          "rotulo_i": "Tendedero",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.1,
+          "tramo_m": 1.991
+        }
+      ],
+      "n_aristas": 9,
+      "n_recintos": 6,
+      "nombre": "VT4/2"
+    },
+    {
+      "aristas": [
+        {
+          "distancia_m": 4.682,
+          "i": 20,
+          "j": 21,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Dormitorio 1",
+          "separacion_m": 0.1,
+          "tramo_m": 3.066
+        },
+        {
+          "distancia_m": 3.906,
+          "i": 20,
+          "j": 22,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Tendedero",
+          "separacion_m": 0.045,
+          "tramo_m": 2.475
+        },
+        {
+          "distancia_m": 3.046,
+          "i": 20,
+          "j": 29,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.055,
+          "tramo_m": 4.64
+        },
+        {
+          "distancia_m": 2.512,
+          "i": 21,
+          "j": 29,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.133,
+          "tramo_m": 2.739
+        }
+      ],
+      "n_aristas": 4,
+      "n_recintos": 4,
+      "nombre": "VT5/1"
+    },
+    {
+      "aristas": [
+        {
+          "distancia_m": 3.12,
+          "i": 8,
+          "j": 15,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Dormitorio 2",
+          "separacion_m": 0.1,
+          "tramo_m": 3.499
+        },
+        {
+          "distancia_m": 2.583,
+          "i": 8,
+          "j": 30,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.135,
+          "tramo_m": 2.442
+        },
+        {
+          "distancia_m": 3.537,
+          "i": 8,
+          "j": 35,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.044,
+          "tramo_m": 3.351
+        },
+        {
+          "distancia_m": 4.666,
+          "i": 8,
+          "j": 37,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Salón/cocina",
+          "separacion_m": 0.1,
+          "tramo_m": 3.086
+        },
+        {
+          "distancia_m": 3.746,
+          "i": 8,
+          "j": 38,
+          "rotulo_i": "Dormitorio 1",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.38,
+          "tramo_m": 3.015
+        },
+        {
+          "distancia_m": 2.714,
+          "i": 15,
+          "j": 30,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Baño",
+          "separacion_m": 0.136,
+          "tramo_m": 2.497
+        },
+        {
+          "distancia_m": 2.554,
+          "i": 15,
+          "j": 35,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.044,
+          "tramo_m": 3.189
+        },
+        {
+          "distancia_m": 5.572,
+          "i": 15,
+          "j": 37,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Salón/cocina",
+          "separacion_m": 0.1,
+          "tramo_m": 1.054
+        },
+        {
+          "distancia_m": 2.733,
+          "i": 15,
+          "j": 38,
+          "rotulo_i": "Dormitorio 2",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.38,
+          "tramo_m": 2.856
+        },
+        {
+          "distancia_m": 2.877,
+          "i": 30,
+          "j": 37,
+          "rotulo_i": "Baño",
+          "rotulo_j": "Salón/cocina",
+          "separacion_m": 0.035,
+          "tramo_m": 4.729
+        },
+        {
+          "distancia_m": 0.223,
+          "i": 35,
+          "j": 38,
+          "rotulo_i": "Terraza",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.0,
+          "tramo_m": 13.814
+        },
+        {
+          "distancia_m": 3.004,
+          "i": 36,
+          "j": 37,
+          "rotulo_i": "Terraza",
+          "rotulo_j": "Salón/cocina",
+          "separacion_m": 0.05,
+          "tramo_m": 6.109
+        },
+        {
+          "distancia_m": 2.095,
+          "i": 36,
+          "j": 39,
+          "rotulo_i": "Terraza",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.0,
+          "tramo_m": 15.493
+        },
+        {
+          "distancia_m": 3.022,
+          "i": 37,
+          "j": 39,
+          "rotulo_i": "Salón/cocina",
+          "rotulo_j": "Terraza",
+          "separacion_m": 0.41,
+          "tramo_m": 5.559
+        }
+      ],
+      "n_aristas": 14,
+      "n_recintos": 8,
+      "nombre": "VT6/2"
+    }
+  ]
+}

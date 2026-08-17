@@ -1,0 +1,40 @@
+# Zona climática de invierno del CTE DB-HE (Apéndice B), por CÓDIGO INE.
+#
+# Migrado desde `analyzer/cte_zonas.py` (ZONAS_CTE), que era la única fuente
+# de verdad ciudad->zona del proyecto. La función pública `get_zona_cte()` se
+# mantiene como fachada y ahora lee de aquí: no hay dos tablas.
+#
+# Orientativo por municipio: la zona real depende de la altitud exacta de la
+# parcela. Cuando exista Fact de altitud, esto pasa a ser un repliegue.
+version: 1
+zonas:
+  "01059": "D"   # vitoria-gasteiz
+  "03014": "B"   # alicante
+  "03065": "B"   # elche
+  "04013": "A"   # almeria
+  "06015": "C"   # badajoz
+  "07040": "B"   # palma de mallorca
+  "08019": "C"   # barcelona
+  "09059": "E"   # burgos
+  "10037": "C"   # caceres
+  "14021": "B"   # cordoba
+  "15030": "C"   # a coruna
+  "18087": "C"   # granada
+  "20069": "C"   # san sebastian
+  "28079": "D"   # madrid
+  "29067": "A"   # malaga
+  "30030": "B"   # murcia
+  "31201": "D"   # pamplona
+  "33024": "C"   # gijon
+  "33044": "C"   # oviedo
+  "35016": "A"   # las palmas de gran canaria
+  "36057": "C"   # vigo
+  "37274": "D"   # salamanca
+  "38038": "A"   # santa cruz de tenerife
+  "39075": "C"   # santander
+  "41091": "B"   # sevilla
+  "45168": "D"   # toledo
+  "46250": "B"   # valencia
+  "47186": "E"   # valladolid
+  "48020": "C"   # bilbao
+  "50297": "D"   # zaragoza

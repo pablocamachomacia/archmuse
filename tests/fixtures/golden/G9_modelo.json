@@ -1,0 +1,5454 @@
+{
+  "derivados": [
+    {
+      "alargamiento": 1.146,
+      "area_m2": 21.9,
+      "centroide": [
+        -575.529,
+        -297.952
+      ],
+      "envolvente": [
+        -578.638,
+        -300.194,
+        -572.898,
+        -293.617
+      ],
+      "id": "es-0001",
+      "lado_mayor_m": 6.577,
+      "lado_menor_m": 5.741,
+      "perimetro_m": 24.636
+    },
+    {
+      "alargamiento": 2.337,
+      "area_m2": 12.725,
+      "centroide": [
+        -577.481,
+        -292.961
+      ],
+      "envolvente": [
+        -578.703,
+        -296.773,
+        -575.938,
+        -290.312
+      ],
+      "id": "es-0002",
+      "lado_mayor_m": 6.461,
+      "lado_menor_m": 2.765,
+      "perimetro_m": 20.609
+    },
+    {
+      "alargamiento": 1.203,
+      "area_m2": 8.483,
+      "centroide": [
+        -574.506,
+        -291.905
+      ],
+      "envolvente": [
+        -575.838,
+        -293.518,
+        -573.173,
+        -290.312
+      ],
+      "id": "es-0003",
+      "lado_mayor_m": 3.206,
+      "lado_menor_m": 2.665,
+      "perimetro_m": 12.94
+    },
+    {
+      "alargamiento": 1.079,
+      "area_m2": 8.534,
+      "centroide": [
+        -571.4,
+        -300.104
+      ],
+      "envolvente": [
+        -573.114,
+        -301.613,
+        -569.928,
+        -298.659
+      ],
+      "id": "es-0004",
+      "lado_mayor_m": 3.186,
+      "lado_menor_m": 2.954,
+      "perimetro_m": 13.617
+    },
+    {
+      "alargamiento": 1.726,
+      "area_m2": 4.22,
+      "centroide": [
+        -577.232,
+        -301.152
+      ],
+      "envolvente": [
+        -578.639,
+        -301.899,
+        -575.79,
+        -300.247
+      ],
+      "id": "es-0005",
+      "lado_mayor_m": 2.848,
+      "lado_menor_m": 1.65,
+      "perimetro_m": 8.992
+    },
+    {
+      "alargamiento": 2.312,
+      "area_m2": 3.136,
+      "centroide": [
+        -576.574,
+        -294.96
+      ],
+      "envolvente": [
+        -577.198,
+        -296.739,
+        -575.863,
+        -293.652
+      ],
+      "id": "es-0006",
+      "lado_mayor_m": 3.087,
+      "lado_menor_m": 1.335,
+      "perimetro_m": 8.842
+    },
+    {
+      "alargamiento": 2.244,
+      "area_m2": 4.006,
+      "centroide": [
+        -575.063,
+        -295.178
+      ],
+      "envolvente": [
+        -575.713,
+        -296.738,
+        -574.338,
+        -293.652
+      ],
+      "id": "es-0007",
+      "lado_mayor_m": 3.086,
+      "lado_menor_m": 1.375,
+      "perimetro_m": 8.922
+    },
+    {
+      "alargamiento": 1.814,
+      "area_m2": 3.325,
+      "centroide": [
+        -574.406,
+        -301.033
+      ],
+      "envolvente": [
+        -575.689,
+        -301.678,
+        -573.087,
+        -300.243
+      ],
+      "id": "es-0008",
+      "lado_mayor_m": 2.602,
+      "lado_menor_m": 1.435,
+      "perimetro_m": 8.073
+    },
+    {
+      "alargamiento": 1.148,
+      "area_m2": 23.383,
+      "centroide": [
+        -553.868,
+        -297.854
+      ],
+      "envolvente": [
+        -556.485,
+        -300.187,
+        -550.754,
+        -293.606
+      ],
+      "id": "es-0009",
+      "lado_mayor_m": 6.58,
+      "lado_menor_m": 5.731,
+      "perimetro_m": 24.633
+    },
+    {
+      "alargamiento": 2.165,
+      "area_m2": 15.072,
+      "centroide": [
+        -552.001,
+        -293.154
+      ],
+      "envolvente": [
+        -553.494,
+        -296.355,
+        -550.699,
+        -290.305
+      ],
+      "id": "es-0010",
+      "lado_mayor_m": 6.05,
+      "lado_menor_m": 2.795,
+      "perimetro_m": 20.2
+    },
+    {
+      "alargamiento": 1.218,
+      "area_m2": 8.344,
+      "centroide": [
+        -554.905,
+        -291.896
+      ],
+      "envolvente": [
+        -556.219,
+        -293.505,
+        -553.593,
+        -290.305
+      ],
+      "id": "es-0011",
+      "lado_mayor_m": 3.2,
+      "lado_menor_m": 2.626,
+      "perimetro_m": 12.852
+    },
+    {
+      "alargamiento": 1.742,
+      "area_m2": 4.208,
+      "centroide": [
+        -552.161,
+        -301.145
+      ],
+      "envolvente": [
+        -553.604,
+        -301.89,
+        -550.752,
+        -300.25
+      ],
+      "id": "es-0012",
+      "lado_mayor_m": 2.852,
+      "lado_menor_m": 1.638,
+      "perimetro_m": 8.972
+    },
+    {
+      "alargamiento": 1.452,
+      "area_m2": 4.178,
+      "centroide": [
+        -554.077,
+        -294.851
+      ],
+      "envolvente": [
+        -554.953,
+        -296.32,
+        -553.108,
+        -293.641
+      ],
+      "id": "es-0013",
+      "lado_mayor_m": 2.679,
+      "lado_menor_m": 1.845,
+      "perimetro_m": 9.047
+    },
+    {
+      "alargamiento": 1.771,
+      "area_m2": 3.257,
+      "centroide": [
+        -554.994,
+        -301.026
+      ],
+      "envolvente": [
+        -556.246,
+        -301.673,
+        -553.701,
+        -300.236
+      ],
+      "id": "es-0014",
+      "lado_mayor_m": 2.545,
+      "lado_menor_m": 1.437,
+      "perimetro_m": 7.958
+    },
+    {
+      "alargamiento": 1.358,
+      "area_m2": 23.85,
+      "centroide": [
+        -532.963,
+        -297.716
+      ],
+      "envolvente": [
+        -536.132,
+        -300.185,
+        -530.389,
+        -292.389
+      ],
+      "id": "es-0015",
+      "lado_mayor_m": 7.796,
+      "lado_menor_m": 5.743,
+      "perimetro_m": 27.077
+    },
+    {
+      "alargamiento": 2.19,
+      "area_m2": 12.526,
+      "centroide": [
+        -535.005,
+        -292.866
+      ],
+      "envolvente": [
+        -536.187,
+        -296.359,
+        -533.422,
+        -290.305
+      ],
+      "id": "es-0016",
+      "lado_mayor_m": 6.054,
+      "lado_menor_m": 2.765,
+      "perimetro_m": 18.747
+    },
+    {
+      "alargamiento": 1.076,
+      "area_m2": 7.167,
+      "centroide": [
+        -532.068,
+        -291.646
+      ],
+      "envolvente": [
+        -533.322,
+        -293.355,
+        -530.487,
+        -290.304
+      ],
+      "id": "es-0017",
+      "lado_mayor_m": 3.051,
+      "lado_menor_m": 2.835,
+      "perimetro_m": 12.901
+    },
+    {
+      "alargamiento": 1.05,
+      "area_m2": 8.473,
+      "centroide": [
+        -528.982,
+        -291.794
+      ],
+      "envolvente": [
+        -530.598,
+        -293.258,
+        -527.497,
+        -290.305
+      ],
+      "id": "es-0018",
+      "lado_mayor_m": 3.1,
+      "lado_menor_m": 2.953,
+      "perimetro_m": 13.546
+    },
+    {
+      "alargamiento": 1.742,
+      "area_m2": 4.198,
+      "centroide": [
+        -534.725,
+        -301.143
+      ],
+      "envolvente": [
+        -536.133,
+        -301.887,
+        -533.285,
+        -300.249
+      ],
+      "id": "es-0019",
+      "lado_mayor_m": 2.849,
+      "lado_menor_m": 1.636,
+      "perimetro_m": 8.962
+    },
+    {
+      "alargamiento": 1.808,
+      "area_m2": 4.056,
+      "centroide": [
+        -532.476,
+        -294.85
+      ],
+      "envolvente": [
+        -533.197,
+        -296.318,
+        -531.632,
+        -293.488
+      ],
+      "id": "es-0020",
+      "lado_mayor_m": 2.83,
+      "lado_menor_m": 1.565,
+      "perimetro_m": 8.79
+    },
+    {
+      "alargamiento": 2.096,
+      "area_m2": 3.027,
+      "centroide": [
+        -534.052,
+        -294.708
+      ],
+      "envolvente": [
+        -534.697,
+        -296.318,
+        -533.347,
+        -293.488
+      ],
+      "id": "es-0021",
+      "lado_mayor_m": 2.83,
+      "lado_menor_m": 1.35,
+      "perimetro_m": 8.361
+    },
+    {
+      "alargamiento": 1.77,
+      "area_m2": 3.251,
+      "centroide": [
+        -531.931,
+        -301.024
+      ],
+      "envolvente": [
+        -533.185,
+        -301.67,
+        -530.646,
+        -300.235
+      ],
+      "id": "es-0022",
+      "lado_mayor_m": 2.54,
+      "lado_menor_m": 1.435,
+      "perimetro_m": 7.947
+    },
+    {
+      "alargamiento": 1.12,
+      "area_m2": 23.3,
+      "centroide": [
+        -511.708,
+        -294.036
+      ],
+      "envolvente": [
+        -514.388,
+        -298.151,
+        -508.65,
+        -291.724
+      ],
+      "id": "es-0023",
+      "lado_mayor_m": 6.426,
+      "lado_menor_m": 5.739,
+      "perimetro_m": 24.317
+    },
+    {
+      "alargamiento": 2.227,
+      "area_m2": 14.668,
+      "centroide": [
+        -509.941,
+        -298.738
+      ],
+      "envolvente": [
+        -511.362,
+        -301.601,
+        -508.598,
+        -295.444
+      ],
+      "id": "es-0024",
+      "lado_mayor_m": 6.157,
+      "lado_menor_m": 2.765,
+      "perimetro_m": 21.252
+    },
+    {
+      "alargamiento": 1.262,
+      "area_m2": 8.834,
+      "centroide": [
+        -512.79,
+        -299.935
+      ],
+      "envolvente": [
+        -514.117,
+        -301.601,
+        -511.463,
+        -298.251
+      ],
+      "id": "es-0025",
+      "lado_mayor_m": 3.35,
+      "lado_menor_m": 2.655,
+      "perimetro_m": 13.21
+    },
+    {
+      "alargamiento": 1.721,
+      "area_m2": 4.217,
+      "centroide": [
+        -510.058,
+        -290.77
+      ],
+      "envolvente": [
+        -511.5,
+        -291.681,
+        -508.651,
+        -290.023
+      ],
+      "id": "es-0026",
+      "lado_mayor_m": 2.849,
+      "lado_menor_m": 1.656,
+      "perimetro_m": 9.006
+    },
+    {
+      "alargamiento": 1.425,
+      "area_m2": 4.111,
+      "centroide": [
+        -511.975,
+        -296.927
+      ],
+      "envolvente": [
+        -512.852,
+        -298.116,
+        -511.002,
+        -295.48
+      ],
+      "id": "es-0027",
+      "lado_mayor_m": 2.636,
+      "lado_menor_m": 1.85,
+      "perimetro_m": 8.973
+    },
+    {
+      "alargamiento": 1.809,
+      "area_m2": 3.34,
+      "centroide": [
+        -512.92,
+        -290.882
+      ],
+      "envolvente": [
+        -514.203,
+        -291.675,
+        -511.599,
+        -290.235
+      ],
+      "id": "es-0028",
+      "lado_mayor_m": 2.604,
+      "lado_menor_m": 1.44,
+      "perimetro_m": 8.087
+    },
+    {
+      "alargamiento": 1.154,
+      "area_m2": 25.192,
+      "centroide": [
+        -490.916,
+        -298.471
+      ],
+      "envolvente": [
+        -493.962,
+        -300.925,
+        -488.171,
+        -294.243
+      ],
+      "id": "es-0029",
+      "lado_mayor_m": 6.683,
+      "lado_menor_m": 5.791,
+      "perimetro_m": 24.944
+    },
+    {
+      "alargamiento": 1.866,
+      "area_m2": 12.09,
+      "centroide": [
+        -492.63,
+        -294.115
+      ],
+      "envolvente": [
+        -493.967,
+        -296.82,
+        -491.244,
+        -291.74
+      ],
+      "id": "es-0030",
+      "lado_mayor_m": 5.08,
+      "lado_menor_m": 2.723,
+      "perimetro_m": 17.925
+    },
+    {
+      "alargamiento": 1.673,
+      "area_m2": 4.268,
+      "centroide": [
+        -487.456,
+        -300.284
+      ],
+      "envolvente": [
+        -488.433,
+        -301.8,
+        -486.707,
+        -298.912
+      ],
+      "id": "es-0031",
+      "lado_mayor_m": 2.887,
+      "lado_menor_m": 1.726,
+      "perimetro_m": 9.226
+    },
+    {
+      "alargamiento": 1.357,
+      "area_m2": 3.766,
+      "centroide": [
+        -490.504,
+        -295.453
+      ],
+      "envolvente": [
+        -491.563,
+        -296.787,
+        -489.686,
+        -294.239
+      ],
+      "id": "es-0032",
+      "lado_mayor_m": 2.548,
+      "lado_menor_m": 1.877,
+      "perimetro_m": 8.844
+    },
+    {
+      "alargamiento": 1.955,
+      "area_m2": 13.039,
+      "centroide": [
+        -472.505,
+        -293.925
+      ],
+      "envolvente": [
+        -473.848,
+        -296.83,
+        -471.042,
+        -291.386
+      ],
+      "id": "es-0033",
+      "lado_mayor_m": 5.464,
+      "lado_menor_m": 2.795,
+      "perimetro_m": 18.778
+    },
+    {
+      "alargamiento": 1.105,
+      "area_m2": 7.24,
+      "centroide": [
+        -469.606,
+        -292.773
+      ],
+      "envolvente": [
+        -470.942,
+        -294.285,
+        -468.318,
+        -291.385
+      ],
+      "id": "es-0034",
+      "lado_mayor_m": 2.9,
+      "lado_menor_m": 2.625,
+      "perimetro_m": 12.24
+    },
+    {
+      "alargamiento": 1.336,
+      "area_m2": 3.997,
+      "centroide": [
+        -470.368,
+        -295.378
+      ],
+      "envolvente": [
+        -471.421,
+        -296.795,
+        -469.494,
+        -294.221
+      ],
+      "id": "es-0035",
+      "lado_mayor_m": 2.574,
+      "lado_menor_m": 1.927,
+      "perimetro_m": 9.0
+    },
+    {
+      "alargamiento": 5.066,
+      "area_m2": 4.93,
+      "centroide": [
+        -471.081,
+        -290.688
+      ],
+      "envolvente": [
+        -473.899,
+        -291.342,
+        -468.29,
+        -290.235
+      ],
+      "id": "es-0036",
+      "lado_mayor_m": 5.608,
+      "lado_menor_m": 1.107,
+      "perimetro_m": 14.097
+    },
+    {
+      "alargamiento": 5.032,
+      "area_m2": 5.364,
+      "centroide": [
+        -471.316,
+        -301.177
+      ],
+      "envolvente": [
+        -473.841,
+        -301.677,
+        -466.583,
+        -300.235
+      ],
+      "id": "es-0037",
+      "lado_mayor_m": 7.257,
+      "lado_menor_m": 1.442,
+      "perimetro_m": 17.391
+    },
+    {
+      "alargamiento": 1.065,
+      "area_m2": 21.949,
+      "centroide": [
+        -470.715,
+        -298.234
+      ],
+      "envolvente": [
+        -473.838,
+        -300.543,
+        -468.053,
+        -294.385
+      ],
+      "id": "es-0038",
+      "lado_mayor_m": 6.158,
+      "lado_menor_m": 5.784,
+      "perimetro_m": 23.88
+    },
+    {
+      "alargamiento": 5.39,
+      "area_m2": 6.297,
+      "centroide": [
+        -471.07,
+        -290.465
+      ],
+      "envolvente": [
+        -473.983,
+        -291.005,
+        -468.157,
+        -289.925
+      ],
+      "id": "es-0039",
+      "lado_mayor_m": 5.826,
+      "lado_menor_m": 1.081,
+      "perimetro_m": 13.814
+    },
+    {
+      "alargamiento": 2.067,
+      "area_m2": 11.554,
+      "centroide": [
+        -469.243,
+        -300.873
+      ],
+      "envolvente": [
+        -473.983,
+        -301.986,
+        -466.483,
+        -298.358
+      ],
+      "id": "es-0040",
+      "lado_mayor_m": 7.5,
+      "lado_menor_m": 3.629,
+      "perimetro_m": 22.261
+    }
+  ],
+  "desconocidos": [
+    "edificio: inferido",
+    "hueco: no_observable",
+    "instalacion: no_observable",
+    "muro: no_observable",
+    "parcela: no_observable",
+    "pilar: no_observable",
+    "planta: no_observable",
+    "zona_comun: no_observable"
+  ],
+  "equivalencia_G3": {
+    "coinciden": true,
+    "n_en_G3": 66,
+    "n_en_el_modelo": 66,
+    "solo_en_G3": [],
+    "solo_en_el_modelo": []
+  },
+  "modelo": {
+    "aristas": [
+      {
+        "a": "es-0001",
+        "b": "es-0002",
+        "distancia_m": 5.359,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 2.265
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0003",
+        "distancia_m": 6.132,
+        "origen": "supuesto",
+        "separacion_m": 0.099,
+        "tipo": "conecta_con",
+        "tramo_m": 1.901
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0004",
+        "distancia_m": 4.657,
+        "origen": "supuesto",
+        "separacion_m": 0.09,
+        "tipo": "conecta_con",
+        "tramo_m": 2.061
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0005",
+        "distancia_m": 3.625,
+        "origen": "supuesto",
+        "separacion_m": 0.053,
+        "tipo": "conecta_con",
+        "tramo_m": 3.449
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0006",
+        "distancia_m": 3.169,
+        "origen": "supuesto",
+        "separacion_m": 0.134,
+        "tipo": "conecta_con",
+        "tramo_m": 1.385
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0007",
+        "distancia_m": 2.812,
+        "origen": "supuesto",
+        "separacion_m": 0.035,
+        "tipo": "conecta_con",
+        "tramo_m": 5.291
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0008",
+        "distancia_m": 3.28,
+        "origen": "supuesto",
+        "separacion_m": 0.049,
+        "tipo": "conecta_con",
+        "tramo_m": 3.078
+      },
+      {
+        "a": "es-0002",
+        "b": "es-0003",
+        "distancia_m": 3.156,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 4.005
+      },
+      {
+        "a": "es-0002",
+        "b": "es-0006",
+        "distancia_m": 2.195,
+        "origen": "supuesto",
+        "separacion_m": 0.035,
+        "tipo": "conecta_con",
+        "tramo_m": 5.246
+      },
+      {
+        "a": "es-0002",
+        "b": "es-0007",
+        "distancia_m": 3.281,
+        "origen": "supuesto",
+        "separacion_m": 0.262,
+        "tipo": "conecta_con",
+        "tramo_m": 0.567
+      },
+      {
+        "a": "es-0003",
+        "b": "es-0006",
+        "distancia_m": 3.689,
+        "origen": "supuesto",
+        "separacion_m": 0.137,
+        "tipo": "conecta_con",
+        "tramo_m": 0.82
+      },
+      {
+        "a": "es-0003",
+        "b": "es-0007",
+        "distancia_m": 3.32,
+        "origen": "supuesto",
+        "separacion_m": 0.135,
+        "tipo": "conecta_con",
+        "tramo_m": 2.106
+      },
+      {
+        "a": "es-0004",
+        "b": "es-0008",
+        "distancia_m": 3.146,
+        "origen": "supuesto",
+        "separacion_m": 0.35,
+        "tipo": "conecta_con",
+        "tramo_m": 1.479
+      },
+      {
+        "a": "es-0005",
+        "b": "es-0008",
+        "distancia_m": 2.828,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 1.983
+      },
+      {
+        "a": "es-0006",
+        "b": "es-0007",
+        "distancia_m": 1.526,
+        "origen": "supuesto",
+        "separacion_m": 0.15,
+        "tipo": "conecta_con",
+        "tramo_m": 2.497
+      },
+      {
+        "a": "es-0009",
+        "b": "es-0010",
+        "distancia_m": 5.057,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 2.589
+      },
+      {
+        "a": "es-0009",
+        "b": "es-0011",
+        "distancia_m": 6.048,
+        "origen": "supuesto",
+        "separacion_m": 0.101,
+        "tipo": "conecta_con",
+        "tramo_m": 1.985
+      },
+      {
+        "a": "es-0009",
+        "b": "es-0012",
+        "distancia_m": 3.707,
+        "origen": "supuesto",
+        "separacion_m": 0.063,
+        "tipo": "conecta_con",
+        "tramo_m": 3.45
+      },
+      {
+        "a": "es-0009",
+        "b": "es-0013",
+        "distancia_m": 3.011,
+        "origen": "supuesto",
+        "separacion_m": 0.035,
+        "tipo": "conecta_con",
+        "tramo_m": 4.779
+      },
+      {
+        "a": "es-0009",
+        "b": "es-0014",
+        "distancia_m": 3.365,
+        "origen": "supuesto",
+        "separacion_m": 0.049,
+        "tipo": "conecta_con",
+        "tramo_m": 3.083
+      },
+      {
+        "a": "es-0010",
+        "b": "es-0011",
+        "distancia_m": 3.165,
+        "origen": "supuesto",
+        "separacion_m": 0.099,
+        "tipo": "conecta_con",
+        "tramo_m": 4.002
+      },
+      {
+        "a": "es-0010",
+        "b": "es-0013",
+        "distancia_m": 2.681,
+        "origen": "supuesto",
+        "separacion_m": 0.134,
+        "tipo": "conecta_con",
+        "tramo_m": 2.906
+      },
+      {
+        "a": "es-0011",
+        "b": "es-0013",
+        "distancia_m": 3.069,
+        "origen": "supuesto",
+        "separacion_m": 0.136,
+        "tipo": "conecta_con",
+        "tramo_m": 2.205
+      },
+      {
+        "a": "es-0012",
+        "b": "es-0014",
+        "distancia_m": 2.836,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 1.987
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0016",
+        "distancia_m": 5.262,
+        "origen": "supuesto",
+        "separacion_m": 0.094,
+        "tipo": "conecta_con",
+        "tramo_m": 1.786
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0017",
+        "distancia_m": 6.135,
+        "origen": "supuesto",
+        "separacion_m": 0.098,
+        "tipo": "conecta_con",
+        "tramo_m": 2.757
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0018",
+        "distancia_m": 7.136,
+        "origen": "supuesto",
+        "separacion_m": 0.101,
+        "tipo": "conecta_con",
+        "tramo_m": 1.756
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0019",
+        "distancia_m": 3.854,
+        "origen": "supuesto",
+        "separacion_m": 0.064,
+        "tipo": "conecta_con",
+        "tramo_m": 3.444
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0020",
+        "distancia_m": 2.908,
+        "origen": "supuesto",
+        "separacion_m": 0.035,
+        "tipo": "conecta_con",
+        "tramo_m": 5.224
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0021",
+        "distancia_m": 3.199,
+        "origen": "supuesto",
+        "separacion_m": 0.136,
+        "tipo": "conecta_con",
+        "tramo_m": 1.389
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0022",
+        "distancia_m": 3.465,
+        "origen": "supuesto",
+        "separacion_m": 0.05,
+        "tipo": "conecta_con",
+        "tramo_m": 3.09
+      },
+      {
+        "a": "es-0016",
+        "b": "es-0017",
+        "distancia_m": 3.18,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 3.85
+      },
+      {
+        "a": "es-0016",
+        "b": "es-0020",
+        "distancia_m": 3.214,
+        "origen": "supuesto",
+        "separacion_m": 0.261,
+        "tipo": "conecta_con",
+        "tramo_m": 0.57
+      },
+      {
+        "a": "es-0016",
+        "b": "es-0021",
+        "distancia_m": 2.074,
+        "origen": "supuesto",
+        "separacion_m": 0.035,
+        "tipo": "conecta_con",
+        "tramo_m": 5.007
+      },
+      {
+        "a": "es-0017",
+        "b": "es-0018",
+        "distancia_m": 3.089,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 2.986
+      },
+      {
+        "a": "es-0017",
+        "b": "es-0020",
+        "distancia_m": 3.229,
+        "origen": "supuesto",
+        "separacion_m": 0.133,
+        "tipo": "conecta_con",
+        "tramo_m": 2.294
+      },
+      {
+        "a": "es-0017",
+        "b": "es-0021",
+        "distancia_m": 3.648,
+        "origen": "supuesto",
+        "separacion_m": 0.135,
+        "tipo": "conecta_con",
+        "tramo_m": 0.822
+      },
+      {
+        "a": "es-0019",
+        "b": "es-0022",
+        "distancia_m": 2.797,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 1.985
+      },
+      {
+        "a": "es-0020",
+        "b": "es-0021",
+        "distancia_m": 1.582,
+        "origen": "supuesto",
+        "separacion_m": 0.15,
+        "tipo": "conecta_con",
+        "tramo_m": 2.541
+      },
+      {
+        "a": "es-0023",
+        "b": "es-0024",
+        "distancia_m": 5.022,
+        "origen": "supuesto",
+        "separacion_m": 0.099,
+        "tipo": "conecta_con",
+        "tramo_m": 3.067
+      },
+      {
+        "a": "es-0023",
+        "b": "es-0025",
+        "distancia_m": 5.997,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 1.994
+      },
+      {
+        "a": "es-0023",
+        "b": "es-0026",
+        "distancia_m": 3.659,
+        "origen": "supuesto",
+        "separacion_m": 0.044,
+        "tipo": "conecta_con",
+        "tramo_m": 3.443
+      },
+      {
+        "a": "es-0023",
+        "b": "es-0027",
+        "distancia_m": 2.903,
+        "origen": "supuesto",
+        "separacion_m": 0.035,
+        "tipo": "conecta_con",
+        "tramo_m": 4.736
+      },
+      {
+        "a": "es-0023",
+        "b": "es-0028",
+        "distancia_m": 3.379,
+        "origen": "supuesto",
+        "separacion_m": 0.051,
+        "tipo": "conecta_con",
+        "tramo_m": 3.092
+      },
+      {
+        "a": "es-0024",
+        "b": "es-0025",
+        "distancia_m": 3.09,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 4.15
+      },
+      {
+        "a": "es-0024",
+        "b": "es-0027",
+        "distancia_m": 2.723,
+        "origen": "supuesto",
+        "separacion_m": 0.134,
+        "tipo": "conecta_con",
+        "tramo_m": 2.854
+      },
+      {
+        "a": "es-0025",
+        "b": "es-0027",
+        "distancia_m": 3.116,
+        "origen": "supuesto",
+        "separacion_m": 0.135,
+        "tipo": "conecta_con",
+        "tramo_m": 2.272
+      },
+      {
+        "a": "es-0026",
+        "b": "es-0028",
+        "distancia_m": 2.865,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 1.991
+      },
+      {
+        "a": "es-0029",
+        "b": "es-0030",
+        "distancia_m": 4.682,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 3.066
+      },
+      {
+        "a": "es-0029",
+        "b": "es-0031",
+        "distancia_m": 3.906,
+        "origen": "supuesto",
+        "separacion_m": 0.045,
+        "tipo": "conecta_con",
+        "tramo_m": 2.475
+      },
+      {
+        "a": "es-0029",
+        "b": "es-0032",
+        "distancia_m": 3.046,
+        "origen": "supuesto",
+        "separacion_m": 0.055,
+        "tipo": "conecta_con",
+        "tramo_m": 4.64
+      },
+      {
+        "a": "es-0030",
+        "b": "es-0032",
+        "distancia_m": 2.512,
+        "origen": "supuesto",
+        "separacion_m": 0.133,
+        "tipo": "conecta_con",
+        "tramo_m": 2.739
+      },
+      {
+        "a": "es-0033",
+        "b": "es-0034",
+        "distancia_m": 3.12,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 3.499
+      },
+      {
+        "a": "es-0033",
+        "b": "es-0035",
+        "distancia_m": 2.583,
+        "origen": "supuesto",
+        "separacion_m": 0.135,
+        "tipo": "conecta_con",
+        "tramo_m": 2.442
+      },
+      {
+        "a": "es-0033",
+        "b": "es-0036",
+        "distancia_m": 3.537,
+        "origen": "supuesto",
+        "separacion_m": 0.044,
+        "tipo": "conecta_con",
+        "tramo_m": 3.351
+      },
+      {
+        "a": "es-0033",
+        "b": "es-0038",
+        "distancia_m": 4.666,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 3.086
+      },
+      {
+        "a": "es-0033",
+        "b": "es-0039",
+        "distancia_m": 3.746,
+        "origen": "supuesto",
+        "separacion_m": 0.38,
+        "tipo": "conecta_con",
+        "tramo_m": 3.015
+      },
+      {
+        "a": "es-0034",
+        "b": "es-0035",
+        "distancia_m": 2.714,
+        "origen": "supuesto",
+        "separacion_m": 0.136,
+        "tipo": "conecta_con",
+        "tramo_m": 2.497
+      },
+      {
+        "a": "es-0034",
+        "b": "es-0036",
+        "distancia_m": 2.554,
+        "origen": "supuesto",
+        "separacion_m": 0.044,
+        "tipo": "conecta_con",
+        "tramo_m": 3.189
+      },
+      {
+        "a": "es-0034",
+        "b": "es-0038",
+        "distancia_m": 5.572,
+        "origen": "supuesto",
+        "separacion_m": 0.1,
+        "tipo": "conecta_con",
+        "tramo_m": 1.054
+      },
+      {
+        "a": "es-0034",
+        "b": "es-0039",
+        "distancia_m": 2.733,
+        "origen": "supuesto",
+        "separacion_m": 0.38,
+        "tipo": "conecta_con",
+        "tramo_m": 2.856
+      },
+      {
+        "a": "es-0035",
+        "b": "es-0038",
+        "distancia_m": 2.877,
+        "origen": "supuesto",
+        "separacion_m": 0.035,
+        "tipo": "conecta_con",
+        "tramo_m": 4.729
+      },
+      {
+        "a": "es-0036",
+        "b": "es-0039",
+        "distancia_m": 0.223,
+        "origen": "supuesto",
+        "separacion_m": 0.0,
+        "tipo": "conecta_con",
+        "tramo_m": 13.814
+      },
+      {
+        "a": "es-0037",
+        "b": "es-0038",
+        "distancia_m": 3.004,
+        "origen": "supuesto",
+        "separacion_m": 0.05,
+        "tipo": "conecta_con",
+        "tramo_m": 6.109
+      },
+      {
+        "a": "es-0037",
+        "b": "es-0040",
+        "distancia_m": 2.095,
+        "origen": "supuesto",
+        "separacion_m": 0.0,
+        "tipo": "conecta_con",
+        "tramo_m": 15.493
+      },
+      {
+        "a": "es-0038",
+        "b": "es-0040",
+        "distancia_m": 3.022,
+        "origen": "supuesto",
+        "separacion_m": 0.41,
+        "tipo": "conecta_con",
+        "tramo_m": 5.559
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0002",
+        "distancia_m": 5.359,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.265
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0003",
+        "distancia_m": 6.132,
+        "origen": "observado",
+        "separacion_m": 0.099,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.901
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0004",
+        "distancia_m": 4.657,
+        "origen": "observado",
+        "separacion_m": 0.09,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.061
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0005",
+        "distancia_m": 3.625,
+        "origen": "observado",
+        "separacion_m": 0.053,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.449
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0006",
+        "distancia_m": 3.169,
+        "origen": "observado",
+        "separacion_m": 0.134,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.385
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0007",
+        "distancia_m": 2.812,
+        "origen": "observado",
+        "separacion_m": 0.035,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 5.291
+      },
+      {
+        "a": "es-0001",
+        "b": "es-0008",
+        "distancia_m": 3.28,
+        "origen": "observado",
+        "separacion_m": 0.049,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.078
+      },
+      {
+        "a": "es-0002",
+        "b": "es-0003",
+        "distancia_m": 3.156,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 4.005
+      },
+      {
+        "a": "es-0002",
+        "b": "es-0006",
+        "distancia_m": 2.195,
+        "origen": "observado",
+        "separacion_m": 0.035,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 5.246
+      },
+      {
+        "a": "es-0002",
+        "b": "es-0007",
+        "distancia_m": 3.281,
+        "origen": "observado",
+        "separacion_m": 0.262,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 0.567
+      },
+      {
+        "a": "es-0003",
+        "b": "es-0006",
+        "distancia_m": 3.689,
+        "origen": "observado",
+        "separacion_m": 0.137,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 0.82
+      },
+      {
+        "a": "es-0003",
+        "b": "es-0007",
+        "distancia_m": 3.32,
+        "origen": "observado",
+        "separacion_m": 0.135,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.106
+      },
+      {
+        "a": "es-0004",
+        "b": "es-0008",
+        "distancia_m": 3.146,
+        "origen": "observado",
+        "separacion_m": 0.35,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.479
+      },
+      {
+        "a": "es-0005",
+        "b": "es-0008",
+        "distancia_m": 2.828,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.983
+      },
+      {
+        "a": "es-0006",
+        "b": "es-0007",
+        "distancia_m": 1.526,
+        "origen": "observado",
+        "separacion_m": 0.15,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.497
+      },
+      {
+        "a": "es-0009",
+        "b": "es-0010",
+        "distancia_m": 5.057,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.589
+      },
+      {
+        "a": "es-0009",
+        "b": "es-0011",
+        "distancia_m": 6.048,
+        "origen": "observado",
+        "separacion_m": 0.101,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.985
+      },
+      {
+        "a": "es-0009",
+        "b": "es-0012",
+        "distancia_m": 3.707,
+        "origen": "observado",
+        "separacion_m": 0.063,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.45
+      },
+      {
+        "a": "es-0009",
+        "b": "es-0013",
+        "distancia_m": 3.011,
+        "origen": "observado",
+        "separacion_m": 0.035,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 4.779
+      },
+      {
+        "a": "es-0009",
+        "b": "es-0014",
+        "distancia_m": 3.365,
+        "origen": "observado",
+        "separacion_m": 0.049,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.083
+      },
+      {
+        "a": "es-0010",
+        "b": "es-0011",
+        "distancia_m": 3.165,
+        "origen": "observado",
+        "separacion_m": 0.099,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 4.002
+      },
+      {
+        "a": "es-0010",
+        "b": "es-0013",
+        "distancia_m": 2.681,
+        "origen": "observado",
+        "separacion_m": 0.134,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.906
+      },
+      {
+        "a": "es-0011",
+        "b": "es-0013",
+        "distancia_m": 3.069,
+        "origen": "observado",
+        "separacion_m": 0.136,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.205
+      },
+      {
+        "a": "es-0012",
+        "b": "es-0014",
+        "distancia_m": 2.836,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.987
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0016",
+        "distancia_m": 5.262,
+        "origen": "observado",
+        "separacion_m": 0.094,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.786
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0017",
+        "distancia_m": 6.135,
+        "origen": "observado",
+        "separacion_m": 0.098,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.757
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0018",
+        "distancia_m": 7.136,
+        "origen": "observado",
+        "separacion_m": 0.101,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.756
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0019",
+        "distancia_m": 3.854,
+        "origen": "observado",
+        "separacion_m": 0.064,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.444
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0020",
+        "distancia_m": 2.908,
+        "origen": "observado",
+        "separacion_m": 0.035,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 5.224
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0021",
+        "distancia_m": 3.199,
+        "origen": "observado",
+        "separacion_m": 0.136,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.389
+      },
+      {
+        "a": "es-0015",
+        "b": "es-0022",
+        "distancia_m": 3.465,
+        "origen": "observado",
+        "separacion_m": 0.05,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.09
+      },
+      {
+        "a": "es-0016",
+        "b": "es-0017",
+        "distancia_m": 3.18,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.85
+      },
+      {
+        "a": "es-0016",
+        "b": "es-0020",
+        "distancia_m": 3.214,
+        "origen": "observado",
+        "separacion_m": 0.261,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 0.57
+      },
+      {
+        "a": "es-0016",
+        "b": "es-0021",
+        "distancia_m": 2.074,
+        "origen": "observado",
+        "separacion_m": 0.035,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 5.007
+      },
+      {
+        "a": "es-0017",
+        "b": "es-0018",
+        "distancia_m": 3.089,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.986
+      },
+      {
+        "a": "es-0017",
+        "b": "es-0020",
+        "distancia_m": 3.229,
+        "origen": "observado",
+        "separacion_m": 0.133,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.294
+      },
+      {
+        "a": "es-0017",
+        "b": "es-0021",
+        "distancia_m": 3.648,
+        "origen": "observado",
+        "separacion_m": 0.135,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 0.822
+      },
+      {
+        "a": "es-0019",
+        "b": "es-0022",
+        "distancia_m": 2.797,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.985
+      },
+      {
+        "a": "es-0020",
+        "b": "es-0021",
+        "distancia_m": 1.582,
+        "origen": "observado",
+        "separacion_m": 0.15,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.541
+      },
+      {
+        "a": "es-0023",
+        "b": "es-0024",
+        "distancia_m": 5.022,
+        "origen": "observado",
+        "separacion_m": 0.099,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.067
+      },
+      {
+        "a": "es-0023",
+        "b": "es-0025",
+        "distancia_m": 5.997,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.994
+      },
+      {
+        "a": "es-0023",
+        "b": "es-0026",
+        "distancia_m": 3.659,
+        "origen": "observado",
+        "separacion_m": 0.044,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.443
+      },
+      {
+        "a": "es-0023",
+        "b": "es-0027",
+        "distancia_m": 2.903,
+        "origen": "observado",
+        "separacion_m": 0.035,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 4.736
+      },
+      {
+        "a": "es-0023",
+        "b": "es-0028",
+        "distancia_m": 3.379,
+        "origen": "observado",
+        "separacion_m": 0.051,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.092
+      },
+      {
+        "a": "es-0024",
+        "b": "es-0025",
+        "distancia_m": 3.09,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 4.15
+      },
+      {
+        "a": "es-0024",
+        "b": "es-0027",
+        "distancia_m": 2.723,
+        "origen": "observado",
+        "separacion_m": 0.134,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.854
+      },
+      {
+        "a": "es-0025",
+        "b": "es-0027",
+        "distancia_m": 3.116,
+        "origen": "observado",
+        "separacion_m": 0.135,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.272
+      },
+      {
+        "a": "es-0026",
+        "b": "es-0028",
+        "distancia_m": 2.865,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.991
+      },
+      {
+        "a": "es-0029",
+        "b": "es-0030",
+        "distancia_m": 4.682,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.066
+      },
+      {
+        "a": "es-0029",
+        "b": "es-0031",
+        "distancia_m": 3.906,
+        "origen": "observado",
+        "separacion_m": 0.045,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.475
+      },
+      {
+        "a": "es-0029",
+        "b": "es-0032",
+        "distancia_m": 3.046,
+        "origen": "observado",
+        "separacion_m": 0.055,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 4.64
+      },
+      {
+        "a": "es-0030",
+        "b": "es-0032",
+        "distancia_m": 2.512,
+        "origen": "observado",
+        "separacion_m": 0.133,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.739
+      },
+      {
+        "a": "es-0033",
+        "b": "es-0034",
+        "distancia_m": 3.12,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.499
+      },
+      {
+        "a": "es-0033",
+        "b": "es-0035",
+        "distancia_m": 2.583,
+        "origen": "observado",
+        "separacion_m": 0.135,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.442
+      },
+      {
+        "a": "es-0033",
+        "b": "es-0036",
+        "distancia_m": 3.537,
+        "origen": "observado",
+        "separacion_m": 0.044,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.351
+      },
+      {
+        "a": "es-0033",
+        "b": "es-0038",
+        "distancia_m": 4.666,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.086
+      },
+      {
+        "a": "es-0033",
+        "b": "es-0039",
+        "distancia_m": 3.746,
+        "origen": "observado",
+        "separacion_m": 0.38,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.015
+      },
+      {
+        "a": "es-0034",
+        "b": "es-0035",
+        "distancia_m": 2.714,
+        "origen": "observado",
+        "separacion_m": 0.136,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.497
+      },
+      {
+        "a": "es-0034",
+        "b": "es-0036",
+        "distancia_m": 2.554,
+        "origen": "observado",
+        "separacion_m": 0.044,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 3.189
+      },
+      {
+        "a": "es-0034",
+        "b": "es-0038",
+        "distancia_m": 5.572,
+        "origen": "observado",
+        "separacion_m": 0.1,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 1.054
+      },
+      {
+        "a": "es-0034",
+        "b": "es-0039",
+        "distancia_m": 2.733,
+        "origen": "observado",
+        "separacion_m": 0.38,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 2.856
+      },
+      {
+        "a": "es-0035",
+        "b": "es-0038",
+        "distancia_m": 2.877,
+        "origen": "observado",
+        "separacion_m": 0.035,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 4.729
+      },
+      {
+        "a": "es-0036",
+        "b": "es-0039",
+        "distancia_m": 0.223,
+        "origen": "observado",
+        "separacion_m": 0.0,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 13.814
+      },
+      {
+        "a": "es-0037",
+        "b": "es-0038",
+        "distancia_m": 3.004,
+        "origen": "observado",
+        "separacion_m": 0.05,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 6.109
+      },
+      {
+        "a": "es-0037",
+        "b": "es-0040",
+        "distancia_m": 2.095,
+        "origen": "observado",
+        "separacion_m": 0.0,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 15.493
+      },
+      {
+        "a": "es-0038",
+        "b": "es-0040",
+        "distancia_m": 3.022,
+        "origen": "observado",
+        "separacion_m": 0.41,
+        "tipo": "es_contiguo_a",
+        "tramo_m": 5.559
+      }
+    ],
+    "contrato": "1.0",
+    "criterio": {
+      "nombre": "actual",
+      "tolerancia_muro_m": 0.5,
+      "tramo_minimo_conexion_m": 0.0,
+      "tramo_minimo_contiguidad_m": 0.0
+    },
+    "edificios": [
+      {
+        "concepto": "f84e463960b4",
+        "id": "ed-01",
+        "plantas": [
+          "pl-01"
+        ]
+      }
+    ],
+    "espacios": [
+      {
+        "concepto": "6db8fc076bbf",
+        "geometrias": {
+          "huella_2d": "g-0001"
+        },
+        "id": "es-0001",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Salón/cocina",
+        "tipo": {
+          "confianza": "Baja",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "cocina"
+        },
+        "tipos_ambiguos": [
+          "salon"
+        ],
+        "unidad_id": "un-0001"
+      },
+      {
+        "concepto": "4a218acf0644",
+        "geometrias": {
+          "huella_2d": "g-0002"
+        },
+        "id": "es-0002",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 1",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0001"
+      },
+      {
+        "concepto": "0c6c1b60f3f8",
+        "geometrias": {
+          "huella_2d": "g-0003"
+        },
+        "id": "es-0003",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 2",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0001"
+      },
+      {
+        "concepto": "f1f7b9fccf38",
+        "geometrias": {
+          "huella_2d": "g-0004"
+        },
+        "id": "es-0004",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 3",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0001"
+      },
+      {
+        "concepto": "cedea33806e9",
+        "geometrias": {
+          "huella_2d": "g-0005"
+        },
+        "id": "es-0005",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Tendedero",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "tendedero"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0001"
+      },
+      {
+        "concepto": "453778225251",
+        "geometrias": {
+          "huella_2d": "g-0006"
+        },
+        "id": "es-0006",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Aseo",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "aseo"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0001"
+      },
+      {
+        "concepto": "6e836f3919d2",
+        "geometrias": {
+          "huella_2d": "g-0007"
+        },
+        "id": "es-0007",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Baño",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "bano"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0001"
+      },
+      {
+        "concepto": "61a63f335155",
+        "geometrias": {
+          "huella_2d": "g-0008"
+        },
+        "id": "es-0008",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Terraza",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "terraza"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0001"
+      },
+      {
+        "concepto": "91194c0a0093",
+        "geometrias": {
+          "huella_2d": "g-0009"
+        },
+        "id": "es-0009",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Salón/cocina",
+        "tipo": {
+          "confianza": "Baja",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "cocina"
+        },
+        "tipos_ambiguos": [
+          "salon"
+        ],
+        "unidad_id": "un-0002"
+      },
+      {
+        "concepto": "94596a878f34",
+        "geometrias": {
+          "huella_2d": "g-0010"
+        },
+        "id": "es-0010",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 1",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0002"
+      },
+      {
+        "concepto": "69eedc1786bb",
+        "geometrias": {
+          "huella_2d": "g-0011"
+        },
+        "id": "es-0011",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 2",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0002"
+      },
+      {
+        "concepto": "edeceb7ae8fb",
+        "geometrias": {
+          "huella_2d": "g-0012"
+        },
+        "id": "es-0012",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Tendedero",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "tendedero"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0002"
+      },
+      {
+        "concepto": "1cf6fa494560",
+        "geometrias": {
+          "huella_2d": "g-0013"
+        },
+        "id": "es-0013",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Baño",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "bano"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0002"
+      },
+      {
+        "concepto": "3aac91029047",
+        "geometrias": {
+          "huella_2d": "g-0014"
+        },
+        "id": "es-0014",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Terraza",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "terraza"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0002"
+      },
+      {
+        "concepto": "1b94d3f7b211",
+        "geometrias": {
+          "huella_2d": "g-0015"
+        },
+        "id": "es-0015",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Salón/cocina",
+        "tipo": {
+          "confianza": "Baja",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "cocina"
+        },
+        "tipos_ambiguos": [
+          "salon"
+        ],
+        "unidad_id": "un-0003"
+      },
+      {
+        "concepto": "400c71eec1d0",
+        "geometrias": {
+          "huella_2d": "g-0016"
+        },
+        "id": "es-0016",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 1",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0003"
+      },
+      {
+        "concepto": "33fbdfe5c988",
+        "geometrias": {
+          "huella_2d": "g-0017"
+        },
+        "id": "es-0017",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 2",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0003"
+      },
+      {
+        "concepto": "ce0886f01e69",
+        "geometrias": {
+          "huella_2d": "g-0018"
+        },
+        "id": "es-0018",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 3",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0003"
+      },
+      {
+        "concepto": "99269083b34f",
+        "geometrias": {
+          "huella_2d": "g-0019"
+        },
+        "id": "es-0019",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Tendedero",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "tendedero"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0003"
+      },
+      {
+        "concepto": "fc05fa5f2223",
+        "geometrias": {
+          "huella_2d": "g-0020"
+        },
+        "id": "es-0020",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Baño",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "bano"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0003"
+      },
+      {
+        "concepto": "2782f571d207",
+        "geometrias": {
+          "huella_2d": "g-0021"
+        },
+        "id": "es-0021",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Aseo",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "aseo"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0003"
+      },
+      {
+        "concepto": "4400056c1023",
+        "geometrias": {
+          "huella_2d": "g-0022"
+        },
+        "id": "es-0022",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Terraza",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "terraza"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0003"
+      },
+      {
+        "concepto": "cb310d3b864d",
+        "geometrias": {
+          "huella_2d": "g-0023"
+        },
+        "id": "es-0023",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Salón/cocina",
+        "tipo": {
+          "confianza": "Baja",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "cocina"
+        },
+        "tipos_ambiguos": [
+          "salon"
+        ],
+        "unidad_id": "un-0004"
+      },
+      {
+        "concepto": "525d0f6a0cb9",
+        "geometrias": {
+          "huella_2d": "g-0024"
+        },
+        "id": "es-0024",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 1",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0004"
+      },
+      {
+        "concepto": "8cdab8b71ff7",
+        "geometrias": {
+          "huella_2d": "g-0025"
+        },
+        "id": "es-0025",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 2",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0004"
+      },
+      {
+        "concepto": "2cd03205d338",
+        "geometrias": {
+          "huella_2d": "g-0026"
+        },
+        "id": "es-0026",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Tendedero",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "tendedero"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0004"
+      },
+      {
+        "concepto": "ba6e5df1ef30",
+        "geometrias": {
+          "huella_2d": "g-0027"
+        },
+        "id": "es-0027",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Baño",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "bano"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0004"
+      },
+      {
+        "concepto": "a8516ea63295",
+        "geometrias": {
+          "huella_2d": "g-0028"
+        },
+        "id": "es-0028",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Terraza",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "terraza"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0004"
+      },
+      {
+        "concepto": "65fc968a6f63",
+        "geometrias": {
+          "huella_2d": "g-0029"
+        },
+        "id": "es-0029",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Salón/cocina",
+        "tipo": {
+          "confianza": "Baja",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "cocina"
+        },
+        "tipos_ambiguos": [
+          "salon"
+        ],
+        "unidad_id": "un-0005"
+      },
+      {
+        "concepto": "4967d75506a4",
+        "geometrias": {
+          "huella_2d": "g-0030"
+        },
+        "id": "es-0030",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 1",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0005"
+      },
+      {
+        "concepto": "b745d02f254a",
+        "geometrias": {
+          "huella_2d": "g-0031"
+        },
+        "id": "es-0031",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Tendedero",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "tendedero"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0005"
+      },
+      {
+        "concepto": "da16285170b4",
+        "geometrias": {
+          "huella_2d": "g-0032"
+        },
+        "id": "es-0032",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Baño",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "bano"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0005"
+      },
+      {
+        "concepto": "cb7b51925a0b",
+        "geometrias": {
+          "huella_2d": "g-0033"
+        },
+        "id": "es-0033",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 1",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0006"
+      },
+      {
+        "concepto": "b0a963e3b41c",
+        "geometrias": {
+          "huella_2d": "g-0034"
+        },
+        "id": "es-0034",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Dormitorio 2",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "dormitorio"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0006"
+      },
+      {
+        "concepto": "0443f2db67a3",
+        "geometrias": {
+          "huella_2d": "g-0035"
+        },
+        "id": "es-0035",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Baño",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "bano"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0006"
+      },
+      {
+        "concepto": "f4754a6a7340",
+        "geometrias": {
+          "huella_2d": "g-0036"
+        },
+        "id": "es-0036",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Terraza",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "terraza"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0006"
+      },
+      {
+        "concepto": "4499162dc876",
+        "geometrias": {
+          "huella_2d": "g-0037"
+        },
+        "id": "es-0037",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Terraza",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "terraza"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0006"
+      },
+      {
+        "concepto": "0a94d3a49ddf",
+        "geometrias": {
+          "huella_2d": "g-0038"
+        },
+        "id": "es-0038",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Salón/cocina",
+        "tipo": {
+          "confianza": "Baja",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "cocina"
+        },
+        "tipos_ambiguos": [
+          "salon"
+        ],
+        "unidad_id": "un-0006"
+      },
+      {
+        "concepto": "4cab498833ab",
+        "geometrias": {
+          "huella_2d": "g-0039"
+        },
+        "id": "es-0039",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Terraza",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "terraza"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0006"
+      },
+      {
+        "concepto": "77a6e9cf1154",
+        "geometrias": {
+          "huella_2d": "g-0040"
+        },
+        "id": "es-0040",
+        "planta_id": "pl-01",
+        "procedencia": {
+          "capa": "00 areas",
+          "fichero": "ejemplo.dxf",
+          "formato": "dxf",
+          "id_nativo": null
+        },
+        "rotulo": "Terraza",
+        "tipo": {
+          "confianza": "Media",
+          "estado": "KNOWN",
+          "fuente": "rotulo del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "terraza"
+        },
+        "tipos_ambiguos": [],
+        "unidad_id": "un-0006"
+      }
+    ],
+    "geometrias": {
+      "g-0001": {
+        "puntos": [
+          [
+            -573.214,
+            -300.194
+          ],
+          [
+            -573.214,
+            -298.702
+          ],
+          [
+            -573.204,
+            -298.702
+          ],
+          [
+            -573.204,
+            -295.773
+          ],
+          [
+            -572.898,
+            -295.773
+          ],
+          [
+            -572.899,
+            -294.82
+          ],
+          [
+            -573.203,
+            -294.82
+          ],
+          [
+            -573.203,
+            -293.617
+          ],
+          [
+            -574.303,
+            -293.617
+          ],
+          [
+            -574.304,
+            -296.873
+          ],
+          [
+            -578.638,
+            -296.873
+          ],
+          [
+            -578.636,
+            -297.742
+          ],
+          [
+            -578.638,
+            -297.742
+          ],
+          [
+            -578.638,
+            -300.184
+          ],
+          [
+            -578.071,
+            -300.184
+          ],
+          [
+            -578.071,
+            -300.194
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0002": {
+        "puntos": [
+          [
+            -575.938,
+            -290.312
+          ],
+          [
+            -575.938,
+            -293.517
+          ],
+          [
+            -577.233,
+            -293.517
+          ],
+          [
+            -577.233,
+            -296.773
+          ],
+          [
+            -578.703,
+            -296.773
+          ],
+          [
+            -578.703,
+            -295.567
+          ],
+          [
+            -578.133,
+            -295.567
+          ],
+          [
+            -578.133,
+            -294.389
+          ],
+          [
+            -578.703,
+            -294.389
+          ],
+          [
+            -578.703,
+            -293.617
+          ],
+          [
+            -578.133,
+            -293.617
+          ],
+          [
+            -578.133,
+            -293.517
+          ],
+          [
+            -578.642,
+            -293.517
+          ],
+          [
+            -578.642,
+            -290.312
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0003": {
+        "puntos": [
+          [
+            -573.173,
+            -290.312
+          ],
+          [
+            -573.173,
+            -293.517
+          ],
+          [
+            -574.398,
+            -293.518
+          ],
+          [
+            -574.398,
+            -292.918
+          ],
+          [
+            -574.498,
+            -292.917
+          ],
+          [
+            -574.498,
+            -293.517
+          ],
+          [
+            -575.838,
+            -293.517
+          ],
+          [
+            -575.838,
+            -290.312
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0004": {
+        "puntos": [
+          [
+            -569.928,
+            -298.66
+          ],
+          [
+            -569.928,
+            -299.568
+          ],
+          [
+            -569.998,
+            -299.568
+          ],
+          [
+            -569.998,
+            -300.168
+          ],
+          [
+            -569.928,
+            -300.168
+          ],
+          [
+            -569.928,
+            -301.613
+          ],
+          [
+            -572.737,
+            -301.611
+          ],
+          [
+            -572.737,
+            -299.568
+          ],
+          [
+            -573.114,
+            -299.568
+          ],
+          [
+            -573.114,
+            -298.659
+          ],
+          [
+            -571.828,
+            -298.66
+          ],
+          [
+            -571.828,
+            -299.26
+          ],
+          [
+            -571.728,
+            -299.259
+          ],
+          [
+            -571.728,
+            -298.659
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0005": {
+        "puntos": [
+          [
+            -578.639,
+            -301.895
+          ],
+          [
+            -575.793,
+            -301.899
+          ],
+          [
+            -575.79,
+            -300.495
+          ],
+          [
+            -577.103,
+            -300.491
+          ],
+          [
+            -577.103,
+            -300.247
+          ],
+          [
+            -578.003,
+            -300.247
+          ],
+          [
+            -578.003,
+            -300.493
+          ],
+          [
+            -578.638,
+            -300.493
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0006": {
+        "puntos": [
+          [
+            -577.098,
+            -293.652
+          ],
+          [
+            -575.863,
+            -293.652
+          ],
+          [
+            -575.863,
+            -295.448
+          ],
+          [
+            -576.443,
+            -295.448
+          ],
+          [
+            -576.443,
+            -296.737
+          ],
+          [
+            -577.098,
+            -296.739
+          ],
+          [
+            -577.098,
+            -294.656
+          ],
+          [
+            -577.198,
+            -294.656
+          ],
+          [
+            -577.198,
+            -293.931
+          ],
+          [
+            -577.098,
+            -293.931
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0007": {
+        "puntos": [
+          [
+            -575.713,
+            -293.652
+          ],
+          [
+            -575.713,
+            -296.738
+          ],
+          [
+            -574.439,
+            -296.738
+          ],
+          [
+            -574.439,
+            -294.656
+          ],
+          [
+            -574.338,
+            -294.656
+          ],
+          [
+            -574.338,
+            -293.931
+          ],
+          [
+            -574.439,
+            -293.931
+          ],
+          [
+            -574.439,
+            -293.652
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0008": {
+        "puntos": [
+          [
+            -574.138,
+            -300.243
+          ],
+          [
+            -575.108,
+            -300.243
+          ],
+          [
+            -575.108,
+            -300.493
+          ],
+          [
+            -575.689,
+            -300.492
+          ],
+          [
+            -575.689,
+            -301.678
+          ],
+          [
+            -573.087,
+            -301.678
+          ],
+          [
+            -573.089,
+            -300.868
+          ],
+          [
+            -573.089,
+            -300.868
+          ],
+          [
+            -573.089,
+            -300.493
+          ],
+          [
+            -574.138,
+            -300.493
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0009": {
+        "puntos": [
+          [
+            -556.178,
+            -293.606
+          ],
+          [
+            -554.988,
+            -293.607
+          ],
+          [
+            -554.988,
+            -296.455
+          ],
+          [
+            -551.259,
+            -296.455
+          ],
+          [
+            -551.259,
+            -297.544
+          ],
+          [
+            -550.754,
+            -297.543
+          ],
+          [
+            -550.754,
+            -299.649
+          ],
+          [
+            -550.754,
+            -299.649
+          ],
+          [
+            -550.754,
+            -300.187
+          ],
+          [
+            -556.186,
+            -300.187
+          ],
+          [
+            -556.176,
+            -297.098
+          ],
+          [
+            -556.485,
+            -297.098
+          ],
+          [
+            -556.485,
+            -296.144
+          ],
+          [
+            -556.178,
+            -296.145
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0010": {
+        "puntos": [
+          [
+            -550.699,
+            -290.305
+          ],
+          [
+            -553.494,
+            -290.306
+          ],
+          [
+            -553.494,
+            -293.507
+          ],
+          [
+            -552.358,
+            -293.506
+          ],
+          [
+            -552.358,
+            -293.607
+          ],
+          [
+            -552.958,
+            -293.606
+          ],
+          [
+            -552.958,
+            -296.355
+          ],
+          [
+            -552.373,
+            -296.355
+          ],
+          [
+            -552.244,
+            -296.355
+          ],
+          [
+            -551.479,
+            -296.355
+          ],
+          [
+            -551.221,
+            -296.355
+          ],
+          [
+            -550.754,
+            -296.355
+          ],
+          [
+            -550.754,
+            -293.606
+          ],
+          [
+            -551.354,
+            -293.606
+          ],
+          [
+            -551.354,
+            -293.505
+          ],
+          [
+            -550.699,
+            -293.505
+          ],
+          [
+            -550.699,
+            -291.835
+          ],
+          [
+            -550.754,
+            -291.835
+          ],
+          [
+            -550.754,
+            -291.235
+          ],
+          [
+            -550.699,
+            -291.235
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0011": {
+        "puntos": [
+          [
+            -553.593,
+            -290.305
+          ],
+          [
+            -556.219,
+            -290.305
+          ],
+          [
+            -556.219,
+            -293.505
+          ],
+          [
+            -555.049,
+            -293.505
+          ],
+          [
+            -555.049,
+            -292.905
+          ],
+          [
+            -554.949,
+            -292.905
+          ],
+          [
+            -554.949,
+            -293.505
+          ],
+          [
+            -553.593,
+            -293.505
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0012": {
+        "puntos": [
+          [
+            -553.604,
+            -300.487
+          ],
+          [
+            -553.601,
+            -301.89
+          ],
+          [
+            -550.753,
+            -301.886
+          ],
+          [
+            -550.752,
+            -300.486
+          ],
+          [
+            -551.389,
+            -300.486
+          ],
+          [
+            -551.389,
+            -300.25
+          ],
+          [
+            -552.289,
+            -300.25
+          ],
+          [
+            -552.289,
+            -300.484
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0013": {
+        "puntos": [
+          [
+            -553.683,
+            -296.32
+          ],
+          [
+            -553.683,
+            -295.33
+          ],
+          [
+            -553.109,
+            -295.33
+          ],
+          [
+            -553.108,
+            -293.641
+          ],
+          [
+            -554.853,
+            -293.641
+          ],
+          [
+            -554.853,
+            -293.777
+          ],
+          [
+            -554.953,
+            -293.777
+          ],
+          [
+            -554.953,
+            -294.502
+          ],
+          [
+            -554.853,
+            -294.502
+          ],
+          [
+            -554.853,
+            -296.32
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0014": {
+        "puntos": [
+          [
+            -553.701,
+            -301.673
+          ],
+          [
+            -556.246,
+            -301.67
+          ],
+          [
+            -556.244,
+            -300.486
+          ],
+          [
+            -555.736,
+            -300.486
+          ],
+          [
+            -555.736,
+            -300.236
+          ],
+          [
+            -554.766,
+            -300.236
+          ],
+          [
+            -554.766,
+            -300.487
+          ],
+          [
+            -553.704,
+            -300.486
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0015": {
+        "puntos": [
+          [
+            -530.699,
+            -292.389
+          ],
+          [
+            -531.597,
+            -292.389
+          ],
+          [
+            -531.597,
+            -295.644
+          ],
+          [
+            -531.797,
+            -295.644
+          ],
+          [
+            -531.797,
+            -296.455
+          ],
+          [
+            -535.628,
+            -296.453
+          ],
+          [
+            -535.628,
+            -297.528
+          ],
+          [
+            -536.132,
+            -297.528
+          ],
+          [
+            -536.131,
+            -299.649
+          ],
+          [
+            -536.132,
+            -299.649
+          ],
+          [
+            -536.132,
+            -300.185
+          ],
+          [
+            -530.695,
+            -300.185
+          ],
+          [
+            -530.695,
+            -297.097
+          ],
+          [
+            -530.389,
+            -297.096
+          ],
+          [
+            -530.392,
+            -296.144
+          ],
+          [
+            -530.698,
+            -296.144
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0016": {
+        "puntos": [
+          [
+            -533.422,
+            -290.305
+          ],
+          [
+            -536.132,
+            -290.305
+          ],
+          [
+            -536.132,
+            -293.355
+          ],
+          [
+            -535.632,
+            -293.355
+          ],
+          [
+            -535.632,
+            -293.455
+          ],
+          [
+            -536.187,
+            -293.455
+          ],
+          [
+            -536.187,
+            -294.249
+          ],
+          [
+            -536.132,
+            -294.249
+          ],
+          [
+            -536.132,
+            -295.049
+          ],
+          [
+            -536.187,
+            -295.049
+          ],
+          [
+            -536.187,
+            -296.351
+          ],
+          [
+            -535.632,
+            -296.351
+          ],
+          [
+            -535.632,
+            -296.353
+          ],
+          [
+            -534.732,
+            -296.353
+          ],
+          [
+            -534.732,
+            -296.359
+          ],
+          [
+            -534.732,
+            -296.359
+          ],
+          [
+            -534.732,
+            -293.355
+          ],
+          [
+            -533.422,
+            -293.355
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0017": {
+        "puntos": [
+          [
+            -530.487,
+            -290.305
+          ],
+          [
+            -533.322,
+            -290.304
+          ],
+          [
+            -533.322,
+            -292.289
+          ],
+          [
+            -532.758,
+            -292.289
+          ],
+          [
+            -532.757,
+            -292.384
+          ],
+          [
+            -533.322,
+            -292.384
+          ],
+          [
+            -533.322,
+            -293.355
+          ],
+          [
+            -531.697,
+            -293.355
+          ],
+          [
+            -531.697,
+            -292.29
+          ],
+          [
+            -530.662,
+            -292.29
+          ],
+          [
+            -530.662,
+            -291.499
+          ],
+          [
+            -530.487,
+            -291.499
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0018": {
+        "puntos": [
+          [
+            -527.497,
+            -292.811
+          ],
+          [
+            -528.097,
+            -292.811
+          ],
+          [
+            -528.097,
+            -292.712
+          ],
+          [
+            -527.527,
+            -292.712
+          ],
+          [
+            -527.527,
+            -290.305
+          ],
+          [
+            -530.387,
+            -290.305
+          ],
+          [
+            -530.387,
+            -291.749
+          ],
+          [
+            -530.242,
+            -291.749
+          ],
+          [
+            -530.232,
+            -292.389
+          ],
+          [
+            -530.598,
+            -292.389
+          ],
+          [
+            -530.598,
+            -293.256
+          ],
+          [
+            -527.527,
+            -293.258
+          ],
+          [
+            -527.527,
+            -292.811
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0019": {
+        "puntos": [
+          [
+            -536.132,
+            -300.487
+          ],
+          [
+            -536.133,
+            -301.883
+          ],
+          [
+            -533.285,
+            -301.887
+          ],
+          [
+            -533.285,
+            -300.485
+          ],
+          [
+            -534.597,
+            -300.485
+          ],
+          [
+            -534.597,
+            -300.249
+          ],
+          [
+            -535.497,
+            -300.249
+          ],
+          [
+            -535.497,
+            -300.483
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0020": {
+        "puntos": [
+          [
+            -533.197,
+            -296.318
+          ],
+          [
+            -533.197,
+            -293.488
+          ],
+          [
+            -531.732,
+            -293.489
+          ],
+          [
+            -531.732,
+            -293.786
+          ],
+          [
+            -531.632,
+            -293.785
+          ],
+          [
+            -531.632,
+            -294.51
+          ],
+          [
+            -531.732,
+            -294.51
+          ],
+          [
+            -531.732,
+            -295.509
+          ],
+          [
+            -531.932,
+            -295.509
+          ],
+          [
+            -531.932,
+            -296.318
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0021": {
+        "puntos": [
+          [
+            -534.697,
+            -293.785
+          ],
+          [
+            -534.697,
+            -293.785
+          ],
+          [
+            -534.697,
+            -294.512
+          ],
+          [
+            -534.597,
+            -294.51
+          ],
+          [
+            -534.597,
+            -296.318
+          ],
+          [
+            -533.937,
+            -296.318
+          ],
+          [
+            -533.937,
+            -295.329
+          ],
+          [
+            -533.347,
+            -295.329
+          ],
+          [
+            -533.347,
+            -293.488
+          ],
+          [
+            -534.597,
+            -293.488
+          ],
+          [
+            -534.597,
+            -293.785
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0022": {
+        "puntos": [
+          [
+            -533.185,
+            -300.485
+          ],
+          [
+            -532.602,
+            -300.485
+          ],
+          [
+            -532.602,
+            -300.235
+          ],
+          [
+            -531.632,
+            -300.235
+          ],
+          [
+            -531.632,
+            -300.485
+          ],
+          [
+            -530.647,
+            -300.485
+          ],
+          [
+            -530.646,
+            -301.67
+          ],
+          [
+            -533.185,
+            -301.67
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0023": {
+        "puntos": [
+          [
+            -514.081,
+            -298.151
+          ],
+          [
+            -512.887,
+            -298.151
+          ],
+          [
+            -512.887,
+            -295.345
+          ],
+          [
+            -508.652,
+            -295.345
+          ],
+          [
+            -508.652,
+            -294.176
+          ],
+          [
+            -508.65,
+            -294.176
+          ],
+          [
+            -508.656,
+            -291.724
+          ],
+          [
+            -514.083,
+            -291.726
+          ],
+          [
+            -514.082,
+            -296.145
+          ],
+          [
+            -514.386,
+            -296.146
+          ],
+          [
+            -514.388,
+            -297.098
+          ],
+          [
+            -514.083,
+            -297.098
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0024": {
+        "puntos": [
+          [
+            -510.868,
+            -295.444
+          ],
+          [
+            -510.868,
+            -298.151
+          ],
+          [
+            -510.257,
+            -298.151
+          ],
+          [
+            -510.257,
+            -298.251
+          ],
+          [
+            -511.362,
+            -298.251
+          ],
+          [
+            -511.362,
+            -301.601
+          ],
+          [
+            -508.655,
+            -301.601
+          ],
+          [
+            -508.65,
+            -300.25
+          ],
+          [
+            -508.652,
+            -300.25
+          ],
+          [
+            -508.652,
+            -299.65
+          ],
+          [
+            -508.653,
+            -299.65
+          ],
+          [
+            -508.653,
+            -298.251
+          ],
+          [
+            -509.187,
+            -298.251
+          ],
+          [
+            -509.188,
+            -298.151
+          ],
+          [
+            -508.598,
+            -298.151
+          ],
+          [
+            -508.598,
+            -297.529
+          ],
+          [
+            -509.157,
+            -297.529
+          ],
+          [
+            -509.157,
+            -296.351
+          ],
+          [
+            -508.598,
+            -296.351
+          ],
+          [
+            -508.598,
+            -295.446
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0025": {
+        "puntos": [
+          [
+            -514.117,
+            -298.251
+          ],
+          [
+            -514.117,
+            -301.601
+          ],
+          [
+            -511.463,
+            -301.601
+          ],
+          [
+            -511.463,
+            -298.251
+          ],
+          [
+            -512.787,
+            -298.251
+          ],
+          [
+            -512.787,
+            -298.851
+          ],
+          [
+            -512.887,
+            -298.851
+          ],
+          [
+            -512.887,
+            -298.251
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0026": {
+        "puntos": [
+          [
+            -511.5,
+            -290.023
+          ],
+          [
+            -511.499,
+            -291.425
+          ],
+          [
+            -510.187,
+            -291.425
+          ],
+          [
+            -510.187,
+            -291.681
+          ],
+          [
+            -509.287,
+            -291.681
+          ],
+          [
+            -509.288,
+            -291.425
+          ],
+          [
+            -508.652,
+            -291.425
+          ],
+          [
+            -508.651,
+            -290.027
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0027": {
+        "puntos": [
+          [
+            -512.752,
+            -297.982
+          ],
+          [
+            -512.852,
+            -297.982
+          ],
+          [
+            -512.852,
+            -297.257
+          ],
+          [
+            -512.752,
+            -297.257
+          ],
+          [
+            -512.752,
+            -295.48
+          ],
+          [
+            -511.582,
+            -295.48
+          ],
+          [
+            -511.582,
+            -296.47
+          ],
+          [
+            -511.002,
+            -296.47
+          ],
+          [
+            -511.002,
+            -298.116
+          ],
+          [
+            -512.752,
+            -298.116
+          ],
+          [
+            -512.752,
+            -297.982
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0028": {
+        "puntos": [
+          [
+            -514.203,
+            -290.235
+          ],
+          [
+            -511.599,
+            -290.235
+          ],
+          [
+            -511.599,
+            -291.425
+          ],
+          [
+            -512.686,
+            -291.425
+          ],
+          [
+            -512.686,
+            -291.675
+          ],
+          [
+            -513.656,
+            -291.675
+          ],
+          [
+            -513.656,
+            -291.425
+          ],
+          [
+            -514.202,
+            -291.425
+          ],
+          [
+            -514.202,
+            -291.106
+          ],
+          [
+            -514.202,
+            -291.106
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0029": {
+        "puntos": [
+          [
+            -488.477,
+            -300.896
+          ],
+          [
+            -488.477,
+            -300.896
+          ],
+          [
+            -488.478,
+            -300.323
+          ],
+          [
+            -488.477,
+            -296.12
+          ],
+          [
+            -488.174,
+            -296.12
+          ],
+          [
+            -488.171,
+            -295.167
+          ],
+          [
+            -488.475,
+            -295.166
+          ],
+          [
+            -488.474,
+            -294.243
+          ],
+          [
+            -489.631,
+            -294.243
+          ],
+          [
+            -489.63,
+            -296.92
+          ],
+          [
+            -493.907,
+            -296.92
+          ],
+          [
+            -493.907,
+            -298.015
+          ],
+          [
+            -493.962,
+            -298.015
+          ],
+          [
+            -493.962,
+            -300.43
+          ],
+          [
+            -493.907,
+            -300.43
+          ],
+          [
+            -493.907,
+            -300.925
+          ],
+          [
+            -490.91,
+            -300.925
+          ],
+          [
+            -490.91,
+            -300.896
+          ],
+          [
+            -488.477,
+            -300.896
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0030": {
+        "puntos": [
+          [
+            -491.244,
+            -291.74
+          ],
+          [
+            -493.907,
+            -291.74
+          ],
+          [
+            -493.907,
+            -292.795
+          ],
+          [
+            -493.962,
+            -292.795
+          ],
+          [
+            -493.962,
+            -294.736
+          ],
+          [
+            -493.402,
+            -294.736
+          ],
+          [
+            -493.402,
+            -295.909
+          ],
+          [
+            -493.967,
+            -295.909
+          ],
+          [
+            -493.967,
+            -296.82
+          ],
+          [
+            -491.697,
+            -296.82
+          ],
+          [
+            -491.697,
+            -294.84
+          ],
+          [
+            -492.297,
+            -294.84
+          ],
+          [
+            -492.298,
+            -294.737
+          ],
+          [
+            -491.244,
+            -294.737
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0031": {
+        "puntos": [
+          [
+            -488.178,
+            -298.912
+          ],
+          [
+            -488.177,
+            -299.015
+          ],
+          [
+            -488.433,
+            -299.015
+          ],
+          [
+            -488.433,
+            -299.915
+          ],
+          [
+            -488.068,
+            -299.915
+          ],
+          [
+            -488.068,
+            -301.8
+          ],
+          [
+            -486.707,
+            -301.8
+          ],
+          [
+            -486.707,
+            -298.912
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0032": {
+        "puntos": [
+          [
+            -489.766,
+            -294.239
+          ],
+          [
+            -491.112,
+            -294.239
+          ],
+          [
+            -491.112,
+            -294.872
+          ],
+          [
+            -491.563,
+            -294.872
+          ],
+          [
+            -491.563,
+            -295.795
+          ],
+          [
+            -490.971,
+            -295.796
+          ],
+          [
+            -490.973,
+            -296.783
+          ],
+          [
+            -489.767,
+            -296.787
+          ],
+          [
+            -489.764,
+            -295.214
+          ],
+          [
+            -489.686,
+            -295.214
+          ],
+          [
+            -489.686,
+            -294.469
+          ],
+          [
+            -489.765,
+            -294.469
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0033": {
+        "puntos": [
+          [
+            -471.042,
+            -291.386
+          ],
+          [
+            -473.818,
+            -291.386
+          ],
+          [
+            -473.818,
+            -292.122
+          ],
+          [
+            -473.818,
+            -292.261
+          ],
+          [
+            -473.818,
+            -294.381
+          ],
+          [
+            -473.278,
+            -294.381
+          ],
+          [
+            -473.278,
+            -295.559
+          ],
+          [
+            -473.848,
+            -295.559
+          ],
+          [
+            -473.848,
+            -296.83
+          ],
+          [
+            -471.557,
+            -296.83
+          ],
+          [
+            -471.557,
+            -294.185
+          ],
+          [
+            -472.157,
+            -294.185
+          ],
+          [
+            -472.157,
+            -294.086
+          ],
+          [
+            -471.042,
+            -294.086
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0034": {
+        "puntos": [
+          [
+            -468.318,
+            -294.285
+          ],
+          [
+            -468.326,
+            -291.386
+          ],
+          [
+            -470.942,
+            -291.385
+          ],
+          [
+            -470.942,
+            -294.085
+          ],
+          [
+            -470.042,
+            -294.085
+          ],
+          [
+            -470.042,
+            -293.485
+          ],
+          [
+            -469.942,
+            -293.485
+          ],
+          [
+            -469.942,
+            -294.085
+          ],
+          [
+            -469.455,
+            -294.085
+          ],
+          [
+            -469.455,
+            -294.285
+          ],
+          [
+            -468.318,
+            -294.285
+          ],
+          [
+            -468.318,
+            -294.285
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0035": {
+        "puntos": [
+          [
+            -470.848,
+            -296.795
+          ],
+          [
+            -470.848,
+            -295.441
+          ],
+          [
+            -471.421,
+            -295.44
+          ],
+          [
+            -471.421,
+            -294.221
+          ],
+          [
+            -469.594,
+            -294.221
+          ],
+          [
+            -469.594,
+            -294.498
+          ],
+          [
+            -469.494,
+            -294.498
+          ],
+          [
+            -469.494,
+            -295.223
+          ],
+          [
+            -469.594,
+            -295.223
+          ],
+          [
+            -469.594,
+            -296.795
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0036": {
+        "puntos": [
+          [
+            -473.899,
+            -290.254
+          ],
+          [
+            -473.899,
+            -290.235
+          ],
+          [
+            -468.29,
+            -290.235
+          ],
+          [
+            -468.29,
+            -291.005
+          ],
+          [
+            -469.992,
+            -291.005
+          ],
+          [
+            -469.992,
+            -291.341
+          ],
+          [
+            -470.892,
+            -291.341
+          ],
+          [
+            -470.892,
+            -291.008
+          ],
+          [
+            -471.06,
+            -291.008
+          ],
+          [
+            -471.06,
+            -291.342
+          ],
+          [
+            -471.96,
+            -291.342
+          ],
+          [
+            -471.96,
+            -291.006
+          ],
+          [
+            -473.899,
+            -291.006
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0037": {
+        "puntos": [
+          [
+            -473.838,
+            -301.677
+          ],
+          [
+            -473.841,
+            -300.95
+          ],
+          [
+            -473.782,
+            -300.95
+          ],
+          [
+            -473.782,
+            -300.486
+          ],
+          [
+            -472.68,
+            -300.485
+          ],
+          [
+            -472.68,
+            -300.235
+          ],
+          [
+            -471.71,
+            -300.235
+          ],
+          [
+            -471.71,
+            -300.485
+          ],
+          [
+            -471.71,
+            -300.485
+          ],
+          [
+            -471.71,
+            -300.949
+          ],
+          [
+            -468.459,
+            -300.953
+          ],
+          [
+            -468.459,
+            -301.543
+          ],
+          [
+            -466.583,
+            -301.544
+          ],
+          [
+            -466.583,
+            -301.676
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0038": {
+        "puntos": [
+          [
+            -473.838,
+            -300.076
+          ],
+          [
+            -473.838,
+            -297.66
+          ],
+          [
+            -473.783,
+            -297.66
+          ],
+          [
+            -473.783,
+            -296.93
+          ],
+          [
+            -469.459,
+            -296.93
+          ],
+          [
+            -469.459,
+            -294.385
+          ],
+          [
+            -468.357,
+            -294.385
+          ],
+          [
+            -468.357,
+            -294.811
+          ],
+          [
+            -468.055,
+            -294.813
+          ],
+          [
+            -468.053,
+            -295.765
+          ],
+          [
+            -468.359,
+            -295.765
+          ],
+          [
+            -468.359,
+            -299.559
+          ],
+          [
+            -468.362,
+            -299.561
+          ],
+          [
+            -468.36,
+            -300.543
+          ],
+          [
+            -471.36,
+            -300.541
+          ],
+          [
+            -471.36,
+            -300.185
+          ],
+          [
+            -473.784,
+            -300.185
+          ],
+          [
+            -473.784,
+            -300.076
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0039": {
+        "puntos": [
+          [
+            -468.157,
+            -291.005
+          ],
+          [
+            -473.983,
+            -291.005
+          ],
+          [
+            -473.983,
+            -289.925
+          ],
+          [
+            -468.157,
+            -289.925
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      },
+      "g-0040": {
+        "puntos": [
+          [
+            -473.983,
+            -300.95
+          ],
+          [
+            -473.983,
+            -301.986
+          ],
+          [
+            -466.483,
+            -301.986
+          ],
+          [
+            -466.483,
+            -298.558
+          ],
+          [
+            -466.483,
+            -298.358
+          ],
+          [
+            -467.947,
+            -298.358
+          ],
+          [
+            -467.944,
+            -298.423
+          ],
+          [
+            -467.947,
+            -300.953
+          ]
+        ],
+        "representacion": "huella_2d",
+        "tipo": "poligono",
+        "unidad": "m"
+      }
+    },
+    "plantas": [
+      {
+        "altura_libre_m": {
+          "confianza": null,
+          "estado": "UNKNOWN",
+          "fuente": "",
+          "motivos": [
+            {
+              "codigo": "CLEAR_HEIGHT_NOT_OBSERVABLE",
+              "detalle": "La altura libre no es observable en este origen."
+            }
+          ],
+          "origen": null,
+          "valor": null
+        },
+        "concepto": "843abf76b64e",
+        "cota_base_m": {
+          "confianza": null,
+          "estado": "UNKNOWN",
+          "fuente": "",
+          "motivos": [
+            {
+              "codigo": "LEVEL_NOT_OBSERVABLE",
+              "detalle": "La cota de la planta no es observable en este origen."
+            }
+          ],
+          "origen": null,
+          "valor": null
+        },
+        "edificio_id": "ed-01",
+        "id": "pl-01",
+        "numero": {
+          "confianza": null,
+          "estado": "UNKNOWN",
+          "fuente": "",
+          "motivos": [
+            {
+              "codigo": "FLOOR_NOT_OBSERVABLE",
+              "detalle": "Un DXF de distribucion no dice que planta es. CAP-4 la resuelve preguntando, no adivinando."
+            }
+          ],
+          "origen": null,
+          "valor": null
+        },
+        "unidades": [
+          "un-0001",
+          "un-0002",
+          "un-0003",
+          "un-0004",
+          "un-0005",
+          "un-0006"
+        ]
+      }
+    ],
+    "proyecto": {
+      "ciudad": {
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "fuente": "",
+        "motivos": [
+          {
+            "codigo": "CITY_NOT_DECLARED",
+            "detalle": "La ciudad no se ha declarado."
+          }
+        ],
+        "origen": null,
+        "valor": null
+      },
+      "concepto": "884296171711",
+      "edificios": [
+        "ed-01"
+      ],
+      "escala": {
+        "confianza": "Alta",
+        "estado": "KNOWN",
+        "fuente": "deteccion de escala (acuerdo)",
+        "motivos": [],
+        "origen": "derivado",
+        "valor": 1.0
+      },
+      "id": "pr-01",
+      "norte_grados": {
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "fuente": "",
+        "motivos": [
+          {
+            "codigo": "NORTH_NOT_DECLARED",
+            "detalle": "El norte no se ha declarado."
+          }
+        ],
+        "origen": null,
+        "valor": null
+      },
+      "presencia": {
+        "edificio": "inferido",
+        "espacio": "observado",
+        "hueco": "no_observable",
+        "instalacion": "no_observable",
+        "muro": "no_observable",
+        "parcela": "no_observable",
+        "pilar": "no_observable",
+        "planta": "no_observable",
+        "proyecto": "observado",
+        "unidad": "observado",
+        "zona_comun": "no_observable"
+      },
+      "procedencia": {
+        "capa": "00 areas",
+        "fichero": "ejemplo.dxf",
+        "formato": "dxf",
+        "id_nativo": null
+      },
+      "tipologia": {
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "fuente": "",
+        "motivos": [
+          {
+            "codigo": "TYPOLOGY_NOT_DECLARED",
+            "detalle": "La tipologia no se ha declarado."
+          }
+        ],
+        "origen": null,
+        "valor": null
+      }
+    },
+    "sellado": "df9e8e312c8f84a7fd39e3b70285352d4026ddb1ae194d782033cc5822c0e4b1",
+    "unidades": [
+      {
+        "concepto": "fbdbfcf7b6db",
+        "espacios": [
+          "es-0001",
+          "es-0002",
+          "es-0003",
+          "es-0004",
+          "es-0005",
+          "es-0006",
+          "es-0007",
+          "es-0008"
+        ],
+        "etiqueta": {
+          "confianza": "Alta",
+          "estado": "KNOWN",
+          "fuente": "rotulo VT del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "VT1/3"
+        },
+        "id": "un-0001",
+        "planta_id": "pl-01",
+        "uso": {
+          "confianza": null,
+          "estado": "UNKNOWN",
+          "fuente": "",
+          "motivos": [
+            {
+              "codigo": "USE_NOT_DECLARED",
+              "detalle": "El uso de la unidad no consta ni declarado ni observado."
+            }
+          ],
+          "origen": null,
+          "valor": null
+        }
+      },
+      {
+        "concepto": "c142c37756ee",
+        "espacios": [
+          "es-0009",
+          "es-0010",
+          "es-0011",
+          "es-0012",
+          "es-0013",
+          "es-0014"
+        ],
+        "etiqueta": {
+          "confianza": "Alta",
+          "estado": "KNOWN",
+          "fuente": "rotulo VT del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "VT2/2"
+        },
+        "id": "un-0002",
+        "planta_id": "pl-01",
+        "uso": {
+          "confianza": null,
+          "estado": "UNKNOWN",
+          "fuente": "",
+          "motivos": [
+            {
+              "codigo": "USE_NOT_DECLARED",
+              "detalle": "El uso de la unidad no consta ni declarado ni observado."
+            }
+          ],
+          "origen": null,
+          "valor": null
+        }
+      },
+      {
+        "concepto": "6fd70693184f",
+        "espacios": [
+          "es-0015",
+          "es-0016",
+          "es-0017",
+          "es-0018",
+          "es-0019",
+          "es-0020",
+          "es-0021",
+          "es-0022"
+        ],
+        "etiqueta": {
+          "confianza": "Alta",
+          "estado": "KNOWN",
+          "fuente": "rotulo VT del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "VT3/3"
+        },
+        "id": "un-0003",
+        "planta_id": "pl-01",
+        "uso": {
+          "confianza": null,
+          "estado": "UNKNOWN",
+          "fuente": "",
+          "motivos": [
+            {
+              "codigo": "USE_NOT_DECLARED",
+              "detalle": "El uso de la unidad no consta ni declarado ni observado."
+            }
+          ],
+          "origen": null,
+          "valor": null
+        }
+      },
+      {
+        "concepto": "aa1490f08b57",
+        "espacios": [
+          "es-0023",
+          "es-0024",
+          "es-0025",
+          "es-0026",
+          "es-0027",
+          "es-0028"
+        ],
+        "etiqueta": {
+          "confianza": "Alta",
+          "estado": "KNOWN",
+          "fuente": "rotulo VT del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "VT4/2"
+        },
+        "id": "un-0004",
+        "planta_id": "pl-01",
+        "uso": {
+          "confianza": null,
+          "estado": "UNKNOWN",
+          "fuente": "",
+          "motivos": [
+            {
+              "codigo": "USE_NOT_DECLARED",
+              "detalle": "El uso de la unidad no consta ni declarado ni observado."
+            }
+          ],
+          "origen": null,
+          "valor": null
+        }
+      },
+      {
+        "concepto": "fc2b799c23a1",
+        "espacios": [
+          "es-0029",
+          "es-0030",
+          "es-0031",
+          "es-0032"
+        ],
+        "etiqueta": {
+          "confianza": "Alta",
+          "estado": "KNOWN",
+          "fuente": "rotulo VT del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "VT5/1"
+        },
+        "id": "un-0005",
+        "planta_id": "pl-01",
+        "uso": {
+          "confianza": null,
+          "estado": "UNKNOWN",
+          "fuente": "",
+          "motivos": [
+            {
+              "codigo": "USE_NOT_DECLARED",
+              "detalle": "El uso de la unidad no consta ni declarado ni observado."
+            }
+          ],
+          "origen": null,
+          "valor": null
+        }
+      },
+      {
+        "concepto": "3485adfe1757",
+        "espacios": [
+          "es-0033",
+          "es-0034",
+          "es-0035",
+          "es-0036",
+          "es-0037",
+          "es-0038",
+          "es-0039",
+          "es-0040"
+        ],
+        "etiqueta": {
+          "confianza": "Alta",
+          "estado": "KNOWN",
+          "fuente": "rotulo VT del plano",
+          "motivos": [],
+          "origen": "observado",
+          "valor": "VT6/2"
+        },
+        "id": "un-0006",
+        "planta_id": "pl-01",
+        "uso": {
+          "confianza": null,
+          "estado": "UNKNOWN",
+          "fuente": "",
+          "motivos": [
+            {
+              "codigo": "USE_NOT_DECLARED",
+              "detalle": "El uso de la unidad no consta ni declarado ni observado."
+            }
+          ],
+          "origen": null,
+          "valor": null
+        }
+      }
+    ]
+  },
+  "round_trip_exacto": false,
+  "sellado_verificado": true,
+  "semilla": "golden-e1"
+}

@@ -1,0 +1,90 @@
+# FICTICIO. Ver LEEME.md. Ninguna cifra ni boletín de este fichero es real.
+version: 1
+
+norma:
+  concept_id: es.ficticio_dbsi.norma
+  instance_id: es.ficticio_dbsi.norma@1
+  ambito: es
+  literal: "Texto ficticio de prueba."
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio ficticio de pruebas
+    identificador_oficial: FICTICIO-000/2006
+    titulo: Documento Básico ficticio de seguridad en caso de incendio
+    boletin: FICTICIO-A-2006-0001
+    url_oficial: https://ejemplo.invalid/ficticio/dbsi
+  articulo:
+    documento_basico: DB-SI
+    seccion: SI-3
+    apartado: "4"
+  vigencia:
+    vigencia_desde: 2006-03-28
+
+reglas:
+  # Umbral con tabla de parámetros indexada por tipología: comprueba que el
+  # repliegue declarado se recorre y que el nivel usado queda escrito.
+  - concept_id: es.ficticio_dbsi.seguridad_incendio.recorrido_evacuacion
+    instance_id: es.ficticio_dbsi.seguridad_incendio.recorrido_evacuacion@1
+    nombre: Longitud máxima del recorrido de evacuación (FICTICIA)
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    parametro:
+      ejes: [tipologia]
+      repliegue: [tipologia, todos, ninguno]
+      unidad: m
+      valores:
+        - tipologia: plurifamiliar
+          valor: 25
+        - tipologia: unifamiliar_aislada
+          valor: 50
+        - valor: 30
+    mensaje: El recorrido de evacuación no puede superar el valor aplicable.
+    vigencia:
+      vigencia_desde: 2006-03-28
+
+  # Condicionada a un hecho del proyecto. Sin ese hecho la regla NO desaparece:
+  # queda `aplica_no_evaluable` con la pregunta al lado.
+  - concept_id: es.ficticio_dbsi.seguridad_incendio.sector_por_altura
+    instance_id: es.ficticio_dbsi.seguridad_incendio.sector_por_altura@1
+    nombre: Sectorización obligatoria a partir de cuatro plantas (FICTICIA)
+    materia: seguridad_incendio
+    tipo: exigencia_de_presencia
+    patron: PRESENCIA_OBLIGATORIA
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    condiciones:
+      todas:
+        - hecho: plantas_sobre_rasante
+          comparador: ">="
+          valor: 4
+    mensaje: Debe existir sectorización de incendios.
+    vigencia:
+      vigencia_desde: 2006-03-28
+
+  # Derogada en 2019: con fecha de devengo posterior debe salir `no_aplica`
+  # con la fecha escrita, no desaparecer del informe.
+  - concept_id: es.ficticio_dbsi.seguridad_incendio.regla_derogada
+    instance_id: es.ficticio_dbsi.seguridad_incendio.regla_derogada@2
+    nombre: Exigencia ficticia derogada en 2019
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: AGREGACION_AMBITO
+    prioridad: recomendable
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    parametro:
+      ejes: []
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 1
+    vigencia:
+      vigencia_desde: 2006-03-28
+      vigencia_hasta: 2019-12-01

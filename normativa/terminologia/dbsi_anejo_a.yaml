@@ -1,0 +1,219 @@
+# Generado por extraccion/terminologia.py (determinista, sin IA).
+# NO editar el campo `literal` a mano: es transcripcion de una norma.
+version: 1
+_comentario_de_diseno: Glosario, no corpus de reglas. Ver normativa/esquema/definicion.schema.json.
+norma:
+  concept_id: es.cte.db_si.anejo_a
+  instance_id: es.cte.db_si.anejo_a@1
+  ambito: es
+  fuente:
+    rango: Documento tecnico
+    organismo: Ministerio de Transportes, Movilidad y Agenda Urbana
+    titulo: Documento Basico SI - Seguridad en caso de incendio
+    url_oficial: https://www.codigotecnico.org/pdf/Documentos/SI/DBSI.pdf
+    hash_texto: 0a2e78cd62471d9cc5cfe2efbc6aa39fdbad73c124aea7b039f9de96c141e105
+  articulo:
+    documento_basico: DB-SI
+    anejo: SI A
+    titulo_anejo: Terminologia
+  vigencia:
+    vigencia_desde: '2025-03-04'
+precedencia:
+- es.cte.parte_1.anejo_3
+definiciones:
+- concept_id: es.cte.db_si.anejo_a.superficie_util
+  termino: Superficie útil
+  literal: Superficie en planta de un recinto, sector o edificio ocup able por las personas. En uso Comercial,
+    cuando no se defina en proyecto la disposición de mostradores, estanterías, cajas registradoras y,
+    en general, de aquellos elementos que configuran la implantación comercial de un establecimiento,
+    se tomará como superficie útil de las zonas destinadas al p úblico, al menos el 75% de la superficie
+    construida de dichas zonas.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-1. Magnitud que la Tabla 2.1 de DB-SI 3 indexa. NO coincide con el criterio propio
+    de evaluator.py (ver DB-SI_DECISIONS.md D1 y D6).
+- concept_id: es.cte.db_si.anejo_a.origen_de_evacuacion
+  termino: Origen de evacuación
+  literal: Es todo punto ocupable de un edificio, exceptuando los del interior de las viviendas y los
+    de todo recinto o conjunto de ellos comunicados entre sí, en los que la densidad de ocupación no exceda
+    de 1 persona/5 m2 y cuya superficie total no exceda de 50 m², como pueden ser las habitaciones de
+    hotel, residencia u hospital, los despachos de oficinas, etc. Los puntos ocupables de todos los locales
+    de riesgo e special y los de las zonas de ocupación nula cuya superficie exceda de 50 m², se consideran
+    origen de evacuación y deben cumplir los límites que se establecen para la longitud de los recorridos
+    de evacuación hasta las salidas de dichos esp acios, cuando se trate de zonas de riesgo especial,
+    y, en todo caso, hasta las salidas de planta, pero no es preciso tomarlos en consideración a efectos
+    de determinar la altura de evacuación de un edificio o el número de ocupantes.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: 'CAP-6/C09. Excluye expresamente el interior de las viviendas: es la cita que invalida
+    el ambito actual de R17.'
+- concept_id: es.cte.db_si.anejo_a.uso_residencial_vivienda
+  termino: Uso Residencial Vivienda
+  literal: 'Edificio o zona destinada a alojamiento permanente, cualquiera que sea el tipo de edificio:
+    vivien da unifamiliar, edificio de pisos o de apartamentos, etc.'
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-2. Cubre unifamiliar y plurifamiliar, asi que el mapeo desde tipologia queda citado
+    y no asumido.
+- concept_id: es.cte.db_si.anejo_a.zona_de_ocupacion_nula
+  termino: Zona de ocupación nula
+  literal: Zona en la que la presencia de personas sea ocasional o bien a efectos de mantenimiento, tales
+    como salas de máquinas y cuartos de instalaciones, locales para material de limpieza, determinados
+    almacenes y archivos, trasteros de viviendas, etc. Los puntos de dichas zonas deben cumplir los límites
+    que se establecen para los recorridos de evacuación hasta las salidas de las mismas (cuando además
+    se trate de zonas de riesgo especial) o de la planta, pero no es preciso toma rlos en consideración
+    a efectos de determinar la altura de evacuación de un edificio o el número de ocupantes.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: 'CAP-3. Sostiene el estado NO_APLICABLE: es una categoria de la tabla, no el numero 0.'
+- concept_id: es.cte.db_si.anejo_a.sector_de_incendio
+  termino: Sector de incendio
+  literal: Espacio de un edificio separado de otras zonas del mismo por elementos constructivos delimitadores
+    resistentes al fuego durante un período de tiempo determinado , en el interior del cual se puede confinar
+    (o excluir) el incendio para que no se pueda propagar a (o desde) otra parte del edificio. Los locales
+    de riesgo especial no se consideran sectores de incendio.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: C01. Se define por elementos resistentes al fuego, dato que ArchMuse no tiene.
+- concept_id: es.cte.db_si.anejo_a.altura_de_evacuacion
+  termino: Altura de evacuación
+  literal: Máxima diferencia de cotas entre un origen de evacuación y la salida de edificio que le corresponda.
+    A efectos de determinar la altura de evacuación de un edificio no se consideran las plantas más altas
+    del edificio en las que únicamente existan zonas de ocupación nula.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-5. Se mide de origen de evacuacion a salida de edificio, no como plantas x altura
+    libre.
+- concept_id: es.cte.db_si.anejo_a.uso_administrativo
+  termino: Uso Administrativo
+  literal: Edificio, establecimiento o zona en el que se desarrollan actividades de gestión o de servicios
+    en cua lquiera de sus modalidades, como por ejemplo, centros de la administración públ ica, bancos,
+    despachos profesionales, oficinas, etc.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-2. Valor del catalogo de usos previstos del DB-SI (Anejo SI A).
+- concept_id: es.cte.db_si.anejo_a.uso_almacen
+  termino: Uso Almacén
+  literal: Edificio o establecimiento destinado de forma principal al almacenamiento de materiales o productos.
+    También se consideran de uso almacén las zonas destinadas de forma principal al almacenami ento de
+    materiales o productos siempre que tengan una carga de fuego total ponderada y corregida (QT), calculada
+    según el anexo I del RSCIEI, igual o superior a tres millones de megajulios. No obstante, los locales
+    de riesgo especial enunciados en la tabla 2.1 de la Sección SI 1, no se considerarán zonas de uso
+    almacén salvo en las situaciones indicadas en la propia tabla.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-2. Valor del catalogo de usos previstos del DB-SI (Anejo SI A).
+- concept_id: es.cte.db_si.anejo_a.uso_aparcamiento
+  termino: Uso Aparcamiento
+  literal: Edificio, establecimiento o zona independiente o accesoria de otro uso principal, destinado
+    a estacion amiento de vehícu los y cuya superficie construida exceda de 100 m 2, incluyendo las dedicadas
+    a revisi ones tales como lavado, puesta a punto, montaje de accesorios, comprobación de neumáticos
+    y faros, etc., que no requieran la manipulación de productos o de útiles de trabaj o que puedan presentar
+    rie sgo adicional y que se produce habitualmente en la reparación propiamente dicha. Se excluyen de
+    este uso los garajes, cualquiera que sea su superficie, de una vivienda unifamiliar, así como los
+    aparcamientos en espacios exteriores del entorno de los edificios, aunque sus plazas estén cubiertas.
+    Dentro de este uso, se denominan aparcamientos robotiz ados aquellos en los que el movimiento de los
+    vehículos, desde el acceso hasta las plazas de aparcamiento, únicamente se realiza mediant e sistemas
+    mecánicos y sin presencia ni interve nción d irecta de personas, exceptuando la actuación ocasional
+    de personal de mantenimiento. En dichos aparcamientos no es preciso cumplir las condiciones de evacu
+    ación que se establecen en este DB SI, aunque d eben disponer de los medios de escape en caso de emergencia
+    para dicho personal que en cada caso considere adecuados la autoridad de control comp etente.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-2. Valor del catalogo de usos previstos del DB-SI (Anejo SI A).
+- concept_id: es.cte.db_si.anejo_a.uso_comercial
+  termino: Uso Comercial
+  literal: Edificio, establecimiento o zona cuya actividad principal es la venta de productos direct amente
+    al público o la prestación de servicios relacionados con los mismos, i ncluyendo, tanto las tiendas
+    y los grandes almacenes, los cuales suelen constituir un único establecimiento con un único titular,
+    como los centros comerciales, los mercados, las galerías comerciales, etc. También se consideran de
+    uso Comercial aquellos establecimientos en los que se prestan directamente al público determinados
+    servicios no necesariamente relaci onados con la venta de productos, pero cuyas características constructivas
+    y funcionales, las del riesgo derivado de la actividad y las de los ocupantes se puedan asimilar más
+    a las propias de este uso que a las de cualquier otro. Como ejemplos de dicha asimilación pueden citarse
+    las lavanderías, los salones de peluquería, etc.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-2. Valor del catalogo de usos previstos del DB-SI (Anejo SI A).
+- concept_id: es.cte.db_si.anejo_a.uso_docente
+  termino: Uso Docente
+  literal: 'Edificio, establecimiento o zona destinada a docencia, en cualquiera de sus niveles: escuelas
+    i nfantiles, centros de enseñanza primaria, secundaria, universitaria o formación profesional. No
+    obstante, los establecimientos docentes que no tengan la característica propia de este uso (básicamente,
+    el predominio de actividades en aulas de elevada densidad de ocupación) deben asimilarse a otros usos.
+    Documento Básico SI en caso de Incendio Anejo A. Terminología 51'
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-2. Valor del catalogo de usos previstos del DB-SI (Anejo SI A).
+- concept_id: es.cte.db_si.anejo_a.uso_hospitalario
+  termino: Uso Hospitalario
+  literal: Edificio o establecimiento destinado a asistencia sanitaria con hospitalización de 24 horas
+    y que está ocupados por personas que, en su mayoría, son incapaces de cuidarse por sí mismas, tales
+    como hosp itales, clínicas, sanatorios, residencias geriátricas, etc. Las zonas de dichos edificios
+    o establecimientos destinadas a asistencia sani taria de carácter ambulat orio (despachos médicos,
+    consultas, áreas destinadas al diagnóstico y tratamiento, etc.) así como a los centros con dicho carácter
+    en exclusiva, deben cumplir las condiciones correspondientes al uso Administrativo.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-2. Valor del catalogo de usos previstos del DB-SI (Anejo SI A).
+- concept_id: es.cte.db_si.anejo_a.uso_residencial_publico
+  termino: Uso Residencial Público
+  literal: Edificio o establecimiento destinado a proporcionar alojamiento temporal, regentado por un
+    titular de la actividad diferente del conjunto de los ocupantes y que puede disponer de servicios
+    comunes, tales c omo limpieza, comedor, lavandería, locales para reuniones y espectáculos, deportes,
+    etc. Incluye a los hoteles, hostales, residencias, pensiones, apartamentos turísticos, etc.
+  transcripcion:
+    metodo: extraccion_determinista_pdf
+    verificada_por_humano: false
+    anomalias_conocidas:
+    - Espacios espurios dentro de palabras, procedentes de la extraccion del PDF; NO se corrigen (editarlos
+      seria alterar el literal de una norma).
+  notas_de_uso: CAP-2. Valor del catalogo de usos previstos del DB-SI (Anejo SI A).

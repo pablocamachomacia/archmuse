@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archmuse — Análisis de calidad arquitectónica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css?v=20260817_apple_glass">
+</head>
+<body>
+<div id="app">
+  <!-- Shell: sidebar lateral persistente (v3 de
+       `docs/design/2026-08-01-especificacion-shell.md`, que derogó la barra
+       superior de menús el 2026-08-02).
+
+       Este elemento NO se vuelve a montar nunca: `renderInicio` y
+       `renderWorkspace` solo reescriben `#view-root` y la zona contextual
+       `#sidebar-contexto`. Es lo que hace que Inicio y Workspace se sientan
+       la misma aplicación y no dos pantallas — si se recreara en cada
+       navegación, el colapso parpadearía y se perdería el marco persistente
+       que justifica todo el rediseño (§10 de la especificación). -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <button type="button" class="sidebar-brand" id="sidebar-brand" title="Ir al inicio">ArchMuse</button>
+      <button type="button" class="sidebar-collapse" id="sidebar-collapse" aria-label="Colapsar panel" title="Colapsar panel (Ctrl+1)"></button>
+    </div>
+
+    <div class="sidebar-acciones">
+      <button type="button" class="sidebar-item sidebar-item-primary" id="sidebar-nuevo" aria-haspopup="true" aria-expanded="false">
+        <span class="sidebar-icono" aria-hidden="true">+</span>
+        <span class="sidebar-etiqueta">Nuevo</span>
+      </button>
+      <button type="button" class="sidebar-item" id="sidebar-inicio">
+        <span class="sidebar-icono" aria-hidden="true">&#9750;</span>
+        <span class="sidebar-etiqueta">Inicio</span>
+      </button>
+    </div>
+
+    <!-- Zona contextual (§6): sin proyecto muestra hasta 5 recientes; con
+         proyecto abierto, sus viviendas. Nunca las dos cosas a la vez. -->
+    <div class="sidebar-contexto" id="sidebar-contexto"></div>
+
+    <div class="sidebar-pie">
+      <button type="button" class="sidebar-item" id="sidebar-ajustes" disabled title="Ajustes — próximamente. Aún no hay opciones que configurar.">
+        <span class="sidebar-icono" aria-hidden="true">&#9881;</span>
+        <span class="sidebar-etiqueta">Ajustes</span>
+        <span class="sidebar-badge-proximamente">próximamente</span>
+      </button>
+    </div>
+  </aside>
+  <main id="view-root"></main>
+</div>
+<div id="room-tooltip" class="room-tooltip" hidden>
+  <div class="tooltip-title"></div>
+  <div class="tooltip-area"></div>
+  <div class="tooltip-problems"></div>
+</div>
+
+<div id="viewer-3d">
+  <div class="viewer-3d-toolbar">
+    <div class="viewer-header-left">
+      <span class="viewer-title" id="viewer-3d-title-text"></span>
+      <span class="viewer-meta" id="viewer-3d-meta-text"></span>
+    </div>
+    <div class="viewer-header-center">
+      <button type="button" class="cam-btn active" data-view="perspective">Perspectiva</button>
+      <button type="button" class="cam-btn" data-view="top">Planta</button>
+      <button type="button" class="cam-btn" data-view="front">Alzado</button>
+      <button type="button" class="cam-btn" data-view="side">Lateral</button>
+    </div>
+    <div class="viewer-header-right">
+      <!-- Contexto urbano real (2026-08-16, a petición explícita): ocultos por defecto vía `hidden` --
+           `viewer-edificio.js` solo los muestra si el proyecto tiene un sitio real enlazado (Paso 0)
+           y la consulta a `/api/proyectos/<id>/entorno-3d` de verdad trajo algo que mostrar; nunca se
+           ofrece un toggle para algo que no existe. -->
+      <!-- Glifos tipográficos monocromos, no emoji (2026-08-17, pedido explícito: "elimina todos
+           los emojis") -- mismo lenguaje de icono único que ya usan ⌂/⚙ en el sidebar, sin el
+           selector de variación de emoji (&#65039;) que forzaba la presentación a color. -->
+      <button id="btn-toggle-entorno" type="button" class="viewer-toggle-btn active" hidden title="Entorno urbano: ortofoto real + edificios colindantes" aria-label="Entorno urbano">&#9974;</button>
+      <button id="btn-toggle-sombras" type="button" class="viewer-toggle-btn active" hidden title="Sombras proyectadas por el sol" aria-label="Sombras realistas">&#9680;</button>
+      <button id="btn-paseo" type="button" class="viewer-walk-btn">Paseo</button>
+      <button id="btn-volver-plano" type="button" class="viewer-back-btn">&larr; Volver al plano</button>
+    </div>
+  </div>
+  <div class="viewer-3d-mount" id="viewer-3d-mount">
+    <div class="viewer-3d-loading" id="viewer-3d-loading">Construyendo el edificio&hellip;</div>
+  </div>
+</div>
+
+<!-- Modo Sandbox / Lienzo Libre (2026-08-17, a petición explícita): overlay PROPIO, independiente de
+     #viewer-3d -- nunca comparte estado con el visor del edificio generado (`viewer-edificio.js`), que
+     asume siempre que existe `project.edificio`. Aquí puede no haber ningún edificio todavía: es
+     exactamente el punto de partida de este modo. Ver `static/viewer-sandbox.js`. -->
+<div id="viewer-sandbox">
+  <div class="viewer-3d-toolbar">
+    <div class="viewer-header-left">
+      <span class="viewer-title" id="sandbox-title-text">Lienzo libre</span>
+      <span class="viewer-meta" id="sandbox-meta-text">Dibuja volúmenes sobre la parcela</span>
+    </div>
+    <div class="viewer-header-right">
+      <button id="btn-sandbox-anadir" type="button" class="viewer-walk-btn">+ Añadir volumen</button>
+      <button id="btn-sandbox-generar" type="button" class="viewer-walk-btn" disabled title="Añade al menos un volumen primero">Generar plantas con IA</button>
+      <button id="btn-sandbox-generar-opciones" type="button" class="viewer-walk-btn" disabled title="Añade al menos un volumen primero">Generar 2 opciones</button>
+      <button id="btn-sandbox-cerrar" type="button" class="viewer-back-btn">&larr; Volver</button>
+    </div>
+  </div>
+  <div class="viewer-3d-mount" id="sandbox-mount">
+    <div class="viewer-3d-loading sandbox-loading-con-spinner" id="sandbox-loading">
+      <div class="sandbox-loading-spinner" aria-hidden="true"></div>
+      <span id="sandbox-loading-texto">Preparando el lienzo&hellip;</span>
+    </div>
+    <!-- Cota de altura del Sólido Capaz (2026-08-17, "Fase 2: cotas y alturas en pantalla") --
+         posición/texto/visibilidad los controla `actualizarEtiquetaAlturaSolidoCapaz` en
+         viewer-sandbox.js, cada fotograma; estático en el DOM (no creado por JS) para que su
+         lifecycle sea el mismo que `#sandbox-loading`, no el de la escena three.js que se
+         destruye/reconstruye en cada `open()`. -->
+    <span id="sandbox-etiqueta-altura-solido-capaz" class="sandbox-etiqueta-3d" hidden></span>
+  </div>
+  <!-- Panel de edición del volumen seleccionado -- oculto hasta que haya al menos uno y esté
+       seleccionado (`viewer-sandbox.js:seleccionarVolumen`). -->
+  <div id="sandbox-panel" class="sandbox-panel" hidden>
+    <div class="sandbox-panel-titulo">Volumen <span id="sandbox-panel-indice">1</span></div>
+    <label class="sandbox-panel-campo">Largo (m)
+      <input type="range" id="sandbox-largo" min="3" max="60" step="0.5" value="12">
+      <span id="sandbox-largo-valor" class="sandbox-panel-valor">12.0 m</span>
+    </label>
+    <label class="sandbox-panel-campo">Ancho (m)
+      <input type="range" id="sandbox-ancho" min="3" max="60" step="0.5" value="10">
+      <span id="sandbox-ancho-valor" class="sandbox-panel-valor">10.0 m</span>
+    </label>
+    <label class="sandbox-panel-campo">Plantas
+      <input type="range" id="sandbox-plantas" min="1" max="20" step="1" value="3">
+      <span id="sandbox-plantas-valor" class="sandbox-panel-valor">3</span>
+    </label>
+    <label class="sandbox-panel-campo">Rotación (°)
+      <input type="range" id="sandbox-rotacion" min="0" max="359" step="1" value="0">
+      <span id="sandbox-rotacion-valor" class="sandbox-panel-valor">0°</span>
+    </label>
+    <button type="button" id="btn-sandbox-borrar-volumen" class="sandbox-panel-borrar">Borrar este volumen</button>
+  </div>
+</div>
+
+<!-- Visor 3D simple de la vivienda seleccionada: extrusión de sus
+     habitaciones reales (no un edificio generado) — ver `room-viewer-3d.js`
+     (script type="module" al final del documento) y `wireVer3d` en el
+     script clásico, que decide cuál de los dos overlays abrir. -->
+<div id="room-viewer-3d">
+  <div class="room-viewer-toolbar">
+    <span class="room-viewer-title" id="room-viewer-title"></span>
+    <div class="room-viewer-controls">
+      <button type="button" id="btn-room-viewer-problemas" class="room-viewer-toggle">Ver problemas</button>
+      <div class="room-viewer-hora">
+        <label for="room-viewer-hora-slider">Hora del día</label>
+        <input type="range" id="room-viewer-hora-slider" min="6" max="20" step="0.5" value="13">
+        <span id="room-viewer-hora-valor" class="room-viewer-hora-valor">13:00</span>
+      </div>
+    </div>
+    <button type="button" id="btn-room-viewer-cerrar" class="room-viewer-close" aria-label="Cerrar visor 3D">&times;</button>
+  </div>
+  <div class="room-viewer-mount" id="room-viewer-mount">
+    <div class="room-viewer-loading" id="room-viewer-loading" hidden>Generando el modelo 3D&hellip;</div>
+  </div>
+  <div class="room-viewer-tooltip" id="room-viewer-tooltip" hidden></div>
+</div>
+
+<!-- Checklist de inspección en campo (2026-08-16, docs/prd/2026-08-16-checklist-inspeccion-campo.md):
+     overlay a pantalla completa, mismo patrón que #room-viewer-3d/#viewer-sandbox (este proyecto no
+     tiene modales) -- cableado y renderizado enteramente desde static/app.js, sin módulo aparte
+     (DOM plano, sin three.js). -->
+<div id="checklist-campo">
+  <div class="viewer-mapa-toolbar">
+    <span class="viewer-title">Checklist de visita a parcela</span>
+    <div class="checklist-campo-toolbar-acciones">
+      <button type="button" id="btn-checklist-campo-imprimir" class="viewer-walk-btn">Imprimir / Exportar</button>
+      <button type="button" id="btn-checklist-campo-cerrar" class="viewer-back-btn">&larr; Volver</button>
+    </div>
+  </div>
+  <div class="checklist-campo-mount">
+    <div id="checklist-campo-contenido" class="checklist-campo-contenido"></div>
+  </div>
+</div>
+
+<!-- Viabilidad económica y exportación (2026-08-17,
+     docs/prd/2026-08-17-viabilidad-economica-y-exportacion-dxf.md): mismo patrón de overlay que
+     #checklist-campo (arriba) -- cableado y renderizado enteramente desde static/app.js. -->
+<div id="viabilidad-economica">
+  <div class="viewer-mapa-toolbar">
+    <span class="viewer-title">Viabilidad económica y exportación</span>
+    <div class="checklist-campo-toolbar-acciones">
+      <button type="button" id="btn-viabilidad-economica-cerrar" class="viewer-back-btn">&larr; Volver</button>
+    </div>
+  </div>
+  <div class="checklist-campo-mount">
+    <div id="viabilidad-economica-contenido" class="checklist-campo-contenido"></div>
+  </div>
+</div>
+
+<!-- Checklist de Cumplimiento CTE (2026-08-17,
+     docs/prd/2026-08-17-checklist-cumplimiento-cte.md): mismo patrón de overlay que
+     #checklist-campo/#viabilidad-economica (arriba) -- agrega reglas ya calculadas por
+     analyzer/evaluator.py vía analyzer/cte_checker.py, no recalcula nada en el cliente. -->
+<div id="checklist-cte">
+  <div class="viewer-mapa-toolbar">
+    <span class="viewer-title">Checklist de cumplimiento CTE</span>
+    <div class="checklist-campo-toolbar-acciones">
+      <button type="button" id="btn-checklist-cte-cerrar" class="viewer-back-btn">&larr; Volver</button>
+    </div>
+  </div>
+  <div class="checklist-campo-mount">
+    <div id="checklist-cte-contenido" class="checklist-campo-contenido"></div>
+  </div>
+</div>
+
+<!-- Comparador de "Optimización Generativa Multi-Opción" (2026-08-17,
+     docs/prd/2026-08-17-optimizacion-generativa-multi-opcion.md): mismo patrón de overlay que
+     #checklist-cte/#viabilidad-economica, pero cableado enteramente desde static/viewer-sandbox.js
+     (ahí es donde ya viven los datos de Sólido Capaz/Programa de Necesidades que necesita). -->
+<div id="comparador-opciones">
+  <div class="viewer-mapa-toolbar">
+    <span class="viewer-title">Comparador de opciones generadas</span>
+    <div class="checklist-campo-toolbar-acciones">
+      <button type="button" id="btn-comparador-opciones-cerrar" class="viewer-back-btn">&larr; Volver</button>
+    </div>
+  </div>
+  <div class="checklist-campo-mount">
+    <div id="comparador-opciones-contenido" class="checklist-campo-contenido"></div>
+  </div>
+</div>
+
+<!-- Visor georreferenciado (Mapbox GL JS + Threebox) -- ver
+     `static/visor-mapa.js`. Mapbox GL JS/Threebox se cargan por CDN desde
+     ESE módulo, no desde aquí (a diferencia de three.js, que sí usa el
+     importmap de abajo) -- no hace falta pedirlos si el proyecto abierto
+     no tiene ningún sitio georreferenciado, así que cargarlos solo cuando
+     de verdad se abre el visor evita el coste en el caso común. -->
+<div id="viewer-mapa">
+  <div class="viewer-mapa-toolbar">
+    <span class="viewer-title" id="viewer-mapa-title-text">Ver en mapa real</span>
+    <button type="button" id="btn-cerrar-viewer-mapa" class="viewer-back-btn">&larr; Volver al plano</button>
+  </div>
+  <div class="viewer-mapa-mount" id="viewer-mapa-mount">
+    <div class="viewer-mapa-loading" id="viewer-mapa-loading" hidden>Cargando el mapa&hellip;</div>
+  </div>
+</div>
+
+<script src="/app.js?v=20260817_sin_marketing"></script>
+<script src="/map-picker.js?v=20260817_invalidate_size"></script>
+<script src="/entrevista.js?v=20260817_referencia_catastral_sandbox"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="/viewer-edificio.js?v=20260816_navegacion"></script>
+<script type="module" src="/viewer-vivienda.js?v=20260816_fix"></script>
+<script type="module" src="/visor-mapa.js?v=20260816_fix"></script>
+<script type="module" src="/viewer-sandbox.js?v=20260817_segmentacion_plantas"></script>
+</body>
+</html>

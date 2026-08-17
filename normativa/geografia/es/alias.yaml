@@ -1,0 +1,31 @@
+# Variantes escritas de un nombre -> código INE.
+#
+# La normalización automática (minúsculas, sin tildes, sin puntuación) la hace
+# `normativa/registro.py`; aquí solo van las variantes que NINGUNA
+# normalización puede deducir: denominaciones cooficiales, formas castellanas
+# tradicionales, artículos antepuestos y abreviaturas de uso corriente.
+#
+# Un alias NUNCA puede apuntar a dos municipios. Si una forma es realmente
+# ambigua, no se pone aquí: se deja que `resolver_ambito` devuelva
+# `AmbitoAmbiguo` con los candidatos y pregunte. Elegir por nosotros (p. ej.
+# el más poblado) sería un repliegue silencioso.
+
+version: 1
+alias:
+  # Cooficiales y formas castellanas
+  "valencia": "46250"
+  "la coruna": "15030"
+  "coruna": "15030"
+  "san sebastian": "20069"
+  "donostia": "20069"
+  "elche": "03065"
+  "elx": "03065"
+  "alacant": "03014"
+  "iruna": "31201"
+  "palma de mallorca": "07040"
+  "gasteiz": "01059"
+
+  # Abreviaturas y formas de uso corriente
+  "las palmas": "35016"
+  "santa cruz": "38038"
+  "pozuelo": "28115"

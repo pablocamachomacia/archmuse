@@ -1,0 +1,77 @@
+# Catálogo CERRADO de materias.
+#
+# Una materia es la unidad sobre la que se resuelve la competencia normativa
+# (ver competencias.yaml). Debe ser lo bastante fina para que la competencia
+# sea uniforme dentro de ella, y lo bastante gruesa para no multiplicarse.
+#
+# Ampliar este catálogo es un acto de gobernanza del Curador de Conocimiento,
+# con la misma disciplina que el catálogo de 5 patrones de CONSTRAINT_MODEL.md
+# §14: si una norma no encaja en ninguna materia, la primera hipótesis es que
+# está mal clasificada, no que falte una materia.
+#
+# `documentos_basicos` es lo que hace posible la validación 12: una regla que
+# cite un DB no listado aquí para su materia no pasa la carga. Es el validador
+# que habría impedido las 5 discrepancias M1-M5 de docs/audits/NORMATIVE_AUDIT.md.
+
+version: 1
+
+materias:
+  - id: seguridad_incendio
+    nombre: Seguridad en caso de incendio
+    documentos_basicos: [DB-SI]
+
+  - id: seguridad_utilizacion
+    nombre: Seguridad de utilización
+    documentos_basicos: [DB-SUA]
+
+  - id: accesibilidad
+    nombre: Accesibilidad universal
+    documentos_basicos: [DB-SUA]
+
+  - id: salubridad
+    nombre: Salubridad, ventilación y humedades
+    documentos_basicos: [DB-HS]
+
+  - id: ahorro_energia
+    nombre: Ahorro de energía y demanda energética
+    documentos_basicos: [DB-HE]
+
+  - id: proteccion_ruido
+    nombre: Protección frente al ruido
+    documentos_basicos: [DB-HR]
+
+  - id: seguridad_estructural
+    nombre: Seguridad estructural
+    documentos_basicos: [DB-SE]
+
+  # Las tres materias de habitabilidad NO tienen documento básico: el CTE no
+  # regula superficies ni programa de vivienda. Lista vacía = citar cualquier
+  # DB para esta materia es un error de carga. Es la corrección estructural
+  # del hallazgo M1 (superficie mínima de vivienda emitiendo "CTE-DB-HE").
+  - id: habitabilidad_superficies
+    nombre: Superficies mínimas de vivienda y piezas
+    documentos_basicos: []
+
+  - id: habitabilidad_dimensional
+    nombre: Dimensiones mínimas (altura libre, anchura de pieza)
+    documentos_basicos: []
+
+  - id: habitabilidad_programa
+    nombre: Programa mínimo y compartimentación de la vivienda
+    documentos_basicos: []
+
+  - id: urbanismo_parametros
+    nombre: Parámetros urbanísticos (ocupación, edificabilidad, altura, retranqueos)
+    documentos_basicos: []
+
+  - id: urbanismo_estetica
+    nombre: Condiciones estéticas y de composición de fachada
+    documentos_basicos: []
+
+  - id: patrimonio
+    nombre: Protección del patrimonio histórico
+    documentos_basicos: []
+
+  - id: medio_ambiente
+    nombre: Medio ambiente y afecciones sectoriales
+    documentos_basicos: []

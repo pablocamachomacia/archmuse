@@ -1,0 +1,117 @@
+# FICTICIO. Ver LEEME.md.
+#
+# Relleno de las cinco materias estatales restantes. No está por completismo:
+# sin una regla de cada una, el manifiesto de cobertura del fixture no podría
+# declararlas, y la puerta fail-closed bloquearía cualquier escenario de prueba
+# — dejando el camino "resolución completa" sin ejercitar.
+#
+# La norma no declara `documento_basico` a propósito: así una sola norma
+# ficticia puede cubrir materias que en el CTE real viven en DB distintos, sin
+# que la validación 12 (DB citado vs. materia) tenga nada que objetar.
+version: 1
+
+norma:
+  concept_id: es.ficticio_varias.norma
+  instance_id: es.ficticio_varias.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio ficticio de pruebas
+    identificador_oficial: FICTICIO-000/2006-bis
+    titulo: Exigencias básicas ficticias restantes
+    boletin: FICTICIO-A-2006-0003
+  articulo: {}
+  vigencia:
+    vigencia_desde: 2006-03-28
+
+reglas:
+  - concept_id: es.ficticio_varias.seguridad_utilizacion.resbaladicidad
+    instance_id: es.ficticio_varias.seguridad_utilizacion.resbaladicidad@1
+    nombre: Clase de resbaladicidad del pavimento (FICTICIA)
+    materia: seguridad_utilizacion
+    tipo: exigencia_cualitativa
+    prioridad: riesgo_variable
+    nivel_de_conocimiento: 3
+    aplicabilidad:
+      ambito: es
+    vigencia:
+      vigencia_desde: 2006-03-28
+
+  - concept_id: es.ficticio_varias.salubridad.ventilacion
+    instance_id: es.ficticio_varias.salubridad.ventilacion@1
+    nombre: Caudal mínimo de ventilación (FICTICIO)
+    materia: salubridad
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    parametro:
+      ejes: []
+      repliegue: [todos, ninguno]
+      unidad: l/s
+      valores:
+        - valor: 8
+    vigencia:
+      vigencia_desde: 2006-03-28
+
+  - concept_id: es.ficticio_varias.ahorro_energia.demanda
+    instance_id: es.ficticio_varias.ahorro_energia.demanda@1
+    nombre: Limitación de la demanda energética (FICTICIA)
+    materia: ahorro_energia
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    parametro:
+      ejes: [zona_cte]
+      repliegue: [zona_cte, ninguno]
+      unidad: kWh/m2
+      valores:
+        - zona_cte: D
+          valor: 40
+        - zona_cte: C
+          valor: 45
+    vigencia:
+      vigencia_desde: 2006-03-28
+
+  - concept_id: es.ficticio_varias.proteccion_ruido.aislamiento
+    instance_id: es.ficticio_varias.proteccion_ruido.aislamiento@1
+    nombre: Aislamiento acústico entre viviendas (FICTICIO)
+    materia: proteccion_ruido
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    parametro:
+      ejes: []
+      repliegue: [todos, ninguno]
+      unidad: dBA
+      valores:
+        - valor: 50
+    vigencia:
+      vigencia_desde: 2006-03-28
+
+  - concept_id: es.ficticio_varias.seguridad_estructural.sobrecarga
+    instance_id: es.ficticio_varias.seguridad_estructural.sobrecarga@1
+    nombre: Sobrecarga de uso en vivienda (FICTICIA)
+    materia: seguridad_estructural
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 1
+    aplicabilidad:
+      ambito: es
+    parametro:
+      ejes: []
+      repliegue: [todos, ninguno]
+      unidad: kN/m2
+      valores:
+        - valor: 2
+    vigencia:
+      vigencia_desde: 2006-03-28

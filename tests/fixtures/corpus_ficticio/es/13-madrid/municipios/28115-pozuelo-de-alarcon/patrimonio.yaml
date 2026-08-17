@@ -1,0 +1,48 @@
+# FICTICIO. Ver LEEME.md.
+#
+# Patrimonio es un ámbito SECTORIAL: se superpone a la cadena territorial en
+# lugar de colgar de ella (§3.3). Se activa por un hecho declarado del
+# proyecto, no por haber elegido este municipio.
+#
+# Ejercita las dos asimetrías que más importan:
+#   - sectorial SIN DECLARAR  -> aplica_no_evaluable + pregunta pendiente
+#     (nunca `no_aplica`: la ausencia de evidencia no es evidencia de ausencia)
+#   - sectorial declarado NO  -> no_aplica con motivo
+# Y la exención: mientras no se sepa si esta regla aplica, la regla que
+# eximiría tampoco se puede descartar.
+version: 1
+
+norma:
+  concept_id: es.13.28115.ficticio_patrimonio.norma
+  instance_id: es.13.28115.ficticio_patrimonio.norma@1
+  ambito: es.13.28.28115
+  fuente:
+    rango: Ordenanza
+    organismo: Ayuntamiento ficticio de pruebas
+    identificador_oficial: FICTICIO-ORD-PAT-2011
+    titulo: Ordenanza ficticia de protección del patrimonio edificado
+    boletin: FICTICIO-BOCM-2011-0007
+  articulo:
+    apartado: "art. 9"
+  vigencia:
+    vigencia_desde: 2011-05-01
+
+reglas:
+  - concept_id: es.13.28115.ficticio_patrimonio.patrimonio.intervencion_catalogado
+    instance_id: es.13.28115.ficticio_patrimonio.patrimonio.intervencion_catalogado@1
+    nombre: Régimen de intervención en edificio catalogado (FICTICIO)
+    materia: patrimonio
+    tipo: exigencia_cualitativa
+    prioridad: bloqueante
+    nivel_de_conocimiento: 3
+    aplicabilidad:
+      ambito: es.13.28.28115
+      sectoriales: [patrimonio]
+    aristas:
+      # El régimen de protección desplaza a las condiciones estéticas
+      # generales: no se le piden las dos cosas al mismo edificio.
+      - tipo: exime_de
+        destino: es.13.28115.ficticio_pgou.urbanismo_estetica.composicion_fachada
+    mensaje: La intervención debe someterse al régimen de protección del catálogo.
+    vigencia:
+      vigencia_desde: 2011-05-01

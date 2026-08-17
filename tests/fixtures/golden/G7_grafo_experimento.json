@@ -1,0 +1,814 @@
+{
+  "criterio_actual": {
+    "desconocidos": [
+      "edificio: inferido",
+      "hueco: no_observable",
+      "instalacion: no_observable",
+      "muro: inferido",
+      "parcela: no_observable",
+      "pilar: no_observable",
+      "planta: no_observable"
+    ],
+    "espacios": [
+      {
+        "alargamiento": 1.146,
+        "area_m2": 21.9,
+        "id": "VT1/3::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 2.337,
+        "area_m2": 12.725,
+        "id": "VT1/3::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 1.203,
+        "area_m2": 8.483,
+        "id": "VT1/3::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 2",
+        "tipo": "dormitorio",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 1.079,
+        "area_m2": 8.534,
+        "id": "VT1/3::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 3",
+        "tipo": "dormitorio",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 1.726,
+        "area_m2": 4.22,
+        "id": "VT1/3::E04",
+        "origen_tipo": "observado",
+        "rotulo": "Tendedero",
+        "tipo": "tendedero",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 2.312,
+        "area_m2": 3.136,
+        "id": "VT1/3::E05",
+        "origen_tipo": "observado",
+        "rotulo": "Aseo",
+        "tipo": "aseo",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 2.244,
+        "area_m2": 4.006,
+        "id": "VT1/3::E06",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 1.814,
+        "area_m2": 3.325,
+        "id": "VT1/3::E07",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 1.148,
+        "area_m2": 23.383,
+        "id": "VT2/2::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 2.165,
+        "area_m2": 15.072,
+        "id": "VT2/2::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 1.218,
+        "area_m2": 8.344,
+        "id": "VT2/2::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 2",
+        "tipo": "dormitorio",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 1.742,
+        "area_m2": 4.208,
+        "id": "VT2/2::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Tendedero",
+        "tipo": "tendedero",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 1.452,
+        "area_m2": 4.178,
+        "id": "VT2/2::E04",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 1.771,
+        "area_m2": 3.257,
+        "id": "VT2/2::E05",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 1.358,
+        "area_m2": 23.85,
+        "id": "VT3/3::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 2.19,
+        "area_m2": 12.526,
+        "id": "VT3/3::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.076,
+        "area_m2": 7.167,
+        "id": "VT3/3::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 2",
+        "tipo": "dormitorio",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.05,
+        "area_m2": 8.473,
+        "id": "VT3/3::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 3",
+        "tipo": "dormitorio",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.742,
+        "area_m2": 4.198,
+        "id": "VT3/3::E04",
+        "origen_tipo": "observado",
+        "rotulo": "Tendedero",
+        "tipo": "tendedero",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.808,
+        "area_m2": 4.056,
+        "id": "VT3/3::E05",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 2.096,
+        "area_m2": 3.027,
+        "id": "VT3/3::E06",
+        "origen_tipo": "observado",
+        "rotulo": "Aseo",
+        "tipo": "aseo",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.77,
+        "area_m2": 3.251,
+        "id": "VT3/3::E07",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.12,
+        "area_m2": 23.3,
+        "id": "VT4/2::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 2.227,
+        "area_m2": 14.668,
+        "id": "VT4/2::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 1.262,
+        "area_m2": 8.834,
+        "id": "VT4/2::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 2",
+        "tipo": "dormitorio",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 1.721,
+        "area_m2": 4.217,
+        "id": "VT4/2::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Tendedero",
+        "tipo": "tendedero",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 1.425,
+        "area_m2": 4.111,
+        "id": "VT4/2::E04",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 1.809,
+        "area_m2": 3.34,
+        "id": "VT4/2::E05",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 1.154,
+        "area_m2": 25.192,
+        "id": "VT5/1::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT5/1"
+      },
+      {
+        "alargamiento": 1.866,
+        "area_m2": 12.09,
+        "id": "VT5/1::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT5/1"
+      },
+      {
+        "alargamiento": 1.673,
+        "area_m2": 4.268,
+        "id": "VT5/1::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Tendedero",
+        "tipo": "tendedero",
+        "unidad": "VT5/1"
+      },
+      {
+        "alargamiento": 1.357,
+        "area_m2": 3.766,
+        "id": "VT5/1::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT5/1"
+      },
+      {
+        "alargamiento": 1.955,
+        "area_m2": 13.039,
+        "id": "VT6/2::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 1.105,
+        "area_m2": 7.24,
+        "id": "VT6/2::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 2",
+        "tipo": "dormitorio",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 1.336,
+        "area_m2": 3.997,
+        "id": "VT6/2::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 5.066,
+        "area_m2": 4.93,
+        "id": "VT6/2::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 5.032,
+        "area_m2": 5.364,
+        "id": "VT6/2::E04",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 1.065,
+        "area_m2": 21.949,
+        "id": "VT6/2::E05",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 5.39,
+        "area_m2": 6.297,
+        "id": "VT6/2::E06",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 2.067,
+        "area_m2": 11.554,
+        "id": "VT6/2::E07",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT6/2"
+      }
+    ],
+    "n_aristas": {
+      "conecta_con": 66,
+      "es_contiguo_a": 64
+    },
+    "n_espacios": 40,
+    "n_tipo_desconocido": 0,
+    "n_unidades": 6,
+    "presencia": {
+      "edificio": "inferido",
+      "espacio": "observado",
+      "hueco": "no_observable",
+      "instalacion": "no_observable",
+      "muro": "inferido",
+      "parcela": "no_observable",
+      "pilar": "no_observable",
+      "planta": "no_observable",
+      "proyecto": "observado",
+      "unidad": "observado"
+    },
+    "tipos_resueltos": [
+      "aseo",
+      "bano",
+      "cocina",
+      "dormitorio",
+      "tendedero",
+      "terraza"
+    ]
+  },
+  "criterio_estricto": {
+    "desconocidos": [
+      "edificio: inferido",
+      "hueco: no_observable",
+      "instalacion: no_observable",
+      "muro: inferido",
+      "parcela: no_observable",
+      "pilar: no_observable",
+      "planta: no_observable"
+    ],
+    "espacios": [
+      {
+        "alargamiento": 1.146,
+        "area_m2": 21.9,
+        "id": "VT1/3::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 2.337,
+        "area_m2": 12.725,
+        "id": "VT1/3::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 1.203,
+        "area_m2": 8.483,
+        "id": "VT1/3::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 2",
+        "tipo": "dormitorio",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 1.079,
+        "area_m2": 8.534,
+        "id": "VT1/3::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 3",
+        "tipo": "dormitorio",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 1.726,
+        "area_m2": 4.22,
+        "id": "VT1/3::E04",
+        "origen_tipo": "observado",
+        "rotulo": "Tendedero",
+        "tipo": "tendedero",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 2.312,
+        "area_m2": 3.136,
+        "id": "VT1/3::E05",
+        "origen_tipo": "observado",
+        "rotulo": "Aseo",
+        "tipo": "aseo",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 2.244,
+        "area_m2": 4.006,
+        "id": "VT1/3::E06",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 1.814,
+        "area_m2": 3.325,
+        "id": "VT1/3::E07",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT1/3"
+      },
+      {
+        "alargamiento": 1.148,
+        "area_m2": 23.383,
+        "id": "VT2/2::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 2.165,
+        "area_m2": 15.072,
+        "id": "VT2/2::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 1.218,
+        "area_m2": 8.344,
+        "id": "VT2/2::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 2",
+        "tipo": "dormitorio",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 1.742,
+        "area_m2": 4.208,
+        "id": "VT2/2::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Tendedero",
+        "tipo": "tendedero",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 1.452,
+        "area_m2": 4.178,
+        "id": "VT2/2::E04",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 1.771,
+        "area_m2": 3.257,
+        "id": "VT2/2::E05",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT2/2"
+      },
+      {
+        "alargamiento": 1.358,
+        "area_m2": 23.85,
+        "id": "VT3/3::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 2.19,
+        "area_m2": 12.526,
+        "id": "VT3/3::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.076,
+        "area_m2": 7.167,
+        "id": "VT3/3::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 2",
+        "tipo": "dormitorio",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.05,
+        "area_m2": 8.473,
+        "id": "VT3/3::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 3",
+        "tipo": "dormitorio",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.742,
+        "area_m2": 4.198,
+        "id": "VT3/3::E04",
+        "origen_tipo": "observado",
+        "rotulo": "Tendedero",
+        "tipo": "tendedero",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.808,
+        "area_m2": 4.056,
+        "id": "VT3/3::E05",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 2.096,
+        "area_m2": 3.027,
+        "id": "VT3/3::E06",
+        "origen_tipo": "observado",
+        "rotulo": "Aseo",
+        "tipo": "aseo",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.77,
+        "area_m2": 3.251,
+        "id": "VT3/3::E07",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT3/3"
+      },
+      {
+        "alargamiento": 1.12,
+        "area_m2": 23.3,
+        "id": "VT4/2::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 2.227,
+        "area_m2": 14.668,
+        "id": "VT4/2::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 1.262,
+        "area_m2": 8.834,
+        "id": "VT4/2::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 2",
+        "tipo": "dormitorio",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 1.721,
+        "area_m2": 4.217,
+        "id": "VT4/2::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Tendedero",
+        "tipo": "tendedero",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 1.425,
+        "area_m2": 4.111,
+        "id": "VT4/2::E04",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 1.809,
+        "area_m2": 3.34,
+        "id": "VT4/2::E05",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT4/2"
+      },
+      {
+        "alargamiento": 1.154,
+        "area_m2": 25.192,
+        "id": "VT5/1::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT5/1"
+      },
+      {
+        "alargamiento": 1.866,
+        "area_m2": 12.09,
+        "id": "VT5/1::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT5/1"
+      },
+      {
+        "alargamiento": 1.673,
+        "area_m2": 4.268,
+        "id": "VT5/1::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Tendedero",
+        "tipo": "tendedero",
+        "unidad": "VT5/1"
+      },
+      {
+        "alargamiento": 1.357,
+        "area_m2": 3.766,
+        "id": "VT5/1::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT5/1"
+      },
+      {
+        "alargamiento": 1.955,
+        "area_m2": 13.039,
+        "id": "VT6/2::E00",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 1",
+        "tipo": "dormitorio",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 1.105,
+        "area_m2": 7.24,
+        "id": "VT6/2::E01",
+        "origen_tipo": "observado",
+        "rotulo": "Dormitorio 2",
+        "tipo": "dormitorio",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 1.336,
+        "area_m2": 3.997,
+        "id": "VT6/2::E02",
+        "origen_tipo": "observado",
+        "rotulo": "Baño",
+        "tipo": "bano",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 5.066,
+        "area_m2": 4.93,
+        "id": "VT6/2::E03",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 5.032,
+        "area_m2": 5.364,
+        "id": "VT6/2::E04",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 1.065,
+        "area_m2": 21.949,
+        "id": "VT6/2::E05",
+        "origen_tipo": "observado",
+        "rotulo": "Salón/cocina",
+        "tipo": "cocina",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 5.39,
+        "area_m2": 6.297,
+        "id": "VT6/2::E06",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT6/2"
+      },
+      {
+        "alargamiento": 2.067,
+        "area_m2": 11.554,
+        "id": "VT6/2::E07",
+        "origen_tipo": "observado",
+        "rotulo": "Terraza",
+        "tipo": "terraza",
+        "unidad": "VT6/2"
+      }
+    ],
+    "n_aristas": {
+      "conecta_con": 64,
+      "es_contiguo_a": 64
+    },
+    "n_espacios": 40,
+    "n_tipo_desconocido": 0,
+    "n_unidades": 6,
+    "presencia": {
+      "edificio": "inferido",
+      "espacio": "observado",
+      "hueco": "no_observable",
+      "instalacion": "no_observable",
+      "muro": "inferido",
+      "parcela": "no_observable",
+      "pilar": "no_observable",
+      "planta": "no_observable",
+      "proyecto": "observado",
+      "unidad": "observado"
+    },
+    "tipos_resueltos": [
+      "aseo",
+      "bano",
+      "cocina",
+      "dormitorio",
+      "tendedero",
+      "terraza"
+    ]
+  },
+  "parametros": {
+    "actual": {
+      "tolerancia_muro_m": 0.5,
+      "tramo_minimo_conexion_m": 0.0,
+      "tramo_minimo_contiguidad_m": 0.6
+    },
+    "estricto": {
+      "tolerancia_muro_m": 0.5,
+      "tramo_minimo_conexion_m": 0.6,
+      "tramo_minimo_contiguidad_m": 0.6
+    }
+  }
+}

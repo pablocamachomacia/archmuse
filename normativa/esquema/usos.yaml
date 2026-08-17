@@ -1,0 +1,95 @@
+# Árbol de usos y catálogos cerrados de tipo de intervención y tipología.
+#
+# El uso es un ÁRBOL, no una lista: una regla declara el nodo más alto al que
+# aplica y cubre todos sus descendientes. Sin esto, cada regla tendría que
+# enumerar variantes de uso — la misma explosión combinatoria que este diseño
+# existe para evitar, movida de sitio.
+
+version: 1
+
+# --- Usos -------------------------------------------------------------------
+usos:
+  - id: residencial
+    nombre: Residencial
+    hijos:
+      - id: residencial.vivienda_libre
+        nombre: Vivienda libre
+      - id: residencial.vivienda_protegida
+        nombre: Vivienda con protección pública
+      - id: residencial.alojamiento_dotacional
+        nombre: Alojamiento dotacional
+  - id: administrativo
+    nombre: Administrativo / oficinas
+  - id: comercial
+    nombre: Comercial
+  - id: docente
+    nombre: Docente
+  - id: sanitario
+    nombre: Sanitario
+  - id: publica_concurrencia
+    nombre: Pública concurrencia
+  - id: hotelero
+    nombre: Hotelero
+  - id: aparcamiento
+    nombre: Aparcamiento
+  - id: industrial
+    nombre: Industrial
+
+# --- Tipo de intervención ---------------------------------------------------
+# `rehabilitacion` es un TIPO DE INTERVENCIÓN, no una tipología. Hoy
+# `evaluator.py` lo trata como valor de `tipologia` (UMBRALES_TIPOLOGIA), que
+# es una confusión de ejes. Ver `equivalencias_heredadas` abajo.
+tipos_de_intervencion:
+  - id: obra_nueva
+    nombre: Obra nueva
+  - id: ampliacion
+    nombre: Ampliación
+  - id: reforma
+    nombre: Reforma
+  - id: rehabilitacion
+    nombre: Rehabilitación
+  - id: cambio_de_uso
+    nombre: Cambio de uso
+  - id: demolicion
+    nombre: Demolición
+  - id: legalizacion
+    nombre: Legalización
+
+# --- Tipologías -------------------------------------------------------------
+tipologias:
+  - id: unifamiliar_aislada
+    nombre: Unifamiliar aislada
+  - id: unifamiliar_pareada
+    nombre: Unifamiliar pareada
+  - id: unifamiliar_adosada
+    nombre: Unifamiliar adosada
+  - id: plurifamiliar
+    nombre: Plurifamiliar
+  - id: colectiva_alojamiento
+    nombre: Residencia colectiva
+
+# --- Traducción de los 3 valores heredados de evaluator.py ------------------
+# `UMBRALES_TIPOLOGIA` maneja hoy tres valores que mezclan dos ejes. La
+# traducción NUNCA es silenciosa: `perfil_proyecto()` devuelve la asunción
+# junto al perfil, y quien la consuma está obligado a mostrarla
+# (UNCERTAINTY_MODEL.md: una suposición nunca se convierte en hecho callando).
+equivalencias_heredadas:
+  plurifamiliar:
+    tipologia: plurifamiliar
+    tipo_de_intervencion: obra_nueva
+    asuncion: >-
+      El valor heredado "plurifamiliar" no declara tipo de intervención;
+      se asume obra nueva.
+  unifamiliar:
+    tipologia: unifamiliar_aislada
+    tipo_de_intervencion: obra_nueva
+    asuncion: >-
+      El valor heredado "unifamiliar" no distingue aislada/pareada/adosada;
+      se asume aislada, y obra nueva por no declararse intervención.
+  rehabilitacion:
+    tipologia: plurifamiliar
+    tipo_de_intervencion: rehabilitacion
+    asuncion: >-
+      "rehabilitacion" es un tipo de intervención, no una tipología: se
+      traduce como tal y se asume tipología plurifamiliar, que es lo que
+      `UMBRALES_TIPOLOGIA` venía aplicando de hecho.

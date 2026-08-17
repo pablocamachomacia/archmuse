@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!--Parcela Catastral de la D.G. del Catastro.-->
+<!--La precisión es la que corresponde nominalmente a la escala de captura de la cartografía-->
+<FeatureCollection xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:cp="http://inspire.ec.europa.eu/schemas/cp/4.0" xmlns:gmd="http://www.isotc211.org/2005/gmd" xsi:schemaLocation="http://www.opengis.net/wfs/2.0 http://schemas.opengis.net/wfs/2.0/wfs.xsd http://inspire.ec.europa.eu/schemas/cp/4.0 http://inspire.ec.europa.eu/schemas/cp/4.0/CadastralParcels.xsd" xmlns="http://www.opengis.net/wfs/2.0" timeStamp="2026-08-15T14:30:24" numberMatched="1" numberReturned="1">
+  <member>
+    <cp:CadastralParcel gml:id="ES.SDGC.CP.1446401VK4714E">
+      <cp:areaValue uom="m2">11829</cp:areaValue>
+      <cp:beginLifespanVersion>2025-08-05T00:00:00</cp:beginLifespanVersion>
+      <cp:endLifespanVersion xsi:nil="true" nilReason="http://inspire.ec.europa.eu/codelist/VoidReasonValue/Unpopulated"></cp:endLifespanVersion>
+      <cp:geometry>
+        <gml:MultiSurface gml:id="MultiSurface_ES.SDGC.CP.1446401VK4714E" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+          <gml:surfaceMember>
+            <gml:Surface gml:id="Surface_ES.SDGC.CP.1446401VK4714E.1" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+              <gml:patches>
+                <gml:PolygonPatch>
+                <gml:exterior>
+                    <gml:LinearRing>
+                      <gml:posList srsDimension="2" count="77">40.419432 -3.691323 40.419441 -3.691261 40.419377 -3.691259 40.419344 -3.691259 40.419266 -3.691257 40.419261 -3.691257 40.419237 -3.691256 40.419215 -3.691256 40.419192 -3.691255 40.419178 -3.691255 40.419171 -3.691255 40.419004 -3.691251 40.418978 -3.691251 40.418957 -3.69125 40.418921 -3.69125 40.418839 -3.691248 40.418837 -3.691248 40.418832 -3.691248 40.41881 -3.691248 40.418809 -3.691248 40.418683 -3.691244 40.418606 -3.691242 40.418547 -3.691241 40.418546 -3.691241 40.418518 -3.69124 40.418511 -3.69124 40.41847 -3.691239 40.418395 -3.691238 40.418383 -3.691238 40.418357 -3.691237 40.418344 -3.691237 40.418278 -3.691236 40.418246 -3.691235 40.418257 -3.691465 40.418259 -3.691513 40.418266 -3.691652 40.418269 -3.691713 40.418274 -3.691834 40.41828 -3.691958 40.418298 -3.69232 40.418302 -3.692403 40.418307 -3.692501 40.418311 -3.692597 40.418373 -3.692645 40.418442 -3.692634 40.418441 -3.69261 40.418745 -3.692564 40.41875 -3.69259 40.418824 -3.692579 40.418853 -3.692492 40.418848 -3.692471 40.418876 -3.692444 40.418872 -3.692398 40.418842 -3.692381 40.418915 -3.692307 40.418951 -3.69227 40.418953 -3.692268 40.418982 -3.692239 40.418987 -3.692246 40.419063 -3.692172 40.419058 -3.692163 40.419086 -3.692132 40.419195 -3.692013 40.419205 -3.692058 40.419235 -3.692072 40.419262 -3.692045 40.419273 -3.692053 40.419347 -3.692038 40.41936 -3.691941 40.419347 -3.691932 40.419376 -3.691724 40.419383 -3.691672 40.419409 -3.691492 40.419418 -3.691423 40.41943 -3.691424 40.419443 -3.691323 40.419432 -3.691323</gml:posList>
+                    </gml:LinearRing>
+                </gml:exterior>
+                </gml:PolygonPatch>
+              </gml:patches>
+            </gml:Surface>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </cp:geometry>
+      <cp:inspireId>
+        <Identifier xmlns="http://inspire.ec.europa.eu/schemas/base/3.3">
+          <localId>1446401VK4714E</localId>
+          <namespace>ES.SDGC.CP</namespace>
+        </Identifier>
+      </cp:inspireId>
+      <cp:label>01</cp:label>
+      <cp:nationalCadastralReference>1446401VK4714E</cp:nationalCadastralReference>
+      <cp:referencePoint>
+        <gml:Point gml:id="ReferencePoint_ES.SDGC.CP.1446401VK4714E" srsName="http://www.opengis.net/def/crs/EPSG/0/4326"> 
+          <gml:pos>40.418769 -3.691825</gml:pos>
+        </gml:Point>
+      </cp:referencePoint>
+    </cp:CadastralParcel>
+  </member>
+</FeatureCollection>

@@ -1,0 +1,26 @@
+ezdxf>=1.3.0
+ifcopenshell>=0.8.0
+shapely>=2.0.0
+anthropic>=0.40.0
+flask>=3.0.0
+reportlab>=5.0.0
+# Subsistema normativo (normativa/): el corpus se escribe en YAML porque el
+# diff tiene que ser legible por un curador que no programa, y admite
+# comentarios y texto legal multilínea. jsonschema valida la forma de cada
+# fichero antes de que entre al corpus.
+pyyaml>=6.0
+jsonschema>=4.0
+
+# ingesta/fuentes/codigotecnico.py: extracción de texto de los PDF oficiales
+# de cada Documento Básico (codigotecnico.org no los publica en XML/HTML
+# estructurado como el BOE). Puro Python, licencia permisiva (BSD).
+pypdf>=5.0
+
+# analyzer/gltf_exporter.py (2026-08-15): construcción de la malla 3D del
+# edificio y exportación a .glb con materiales PBR. mapbox_earcut es el
+# motor de triangulación de polígonos que trimesh necesita en tiempo de
+# ejecución (licencia permisiva, a diferencia de la alternativa `triangle`,
+# GPL) -- sin él, trimesh.creation.extrude_polygon falla con
+# "No available triangulation engine!" en tiempo de ejecución, no de import.
+trimesh>=5.0.0
+mapbox_earcut>=2.0.0

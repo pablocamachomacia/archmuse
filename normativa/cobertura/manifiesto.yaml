@@ -1,0 +1,22 @@
+# Cobertura DECLARADA por ámbito y materia.
+#
+# Este fichero no describe lo que hay en disco: lo declara. Que no haya reglas
+# de patrimonio para un municipio no significa que ese municipio no tenga
+# normativa de patrimonio — significa que no la hemos transcrito. La
+# validación 17 comprueba que declaración y disco coincidan en ambos sentidos.
+#
+# Estados:
+#   completo       la materia está transcrita y verificada para este ámbito
+#   parcial        hay reglas, pero no todas las de la materia
+#   ausente        no la tenemos (NO significa que no exista)
+#   no_competente  este nivel no regula esta materia (ver competencias.yaml)
+#
+# ESTADO ACTUAL: el corpus está VACÍO. La Fase 0 entrega el esquema, el
+# registro geográfico, el cargador y los validadores; la transcripción de
+# reglas es la Fase 1 y está bloqueada por la tarea 18 del PRD (un arquitecto
+# colegiado tiene que validar cada cifra contra boletín). Declarar aquí una
+# cobertura que no existe sería exactamente el error que este fichero existe
+# para impedir.
+
+version: 1
+cobertura: []

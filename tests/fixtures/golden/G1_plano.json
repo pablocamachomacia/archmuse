@@ -1,0 +1,730 @@
+{
+  "capa_elegida": "00 areas",
+  "escala": {
+    "codigo_insunits": 6,
+    "factor": 1.0,
+    "origen": "acuerdo",
+    "unidad": "metros"
+  },
+  "etiquetas_vivienda": [
+    {
+      "texto": "VT1/3",
+      "x": -572.271,
+      "y": -295.225
+    },
+    {
+      "texto": "VT2/2",
+      "x": -557.416,
+      "y": -296.34
+    },
+    {
+      "texto": "VT22/1",
+      "x": -31.544,
+      "y": 1039.864
+    },
+    {
+      "texto": "VT3/3",
+      "x": -529.624,
+      "y": -296.447
+    },
+    {
+      "texto": "VT4/2",
+      "x": -515.704,
+      "y": -296.428
+    },
+    {
+      "texto": "VT5/1",
+      "x": -487.422,
+      "y": -295.729
+    },
+    {
+      "texto": "VT6/2",
+      "x": -467.454,
+      "y": -295.331
+    }
+  ],
+  "n_etiquetas_vivienda": 7,
+  "n_recintos": 40,
+  "recintos": [
+    {
+      "area_m2": 21.9,
+      "capa": "00 areas",
+      "centroide": [
+        -575.529,
+        -297.952
+      ],
+      "envolvente": [
+        -578.638,
+        -300.194,
+        -572.898,
+        -293.617
+      ],
+      "i": 0,
+      "perimetro_m": 24.636,
+      "rotulo": "Salón/cocina"
+    },
+    {
+      "area_m2": 23.383,
+      "capa": "00 areas",
+      "centroide": [
+        -553.868,
+        -297.854
+      ],
+      "envolvente": [
+        -556.485,
+        -300.187,
+        -550.754,
+        -293.606
+      ],
+      "i": 1,
+      "perimetro_m": 24.633,
+      "rotulo": "Salón/cocina"
+    },
+    {
+      "area_m2": 23.85,
+      "capa": "00 areas",
+      "centroide": [
+        -532.963,
+        -297.716
+      ],
+      "envolvente": [
+        -536.132,
+        -300.185,
+        -530.389,
+        -292.389
+      ],
+      "i": 2,
+      "perimetro_m": 27.077,
+      "rotulo": "Salón/cocina"
+    },
+    {
+      "area_m2": 23.3,
+      "capa": "00 areas",
+      "centroide": [
+        -511.708,
+        -294.036
+      ],
+      "envolvente": [
+        -514.388,
+        -298.151,
+        -508.65,
+        -291.724
+      ],
+      "i": 3,
+      "perimetro_m": 24.317,
+      "rotulo": "Salón/cocina"
+    },
+    {
+      "area_m2": 12.725,
+      "capa": "00 areas",
+      "centroide": [
+        -577.481,
+        -292.961
+      ],
+      "envolvente": [
+        -578.703,
+        -296.773,
+        -575.938,
+        -290.312
+      ],
+      "i": 4,
+      "perimetro_m": 20.609,
+      "rotulo": "Dormitorio 1"
+    },
+    {
+      "area_m2": 15.072,
+      "capa": "00 areas",
+      "centroide": [
+        -552.001,
+        -293.154
+      ],
+      "envolvente": [
+        -553.494,
+        -296.355,
+        -550.699,
+        -290.305
+      ],
+      "i": 5,
+      "perimetro_m": 20.2,
+      "rotulo": "Dormitorio 1"
+    },
+    {
+      "area_m2": 12.526,
+      "capa": "00 areas",
+      "centroide": [
+        -535.005,
+        -292.866
+      ],
+      "envolvente": [
+        -536.187,
+        -296.359,
+        -533.422,
+        -290.305
+      ],
+      "i": 6,
+      "perimetro_m": 18.747,
+      "rotulo": "Dormitorio 1"
+    },
+    {
+      "area_m2": 14.668,
+      "capa": "00 areas",
+      "centroide": [
+        -509.941,
+        -298.738
+      ],
+      "envolvente": [
+        -511.362,
+        -301.601,
+        -508.598,
+        -295.444
+      ],
+      "i": 7,
+      "perimetro_m": 21.252,
+      "rotulo": "Dormitorio 1"
+    },
+    {
+      "area_m2": 13.039,
+      "capa": "00 areas",
+      "centroide": [
+        -472.505,
+        -293.925
+      ],
+      "envolvente": [
+        -473.848,
+        -296.83,
+        -471.042,
+        -291.386
+      ],
+      "i": 8,
+      "perimetro_m": 18.778,
+      "rotulo": "Dormitorio 1"
+    },
+    {
+      "area_m2": 8.483,
+      "capa": "00 areas",
+      "centroide": [
+        -574.506,
+        -291.905
+      ],
+      "envolvente": [
+        -575.838,
+        -293.518,
+        -573.173,
+        -290.312
+      ],
+      "i": 9,
+      "perimetro_m": 12.94,
+      "rotulo": "Dormitorio 2"
+    },
+    {
+      "area_m2": 8.344,
+      "capa": "00 areas",
+      "centroide": [
+        -554.905,
+        -291.896
+      ],
+      "envolvente": [
+        -556.219,
+        -293.505,
+        -553.593,
+        -290.305
+      ],
+      "i": 10,
+      "perimetro_m": 12.852,
+      "rotulo": "Dormitorio 2"
+    },
+    {
+      "area_m2": 8.534,
+      "capa": "00 areas",
+      "centroide": [
+        -571.4,
+        -300.104
+      ],
+      "envolvente": [
+        -573.114,
+        -301.613,
+        -569.928,
+        -298.659
+      ],
+      "i": 11,
+      "perimetro_m": 13.617,
+      "rotulo": "Dormitorio 3"
+    },
+    {
+      "area_m2": 7.167,
+      "capa": "00 areas",
+      "centroide": [
+        -532.068,
+        -291.646
+      ],
+      "envolvente": [
+        -533.322,
+        -293.355,
+        -530.487,
+        -290.304
+      ],
+      "i": 12,
+      "perimetro_m": 12.901,
+      "rotulo": "Dormitorio 2"
+    },
+    {
+      "area_m2": 8.473,
+      "capa": "00 areas",
+      "centroide": [
+        -528.982,
+        -291.794
+      ],
+      "envolvente": [
+        -530.598,
+        -293.258,
+        -527.497,
+        -290.305
+      ],
+      "i": 13,
+      "perimetro_m": 13.546,
+      "rotulo": "Dormitorio 3"
+    },
+    {
+      "area_m2": 8.834,
+      "capa": "00 areas",
+      "centroide": [
+        -512.79,
+        -299.935
+      ],
+      "envolvente": [
+        -514.117,
+        -301.601,
+        -511.463,
+        -298.251
+      ],
+      "i": 14,
+      "perimetro_m": 13.21,
+      "rotulo": "Dormitorio 2"
+    },
+    {
+      "area_m2": 7.24,
+      "capa": "00 areas",
+      "centroide": [
+        -469.606,
+        -292.773
+      ],
+      "envolvente": [
+        -470.942,
+        -294.285,
+        -468.318,
+        -291.385
+      ],
+      "i": 15,
+      "perimetro_m": 12.24,
+      "rotulo": "Dormitorio 2"
+    },
+    {
+      "area_m2": 4.22,
+      "capa": "00 areas",
+      "centroide": [
+        -577.232,
+        -301.152
+      ],
+      "envolvente": [
+        -578.639,
+        -301.899,
+        -575.79,
+        -300.247
+      ],
+      "i": 16,
+      "perimetro_m": 8.992,
+      "rotulo": "Tendedero"
+    },
+    {
+      "area_m2": 4.208,
+      "capa": "00 areas",
+      "centroide": [
+        -552.161,
+        -301.145
+      ],
+      "envolvente": [
+        -553.604,
+        -301.89,
+        -550.752,
+        -300.25
+      ],
+      "i": 17,
+      "perimetro_m": 8.972,
+      "rotulo": "Tendedero"
+    },
+    {
+      "area_m2": 4.198,
+      "capa": "00 areas",
+      "centroide": [
+        -534.725,
+        -301.143
+      ],
+      "envolvente": [
+        -536.133,
+        -301.887,
+        -533.285,
+        -300.249
+      ],
+      "i": 18,
+      "perimetro_m": 8.962,
+      "rotulo": "Tendedero"
+    },
+    {
+      "area_m2": 4.217,
+      "capa": "00 areas",
+      "centroide": [
+        -510.058,
+        -290.77
+      ],
+      "envolvente": [
+        -511.5,
+        -291.681,
+        -508.651,
+        -290.023
+      ],
+      "i": 19,
+      "perimetro_m": 9.006,
+      "rotulo": "Tendedero"
+    },
+    {
+      "area_m2": 25.192,
+      "capa": "00 areas",
+      "centroide": [
+        -490.916,
+        -298.471
+      ],
+      "envolvente": [
+        -493.962,
+        -300.925,
+        -488.171,
+        -294.243
+      ],
+      "i": 20,
+      "perimetro_m": 24.944,
+      "rotulo": "Salón/cocina"
+    },
+    {
+      "area_m2": 12.09,
+      "capa": "00 areas",
+      "centroide": [
+        -492.63,
+        -294.115
+      ],
+      "envolvente": [
+        -493.967,
+        -296.82,
+        -491.244,
+        -291.74
+      ],
+      "i": 21,
+      "perimetro_m": 17.925,
+      "rotulo": "Dormitorio 1"
+    },
+    {
+      "area_m2": 4.268,
+      "capa": "00 areas",
+      "centroide": [
+        -487.456,
+        -300.284
+      ],
+      "envolvente": [
+        -488.433,
+        -301.8,
+        -486.707,
+        -298.912
+      ],
+      "i": 22,
+      "perimetro_m": 9.226,
+      "rotulo": "Tendedero"
+    },
+    {
+      "area_m2": 3.136,
+      "capa": "00 areas",
+      "centroide": [
+        -576.574,
+        -294.96
+      ],
+      "envolvente": [
+        -577.198,
+        -296.739,
+        -575.863,
+        -293.652
+      ],
+      "i": 23,
+      "perimetro_m": 8.842,
+      "rotulo": "Aseo"
+    },
+    {
+      "area_m2": 4.006,
+      "capa": "00 areas",
+      "centroide": [
+        -575.063,
+        -295.178
+      ],
+      "envolvente": [
+        -575.713,
+        -296.738,
+        -574.338,
+        -293.652
+      ],
+      "i": 24,
+      "perimetro_m": 8.922,
+      "rotulo": "Baño"
+    },
+    {
+      "area_m2": 4.178,
+      "capa": "00 areas",
+      "centroide": [
+        -554.077,
+        -294.851
+      ],
+      "envolvente": [
+        -554.953,
+        -296.32,
+        -553.108,
+        -293.641
+      ],
+      "i": 25,
+      "perimetro_m": 9.047,
+      "rotulo": "Baño"
+    },
+    {
+      "area_m2": 4.056,
+      "capa": "00 areas",
+      "centroide": [
+        -532.476,
+        -294.85
+      ],
+      "envolvente": [
+        -533.197,
+        -296.318,
+        -531.632,
+        -293.488
+      ],
+      "i": 26,
+      "perimetro_m": 8.79,
+      "rotulo": "Baño"
+    },
+    {
+      "area_m2": 3.027,
+      "capa": "00 areas",
+      "centroide": [
+        -534.052,
+        -294.708
+      ],
+      "envolvente": [
+        -534.697,
+        -296.318,
+        -533.347,
+        -293.488
+      ],
+      "i": 27,
+      "perimetro_m": 8.361,
+      "rotulo": "Aseo"
+    },
+    {
+      "area_m2": 4.111,
+      "capa": "00 areas",
+      "centroide": [
+        -511.975,
+        -296.927
+      ],
+      "envolvente": [
+        -512.852,
+        -298.116,
+        -511.002,
+        -295.48
+      ],
+      "i": 28,
+      "perimetro_m": 8.973,
+      "rotulo": "Baño"
+    },
+    {
+      "area_m2": 3.766,
+      "capa": "00 areas",
+      "centroide": [
+        -490.504,
+        -295.453
+      ],
+      "envolvente": [
+        -491.563,
+        -296.787,
+        -489.686,
+        -294.239
+      ],
+      "i": 29,
+      "perimetro_m": 8.844,
+      "rotulo": "Baño"
+    },
+    {
+      "area_m2": 3.997,
+      "capa": "00 areas",
+      "centroide": [
+        -470.368,
+        -295.378
+      ],
+      "envolvente": [
+        -471.421,
+        -296.795,
+        -469.494,
+        -294.221
+      ],
+      "i": 30,
+      "perimetro_m": 9.0,
+      "rotulo": "Baño"
+    },
+    {
+      "area_m2": 3.325,
+      "capa": "00 areas",
+      "centroide": [
+        -574.406,
+        -301.033
+      ],
+      "envolvente": [
+        -575.689,
+        -301.678,
+        -573.087,
+        -300.243
+      ],
+      "i": 31,
+      "perimetro_m": 8.073,
+      "rotulo": "Terraza"
+    },
+    {
+      "area_m2": 3.257,
+      "capa": "00 areas",
+      "centroide": [
+        -554.994,
+        -301.026
+      ],
+      "envolvente": [
+        -556.246,
+        -301.673,
+        -553.701,
+        -300.236
+      ],
+      "i": 32,
+      "perimetro_m": 7.958,
+      "rotulo": "Terraza"
+    },
+    {
+      "area_m2": 3.251,
+      "capa": "00 areas",
+      "centroide": [
+        -531.931,
+        -301.024
+      ],
+      "envolvente": [
+        -533.185,
+        -301.67,
+        -530.646,
+        -300.235
+      ],
+      "i": 33,
+      "perimetro_m": 7.947,
+      "rotulo": "Terraza"
+    },
+    {
+      "area_m2": 3.34,
+      "capa": "00 areas",
+      "centroide": [
+        -512.92,
+        -290.882
+      ],
+      "envolvente": [
+        -514.203,
+        -291.675,
+        -511.599,
+        -290.235
+      ],
+      "i": 34,
+      "perimetro_m": 8.087,
+      "rotulo": "Terraza"
+    },
+    {
+      "area_m2": 4.93,
+      "capa": "00 areas",
+      "centroide": [
+        -471.081,
+        -290.688
+      ],
+      "envolvente": [
+        -473.899,
+        -291.342,
+        -468.29,
+        -290.235
+      ],
+      "i": 35,
+      "perimetro_m": 14.097,
+      "rotulo": "Terraza"
+    },
+    {
+      "area_m2": 5.364,
+      "capa": "00 areas",
+      "centroide": [
+        -471.316,
+        -301.177
+      ],
+      "envolvente": [
+        -473.841,
+        -301.677,
+        -466.583,
+        -300.235
+      ],
+      "i": 36,
+      "perimetro_m": 17.391,
+      "rotulo": "Terraza"
+    },
+    {
+      "area_m2": 21.949,
+      "capa": "00 areas",
+      "centroide": [
+        -470.715,
+        -298.234
+      ],
+      "envolvente": [
+        -473.838,
+        -300.543,
+        -468.053,
+        -294.385
+      ],
+      "i": 37,
+      "perimetro_m": 23.88,
+      "rotulo": "Salón/cocina"
+    },
+    {
+      "area_m2": 6.297,
+      "capa": "00 areas",
+      "centroide": [
+        -471.07,
+        -290.465
+      ],
+      "envolvente": [
+        -473.983,
+        -291.005,
+        -468.157,
+        -289.925
+      ],
+      "i": 38,
+      "perimetro_m": 13.814,
+      "rotulo": "Terraza"
+    },
+    {
+      "area_m2": 11.554,
+      "capa": "00 areas",
+      "centroide": [
+        -469.243,
+        -300.873
+      ],
+      "envolvente": [
+        -473.983,
+        -301.986,
+        -466.483,
+        -298.358
+      ],
+      "i": 39,
+      "perimetro_m": 22.261,
+      "rotulo": "Terraza"
+    }
+  ]
+}

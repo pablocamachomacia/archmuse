@@ -1,0 +1,41 @@
+# Metadatos y PROCEDENCIA del registro geográfico de España.
+#
+# Este fichero es lo que impide que el registro se lea como si fuera
+# completo y verificado. La procedencia viaja con el dato hasta la cadena de
+# ámbitos resuelta (`CadenaAmbitos.procedencia`), siguiendo el principio de
+# docs/brain/KNOWLEDGE_GRAPH.md §0.3: ningún valor se entrega desnudo, siempre
+# como par (valor, origen).
+
+pais: es
+nombre: España
+version: 1
+
+niveles:
+  comunidades:
+    estado: completo
+    origen: codigos_ine_oficiales
+    verificado: true
+    n: 19          # 17 comunidades autónomas + Ceuta y Melilla
+  provincias:
+    estado: completo
+    origen: codigos_ine_oficiales
+    verificado: true
+    n: 52          # 50 provincias + Ceuta y Melilla
+  municipios:
+    estado: parcial
+    origen: semilla_manual
+    verificado: false
+    n_cargados: 31
+    n_reales: 8131
+    pendiente: >-
+      Ejecutar `scripts/actualizar_registro_ine.py` con el fichero oficial de
+      Relación de Unidades Poblacionales / Códigos de municipios del INE para
+      completar el registro a los 8.131 municipios y marcar verificado: true.
+      Hasta entonces, un municipio no cargado produce AmbitoDesconocido — que
+      es el comportamiento correcto: nunca un repliegue silencioso a otro
+      municipio ni al valor por defecto.
+    aviso: >-
+      Los códigos de esta semilla se han escrito a mano y NO están verificados
+      contra el fichero oficial del INE. Un código erróneo aquí es exactamente
+      la clase de error que este subsistema existe para impedir, así que
+      `resolver_ambito` marca toda cadena que los use como no verificada.

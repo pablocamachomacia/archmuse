@@ -1,0 +1,929 @@
+{
+  "n_unidades": 6,
+  "planta_3": {
+    "altura_evacuacion": {
+      "ambito": "edificio",
+      "codigos_motivo": [
+        "EVAC_HEIGHT_NOT_AVAILABLE"
+      ],
+      "confianza": null,
+      "estado": "UNKNOWN",
+      "nombre": "altura_evacuacion",
+      "referencia_normativa": "es.cte.db_si.anejo_a.altura_de_evacuacion",
+      "tipo": "declarado",
+      "unidad": "m",
+      "valor": null
+    },
+    "ambitos_emitidos_ocupacion": [
+      "planta 3",
+      "planta 3",
+      "planta 3",
+      "planta 3",
+      "planta 3",
+      "planta 3"
+    ],
+    "ocupacion": [
+      {
+        "ambito": "planta 3, vivienda VT1/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": 3.316
+      },
+      {
+        "ambito": "planta 3, vivienda VT2/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": 2.922
+      },
+      {
+        "ambito": "planta 3, vivienda VT3/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": 3.327
+      },
+      {
+        "ambito": "planta 3, vivienda VT4/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": 2.923
+      },
+      {
+        "ambito": "planta 3, vivienda VT5/1",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": 2.266
+      },
+      {
+        "ambito": "planta 3, vivienda VT6/2",
+        "codigos_motivo": [
+          "AREA_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": null
+      }
+    ],
+    "planta": [
+      {
+        "ambito": "vivienda VT1/3",
+        "codigos_motivo": [],
+        "confianza": "Alta",
+        "estado": "KNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": 3
+      },
+      {
+        "ambito": "vivienda VT2/2",
+        "codigos_motivo": [],
+        "confianza": "Alta",
+        "estado": "KNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": 3
+      },
+      {
+        "ambito": "vivienda VT3/3",
+        "codigos_motivo": [],
+        "confianza": "Alta",
+        "estado": "KNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": 3
+      },
+      {
+        "ambito": "vivienda VT4/2",
+        "codigos_motivo": [],
+        "confianza": "Alta",
+        "estado": "KNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": 3
+      },
+      {
+        "ambito": "vivienda VT5/1",
+        "codigos_motivo": [],
+        "confianza": "Alta",
+        "estado": "KNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": 3
+      },
+      {
+        "ambito": "vivienda VT6/2",
+        "codigos_motivo": [],
+        "confianza": "Alta",
+        "estado": "KNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": 3
+      }
+    ],
+    "resumen_estados_ocupacion": {
+      "ESTIMATED": 5,
+      "KNOWN": 0,
+      "NO_APLICABLE": 0,
+      "UNKNOWN": 1
+    },
+    "sectorizacion": [
+      {
+        "ambito": "planta 3",
+        "codigos_motivo": [
+          "AREA_PROXY_BELOW_THRESHOLD"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      },
+      {
+        "ambito": "planta 3",
+        "codigos_motivo": [
+          "AREA_PROXY_BELOW_THRESHOLD"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      },
+      {
+        "ambito": "planta 3",
+        "codigos_motivo": [
+          "AREA_PROXY_BELOW_THRESHOLD"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      },
+      {
+        "ambito": "planta 3",
+        "codigos_motivo": [
+          "AREA_PROXY_BELOW_THRESHOLD"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      },
+      {
+        "ambito": "planta 3",
+        "codigos_motivo": [
+          "AREA_PROXY_BELOW_THRESHOLD"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      },
+      {
+        "ambito": "planta 3",
+        "codigos_motivo": [
+          "AREA_PROXY_BELOW_THRESHOLD"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      }
+    ],
+    "superficie_util_db_si": [
+      {
+        "ambito": "vivienda VT1/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 66.329
+      },
+      {
+        "ambito": "vivienda VT2/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 58.443
+      },
+      {
+        "ambito": "vivienda VT3/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 66.548
+      },
+      {
+        "ambito": "vivienda VT4/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 58.47
+      },
+      {
+        "ambito": "vivienda VT5/1",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 45.315
+      },
+      {
+        "ambito": "vivienda VT6/2",
+        "codigos_motivo": [
+          "GEOMETRY_INVALID",
+          "GEOMETRY_OVERLAP_UNRESOLVED"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      }
+    ],
+    "superficie_util_ocupable_db_si": [
+      {
+        "ambito": "vivienda VT1/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 66.329
+      },
+      {
+        "ambito": "vivienda VT2/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 58.443
+      },
+      {
+        "ambito": "vivienda VT3/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 66.548
+      },
+      {
+        "ambito": "vivienda VT4/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 58.47
+      },
+      {
+        "ambito": "vivienda VT5/1",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 45.315
+      },
+      {
+        "ambito": "vivienda VT6/2",
+        "codigos_motivo": [
+          "GEOMETRY_INVALID",
+          "GEOMETRY_OVERLAP_UNRESOLVED"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      }
+    ],
+    "uso_previsto": [
+      {
+        "ambito": "vivienda VT1/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      },
+      {
+        "ambito": "vivienda VT2/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      },
+      {
+        "ambito": "vivienda VT3/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      },
+      {
+        "ambito": "vivienda VT4/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      },
+      {
+        "ambito": "vivienda VT5/1",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      },
+      {
+        "ambito": "vivienda VT6/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      }
+    ]
+  },
+  "sin_planta": {
+    "altura_evacuacion": {
+      "ambito": "edificio",
+      "codigos_motivo": [
+        "EVAC_HEIGHT_NOT_AVAILABLE"
+      ],
+      "confianza": null,
+      "estado": "UNKNOWN",
+      "nombre": "altura_evacuacion",
+      "referencia_normativa": "es.cte.db_si.anejo_a.altura_de_evacuacion",
+      "tipo": "declarado",
+      "unidad": "m",
+      "valor": null
+    },
+    "ambitos_emitidos_ocupacion": [
+      "vivienda",
+      "vivienda",
+      "vivienda",
+      "vivienda",
+      "vivienda",
+      "vivienda"
+    ],
+    "ocupacion": [
+      {
+        "ambito": "vivienda VT1/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": 3.316
+      },
+      {
+        "ambito": "vivienda VT2/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": 2.922
+      },
+      {
+        "ambito": "vivienda VT3/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": 3.327
+      },
+      {
+        "ambito": "vivienda VT4/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": 2.923
+      },
+      {
+        "ambito": "vivienda VT5/1",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": 2.266
+      },
+      {
+        "ambito": "vivienda VT6/2",
+        "codigos_motivo": [
+          "AREA_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "ocupacion",
+        "referencia_normativa": "DB-SI / SI 3 / ap. 2",
+        "tipo": "derivado",
+        "unidad": "personas",
+        "valor": null
+      }
+    ],
+    "planta": [
+      {
+        "ambito": "vivienda VT1/3",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": null
+      },
+      {
+        "ambito": "vivienda VT2/2",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": null
+      },
+      {
+        "ambito": "vivienda VT3/3",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": null
+      },
+      {
+        "ambito": "vivienda VT4/2",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": null
+      },
+      {
+        "ambito": "vivienda VT5/1",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": null
+      },
+      {
+        "ambito": "vivienda VT6/2",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "planta",
+        "referencia_normativa": null,
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": null
+      }
+    ],
+    "resumen_estados_ocupacion": {
+      "ESTIMATED": 5,
+      "KNOWN": 0,
+      "NO_APLICABLE": 0,
+      "UNKNOWN": 1
+    },
+    "sectorizacion": [
+      {
+        "ambito": "vivienda VT1/3",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      },
+      {
+        "ambito": "vivienda VT2/2",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      },
+      {
+        "ambito": "vivienda VT3/3",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      },
+      {
+        "ambito": "vivienda VT4/2",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      },
+      {
+        "ambito": "vivienda VT5/1",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      },
+      {
+        "ambito": "vivienda VT6/2",
+        "codigos_motivo": [
+          "FLOOR_NOT_AVAILABLE"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "limite_superficie_sector",
+        "referencia_normativa": "DB-SI / SI 1 / ap. 1",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      }
+    ],
+    "superficie_util_db_si": [
+      {
+        "ambito": "vivienda VT1/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 66.329
+      },
+      {
+        "ambito": "vivienda VT2/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 58.443
+      },
+      {
+        "ambito": "vivienda VT3/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 66.548
+      },
+      {
+        "ambito": "vivienda VT4/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 58.47
+      },
+      {
+        "ambito": "vivienda VT5/1",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 45.315
+      },
+      {
+        "ambito": "vivienda VT6/2",
+        "codigos_motivo": [
+          "GEOMETRY_INVALID",
+          "GEOMETRY_OVERLAP_UNRESOLVED"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "superficie_util_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      }
+    ],
+    "superficie_util_ocupable_db_si": [
+      {
+        "ambito": "vivienda VT1/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 66.329
+      },
+      {
+        "ambito": "vivienda VT2/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 58.443
+      },
+      {
+        "ambito": "vivienda VT3/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 66.548
+      },
+      {
+        "ambito": "vivienda VT4/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 58.47
+      },
+      {
+        "ambito": "vivienda VT5/1",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "KNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": 45.315
+      },
+      {
+        "ambito": "vivienda VT6/2",
+        "codigos_motivo": [
+          "GEOMETRY_INVALID",
+          "GEOMETRY_OVERLAP_UNRESOLVED"
+        ],
+        "confianza": null,
+        "estado": "UNKNOWN",
+        "nombre": "superficie_util_ocupable_db_si",
+        "referencia_normativa": "es.cte.db_si.anejo_a.superficie_util",
+        "tipo": "derivado",
+        "unidad": "m2",
+        "valor": null
+      }
+    ],
+    "uso_previsto": [
+      {
+        "ambito": "vivienda VT1/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      },
+      {
+        "ambito": "vivienda VT2/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      },
+      {
+        "ambito": "vivienda VT3/3",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      },
+      {
+        "ambito": "vivienda VT4/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      },
+      {
+        "ambito": "vivienda VT5/1",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      },
+      {
+        "ambito": "vivienda VT6/2",
+        "codigos_motivo": [],
+        "confianza": "Media",
+        "estado": "ESTIMATED",
+        "nombre": "uso_previsto",
+        "referencia_normativa": "es.cte.parte_1.anejo_3.uso_previsto",
+        "tipo": "declarado",
+        "unidad": "",
+        "valor": "RESIDENCIAL_VIVIENDA"
+      }
+    ]
+  }
+}

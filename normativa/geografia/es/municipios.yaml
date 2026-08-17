@@ -1,0 +1,52 @@
+# SEMILLA MANUAL — NO es el registro completo.
+#
+# 31 de los 8.131 municipios españoles: los 30 que `analyzer/cte_zonas.py`
+# reconocía (única lista de ciudades que el proyecto manejaba) más Pozuelo de
+# Alarcón, que es el ejemplo trabajado de docs/design/NORMATIVE_RESOLUTION.md
+# §13.
+#
+# Los códigos INE de este fichero se han escrito a mano y NO están verificados
+# contra el fichero oficial. Ver `_registro.yaml`: toda cadena resuelta con
+# estos datos se marca como no verificada, y `scripts/actualizar_registro_ine.py`
+# es lo que completa y verifica el registro.
+#
+# Los 8.100 municipios que faltan NO producen un repliegue a Madrid ni a nada:
+# producen `AmbitoDesconocido`. Conocer un municipio y tener su normativa son
+# dos cosas distintas, y ninguna de las dos se finge.
+#
+# `codigo` es la identidad (5 dígitos: 2 de provincia + 3 de municipio).
+# `nombre` es una etiqueta; las variantes escritas se resuelven en alias.yaml.
+
+version: 1
+municipios:
+  - { codigo: "28079", nombre: "Madrid", provincia: "28" }
+  - { codigo: "28115", nombre: "Pozuelo de Alarcón", provincia: "28" }
+  - { codigo: "08019", nombre: "Barcelona", provincia: "08" }
+  - { codigo: "46250", nombre: "València", provincia: "46" }
+  - { codigo: "41091", nombre: "Sevilla", provincia: "41" }
+  - { codigo: "50297", nombre: "Zaragoza", provincia: "50" }
+  - { codigo: "29067", nombre: "Málaga", provincia: "29" }
+  - { codigo: "30030", nombre: "Murcia", provincia: "30" }
+  - { codigo: "07040", nombre: "Palma", provincia: "07" }
+  - { codigo: "35016", nombre: "Las Palmas de Gran Canaria", provincia: "35" }
+  - { codigo: "38038", nombre: "Santa Cruz de Tenerife", provincia: "38" }
+  - { codigo: "48020", nombre: "Bilbao", provincia: "48" }
+  - { codigo: "03014", nombre: "Alicante/Alacant", provincia: "03" }
+  - { codigo: "14021", nombre: "Córdoba", provincia: "14" }
+  - { codigo: "47186", nombre: "Valladolid", provincia: "47" }
+  - { codigo: "36057", nombre: "Vigo", provincia: "36" }
+  - { codigo: "33024", nombre: "Gijón", provincia: "33" }
+  - { codigo: "01059", nombre: "Vitoria-Gasteiz", provincia: "01" }
+  - { codigo: "15030", nombre: "A Coruña", provincia: "15" }
+  - { codigo: "18087", nombre: "Granada", provincia: "18" }
+  - { codigo: "03065", nombre: "Elx/Elche", provincia: "03" }
+  - { codigo: "33044", nombre: "Oviedo", provincia: "33" }
+  - { codigo: "31201", nombre: "Pamplona/Iruña", provincia: "31" }
+  - { codigo: "04013", nombre: "Almería", provincia: "04" }
+  - { codigo: "20069", nombre: "Donostia/San Sebastián", provincia: "20" }
+  - { codigo: "09059", nombre: "Burgos", provincia: "09" }
+  - { codigo: "37274", nombre: "Salamanca", provincia: "37" }
+  - { codigo: "45168", nombre: "Toledo", provincia: "45" }
+  - { codigo: "10037", nombre: "Cáceres", provincia: "10" }
+  - { codigo: "06015", nombre: "Badajoz", provincia: "06" }
+  - { codigo: "39075", nombre: "Santander", provincia: "39" }
