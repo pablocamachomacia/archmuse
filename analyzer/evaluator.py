@@ -580,6 +580,9 @@ def evaluate_dormitory_hierarchy(units: List[Unit]) -> List[HierarchyResult]:
             (name, _find_room_by_pattern(unit.rooms, pattern))
             for name, pattern in DORMITORIO_PATTERNS
         ]
+        # zip-sin-strict: emparejado por PARES CONSECUTIVOS (dorms con
+        # dorms[1:]), no dos listas paralelas. Sus largos difieren en 1 por
+        # definicion, asi que `strict=True` levantaria siempre.
         for (higher_name, higher_room), (lower_name, lower_room) in zip(dorms, dorms[1:]):
             if higher_room is None or lower_room is None:
                 continue

@@ -433,7 +433,7 @@ def generate_circulation_svg(unit_score: UnitScore, circulation: UnitCirculation
 
     for _room, polygon in layout:
         for xs, ys in _exterior_rings(polygon):
-            points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys)))
+            points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys, strict=True)))
             parts.append(f'<polygon points="{points}" fill="#F4F5F7" stroke="#9AA3B2" stroke-width="1.0"/>')
 
     colors_used = {r.color for r in circulation.routes}

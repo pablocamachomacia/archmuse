@@ -417,7 +417,7 @@ def generate_spatial_quality_svg(unit_score: UnitScore, quality: UnitQuality) ->
     def render_geometry(geom, fill: str, stroke: str, stroke_width: float, opacity: float = 1.0) -> str:
         parts = []
         for xs, ys in _exterior_rings(geom):
-            points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys)))
+            points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys, strict=True)))
             parts.append(
                 f'<polygon points="{points}" fill="{fill}" fill-opacity="{opacity}" '
                 f'stroke="{stroke}" stroke-width="{stroke_width}" stroke-linejoin="round"/>'

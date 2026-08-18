@@ -303,7 +303,7 @@ def _envelope_svg(layout: List[Tuple[Room, BaseGeometry]], to_screen) -> str:
 
     partes = ['<g class="plan-envolvente" pointer-events="none">']
     for xs, ys in rings:
-        points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys)))
+        points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys, strict=True)))
         partes.append(
             f'<polygon points="{points}" fill="none" stroke="{_WALL_COLOR}" '
             f'stroke-width="{_ENVELOPE_STROKE_WIDTH}" stroke-linejoin="round"/>'
@@ -648,7 +648,7 @@ def generate_plan_svg(vivienda: UnitScore, norte_grados: float = 0.0) -> str:
             f' data-dx="{delta_x:.4f}" data-dy="{delta_y:.4f}">'
         )
         for xs, ys in _exterior_rings(polygon):
-            points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys)))
+            points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys, strict=True)))
             parts.append(
                 f'<polygon points="{points}" fill="{fill}" stroke="{stroke}" '
                 f'stroke-width="{stroke_width}" stroke-linejoin="round"/>'

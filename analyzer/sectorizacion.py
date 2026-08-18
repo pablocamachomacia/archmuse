@@ -282,5 +282,7 @@ def limite_superficie_sector(
     return [
         veredicto_por_planta[p.valor] if p.estado in (KNOWN, ESTIMATED)
         else _sin_planta(s)
+        # zip-sin-strict: mismo caso que `ocupacion_por_zona` -- los largos ya
+        # se validan al entrar, con un mensaje mejor que el de `strict=True`.
         for s, p in zip(superficies, plantas)
     ]

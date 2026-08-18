@@ -583,5 +583,8 @@ def ocupacion_por_zona(
             s, u,
             declarada=(declaradas[i] if declaradas is not None else None),
         )
+        # zip-sin-strict: la funcion ya valida los largos arriba y levanta un
+        # ValueError que dice cuantos hay de cada. `strict=True` daria el mismo
+        # error con peor mensaje.
         for i, (s, u) in enumerate(zip(superficies, usos))
     ]

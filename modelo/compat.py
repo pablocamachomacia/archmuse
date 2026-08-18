@@ -155,8 +155,11 @@ def grafo_de_adyacencia(unidad: evaluator.Unit,
     modelo = construir_de_unidad(unidad, semilla=semilla)
     espacios = modelo.get_spaces()
     # El constructor crea un espacio por `Room` en el mismo orden de entrada.
+    # `strict=True` (tarea 7) lo exige en vez de confiarlo: si el constructor
+    # dejara de emitir un espacio por Room, el diccionario saldria corto y las
+    # aristas de las Rooms que faltan desaparecerian del grafo en silencio.
     room_de: Dict[str, parser.Room] = {
-        espacio.id: room for espacio, room in zip(espacios, unidad.rooms)
+        espacio.id: room for espacio, room in zip(espacios, unidad.rooms, strict=True)
     }
 
     grafo: Dict[int, List[Tuple]] = {id(room): [] for room in unidad.rooms}

@@ -542,7 +542,12 @@ def analizar():
                 advanced.units, plano.superficies_utiles_exteriores,
                 plano.envolventes_exteriores, unit_labels,
             )
-            for unit_score, unit_con_am in zip(advanced.unit_scores, advanced.units):
+            # `strict=True` (tarea 7): el comentario de arriba dice que las dos
+            # listas se construyen a la vez y por eso el emparejado es seguro.
+            # Esto lo convierte de promesa en comprobacion -- si alguna vez
+            # dejan de tener el mismo largo, salta aqui en vez de asignar
+            # `unit` a la vivienda equivocada y seguir como si nada.
+            for unit_score, unit_con_am in zip(advanced.unit_scores, advanced.units, strict=True):
                 unit_score.unit = unit_con_am
 
             # Diagnósticos de conformidad (Fase 2, `validacion_capas.py`), NO
@@ -657,8 +662,11 @@ def analizar():
                     superficie_util_ocupable_db_si(us.unit), uso_hecho,
                     planta=planta_hecho,
                 )
+                # `strict=True` (tarea 7): tres listas construidas por
+                # separado y emparejadas por posicion. Un desajuste calcularia
+                # la ocupacion de una vivienda con el uso de otra.
                 for us, uso_hecho, planta_hecho in zip(
-                    advanced.unit_scores, usos_hechos, planta_hechos
+                    advanced.unit_scores, usos_hechos, planta_hechos, strict=True
                 )
             ]
 
