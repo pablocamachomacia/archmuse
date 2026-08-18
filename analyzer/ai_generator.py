@@ -23,6 +23,8 @@ from typing import Dict, List, Optional
 
 from shapely.geometry import Polygon
 
+from ia.cliente import crear_cliente, timeout_generacion
+
 from .ai_analyst import _extract_json
 from .estilos import aplicar_estilo_a_prompt
 from .evaluator import (
@@ -954,7 +956,9 @@ def generate_project(params: dict, model: str = MODEL) -> GeneratedProject:
     if not api_key:
         raise GenerationError("Configura ANTHROPIC_API_KEY para generar proyectos con IA.")
 
-    client = anthropic.Anthropic(api_key=api_key)
+    # Tarea 9: tramo largo -- esta es la unica llamada de 8.192 tokens de
+    # salida del producto. Ver analyzer/anthropic_cliente.py.
+    client = crear_cliente(api_key, timeout_s=timeout_generacion())
 
     # Validada UNA vez, reutilizada en las dos pasadas posibles (la llamada
     # y el reintento) — nunca se revalida contra una segunda fuente.

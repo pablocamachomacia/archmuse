@@ -30,6 +30,7 @@ try:
 except ImportError:  # pragma: no cover - mismo patrón que analyzer/ai_analyst.py
     anthropic = None
 
+from ia.cliente import crear_cliente
 from normativa.catalogos import materias
 from normativa.condiciones import COMPARADORES, COMPARADORES_DE_PRESENCIA
 from normativa.modelo import PATRONES, PRIORIDADES, TIPOS_REGLA
@@ -150,7 +151,8 @@ def interpretar(segmento: Segmento, *, model: str = MODEL, api_key: Optional[str
     if not clave:
         raise ErrorDeInterpretacion(segmento.id, "falta ANTHROPIC_API_KEY")
 
-    cliente = anthropic.Anthropic(api_key=clave)
+    # Tarea 9: tiempo limite explicito. Ver ia/cliente.py.
+    cliente = crear_cliente(clave)
     herramienta = _tool_schema()
 
     mensaje = (

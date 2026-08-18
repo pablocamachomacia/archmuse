@@ -26,6 +26,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Optional, Protocol
 
+from ia.cliente import crear_cliente
+
 from ..ai_analyst import _extract_json
 from .modelo import CONFIANZAS, NATURALEZAS_RESPUESTA, RespuestaInterpretada, nuevo_id
 from .preguntas import CAMPOS_OPORTUNISTAS_BLOQUE_FIJO, Pregunta
@@ -152,7 +154,8 @@ class ClienteAnthropicInterprete:
         key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not key:
             raise InterpretacionError("Configura ANTHROPIC_API_KEY para usar el entrevistador con IA.")
-        self._client = anthropic.Anthropic(api_key=key)
+        # Tarea 9: tiempo limite explicito. Ver analyzer/anthropic_cliente.py.
+        self._client = crear_cliente(key)
         self._model = model
 
     def _llamar(self, mensaje_usuario: str, campos_permitidos: frozenset[str], turno_id: str) -> ResultadoInterpretacion:

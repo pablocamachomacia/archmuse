@@ -30,6 +30,8 @@ from __future__ import annotations
 import unicodedata
 from typing import Any, Optional
 
+from ia.cliente import crear_cliente
+
 try:
     import anthropic
 except ImportError:  # pragma: no cover - mismo patrón que ai_analyst.py
@@ -273,7 +275,8 @@ def obtener_estilo(clave_o_descripcion: str, client_anthropic=None) -> dict:
         clave = os.environ.get("ANTHROPIC_API_KEY")
         if not clave:
             raise ErrorDeEstilo("falta ANTHROPIC_API_KEY")
-        cliente = anthropic.Anthropic(api_key=clave)
+        # Tarea 9: tiempo limite explicito. Ver analyzer/anthropic_cliente.py.
+        cliente = crear_cliente(clave)
 
     herramienta = _tool_schema()
     try:

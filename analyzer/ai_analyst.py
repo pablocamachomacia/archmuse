@@ -20,6 +20,8 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from ia.cliente import crear_cliente
+
 from .evaluator import UnitScore
 
 try:
@@ -264,7 +266,8 @@ def analyze_with_ai(viviendas_data: dict, model: str = MODEL) -> Optional[AIAnal
         print("Aviso: configure ANTHROPIC_API_KEY para activar el análisis experto con IA.")
         return None
 
-    client = anthropic.Anthropic(api_key=api_key)
+    # Tarea 9: tiempo limite explicito. Ver analyzer/anthropic_cliente.py.
+    client = crear_cliente(api_key)
 
     try:
         response = client.messages.create(

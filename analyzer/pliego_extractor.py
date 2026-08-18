@@ -43,6 +43,8 @@ try:
 except ImportError:  # pragma: no cover - mismo patrón que ai_analyst.py
     anthropic = None
 
+from ia.cliente import crear_cliente
+
 from .hechos import ALTA, BAJA, CONFIANZAS, KNOWN, MEDIA, UNKNOWN, Hecho, Motivo
 
 MODEL = "claude-sonnet-5"
@@ -261,7 +263,8 @@ def extraer_parametros_pliego(
     if not clave:
         raise ErrorDeExtraccionPliego("falta ANTHROPIC_API_KEY")
 
-    cliente = anthropic.Anthropic(api_key=clave)
+    # Tarea 9: tiempo limite explicito. Ver analyzer/anthropic_cliente.py.
+    cliente = crear_cliente(clave)
     herramienta = _tool_schema()
     pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("ascii")
 
