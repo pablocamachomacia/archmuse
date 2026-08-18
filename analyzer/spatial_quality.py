@@ -445,21 +445,6 @@ def generate_spatial_quality_svg(unit_score: UnitScore, quality: UnitQuality) ->
     return "\n".join(parts)
 
 
-def render_spatial_quality_legend_html() -> str:
-    labels = {
-        "tubo": "Proporción \"tubo\"",
-        "iluminacion_profunda": "Profundidad de iluminación excesiva",
-        "escala_humana": "Escala humana inadecuada",
-        "espacio_muerto": "Espacio muerto / recoveco",
-        "jerarquia": "Jerarquía espacial",
-    }
-    swatches = "".join(
-        '<span class="spatial-legend-item">'
-        f'<span class="spatial-legend-swatch" style="background:{color}"></span>{labels[tipo]}</span>'
-        for tipo, color in SPATIAL_ISSUE_COLORS.items()
-    )
-    return f'<div class="spatial-legend">{swatches}</div>'
-
 
 # ---------------------------------------------------------------------------
 # Serialización JSON (para la API REST, ver analyzer/api_serializer.py)

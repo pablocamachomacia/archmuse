@@ -266,7 +266,8 @@ def tramo_enfrentado_m(almacen: AlmacenGeometria, a: str, b: str,
 
     No se puede medir como borde compartido: en los planos reales los
     polígonos casi nunca se tocan —cada recinto se dibuja en la cara interior
-    de su propio muro— y por eso `evaluator._is_adjacent` no dispara nunca. Se
+    de su propio muro— y por eso el criterio antiguo de borde compartido
+    (`evaluator._is_adjacent`, ya eliminado) no disparaba nunca. Se
     mide cuánto del contorno de cada uno cae dentro del espesor de muro
     plausible del otro, y se toma el menor de los dos.
 

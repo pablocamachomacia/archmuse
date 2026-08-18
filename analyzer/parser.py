@@ -863,10 +863,6 @@ def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optiona
         geometria_no_leida=geometria_no_leida)
 
 
-def build_rooms(dxf_path: str, layer: Optional[str] = None) -> List[Room]:
-    """Pipeline completo: lee el DXF y devuelve las habitaciones ya en metros."""
-    return leer_plano(load_document(dxf_path), layer).rooms
-
 
 # ---------------------------------------------------------------------------
 # Capas candidatas (tarea 5 del PRD de ingesta de DXF ajenos)

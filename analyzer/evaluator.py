@@ -941,8 +941,6 @@ def evaluate_natural_light(unit: Unit) -> List[NaturalLightResult]:
 # 6. Anchura mínima de pasillo (CTE DB-SUA)
 # ---------------------------------------------------------------------------
 
-MIN_CORRIDOR_WIDTH_M = 0.9  # CTE DB-SUA: ancho mínimo de paso de personas (fallback si tipología no reconocida)
-
 
 @dataclass
 class CorridorWidthResult:
@@ -1612,16 +1610,6 @@ def evaluate_natural_lighting(unit: Unit) -> NaturalLightingAnalysis:
 
 _ADJACENCY_MIN_LENGTH_M = 0.3
 _NOISY_ROOM_PATTERN = re.compile(r"BANO|ASEO")
-
-
-def _shared_edge_length(a: Polygon, b: Polygon) -> float:
-    """Longitud del tramo de borde que comparten dos polígonos (0 si no se
-    tocan o solo se tocan en un punto/esquina)."""
-    return a.boundary.intersection(b.boundary).length
-
-
-def _is_adjacent(a: Polygon, b: Polygon) -> bool:
-    return _shared_edge_length(a, b) > _ADJACENCY_MIN_LENGTH_M
 
 
 @dataclass

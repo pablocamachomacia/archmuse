@@ -25,7 +25,6 @@ from .evaluator import (
     ACCESSIBLE_BATHROOM_MIN_AREA_M2,
     DEFAULT_TIPOLOGIA,
     MIN_BATHROOM_TURNING_SPACE_M,
-    AdvancedAnalysis,
     IssueReport,
     UnitScore,
     _DORMITORIO_ANY_PATTERN,
@@ -329,18 +328,3 @@ def compute_chain_effects_for_unit(us: UnitScore, tipologia: str = DEFAULT_TIPOL
     effects.extend(_regla_sin_bano_adaptado(us, tipologia))
     return effects
 
-
-def compute_chain_effects(
-    analysis: AdvancedAnalysis, tipologia: str = DEFAULT_TIPOLOGIA
-) -> List[ChainEffect]:
-    """Ejecuta las 6 reglas de efectos en cadena sobre cada vivienda de
-    `analysis.unit_scores` y devuelve una lista plana — cada `ChainEffect`
-    lleva su vivienda en `problema_origen.unit_name`, igual que
-    `evaluator.classify_problems` hace con `IssueReport.unit_name`, para que
-    el llamador pueda repartirlos por vivienda si los necesita en ese
-    formato (`api_serializer` usa `compute_chain_effects_for_unit` en su
-    lugar, una vivienda a la vez, que es como construye el resto del JSON)."""
-    effects: List[ChainEffect] = []
-    for us in analysis.unit_scores:
-        effects.extend(compute_chain_effects_for_unit(us, tipologia))
-    return effects

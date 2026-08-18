@@ -1,6 +1,6 @@
 # Alineación estratégica — el norte único de ArchMuse
 
-**Fecha:** 2026-08-18 · **Estado:** DECISIÓN, vinculante · **Cierra:** paso 0 de la secuencia de `docs/design/2026-08-18-cerebro-arquitecto-adr.md` §F
+**Fecha:** 2026-08-18 · **Estado:** **APROBADO por Pablo el 2026-08-18** · **Cierra:** paso 0 de la secuencia de `docs/design/2026-08-18-cerebro-arquitecto-adr.md` §F
 
 **Qué resuelve este documento.** El ADR del "Cerebro Arquitecto" identificó en su §E.1 un conflicto directo entre la reorientación propuesta y `NORTH_STAR_2031.md`, y dejó la resolución explícitamente fuera de su alcance: *"una de las dos está obsoleta y hay que decir cuál, por escrito"*. Esto es ese escrito. Mientras no existiera, cada decisión de arquitectura tenía dos criterios de aceptación incompatibles y el trabajo se hacía dos veces.
 
@@ -90,4 +90,4 @@ Tres comprobaciones baratas, aplicables en cualquier revisión:
 
 ---
 
-**Decisión pendiente de la firma de Pablo.** Hasta entonces esto es una propuesta de resolución, no la resolución. Una vez aprobado, `NORTH_STAR_2031.md`, `MOAT_ANALYSIS.md`, `ROADMAP_VISION_ARQUITECTONICA.md` y el ADR del Cerebro Arquitecto pasan a leerse juntos bajo el reparto de la §2, y deja de haber dos nortes.
+**Decisión: aprobada por Pablo el 2026-08-18.** `NORTH_STAR_2031.md`, `MOAT_ANALYSIS.md`, `ROADMAP_VISION_ARQUITECTONICA.md` y el ADR del Cerebro Arquitecto pasan a leerse juntos bajo el reparto de la §2. Deja de haber dos nortes, y las consecuencias C1-C5 de la §3 son desde hoy criterios de aceptación de cualquier PRD nuevo.

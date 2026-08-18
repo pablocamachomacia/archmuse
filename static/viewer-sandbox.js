@@ -528,8 +528,8 @@ import * as ProgramaNecesidades from "./programa-necesidades.js?v=20260817_segme
   // que `analyzer/evaluator.py` ya usa en `/api/generar` -- cada función de aquí lleva en su comentario
   // la referencia cruzada exacta a la función Python que replica, y `POST /api/validar-urbanismo`
   // (nuevo, reutiliza esas funciones reales) sirve para detectar pronto si algún día divergen (mismo
-  // riesgo, documentado en el PRD §9, que ya causó un bug real en este proyecto entre `evaluator.
-  // _is_adjacent` y `circulation._rooms_are_connected`).
+  // riesgo, documentado en el PRD §9, que ya causó un bug real en este proyecto entre el antiguo
+  // `evaluator._is_adjacent` --ya eliminado-- y `circulation._rooms_are_connected`).
 
   // Distancia mínima de un punto (px,pz) al segmento (ax,az)-(bx,bz) -- geometría 2D estándar, sin
   // ninguna librería: se proyecta el punto sobre la recta del segmento, se recorta la proyección al

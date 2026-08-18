@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .ai_analyst import AIAnalysis
-from .evaluator import AdvancedAnalysis, RuleResult, UnitScore, score_rating
+from .evaluator import AdvancedAnalysis, RuleResult, score_rating
 from .parser import Room
 from .plan_svg import render_plan_section
 

@@ -7,7 +7,8 @@
 **El problema que esto cierra.** Había cinco implementaciones de «estas dos
 habitaciones están juntas» con cuatro umbrales distintos, y ninguna sabía de
 las otras (`KNOWLEDGE_GRAPH.md` §1): `evaluator._is_adjacent` (0,3 m de borde
-compartido), `evaluator.group_rooms_by_proximity` (2,0 m), `adyacencia` (0,5 m),
+compartido, eliminada en la tarea 10 del `REFACTOR_MASTERPLAN.md`),
+`evaluator.group_rooms_by_proximity` (2,0 m), `adyacencia` (0,5 m),
 `plan_svg._cluster_rooms` (2,0 m) y una copia literal en `ai_generator`. Las
 dos que miden borde compartido no producen **ni un hallazgo** en un plano real:
 de los 85 pares de `ejemplo.dxf`, uno solo supera los 0,3 m, y es Terraza

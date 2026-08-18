@@ -106,8 +106,9 @@ def _tramo_enfrentado(a: Room, b: Room, tolerancia: float) -> float:
     """Longitud del tramo en que los dos contornos se miran de frente.
 
     No se puede medir como borde compartido —en estos planos los polígonos no
-    se tocan nunca, que es justamente por lo que `evaluator._is_adjacent` no se
-    dispara jamás— así que se mide cuánto del contorno de cada uno cae dentro
+    se tocan nunca, que es justamente por lo que el antiguo
+    `evaluator._is_adjacent` (borde compartido, ya eliminado) no se disparaba
+    jamás— así que se mide cuánto del contorno de cada uno cae dentro
     del espesor de muro plausible del otro, y se toma el menor de los dos."""
     ab = b.polygon.boundary.intersection(a.polygon.buffer(tolerancia)).length
     ba = a.polygon.boundary.intersection(b.polygon.buffer(tolerancia)).length

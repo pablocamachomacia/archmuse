@@ -37,7 +37,8 @@ def _tramo_enfrentado(a, b, tolerancia):
     existe para vigilar.
 
     No se puede medir como borde compartido: en estos planos los polígonos
-    casi nunca se tocan, que es por lo que `evaluator._is_adjacent` no dispara.
+    casi nunca se tocan, que es por lo que el antiguo `evaluator._is_adjacent`
+    (borde compartido, ya eliminado) no disparaba.
     """
     ab = b.polygon.boundary.intersection(a.polygon.buffer(tolerancia)).length
     ba = a.polygon.boundary.intersection(b.polygon.buffer(tolerancia)).length

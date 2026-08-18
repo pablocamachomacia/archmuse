@@ -1,8 +1,8 @@
 """Análisis de recorridos y circulaciones: modela la vivienda como un grafo
 de adyacencias físicas entre habitaciones (dos habitaciones son vecinas si
-comparten un tramo de muro — misma detección que
-`evaluator._is_adjacent`/`_shared_edge_length`, ya usada por la regla
-acústica del Bloque 16) y traza recorridos sobre ese grafo.
+comparten un tramo de muro — la detección vive en `analyzer/adyacencia.py`,
+que es también la que usa la regla acústica del Bloque 16) y traza recorridos
+sobre ese grafo.
 
 Limitación de base, igual que el resto del módulo (ver
 `evaluator.get_missing_data_warnings`): el modelo no tiene datos reales de

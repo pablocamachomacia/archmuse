@@ -20,10 +20,12 @@ realmente contiguas van de 0,000 a 0,380 m, mientras que el siguiente hueco
 entre piezas NO contiguas salta a 2,27 m. El margen es enorme, así que un
 umbral de distancia separa los dos casos con seguridad.
 
-`evaluator._is_adjacent` (Bloque 16, adyacencia acústica) exige contacto
-literal de contornos y por eso no dispara nunca sobre datos reales. Este
-módulo es el criterio bueno; aquel sigue existiendo y sigue roto — migrarlo
-cambia qué avisos acústicos aparecen, así que es una decisión aparte.
+El criterio antiguo del Bloque 16 (`evaluator._is_adjacent`) exigía contacto
+literal de contornos y por eso no disparaba nunca sobre datos reales. Este
+módulo es el criterio bueno, y desde la tarea 10 del `REFACTOR_MASTERPLAN.md`
+(2026-08-18) es el único que queda: aquel se eliminó por no tener ni un solo
+llamador. La migración de la regla acústica ya la hizo el PRD de
+`2026-08-11-adyacencia-acustica-tramo-enfrentado.md`.
 """
 from __future__ import annotations
 

@@ -20,17 +20,13 @@ detectar problemas: parte de los `IssueReport` que ya construye
    mano, porque el suelo en 0 de cada categoría puede hacer que la
    ganancia real sea menor que la deducción nominal si esa categoría ya
    estaba saturada por otros issues de la misma categoría.
-3. `estimar_percentil` — compara la puntuación total del proyecto contra
-   una tabla estática de benchmarks por tipología (`TIPOLOGIA_BENCHMARKS`),
-   interpolando linealmente entre sus 3 puntos de calibración
-   (media→p50, p75, p90) para dar un percentil aproximado.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Dict, List
 
-from .evaluator import DEFAULT_TIPOLOGIA, IssueReport, score_rating
+from .evaluator import IssueReport, score_rating
 
 # ---------------------------------------------------------------------------
 # 1. Puntuación desglosada por categoría
@@ -198,46 +194,3 @@ def compute_puntos_ganados(issues: List[IssueReport]) -> None:
         resto = issues[:i] + issues[i + 1:]
         total_sin_este = compute_scoring_breakdown(resto).puntuacion_total
         issue.puntos_ganados = round(total_sin_este - referencia, 1)
-
-
-# ---------------------------------------------------------------------------
-# 3. Percentil comparativo por tipología
-# ---------------------------------------------------------------------------
-# Tabla estática (no hay datos reales de otros proyectos que agregar) — de
-# referencia orientativa, igual que `NORMATIVA_REF` en el frontend.
-
-TIPOLOGIA_BENCHMARKS: Dict[str, Dict[str, float]] = {
-    "plurifamiliar": {"media": 78.0, "p75": 85.0, "p90": 91.0},
-    "unifamiliar": {"media": 82.0, "p75": 88.0, "p90": 93.0},
-    "rehabilitacion": {"media": 71.0, "p75": 80.0, "p90": 87.0},
-}
-
-
-def estimar_percentil(puntuacion_total: float, tipologia: str) -> dict:
-    """Percentil aproximado de `puntuacion_total` dentro de la tipología
-    `tipologia`, interpolando linealmente entre los 3 puntos de calibración
-    de `TIPOLOGIA_BENCHMARKS` (media→percentil 50, p75, p90) y
-    extrapolando linealmente por debajo de la media o por encima de p90.
-    No es una distribución estadística real (no hay datos reales de otros
-    proyectos), es una estimación orientativa con 3 puntos de referencia."""
-    benchmark = TIPOLOGIA_BENCHMARKS.get(tipologia, TIPOLOGIA_BENCHMARKS[DEFAULT_TIPOLOGIA])
-    media, p75, p90 = benchmark["media"], benchmark["p75"], benchmark["p90"]
-
-    if puntuacion_total <= 0:
-        percentil = 0.0
-    elif puntuacion_total <= media:
-        percentil = (puntuacion_total / media) * 50.0 if media > 0 else 50.0
-    elif puntuacion_total <= p75:
-        percentil = 50.0 + (puntuacion_total - media) / (p75 - media) * 25.0
-    elif puntuacion_total <= p90:
-        percentil = 75.0 + (puntuacion_total - p75) / (p90 - p75) * 15.0
-    else:
-        percentil = 90.0 + (puntuacion_total - p90) / max(100.0 - p90, 1e-6) * 10.0
-    percentil = max(0.0, min(100.0, percentil))
-
-    return {
-        "tipologia": tipologia,
-        "percentil": round(percentil),
-        "top_pct": round(100.0 - percentil),
-        "benchmark": {"media": media, "p75": p75, "p90": p90},
-    }

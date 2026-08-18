@@ -20,7 +20,8 @@ escribir este fichero. Dos bloques:
    Dormitorio1×Baño de VT5/1 —nuevo Baño— y Dormitorio2×Baño de VT6/2 —nuevo
    Dormitorio 2—; los 11 pares y sus 9 veredictos originales no cambian.)
 2. **Casos sintéticos del espesor de muro** — la prueba directa de qué se
-   arregló: con el criterio antiguo (`_is_adjacent`, exige contacto) un gap
+   arregló: con el criterio antiguo (`evaluator._is_adjacent`, exigía
+   contacto de borde; eliminado en la tarea 10 por no tener llamadores) un gap
    de 0,10-0,20m (tabique/muro típico) no disparaba nunca; con
    `tramo_enfrentado_m` sí. El caso de gap=0,60m confirma que el criterio
    nuevo no dispara porque sí — sigue respetando `WALL_GAP_TOLERANCE_M`.
