@@ -248,14 +248,42 @@ def room_problems(room: Room, unit_score: UnitScore) -> List[str]:
     return problems
 
 
-def _exterior_rings(polygon):
+def exterior_rings(polygon):
     """Anillos exteriores (xs, ys) del polígono, contemplando el caso (raro)
-    de un MultiPolygon."""
+    de un MultiPolygon.
+
+    Público (tarea 14): lo importan `circulation.py` y `spatial_quality.py`,
+    y un nombre privado importado desde otro módulo es una contradicción."""
     if polygon.geom_type == "Polygon":
         return [polygon.exterior.xy]
     if polygon.geom_type == "MultiPolygon":
         return [g.exterior.xy for g in polygon.geoms]
     return []
+
+
+def svg_points(xs, ys, to_screen) -> str:
+    """El atributo `points` de un `<polygon>` SVG para el anillo `(xs, ys)`,
+    con cada vértice pasado por `to_screen` y redondeado a 2 decimales.
+
+    **Por qué existe** (tarea 14 del `REFACTOR_MASTERPLAN.md`). Esta línea
+    estaba copiada literalmente cuatro veces: dos en este módulo, una en
+    `circulation.py` y una en `spatial_quality.py`. Cuatro copias de una
+    conversión no son cuatro sitios donde leer lo mismo, son cuatro sitios
+    donde arreglarlo la próxima vez — y la tarea 7, que acaba de añadir
+    `strict=True`, tuvo que tocar las cuatro para decir una sola cosa.
+
+    Los 2 decimales no son cosméticos: son la precisión del SVG y salen en el
+    fixture de cualquier comparación de plano. Cambiarlos aquí los cambia en
+    los tres generadores a la vez, que es exactamente el punto.
+
+    `strict=True` documenta que un anillo tiene tantas X como Y. Con anillos
+    de `shapely` no puede fallar (los dos arrays salen del mismo
+    `CoordinateSequence`); queda por si algún día entran por otra vía.
+    """
+    return " ".join(
+        f"{sx:.2f},{sy:.2f}"
+        for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys, strict=True))
+    )
 
 
 def _envelope_rings(layout: List[Tuple[Room, BaseGeometry]]):
@@ -303,7 +331,7 @@ def _envelope_svg(layout: List[Tuple[Room, BaseGeometry]], to_screen) -> str:
 
     partes = ['<g class="plan-envolvente" pointer-events="none">']
     for xs, ys in rings:
-        points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys, strict=True)))
+        points = svg_points(xs, ys, to_screen)
         partes.append(
             f'<polygon points="{points}" fill="none" stroke="{_WALL_COLOR}" '
             f'stroke-width="{_ENVELOPE_STROKE_WIDTH}" stroke-linejoin="round"/>'
@@ -647,8 +675,8 @@ def generate_plan_svg(vivienda: UnitScore, norte_grados: float = 0.0) -> str:
             f'<g data-room="{room_index}" class="plan-room"'
             f' data-dx="{delta_x:.4f}" data-dy="{delta_y:.4f}">'
         )
-        for xs, ys in _exterior_rings(polygon):
-            points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys, strict=True)))
+        for xs, ys in exterior_rings(polygon):
+            points = svg_points(xs, ys, to_screen)
             parts.append(
                 f'<polygon points="{points}" fill="{fill}" stroke="{stroke}" '
                 f'stroke-width="{stroke_width}" stroke-linejoin="round"/>'

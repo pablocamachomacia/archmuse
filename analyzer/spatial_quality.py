@@ -53,7 +53,10 @@ from .evaluator import (
     _room_has_exterior_facade,
 )
 from .parser import Room
-from .plan_svg import _VIEWBOX_H, _VIEWBOX_MARGIN, _VIEWBOX_W, _exterior_rings, layout_room_polygons, room_type
+from .plan_svg import (
+    _VIEWBOX_H, _VIEWBOX_MARGIN, _VIEWBOX_W,
+    exterior_rings, layout_room_polygons, room_type, svg_points,
+)
 
 # ---------------------------------------------------------------------------
 # Colores por tipo de problema (para el resaltado en el SVG y la leyenda)
@@ -416,8 +419,8 @@ def generate_spatial_quality_svg(unit_score: UnitScore, quality: UnitQuality) ->
 
     def render_geometry(geom, fill: str, stroke: str, stroke_width: float, opacity: float = 1.0) -> str:
         parts = []
-        for xs, ys in _exterior_rings(geom):
-            points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys, strict=True)))
+        for xs, ys in exterior_rings(geom):
+            points = svg_points(xs, ys, to_screen)
             parts.append(
                 f'<polygon points="{points}" fill="{fill}" fill-opacity="{opacity}" '
                 f'stroke="{stroke}" stroke-width="{stroke_width}" stroke-linejoin="round"/>'

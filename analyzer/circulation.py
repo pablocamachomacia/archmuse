@@ -57,7 +57,7 @@ from .evaluator import (
     _normalize,
 )
 from .parser import Room
-from .plan_svg import _VIEWBOX_H, _VIEWBOX_MARGIN, _VIEWBOX_W, _exterior_rings, layout_room_polygons
+from .plan_svg import _VIEWBOX_H, _VIEWBOX_MARGIN, _VIEWBOX_W, exterior_rings, layout_room_polygons, svg_points
 
 ROUTE_COLOR_OK = "#16A34A"  # verde
 ROUTE_COLOR_PROBLEM = "#DC2626"  # rojo
@@ -432,8 +432,8 @@ def generate_circulation_svg(unit_score: UnitScore, circulation: UnitCirculation
     parts = [f'<svg viewBox="0 0 {_VIEWBOX_W} {_VIEWBOX_H}" xmlns="http://www.w3.org/2000/svg">']
 
     for _room, polygon in layout:
-        for xs, ys in _exterior_rings(polygon):
-            points = " ".join(f"{sx:.2f},{sy:.2f}" for sx, sy in (to_screen(x, y) for x, y in zip(xs, ys, strict=True)))
+        for xs, ys in exterior_rings(polygon):
+            points = svg_points(xs, ys, to_screen)
             parts.append(f'<polygon points="{points}" fill="#F4F5F7" stroke="#9AA3B2" stroke-width="1.0"/>')
 
     colors_used = {r.color for r in circulation.routes}
