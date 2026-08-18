@@ -2630,10 +2630,55 @@ def exportar_cuadro_superficies_completo_endpoint():
     )
 
 
+#: Puerto por defecto. `PORT` lo sobreescribe (es la convención que espera
+#: cualquier PaaS, y no cuesta nada admitirla).
+PUERTO_POR_DEFECTO = 5000
+
+#: Sólo escucha en la interfaz local. El túnel de Cloudflare que se usa para
+#: enseñar la aplicación fuera se conecta a `127.0.0.1`, así que abrir a
+#: `0.0.0.0` no aportaría nada y expondría el puerto a toda la red local.
+HOST_POR_DEFECTO = "127.0.0.1"
+
+#: Waitress atiende varias peticiones a la vez con este número de hilos. Es el
+#: sustituto de `threaded=True` (fix 2026-08-15, bug reportado en vivo): sin
+#: concurrencia, mientras `/api/analizar-sitio` espera a Catastro/Overpass
+#: (puede tardar bastantes segundos, ver `analyzer/sitio.py`),
+#: `/api/geocodificar` --el buscador de direcciones-- se queda en cola detrás
+#: aunque no tenga nada que ver. Eso es lo que se reportó como "cuando pongo
+#: una calle tarda mucho en darme opciones".
+HILOS_WAITRESS = 8
+
+_VERDADEROS = {"1", "true", "on", "yes", "si", "sí"}
+
+
 if __name__ == "__main__":
-    # threaded=True (fix 2026-08-15, bug reportado en vivo): sin esto, el servidor de desarrollo de Flask
-    # atiende UNA petición a la vez -- mientras /api/analizar-sitio está esperando a Catastro/Overpass
-    # (puede tardar bastantes segundos, ver `analyzer/sitio.py`), /api/geocodificar (el buscador de
-    # direcciones) se queda en cola detrás, aunque no tenga nada que ver -- eso es lo que se reportó como
-    # "cuando pongo una calle tarda mucho en darme opciones".
-    app.run(debug=True, port=5000, threaded=True)
+    puerto = int(os.environ.get("PORT", PUERTO_POR_DEFECTO))
+    modo_desarrollo = os.environ.get("FLASK_DEBUG", "").strip().lower() in _VERDADEROS
+
+    if modo_desarrollo:
+        # Servidor de desarrollo de Flask: autorecarga al guardar y depurador
+        # interactivo. El depurador de Werkzeug permite ejecutar código Python
+        # arbitrario desde el navegador, así que esta rama NO es un valor por
+        # defecto: hay que pedirla a mano con FLASK_DEBUG=1, y sólo en local.
+        logger.warning(
+            "Arrancando en MODO DESARROLLO (FLASK_DEBUG activo): depurador interactivo "
+            "de Werkzeug expuesto en http://%s:%d -- no uses este modo en nada accesible "
+            "desde fuera de esta máquina.", HOST_POR_DEFECTO, puerto,
+        )
+        app.run(debug=True, host=HOST_POR_DEFECTO, port=puerto, threaded=True)
+    else:
+        # Camino por defecto: servidor WSGI de verdad. `waitress` y no
+        # `gunicorn` porque gunicorn no funciona en Windows, que es donde se
+        # desarrolla y se enseña ArchMuse.
+        try:
+            from waitress import serve
+        except ImportError:
+            raise SystemExit(
+                "Falta `waitress`, que es como arranca ArchMuse por defecto.\n"
+                "  Instálalo:  pip install -r requirements.txt\n"
+                "  O arranca en modo desarrollo:  FLASK_DEBUG=1 python app.py"
+            )
+        print("ArchMuse en http://%s:%d  (waitress, %d hilos)" % (
+            HOST_POR_DEFECTO, puerto, HILOS_WAITRESS))
+        print("Para desarrollar con autorecarga y depurador:  FLASK_DEBUG=1 python app.py")
+        serve(app, host=HOST_POR_DEFECTO, port=puerto, threads=HILOS_WAITRESS)

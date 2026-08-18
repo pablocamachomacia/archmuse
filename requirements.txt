@@ -24,3 +24,10 @@ pypdf>=5.0
 # "No available triangulation engine!" en tiempo de ejecución, no de import.
 trimesh>=5.0.0
 mapbox_earcut>=2.0.0
+
+# app.py (2026-08-18, REFACTOR_MASTERPLAN tarea 13): servidor WSGI con el que
+# ArchMuse arranca por defecto, en lugar del servidor de desarrollo de Flask
+# --que trae el depurador interactivo de Werkzeug, ejecución de código
+# arbitrario desde el navegador, y atiende una petición a la vez--. `waitress`
+# y no `gunicorn` porque gunicorn no funciona en Windows.
+waitress>=3.0

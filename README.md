@@ -118,7 +118,18 @@ $env:MAPBOX_TOKEN = "pk...."
 python app.py
 ```
 
-The API/SPA serves at **http://127.0.0.1:5000**.
+The API/SPA serves at **http://127.0.0.1:5000**, behind `waitress` (a real WSGI
+server, multi-threaded). `PORT` overrides the port. It binds to loopback only.
+
+For development with auto-reload and the interactive debugger:
+
+```bash
+$env:FLASK_DEBUG = "1"
+python app.py
+```
+
+That mode runs Flask's development server, whose Werkzeug debugger executes
+arbitrary Python from the browser — it is opt-in on purpose, and local only.
 
 ### Running the test suite
 
