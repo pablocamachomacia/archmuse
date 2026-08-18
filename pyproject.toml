@@ -1,0 +1,11 @@
+# Este fichero existe solo para configurar pytest. No declara el paquete, ni
+# dependencias, ni herramientas de estilo: eso es la tarea 8 del
+# REFACTOR_MASTERPLAN, y es otra conversación.
+
+[tool.pytest.ini_options]
+# Fija la raíz del proyecto como rootdir aunque se invoque `pytest` desde
+# cualquier subcarpeta, y limita la búsqueda a `tests/`: `venv/`,
+# `.venv-jarvis/` y `experimentos/` contienen ficheros que empiezan por `test`
+# y no son pruebas de ArchMuse.
+testpaths = ["tests"]
+norecursedirs = ["venv", ".venv-jarvis", "node_modules", "__pycache__", "tests/fixtures", "experimentos"]
