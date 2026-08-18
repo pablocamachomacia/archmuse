@@ -116,6 +116,20 @@ source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 ```
 
+Three requirements files, and they are not interchangeable:
+
+| File | What it is | When to use it |
+|---|---|---|
+| `requirements.txt` | The 13 things the product depends on, each with a comment saying why | Reading, or installing the product without the test suite |
+| `requirements-dev.txt` | The above plus `pytest` | Working on ArchMuse — this is the one above |
+| `requirements.lock.txt` | All 58 distributions, transitive ones included, exactly as installed | Deploying, or reproducing a green suite |
+
+Every version is pinned with `==`. To upgrade one: change the number in
+`requirements.txt`, install, run the **whole** suite, and only then regenerate
+the lock with `pip freeze > requirements.lock.txt`. Pinning transitive
+dependencies is not paranoia — `werkzeug`, `httpx` and `numpy` have each broken
+applications on a major bump without the direct dependency changing at all.
+
 ### Running the app
 
 ```bash

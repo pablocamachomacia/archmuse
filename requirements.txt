@@ -1,20 +1,41 @@
-ezdxf>=1.3.0
-ifcopenshell>=0.8.0
-shapely>=2.0.0
-anthropic>=0.40.0
-flask>=3.0.0
-reportlab>=5.0.0
+# ArchMuse -- dependencias directas, con version exacta.
+#
+# Por que `==` y no `>=` (REFACTOR_MASTERPLAN tarea 12, 2026-08-18): hasta hoy
+# las 13 dependencias de este archivo eran `>=` sin techo, asi que
+# `pip install -r`
+# instalaba lo ultimo que hubiera ese dia. Un `pip install` dentro de seis
+# meses no reproducia el entorno de hoy, y el candidato mas probable a
+# romperlo es el SDK de Anthropic, que publica versiones cada pocas semanas.
+# Estas son las versiones con las que la suite pasa en verde HOY: es congelar
+# lo que ya funciona, no elegir versiones nuevas.
+#
+# Los tres archivos y para que sirve cada uno:
+#   requirements.txt       de que depende el PRODUCTO, y por que (esto).
+#   requirements-dev.txt   lo anterior + pytest. Es lo que instala el README.
+#   requirements.lock.txt  las 58 distribuciones exactas, transitivas
+#                          incluidas. Lo que hay que usar en un despliegue.
+#
+# Como subir una version: cambiar el numero aqui, `pip install -r
+# requirements.txt`, ejecutar `pytest` entero, y si queda en verde regenerar el
+# lock con `pip freeze > requirements.lock.txt`. Nunca al reves.
+
+ezdxf==1.4.4
+ifcopenshell==0.8.5
+shapely==2.1.2
+anthropic==0.120.2
+flask==3.1.3
+reportlab==5.0.0
 # Subsistema normativo (normativa/): el corpus se escribe en YAML porque el
 # diff tiene que ser legible por un curador que no programa, y admite
 # comentarios y texto legal multilínea. jsonschema valida la forma de cada
 # fichero antes de que entre al corpus.
-pyyaml>=6.0
-jsonschema>=4.0
+pyyaml==6.0.3
+jsonschema==4.26.0
 
 # ingesta/fuentes/codigotecnico.py: extracción de texto de los PDF oficiales
 # de cada Documento Básico (codigotecnico.org no los publica en XML/HTML
 # estructurado como el BOE). Puro Python, licencia permisiva (BSD).
-pypdf>=5.0
+pypdf==6.15.0
 
 # analyzer/gltf_exporter.py (2026-08-15): construcción de la malla 3D del
 # edificio y exportación a .glb con materiales PBR. mapbox_earcut es el
@@ -22,19 +43,19 @@ pypdf>=5.0
 # ejecución (licencia permisiva, a diferencia de la alternativa `triangle`,
 # GPL) -- sin él, trimesh.creation.extrude_polygon falla con
 # "No available triangulation engine!" en tiempo de ejecución, no de import.
-trimesh>=5.0.0
-mapbox_earcut>=2.0.0
+trimesh==5.0.0
+mapbox_earcut==2.0.0
 
 # app.py (2026-08-18, REFACTOR_MASTERPLAN tarea 13): servidor WSGI con el que
 # ArchMuse arranca por defecto, en lugar del servidor de desarrollo de Flask
 # --que trae el depurador interactivo de Werkzeug, ejecución de código
 # arbitrario desde el navegador, y atiende una petición a la vez--. `waitress`
 # y no `gunicorn` porque gunicorn no funciona en Windows.
-waitress>=3.0
+waitress==3.0.2
 
 # analyzer/entorno.py (2026-08-18, REFACTOR_MASTERPLAN tarea 3): lectura del
 # `.env` local, documentado en `.env.example`. Lo cargan `app.py`, `main.py` y
 # `conftest.py`, siempre con override=False -- lo ya exportado en el entorno
 # gana sobre el archivo, para que un `.env` olvidado no pise los secretos
 # reales de un despliegue.
-python-dotenv>=1.0
+python-dotenv==1.2.3

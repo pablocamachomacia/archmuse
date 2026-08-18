@@ -1,2 +1,7 @@
+# Todo lo del producto, mas la suite. Es lo que instala el README.
+#
+# `pytest` va fijado igual que el resto (REFACTOR_MASTERPLAN tarea 12): un
+# cambio de version mayor de pytest cambia como se recolectan los 360 tests,
+# y la Fase 0 dejo claro lo que cuesta que la recoleccion deje de funcionar.
 -r requirements.txt
-pytest>=8.0
+pytest==9.1.1
