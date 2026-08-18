@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Configuración de pytest para todo el repositorio.
 
-Este fichero existe por dos motivos concretos, y no hace nada más.
+Este fichero existe por tres motivos concretos, y no hace nada más.
 
 1. **`sys.path`.** Los tests importan `analyzer`, `modelo`, `normativa`,
    `ingesta` y `app` como paquetes de primer nivel. Con un `conftest.py` en la
@@ -25,6 +25,18 @@ Este fichero existe por dos motivos concretos, y no hace nada más.
 
    Ninguno de esos scripts se modifica. Su lógica de comprobación es la que
    es; lo único que cambia es que ahora alguien los ejecuta todos y suma.
+
+3. **El `.env` local.** Se carga aquí para que `.env` signifique lo mismo
+   bajo pytest que al arrancar `app.py` — la alternativa, que funcionara en
+   la app pero no en la suite, convierte el bloque de tests de
+   `.env.example` en una trampa silenciosa. Como entra en `os.environ`, los
+   scripts del punto 2 lo heredan al lanzarse en subprocesos.
+
+   Con una consecuencia que conviene tener presente: `ARCHMUSE_TEST_RED=1`
+   o `ARCHMUSE_TEST_IA=1` en un `.env` olvidado hacen que la suite golpee
+   boe.es, el Catastro y la API real de Anthropic. Son las dos únicas
+   variables con las que un `.env` cambia lo que la suite hace, y las dos
+   llevan el aviso al lado en `.env.example`.
 """
 from __future__ import annotations
 
@@ -37,6 +49,11 @@ import pytest
 RAIZ = Path(__file__).resolve().parent
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
+
+# Después de tocar sys.path, que es lo que hace importable `analyzer`.
+from analyzer.entorno import cargar_dotenv  # noqa: E402
+
+cargar_dotenv()
 
 DIR_TESTS = RAIZ / "tests"
 

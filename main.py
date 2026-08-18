@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 from analyzer.ai_analyst import analyze_with_ai, build_viviendas_payload
+from analyzer.entorno import cargar_dotenv
 from analyzer.evaluator import evaluate_advanced, evaluate_rooms
 from analyzer.parser import CapaIndeterminada, EscalaIndeterminada, leer_plano, load_document
 from analyzer.reporter import print_advanced_report, print_report, write_html_report
@@ -42,6 +43,9 @@ def _fix_console_encoding() -> None:
 
 def main() -> int:
     _fix_console_encoding()
+    # El `.env` local, si lo hay: esta CLI llega hasta `analyze_with_ai()`,
+    # que necesita ANTHROPIC_API_KEY. Ver analyzer/entorno.py.
+    cargar_dotenv()
     dxf_path = sys.argv[1] if len(sys.argv) > 1 else DXF_POR_DEFECTO
     norte_grados = float(sys.argv[2]) if len(sys.argv) > 2 else NORTE_GRADOS
 

@@ -94,10 +94,17 @@ Two AI-assisted flows on top of the deterministic rule engine:
 
 ### Prerequisites
 - Python 3.12+
-- API keys as environment variables (never committed — see `.gitignore`):
+- API keys (never committed — see `.gitignore`):
   - `ANTHROPIC_API_KEY` — required for AI diagnosis/generation
   - `MAPBOX_TOKEN` — required for the GIS plot picker, terrain and static map images
   - `GEMINI_API_KEY` — optional, used only by the separate `JarvisApp.py` assistant
+
+Copy `.env.example` to `.env` and fill it in. That file is the canonical list of
+every variable the project reads — what each one does, which module reads it,
+and its default. `app.py`, `main.py` and the test suite all load `.env` (via
+`analyzer/entorno.py`); anything already exported in your shell wins over the
+file, so a stray `.env` can never override a deployment's real secrets.
+`.env` is gitignored, `.env.example` is not — never put a real key in it.
 
 ### Installation
 
@@ -112,6 +119,10 @@ pip install -r requirements-dev.txt
 ### Running the app
 
 ```bash
+# With a .env in place, just:
+python app.py
+
+# Or export them yourself (these win over .env):
 # PowerShell
 $env:ANTHROPIC_API_KEY = "sk-ant-..."
 $env:MAPBOX_TOKEN = "pk...."
@@ -162,6 +173,13 @@ rather than failing:
   is the default for `python main.py` and the `experimentos/` scripts.
 - `v2s.dxf` — set `ARCHMUSE_DXF_V2S` to its full path to enable the
   surface-schedule tests (about 4 minutes of extra coverage).
+
+`conftest.py` loads `.env` too, so those variables can live there instead of in
+your shell — and the 72 subprocess scripts inherit them. Two entries in
+`.env.example` change what the suite *does* rather than what it can reach:
+`ARCHMUSE_TEST_RED=1` makes it hit boe.es and the Spanish cadastre live, and
+`ARCHMUSE_TEST_IA=1` makes it spend real Anthropic tokens. Both are off by
+default and flagged in place.
 
 Two scripts are marked `xfail(strict=True)` in `conftest.py` (`ROJOS_CONOCIDOS`)
 because they fail on one known, written-up defect — see

@@ -65,6 +65,7 @@ from analyzer.evaluator import (
     evaluate_retranqueos,
     evaluate_solar_occupation,
 )
+from analyzer.entorno import cargar_dotenv
 from analyzer.escala import factor_de_unidad
 from analyzer.parser import (
     CAPA_CONSTRUIDA_CERRADA,
@@ -135,6 +136,11 @@ app = Flask(__name__, static_folder="static", static_url_path="")
 app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024  # 25 MB
 
 logger = logging.getLogger(__name__)
+
+# El `.env` local, antes de que nada mire el entorno: `init_db()` ya consulta
+# ARCHMUSE_DATA_DIR, y los endpoints leen ANTHROPIC_API_KEY y MAPBOX_TOKEN.
+# Lo ya exportado en el shell gana sobre el archivo -- ver analyzer/entorno.py.
+cargar_dotenv()
 
 init_db()
 

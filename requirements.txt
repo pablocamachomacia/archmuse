@@ -31,3 +31,10 @@ mapbox_earcut>=2.0.0
 # arbitrario desde el navegador, y atiende una petición a la vez--. `waitress`
 # y no `gunicorn` porque gunicorn no funciona en Windows.
 waitress>=3.0
+
+# analyzer/entorno.py (2026-08-18, REFACTOR_MASTERPLAN tarea 3): lectura del
+# `.env` local, documentado en `.env.example`. Lo cargan `app.py`, `main.py` y
+# `conftest.py`, siempre con override=False -- lo ya exportado en el entorno
+# gana sobre el archivo, para que un `.env` olvidado no pise los secretos
+# reales de un despliegue.
+python-dotenv>=1.0
