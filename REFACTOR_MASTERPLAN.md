@@ -393,3 +393,101 @@ Si solo hay tiempo para una sesión de trabajo corta, este es el subconjunto con
 10. **Tarea 12** — Fijar versiones de dependencias (1h, evita una rotura futura sin ningún coste hoy).
 
 Con estas 10 tareas (≈8 horas en total) el proyecto pasa de "prototipo con un bug crítico activo y sin red de seguridad" a "prototipo honesto, correcto en su flujo principal, y protegido contra las roturas más obvias" — sin haber tocado todavía ni una línea de la refactorización estructural grande (tareas 16-24, ~14h adicionales), que sigue siendo necesaria antes de escalar el equipo o el volumen de clientes, pero que ya no compite por ser la primera prioridad.
+
+---
+
+# APÉNDICE A — Estado real y plan de fases (auditoría de 2026-08-18)
+
+**Este apéndice manda sobre el cuerpo del documento.** Lo de arriba se escribió el 2026-07-31 y su primera afirmación —*"Ninguna tarea de este documento se ha implementado todavía"*— dejó de ser cierta hace tiempo. Lo que sigue es el resultado de contrastar las 29 tareas, una por una, contra el código real del repositorio, no contra el propio documento.
+
+## A.1 — Por qué las estimaciones de arriba ya no valen
+
+El plan describe un código que ya no existe con esa forma:
+
+| | En el documento (2026-07-31) | Medido el 2026-08-18 |
+|---|---:|---:|
+| Módulos en `analyzer/` | 15 | **43** |
+| Líneas en `analyzer/` | ~7.700 | **18.680** |
+| `evaluator.py` | 2.966 | **3.503** |
+| `classify_problems` | 327 líneas | **383** |
+| Frontend | 1 fichero, 5.313 líneas | **14 ficheros, 15.460 líneas** |
+| Tests | ninguno | **97 ficheros + 9 goldens** |
+
+Paquetes que no existían y que el plan no contempla: `modelo/`, `normativa/`, `ingesta/`, `analyzer/interview/`. **Ninguno invalida ninguna tarea** — pero varias las hacen más urgentes (más código detrás de `evaluator.py`, más clientes de Anthropic sin timeout, más CDNs externas). Reestimar antes de atacar cualquiera de las tareas grandes.
+
+## A.2 — Estado de las 29 tareas
+
+Resumen: **6 resueltas · 3 parciales · 20 pendientes · 0 obsoletas · 0 dudosas.** De las 20 pendientes, **9 han empeorado** desde que se escribió el plan.
+
+| # | Tarea | Estado | Evidencia |
+|---|---|---|---|
+| 1 | Confirmar en git el trabajo pendiente | **RESUELTA** | Árbol limpio; los 113 commits de `shell-lateral-inicio` absorbidos en `main` |
+| 2 | Etiquetar el percentil como estimación | **RESUELTA** (por eliminación) | El percentil se retiró del payload y de la SPA (`static/app.js:3816`); `test_scoring_coherencia.py:192` lo verifica. Deja `scoring.estimar_percentil` sin llamadores |
+| 3 | `.env.example` | PENDIENTE | No existe. Mitigado en parte: el README documenta las variables |
+| 4 | Ruta personal hardcodeada | **PENDIENTE Y AGRAVADA** | De 1 sitio a **9**: `main.py:21`, 3 en `experimentos/`, 5 tests atados a `C:\Users\<usuario>\Desktop\v2s.dxf` |
+| 5 | `zona_cte`/`tipología` en `/api/analizar` | **RESUELTA** | `app.py:492-495`, `:507-509`, `:709-715` |
+| 6 | Aviso de zona climática por defecto | PENDIENTE | `get_missing_data_warnings` (`evaluator.py:120`) conserva su firma; `get_zona_cte` sigue devolviendo `"C"` en silencio |
+| 7 | `zip()` con `strict=` | PENDIENTE | **0 coincidencias de `strict`** en `analyzer/` y `app.py`; 9 usos de `zip()` |
+| 8 | `pyproject.toml` con `ruff` | PENDIENTE | Existe `pyproject.toml`, pero **solo con la configuración de pytest**. `ruff` sigue sin instalar ni configurar |
+| 9 | Timeout en el cliente de Anthropic | **PENDIENTE Y AGRAVADA** | De 2 clientes a **5**, ninguno con timeout: `ai_analyst.py:267`, `ai_generator.py:957`, `estilos.py:276`, `interview/claude_interprete.py:155`, `pliego_extractor.py:264` |
+| 10 | Eliminar código muerto | PARCIAL | Ninguno de los 5 símbolos eliminado, y hay 2 nuevos: `scoring.estimar_percentil:216` y `evaluator._is_adjacent:1596` |
+| 11 | Adyacencia acústica inerte (Bug #2) | **RESUELTA** | `analyzer/adyacencia.py` + `tramo_enfrentado_m`; `tests/test_acoustic_adjacency.py` pasa 29/29 |
+| 12 | Fijar versiones de dependencias | PENDIENTE | Las 11 dependencias siguen con `>=` sin techo; sin lockfile |
+| 13 | `debug=False` + servidor WSGI | PENDIENTE | `app.py:2639`. Sin `waitress`, sin `FLASK_DEBUG`. **En un repositorio público** |
+| 14 | Consolidar polígono→SVG | **PENDIENTE Y AGRAVADA** | De 3 copias a **4**: `circulation.py:436`, `plan_svg.py:306`, `plan_svg.py:651`, `spatial_quality.py:420` |
+| 15 | Timestamps con zona horaria | PENDIENTE | `pdf_report.py:93`, `reporter.py:325` |
+| 16 | Cutover de `classify_problems` | **PENDIENTE Y AGRAVADA** | 383 líneas (eran 327); 0 coincidencias de tabla declarativa |
+| 17 | README de arranque | PARCIAL | Existe y documenta variables e instalación. **Faltan** la convención de capas (`"00 areas"`, ACI 10/150) y la distinción `main.py` vs `app.py` |
+| 18 | Suite golden-master | PARCIAL | Superada en un sentido (9 goldens G1-G9 + infraestructura en `tests/golden.py`) y corta en otro: **G6 no cubre los escenarios de tipología/zona**, así que la corrección del Bug #1 (tarea 5) no tiene golden que la proteja |
+| 19 | Parámetros de `serialize_analysis` | **PENDIENTE Y AGRAVADA** | De 19 a **24**; sin dataclases |
+| 20 | Vendorizar `three.js` | **PENDIENTE Y AGRAVADA** | De 1 CDN a **6 hosts externos**: unpkg (×4), jsdelivr (×2), api.mapbox (×2), arcgisonline (×3), fonts.google (×2) |
+| 21 | Triple recomputación de `room_problems` | PENDIENTE | `api_serializer.py:78`, `:388`, `plan_svg.py:639` |
+| 22-24 | Tabla declarativa (diseño + migración) | **PENDIENTE Y AGRAVADA** | No existe. Su estimación de 6 h se calculó sobre 327 líneas y ~19 bloques |
+| 25 | Consolidar adyacencia duplicada | **RESUELTA** | `circulation.py:143-144` delega en `adyacencia.py` |
+| 26 | Benchmark de `compute_puntos_ganados` | PENDIENTE — **descartada**, ver A.4 | No existe ningún benchmark |
+| 27 | `PERF401` + parámetro `unit` sin usar | PENDIENTE | `unit` sigue sin usarse en `evaluate_acoustic_exposure` (`evaluator.py:1682`). Los `PERF401` **no verificados**: `ruff` no está instalado |
+| 28 | Extraer `models.py` | PENDIENTE | No existe `analyzer/models.py` |
+| 29 | Extraer `urbanismo.py` | PENDIENTE | No existe; las 6 reglas de edificio siguen en `evaluator.py:3067-3430` |
+
+## A.3 — Plan de fases
+
+Sustituye al orden por ROI de la tabla resumen. El criterio ya no es el ROI aislado de cada tarea, sino qué desbloquea a qué.
+
+### Fase 0 — Hacer ejecutable la verdad · **CERRADA el 2026-08-18**
+
+El hallazgo que reordenó todo: **`pytest` no ejecutaba nada.** Abortaba la recolección con `INTERNALERROR` porque 72 de los 97 ficheros de `tests/` son scripts que se ejecutan al importarse y terminan en `sys.exit()`. El README decía que bastaba con `pytest`. No había forma de responder "¿está el proyecto en verde?".
+
+Resuelto con `conftest.py`, `tests/test_scripts_legacy.py` y `pyproject.toml`, sin modificar ningún test existente. **De 0 tests recogidos a 360; de un `INTERNALERROR` a 357 passed / 3 xfailed / 0 failed en ~14 min.** Los 5 rojos que aparecieron se triaron uno a uno (ver el commit *"test: triaje de los 5 tests en rojo"*): tres eran tests caducados o fixtures en CRLF y se arreglaron; dos son el defecto H1 de `docs/audits/2026-08-13-hallazgos-cierre-geometrico.md` y quedan como `xfail(strict=True)` en `ROJOS_CONOCIDOS` (`conftest.py`), con motivo y referencia.
+
+**Lo que compra esta fase:** que un rojo vuelva a significar algo. Sin ella, las tareas 16 y 19-29 se harían a ciegas — todas dependen, por escrito, de tener red de seguridad.
+
+### Fase 1 — Lo que está publicado en internet
+
+Tareas **13**, **4**, **3** y los dos huecos del README (tarea 17). El repositorio es público: `debug=True` y la ruta personal de Pablo son las dos cosas que hoy tiene delante cualquiera que lo abra.
+
+### Fase 2 — Blindar lo ya arreglado
+
+Escenarios de tipología/zona en el golden G6 (cierra el hueco de la tarea 18 y protege por fin la corrección del Bug #1), y tareas **6**, **9**, **12**.
+
+### Fase 3 — Reducir superficie
+
+Tareas **10**, **7**, **14**, **20**. Con la suite ejecutable, la 7 deja de dar miedo.
+
+### Fase 4 — La refactorización grande, reestimada
+
+Tarea **19**, luego **22 → 23 → 24 → 16**, y al final **21**, **27**, **28**, **29**. No empezar sin reestimar (ver A.1).
+
+## A.4 — Tareas descartadas
+
+Ninguna es obsoleta; estas dos no merecen el tiempo hoy:
+
+- **Tarea 26** (benchmark de `compute_puntos_ganados`) — mide un O(n²) sobre listas de issues que en la práctica no pasan de decenas. Optimización preventiva de un problema hipotético. Reabrir si alguien reporta lentitud.
+- **Tarea 15** (timestamps con zona horaria) — correcta pero intrascendente con un único usuario en Madrid. Que caiga por arrastre cuando se toque `pdf_report.py` por otro motivo.
+
+Y una advertencia de secuencia: **las tareas 28 y 29 no se tocan antes de la 16.** Mover 3.500 líneas de sitio antes de reducir `classify_problems` es reorganizar un fichero que va a cambiar de tamaño. Ya lo dice su propia ficha.
+
+## A.5 — Lo que esta auditoría no pudo verificar
+
+- **Cuántos de los 97 ficheros de test pasaban** antes de la Fase 0. Los códigos de salida no eran fiables y el barrido completo llevaba horas. Con `pytest` ya funcionando, la pregunta tiene respuesta en 14 minutos.
+- **Los 35+ hallazgos `PERF401` de la tarea 27.** `ruff` no está instalado y la auditoría no instaló nada.
+- **Cuándo se introdujo cada cosa.** La historia se aplastó en un commit al publicar el repositorio; no hay `git blame` útil anterior a esa fecha.
