@@ -142,6 +142,81 @@ python app.py
 That mode runs Flask's development server, whose Werkzeug debugger executes
 arbitrary Python from the browser — it is opt-in on purpose, and local only.
 
+#### `app.py` is the product. `main.py` is not.
+
+`app.py` + the SPA in `static/` **are** ArchMuse: the REST API, the rule
+engine, the 3D viewer, the exports. That is what a user runs.
+
+`main.py` is an internal debugging tool — it analyzes one DXF from the command
+line and dumps an HTML report next to it, so you can see the rule engine's
+output without starting a server. It reaches a narrower slice of the code
+(`analyzer/reporter.py`, which nothing else imports) and it does **not** receive
+new capabilities: circulation, spatial quality, chain effects, the surface
+schedule and every export added since are reachable only through `app.py`.
+
+```bash
+python main.py                      # uses ejemplo.dxf next to the repo
+python main.py path/to/plan.dxf     # or an explicit path
+python main.py path/to/plan.dxf 45  # plus the north azimuth in degrees
+```
+
+If you are unsure which of the two to modify, it is `app.py`.
+
+### What the DXF parser expects
+
+ArchMuse reads rooms from closed polylines. It never guesses: when it cannot
+resolve which layer holds the rooms, or what unit the drawing is in, it raises
+`CapaIndeterminada` / `EscalaIndeterminada` with the information needed to ask,
+rather than analyzing something it does not understand. Two layer conventions
+are supported, and the newer one wins whenever it is present.
+
+**1. The `AM_*` classification contract (preferred).** Explicit layers, each
+with one meaning — no inference required:
+
+| Layer | Holds |
+|---|---|
+| `AM_UTIL_INT` | Interior usable floor area. **If this layer has any valid polygon, it is the source of rooms** and the legacy mode below is skipped entirely. |
+| `AM_CONS_CER` | Enclosed built area |
+| `AM_UTIL_EXT` | Exterior usable area (balconies, terraces) |
+| `AM_CONS_EXT` | Exterior built area |
+| `AM_DESCUENTO` | Reserved, not operative yet |
+
+`analyzer/validacion_capas.py` audits how these are used and reports
+inconsistencies without blocking. A drawing with no `AM_*` layer at all
+produces zero diagnostics — legacy plans do not start getting warnings for a
+contract they never used.
+
+**2. Legacy mode.** Rooms are the closed polylines of a single layer. The
+parser tries `"00 areas"` first; if that layer is absent or empty it picks the
+closest match by similarity; if nothing is convincing it raises
+`CapaIndeterminada` rather than choosing.
+
+Whichever mode applies, four details decide whether a real drawing reads
+correctly:
+
+- **Entity types.** Only `LWPOLYLINE` and `POLYLINE` become rooms. Text,
+  dimensions and other annotations are never room outlines.
+- **Closure is tolerant.** A polyline whose endpoints sit within 1% of its
+  bounding-box diagonal counts as closed even if the DXF flag says otherwise —
+  calibrated against real drawings where the largest genuine gap was 0.70%.
+  Recovery is always logged, never silent.
+- **Colour marks grouping outlines, and the default is what you want.** Draw
+  rooms with the layer's colour (`BYLAYER`). An *explicit* colour on a polygon
+  — typically ACI 10 or ACI 150 in these drawings — flags it as a possible
+  grouping outline: the polygon around an open kitchen-living room, or around a
+  whole row of drying areas. Such a polygon is discarded **only** when it also
+  contains a smaller `BYLAYER` polygon carrying the same label, i.e. when that
+  room is already represented on its own. So `BYLAYER` is not a style
+  preference: it is how you say "this is a real room".
+- **Dwelling labels.** `MTEXT`/`TEXT` matching `VT` followed by a number
+  (`VT1`, `VT01 /3`) groups rooms into dwellings. Rooms are assigned to the
+  nearest label, so labels must sit inside or beside the dwelling they name.
+
+Scale is resolved from the DXF `$INSUNITS` header cross-checked against room
+sizes (`analyzer/escala.py`). When the two disagree irreconcilably you get
+`EscalaIndeterminada`, with the detected suggestion, instead of a plan analyzed
+in the wrong unit.
+
 ### Running the test suite
 
 ```bash
