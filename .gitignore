@@ -37,3 +37,8 @@ ingesta/estado/cache/
 .idea/
 .DS_Store
 Thumbs.db
+
+# --- Claude Code: artefactos locales por repo ---
+# El napkin es un runbook que la skill `napkin` reescribe en cada sesión;
+# es contexto de trabajo local, no documentación del proyecto.
+.claude/napkin.md
