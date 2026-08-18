@@ -423,8 +423,8 @@ Resumen: **6 resueltas · 3 parciales · 20 pendientes · 0 obsoletas · 0 dudos
 |---|---|---|---|
 | 1 | Confirmar en git el trabajo pendiente | **RESUELTA** | Árbol limpio; los 113 commits de `shell-lateral-inicio` absorbidos en `main` |
 | 2 | Etiquetar el percentil como estimación | **RESUELTA** (por eliminación) | El percentil se retiró del payload y de la SPA (`static/app.js:3816`); `test_scoring_coherencia.py:192` lo verifica. Deja `scoring.estimar_percentil` sin llamadores |
-| 3 | `.env.example` | PENDIENTE | No existe. Mitigado en parte: el README documenta las variables |
-| 4 | Ruta personal hardcodeada | **PENDIENTE Y AGRAVADA** | De 1 sitio a **9**: `main.py:21`, 3 en `experimentos/`, 5 tests atados a `C:\Users\<usuario>\Desktop\v2s.dxf` |
+| 3 | `.env.example` | **HECHA** (`1015275`) | Existe, con las 11 variables reales del proyecto, y se carga de verdad vía `analyzer/entorno.py` |
+| 4 | Ruta personal hardcodeada | **HECHA** (`e74be5e`) | Los 9 sitios retirados. `ejemplo.dxf` derivado de la ubicación del fichero; `v2s.dxf` vía `ARCHMUSE_DXF_V2S` |
 | 5 | `zona_cte`/`tipología` en `/api/analizar` | **RESUELTA** | `app.py:492-495`, `:507-509`, `:709-715` |
 | 6 | Aviso de zona climática por defecto | PENDIENTE | `get_missing_data_warnings` (`evaluator.py:120`) conserva su firma; `get_zona_cte` sigue devolviendo `"C"` en silencio |
 | 7 | `zip()` con `strict=` | PENDIENTE | **0 coincidencias de `strict`** en `analyzer/` y `app.py`; 9 usos de `zip()` |
@@ -433,11 +433,11 @@ Resumen: **6 resueltas · 3 parciales · 20 pendientes · 0 obsoletas · 0 dudos
 | 10 | Eliminar código muerto | PARCIAL | Ninguno de los 5 símbolos eliminado, y hay 2 nuevos: `scoring.estimar_percentil:216` y `evaluator._is_adjacent:1596` |
 | 11 | Adyacencia acústica inerte (Bug #2) | **RESUELTA** | `analyzer/adyacencia.py` + `tramo_enfrentado_m`; `tests/test_acoustic_adjacency.py` pasa 29/29 |
 | 12 | Fijar versiones de dependencias | PENDIENTE | Las 11 dependencias siguen con `>=` sin techo; sin lockfile |
-| 13 | `debug=False` + servidor WSGI | PENDIENTE | `app.py:2639`. Sin `waitress`, sin `FLASK_DEBUG`. **En un repositorio público** |
+| 13 | `debug=False` + servidor WSGI | **HECHA** (`885dfde`) | `waitress` por defecto sobre 127.0.0.1; el depurador de Werkzeug solo con `FLASK_DEBUG=1` |
 | 14 | Consolidar polígono→SVG | **PENDIENTE Y AGRAVADA** | De 3 copias a **4**: `circulation.py:436`, `plan_svg.py:306`, `plan_svg.py:651`, `spatial_quality.py:420` |
 | 15 | Timestamps con zona horaria | PENDIENTE | `pdf_report.py:93`, `reporter.py:325` |
 | 16 | Cutover de `classify_problems` | **PENDIENTE Y AGRAVADA** | 383 líneas (eran 327); 0 coincidencias de tabla declarativa |
-| 17 | README de arranque | PARCIAL | Existe y documenta variables e instalación. **Faltan** la convención de capas (`"00 areas"`, ACI 10/150) y la distinción `main.py` vs `app.py` |
+| 17 | README de arranque | **HECHA** (`376fb4c`) | Cerradas las dos lagunas: convención de capas del DXF (contrato `AM_*` y modo heredado) y `app.py` frente a `main.py` |
 | 18 | Suite golden-master | PARCIAL | Superada en un sentido (9 goldens G1-G9 + infraestructura en `tests/golden.py`) y corta en otro: **G6 no cubre los escenarios de tipología/zona**, así que la corrección del Bug #1 (tarea 5) no tiene golden que la proteja |
 | 19 | Parámetros de `serialize_analysis` | **PENDIENTE Y AGRAVADA** | De 19 a **24**; sin dataclases |
 | 20 | Vendorizar `three.js` | **PENDIENTE Y AGRAVADA** | De 1 CDN a **6 hosts externos**: unpkg (×4), jsdelivr (×2), api.mapbox (×2), arcgisonline (×3), fonts.google (×2) |
@@ -461,9 +461,23 @@ Resuelto con `conftest.py`, `tests/test_scripts_legacy.py` y `pyproject.toml`, s
 
 **Lo que compra esta fase:** que un rojo vuelva a significar algo. Sin ella, las tareas 16 y 19-29 se harían a ciegas — todas dependen, por escrito, de tener red de seguridad.
 
-### Fase 1 — Lo que está publicado en internet
+### Fase 1 — Lo que está publicado en internet · **CERRADA el 2026-08-18**
 
-Tareas **13**, **4**, **3** y los dos huecos del README (tarea 17). El repositorio es público: `debug=True` y la ruta personal de Pablo son las dos cosas que hoy tiene delante cualquiera que lo abra.
+Tareas **13**, **4**, **3** y los dos huecos del README (tarea **17**). El repositorio es público: `debug=True` y la ruta personal de Pablo eran las dos cosas que tenía delante cualquiera que lo abriera.
+
+| Tarea | Qué se hizo | Commit |
+|---|---|---|
+| **13** | Arranque con `waitress`; `debug=True` solo si `FLASK_DEBUG` lo pide. Elimina el depurador de Werkzeug (ejecución de código arbitrario desde el navegador) y el techo de una petición a la vez. | `885dfde` |
+| **4** | Los 9 puntos con la carpeta personal del autor (`C:\Users\<usuario>\...`) fuera. `ejemplo.dxf` se deriva de la ubicación del fichero; `v2s.dxf` se localiza con `ARCHMUSE_DXF_V2S`. Banner de «esto no es el producto» en `main.py` y `analyzer/reporter.py`. | `e74be5e` |
+| **3** | `.env.example` con las 11 variables reales del proyecto (la ficha pedía una), y carga efectiva vía `analyzer/entorno.py` desde `app.py`, `main.py` y `conftest.py`. | `1015275` |
+| **17** | Convención de capas del DXF (contrato `AM_*` y modo heredado) y `app.py` frente a `main.py`, en el README. | `376fb4c` |
+
+Dos desviaciones deliberadas de las fichas, ambas razonadas en su commit:
+
+- **Tarea 4** — se mantuvo `python main.py` funcionando con un valor por defecto derivado, en vez de forzar el argumento obligatorio que pedía la ficha. El objetivo (que no haya la carpeta de nadie en un repositorio público) se cumple igual.
+- **Tarea 17** — la ficha enunciaba la convención de color al revés («ACI 10/150» como lo que hay que dibujar). Lo correcto es `BYLAYER`; un color explícito es lo que marca un polígono como posible contorno agrupador descartable, y solo se descarta si además contiene otro polígono `BYLAYER` menor con la misma etiqueta.
+
+**Lo que compra esta fase:** que el repositorio público deje de exponer una vulnerabilidad de ejecución remota y la carpeta personal de su autor, y que alguien distinto de Pablo pueda arrancarlo sin adivinar.
 
 ### Fase 2 — Blindar lo ya arreglado
 
