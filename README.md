@@ -65,6 +65,13 @@ Two AI-assisted flows on top of the deterministic rule engine:
   residential floor plan (rooms + units) from scratch, which then runs through the *same* CTE
   evaluator as any uploaded plan.
 
+Six modules call Claude in total (the two above plus style proposal, interview interpretation,
+brief extraction and normative-text interpretation). All six build their client through
+`ia/cliente.py`, which is the only place in the repo allowed to construct an
+`anthropic.Anthropic` — a test enforces that. It sets an explicit timeout, because the SDK's
+default is 600s of read with 2 retries, and a hung call would otherwise hold a `waitress` worker
+thread for half an hour.
+
 ### 📤 Technical export
 - **IFC4/BIM** (`ifcopenshell`) — exports each analyzed space as a real `IfcSpace` (area, name),
   deliberately scoped to what the pipeline actually knows (no invented wall thickness or slab
@@ -237,9 +244,10 @@ in the wrong unit.
 pytest
 ```
 
-Around 360 tests, ~14 minutes. Two shapes coexist under `tests/`:
+378 tests, roughly 10-15 minutes depending on which optional DXF files you have.
+Two shapes coexist under `tests/`:
 
-- **Native pytest tests** (25 files) — collected and reported per test function.
+- **Native pytest tests** (28 files) — collected and reported per test function.
 - **Standalone check scripts** (72 files) — the original style: they run their
   assertions at module level and report via the exit code. `conftest.py` keeps
   them out of normal collection (importing one runs it) and

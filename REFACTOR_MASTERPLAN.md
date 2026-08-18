@@ -417,7 +417,7 @@ Paquetes que no existían y que el plan no contempla: `modelo/`, `normativa/`, `
 
 ## A.2 — Estado de las 29 tareas
 
-Resumen: **6 resueltas · 3 parciales · 20 pendientes · 0 obsoletas · 0 dudosas.** De las 20 pendientes, **9 han empeorado** desde que se escribió el plan.
+Resumen original de la auditoría: **6 resueltas · 3 parciales · 20 pendientes.** Tras las Fases 1 y 2 (2026-08-18): **13 hechas o resueltas · 1 parcial · 15 pendientes**, y de esas 15 hay 2 descartadas (las tareas 15 y 26, ver A.4).
 
 | # | Tarea | Estado | Evidencia |
 |---|---|---|---|
@@ -426,19 +426,19 @@ Resumen: **6 resueltas · 3 parciales · 20 pendientes · 0 obsoletas · 0 dudos
 | 3 | `.env.example` | **HECHA** (`1015275`) | Existe, con las 11 variables reales del proyecto, y se carga de verdad vía `analyzer/entorno.py` |
 | 4 | Ruta personal hardcodeada | **HECHA** (`e74be5e`) | Los 9 sitios retirados. `ejemplo.dxf` derivado de la ubicación del fichero; `v2s.dxf` vía `ARCHMUSE_DXF_V2S` |
 | 5 | `zona_cte`/`tipología` en `/api/analizar` | **RESUELTA** | `app.py:492-495`, `:507-509`, `:709-715` |
-| 6 | Aviso de zona climática por defecto | PENDIENTE | `get_missing_data_warnings` (`evaluator.py:120`) conserva su firma; `get_zona_cte` sigue devolviendo `"C"` en silencio |
+| 6 | Aviso de zona climática por defecto | **HECHA** (`ed0f373`) | `resolver_zona_cte()` devuelve `(zona, resuelta)`; el repliegue a `"C"` sigue igual pero sale como limitación. No se deduce de "la zona es C": Barcelona **es** zona C por dato |
 | 7 | `zip()` con `strict=` | PENDIENTE | **0 coincidencias de `strict`** en `analyzer/` y `app.py`; 9 usos de `zip()` |
 | 8 | `pyproject.toml` con `ruff` | PENDIENTE | Existe `pyproject.toml`, pero **solo con la configuración de pytest**. `ruff` sigue sin instalar ni configurar |
-| 9 | Timeout en el cliente de Anthropic | **PENDIENTE Y AGRAVADA** | De 2 clientes a **5**, ninguno con timeout: `ai_analyst.py:267`, `ai_generator.py:957`, `estilos.py:276`, `interview/claude_interprete.py:155`, `pliego_extractor.py:264` |
+| 9 | Timeout en el cliente de Anthropic | **HECHA** (`0e2312c`) | Eran **seis**, no cinco: faltaba `extraccion/interprete.py:153`. Los seis pasan por `ia/cliente.py`, y `tests/test_anthropic_timeout.py` prohíbe construir el cliente fuera de ella |
 | 10 | Eliminar código muerto | PARCIAL | Ninguno de los 5 símbolos eliminado, y hay 2 nuevos: `scoring.estimar_percentil:216` y `evaluator._is_adjacent:1596` |
 | 11 | Adyacencia acústica inerte (Bug #2) | **RESUELTA** | `analyzer/adyacencia.py` + `tramo_enfrentado_m`; `tests/test_acoustic_adjacency.py` pasa 29/29 |
-| 12 | Fijar versiones de dependencias | PENDIENTE | Las 11 dependencias siguen con `>=` sin techo; sin lockfile |
+| 12 | Fijar versiones de dependencias | **HECHA** (`88acb90`) | Las 13 directas con `==`, y `requirements.lock.txt` con las 58 distribuciones. Verificado en un venv nuevo desde cero |
 | 13 | `debug=False` + servidor WSGI | **HECHA** (`885dfde`) | `waitress` por defecto sobre 127.0.0.1; el depurador de Werkzeug solo con `FLASK_DEBUG=1` |
 | 14 | Consolidar polígono→SVG | **PENDIENTE Y AGRAVADA** | De 3 copias a **4**: `circulation.py:436`, `plan_svg.py:306`, `plan_svg.py:651`, `spatial_quality.py:420` |
 | 15 | Timestamps con zona horaria | PENDIENTE | `pdf_report.py:93`, `reporter.py:325` |
 | 16 | Cutover de `classify_problems` | **PENDIENTE Y AGRAVADA** | 383 líneas (eran 327); 0 coincidencias de tabla declarativa |
 | 17 | README de arranque | **HECHA** (`376fb4c`) | Cerradas las dos lagunas: convención de capas del DXF (contrato `AM_*` y modo heredado) y `app.py` frente a `main.py` |
-| 18 | Suite golden-master | PARCIAL | Superada en un sentido (9 goldens G1-G9 + infraestructura en `tests/golden.py`) y corta en otro: **G6 no cubre los escenarios de tipología/zona**, así que la corrección del Bug #1 (tarea 5) no tiene golden que la proteja |
+| 18 | Suite golden-master | **HECHA** (`35f5a8d`) | G6 pasa de 1 escenario a 4 (por defecto, `unifamiliar`+zona D, `rehabilitacion`+zona A, municipio no reconocido) con un bloque `sensibilidad` que hace legible el diff. De paso: el G6 anterior leía `puntuacion`/`valoracion`, claves que el payload no tiene, así que congelaba `null` en los dos números más importantes de la API |
 | 19 | Parámetros de `serialize_analysis` | **PENDIENTE Y AGRAVADA** | De 19 a **24**; sin dataclases |
 | 20 | Vendorizar `three.js` | **PENDIENTE Y AGRAVADA** | De 1 CDN a **6 hosts externos**: unpkg (×4), jsdelivr (×2), api.mapbox (×2), arcgisonline (×3), fonts.google (×2) |
 | 21 | Triple recomputación de `room_problems` | PENDIENTE | `api_serializer.py:78`, `:388`, `plan_svg.py:639` |
@@ -479,9 +479,26 @@ Dos desviaciones deliberadas de las fichas, ambas razonadas en su commit:
 
 **Lo que compra esta fase:** que el repositorio público deje de exponer una vulnerabilidad de ejecución remota y la carpeta personal de su autor, y que alguien distinto de Pablo pueda arrancarlo sin adivinar.
 
-### Fase 2 — Blindar lo ya arreglado
+### Fase 2 — Blindar lo ya arreglado · **CERRADA el 2026-08-18**
 
 Escenarios de tipología/zona en el golden G6 (cierra el hueco de la tarea 18 y protege por fin la corrección del Bug #1), y tareas **6**, **9**, **12**.
+
+| Trabajo | Qué se hizo | Commit |
+|---|---|---|
+| **G6 multiescenario** (tarea 18) | De 1 escenario a 4: por defecto; `unifamiliar` + Madrid (zona D); `rehabilitacion` + Málaga (zona A); y Cuenca, municipio fuera de la tabla. Bloque `sensibilidad` con el canario `analisis_identico_al_defecto`. | `35f5a8d` |
+| **6** | `resolver_zona_cte()` devuelve `(zona, resuelta)`; el repliegue a "C" sigue igual pero deja de ser silencioso: sale como limitación en el JSON. | `ed0f373` |
+| **9** | Fachada `ia/cliente.py` con dos tramos de timeout (120 s / 300 s) sobre los **seis** clientes de Anthropic, y un test que prohíbe construir el cliente fuera de ella. | `0e2312c` |
+| **12** | Las 13 dependencias directas con `==`, más `requirements.lock.txt` con las 58 distribuciones. | `88acb90` |
+
+Tres desviaciones deliberadas de las fichas, todas razonadas en su commit:
+
+- **Tarea 9** — la ficha pedía "30-45 s". Imposible: `ai_generator` pide 8.192 tokens de salida en una sola llamada y eso no cabe en 45 s a ninguna velocidad realista; el timeout "corto" no acotaría el peor caso, convertiría el caso normal en un fallo. Dos tramos calibrados por `max_tokens` en su lugar.
+- **Tarea 12** — la ficha pedía fijar las directas "y sus transitivas relevantes". Elegir a mano cuáles son "relevantes" es adivinar, y fijar solo las directas no reproduce nada. Se separan los papeles: `requirements.txt` (de qué depende el producto, y por qué) y `requirements.lock.txt` (qué se instala exactamente).
+- **Alcance de la 9** — la ficha hablaba de 2 clientes, la A.2 contó 5, y el test de guardia encontró un **sexto** que no estaba en ninguna de las dos listas: `extraccion/interprete.py`. Se arreglaron los seis.
+
+**Lo que compra esta fase:** que romper otra vez el Bug #1 tenga consecuencias visibles, que un dato supuesto no se pueda confundir con un dato real, que una llamada colgada a Claude no retenga un hilo media hora, y que una instalación dentro de seis meses sea la misma que la de hoy.
+
+**Hallazgo que esta fase no arregla, y conviene no perder:** `tests/canario.py` — la prueba de que los goldens siguen mordiendo, criterio A4 del PRD de E0 — **no se puede ejecutar hoy**. Medido, no supuesto: aborta en su línea base (`[FALLO] sin mutacion, 0 goldens rotos -- rotos: ['G9_modelo']`, salida 1) porque G9 ya falla por el defecto H1 de `docs/audits/2026-08-13-hallazgos-cierre-geometrico.md` §2, que se dejó sin corregir a propósito. Es anterior a esta fase y no lo causa nada de lo hecho aquí, pero significa que la única herramienta que demuestra que la red de seguridad funciona lleva parada desde entonces. Candidato a la Fase 3.
 
 ### Fase 3 — Reducir superficie
 
