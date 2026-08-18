@@ -1,0 +1,12 @@
+# Los fixtures golden se sellan por el sha256 de sus BYTES, no de su contenido
+# lógico (`tests/test_golden_determinismo.py`, G8, propiedades 1 y 3). Con la
+# conversión de finales de línea activada (`core.autocrlf=true`, el valor por
+# defecto en Windows), git los deja en CRLF al hacer checkout: mismo contenido,
+# otros bytes, otro sha256 — y G8 falla sin que nada haya cambiado. Su propio
+# docstring lo avisa. `-text` le dice a git que no convierta nada en esta
+# carpeta, que es justo lo que necesita un fichero cuyo valor está en sus bytes.
+#
+# El resto del repositorio se deja como está a propósito: normalizar los ~119
+# ficheros que hoy están en CRLF en el working copy es un cambio masivo y sin
+# relación con esto.
+tests/fixtures/golden/*.json -text

@@ -334,17 +334,31 @@ if original is not None:
         prompt_original = eval(m_original.group(1))  # nosec - literal de cadena controlado por este propio repo
         marcador_insercion = "PRECEDENCIA ENTRE REGLAS"
         marcador_fin = "Responde ÚNICAMENTE con un objeto JSON"
-        check(marcador_insercion not in prompt_original,
-              "el SYSTEM_PROMPT original (HEAD) todavía no tenía el párrafo de precedencia (montaje del test)")
-        idx_insercion = prompt_original.index(marcador_fin)
-        prefijo_original = prompt_original[:idx_insercion]
-        sufijo_original = prompt_original[idx_insercion:]
-        check(ai_generator.SYSTEM_PROMPT.startswith(prefijo_original),
-              "SYSTEM_PROMPT: todo el texto ANTES del punto de inserción es idéntico, carácter a carácter")
-        check(ai_generator.SYSTEM_PROMPT.endswith(sufijo_original),
-              "SYSTEM_PROMPT: todo el texto DESDE 'Responde ÚNICAMENTE...' es idéntico, carácter a carácter")
-        parrafo_nuevo = ai_generator.SYSTEM_PROMPT[len(prefijo_original):len(ai_generator.SYSTEM_PROMPT) - len(sufijo_original)]
-        check(marcador_insercion in parrafo_nuevo, "el párrafo insertado es, efectivamente, el de precedencia")
+        if marcador_insercion in prompt_original:
+            # El párrafo ya está en HEAD: el cambio se commiteó. Esta
+            # comparación existía para demostrar, MIENTRAS estaba sin
+            # commitear, que la única diferencia respecto a HEAD era insertar
+            # ese párrafo. Con el cambio ya dentro, compara el prompt consigo
+            # mismo: no puede detectar ninguna regresión, y sus dos primeras
+            # comprobaciones fallan por construcción. Es exactamente lo que
+            # anticipa el comentario de arriba ("esta comparación se volvería
+            # trivial"). Se omite el bloque; las comprobaciones del CONTENIDO
+            # del párrafo, justo debajo y fuera de este `if`, siguen
+            # ejecutándose y son las que protegen la jerarquía de precedencia.
+            print("  (comparación contra HEAD omitida: el párrafo de precedencia ya está")
+            print("   commiteado, así que este bloque compararía el prompt consigo mismo)")
+        else:
+            check(marcador_insercion not in prompt_original,
+                  "el SYSTEM_PROMPT original (HEAD) todavía no tenía el párrafo de precedencia (montaje del test)")
+            idx_insercion = prompt_original.index(marcador_fin)
+            prefijo_original = prompt_original[:idx_insercion]
+            sufijo_original = prompt_original[idx_insercion:]
+            check(ai_generator.SYSTEM_PROMPT.startswith(prefijo_original),
+                  "SYSTEM_PROMPT: todo el texto ANTES del punto de inserción es idéntico, carácter a carácter")
+            check(ai_generator.SYSTEM_PROMPT.endswith(sufijo_original),
+                  "SYSTEM_PROMPT: todo el texto DESDE 'Responde ÚNICAMENTE...' es idéntico, carácter a carácter")
+            parrafo_nuevo = ai_generator.SYSTEM_PROMPT[len(prefijo_original):len(ai_generator.SYSTEM_PROMPT) - len(sufijo_original)]
+            check(marcador_insercion in parrafo_nuevo, "el párrafo insertado es, efectivamente, el de precedencia")
 
 check("normativa" in ai_generator.SYSTEM_PROMPT.lower() and "SIEMPRE prevalecen" in ai_generator.SYSTEM_PROMPT,
       "SYSTEM_PROMPT: la normativa prevalece siempre (nivel 1)")

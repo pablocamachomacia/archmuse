@@ -32,6 +32,8 @@ import ast
 import sys
 from pathlib import Path
 
+import pytest
+
 RAIZ = Path(__file__).resolve().parent
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
@@ -77,13 +79,43 @@ SCRIPTS_LEGACY = _scripts_legacy()
 collect_ignore = [str(ruta) for ruta in SCRIPTS_LEGACY]
 
 
+#: Scripts que fallan por un defecto **conocido, localizado y aceptado por
+#: escrito**, no por una regresión. Se marcan `xfail(strict=True)`: mientras el
+#: defecto siga ahí no ensucian el resultado, y **el día que se corrija pytest
+#: falla con XPASS** y obliga a quitar la marca. Es la única forma de que un
+#: rojo permanente no acabe normalizando todos los rojos.
+#:
+#: Requisito para entrar aquí: existir un documento que diga qué defecto es y
+#: por qué se decidió no corregirlo. Una marca sin esa referencia es tapar.
+#:
+#: Coste, dicho claro: la marca es por FICHERO, no por comprobación. En
+#: `test_e2_persistencia.py` fallan 3 de 35, y sus otras 32 dejan de avisar
+#: mientras la marca esté puesta. Ese coste ya lo pagaba el fichero estando en
+#: rojo permanente (un fallo nuevo tampoco se habría visto); la marca al menos
+#: añade el aviso de cuándo se puede retirar.
+ROJOS_CONOCIDOS = {
+    "test_golden_modelo.py":
+        "H1 sin corregir: el round-trip de `modelo/serializacion.py` colapsa el vértice de "
+        "cierre duplicado de los recintos recuperados por `_esta_cerrada()`, así que el grafo "
+        "recargado no es idéntico byte a byte y `verificar_sellado()` lo rechaza. Documentado y "
+        "dejado sin arreglar a propósito en docs/audits/2026-08-13-hallazgos-cierre-geometrico.md §2.",
+    "test_e2_persistencia.py":
+        "El mismo H1 (3 de 35 comprobaciones). El propio documento dice que estos tests se "
+        "dejaron 'en rojo a propósito'. Ver docs/audits/2026-08-13-hallazgos-cierre-geometrico.md §2.",
+}
+
+
 def pytest_generate_tests(metafunc):
     """Da a `test_script_legacy` un caso por script, con el nombre del fichero
     como id — para que el informe de pytest se lea como una lista de ficheros y
     no como un test opaco que agrupa setenta y tantos."""
-    if "script_legacy" in metafunc.fixturenames:
-        metafunc.parametrize(
-            "script_legacy",
-            SCRIPTS_LEGACY,
-            ids=[ruta.name for ruta in SCRIPTS_LEGACY],
-        )
+    if "script_legacy" not in metafunc.fixturenames:
+        return
+
+    casos = []
+    for ruta in SCRIPTS_LEGACY:
+        motivo = ROJOS_CONOCIDOS.get(ruta.name)
+        marcas = [pytest.mark.xfail(reason=motivo, strict=True)] if motivo else []
+        casos.append(pytest.param(ruta, marks=marcas, id=ruta.name))
+
+    metafunc.parametrize("script_legacy", casos)

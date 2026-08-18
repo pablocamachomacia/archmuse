@@ -126,6 +126,32 @@ The API/SPA serves at **http://127.0.0.1:5000**.
 pytest
 ```
 
+Around 360 tests, ~14 minutes. Two shapes coexist under `tests/`:
+
+- **Native pytest tests** (25 files) — collected and reported per test function.
+- **Standalone check scripts** (72 files) — the original style: they run their
+  assertions at module level and report via the exit code. `conftest.py` keeps
+  them out of normal collection (importing one runs it) and
+  `tests/test_scripts_legacy.py` executes each in a subprocess, so each script
+  shows up as **one** pytest result. Its captured output carries the per-check
+  detail. Any one of them still runs on its own the way its docstring says:
+
+```bash
+python tests/test_acoustic_adjacency.py
+python tests/golden.py          # the 9 golden fixtures, G1..G9
+```
+
+Raise `ARCHMUSE_TEST_TIMEOUT` (seconds, default 900) if a script needs longer.
+
+Some tests need `ejemplo.dxf` next to the repository, or `v2s.dxf`; without
+them those tests skip with an explicit reason rather than failing.
+
+Two scripts are marked `xfail(strict=True)` in `conftest.py` (`ROJOS_CONOCIDOS`)
+because they fail on one known, written-up defect — see
+`docs/audits/2026-08-13-hallazgos-cierre-geometrico.md` §2. Strict is the point:
+the day that defect is fixed, pytest reports XPASS and forces the marker to be
+removed. Nothing else is marked, so any red is a real regression.
+
 ---
 
 ## Project Philosophy

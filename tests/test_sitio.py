@@ -162,7 +162,19 @@ with mock.patch("urllib.request.urlopen", side_effect=urllib.error.URLError(ssl.
     except ErrorDeSitio as exc:
         check("_get propaga el error de certificado como ErrorDeSitio", "almacén de certificados" in str(exc), str(exc))
 
-print("\n10. Fix urgente: reintentos con backoff exponencial en Overpass")
+# Este bloque comprobaba el backoff exponencial 2/4/8s contra un mismo host.
+# Esa política se retiró a propósito el 2026-08-17 por ser el bug que hacía que
+# una consulta de sitio tardase 126s en fallar (medido en vivo; ver el
+# comentario junto a `_URLS_OVERPASS` en `analyzer/sitio.py`). La política de
+# hoy es la contraria: un intento por espejo, timeout corto y una espera fija y
+# breve entre espejos — un backoff largo no tiene sentido cuando el siguiente
+# intento va a OTRO host, no a repetir contra el mismo servicio saturado.
+#
+# Se actualiza el test, no el código: aquí manda el código, porque el cambio
+# fue deliberado y está justificado. Los valores se fijan literales (3 espejos,
+# 1,5s) y no se leen de `analyzer.sitio`, para que este test siga detectando
+# que alguien los toca en vez de seguirlos en silencio.
+print("\n10. Overpass: un intento por espejo, con espera corta y fija entre ellos")
 llamadas = []
 
 
@@ -183,8 +195,8 @@ with mock.patch("urllib.request.urlopen", side_effect=_urlopen_falla_dos_veces_y
     resultado = _post_overpass("[out:json];")
     check("recupera tras 2 fallos, sin lanzar", resultado == {"elements": []})
     check("hizo exactamente 3 intentos (2 fallos + 1 éxito)", len(llamadas) == 3, len(llamadas))
-    check("esperó 2s y 4s entre los 3 intentos (backoff 2/4/8s)",
-          [c.args[0] for c in sleep_mock.call_args_list] == [2, 4], sleep_mock.call_args_list)
+    check("esperó 1,5s entre espejo y espejo (espera fija, no escalonada)",
+          [c.args[0] for c in sleep_mock.call_args_list] == [1.5, 1.5], sleep_mock.call_args_list)
 
 llamadas.clear()
 with mock.patch("urllib.request.urlopen", side_effect=urllib.error.URLError("siempre falla")), \
@@ -193,9 +205,9 @@ with mock.patch("urllib.request.urlopen", side_effect=urllib.error.URLError("sie
         _post_overpass("[out:json];")
         check("los 3 intentos fallan -> lanza ErrorDeSitio", False)
     except ErrorDeSitio as exc:
-        check("los 3 intentos fallan -> lanza ErrorDeSitio", "3 intentos fallaron" in str(exc), str(exc))
-    check("con los 3 fallando, esperó 2s y 4s (no espera tras el último intento)",
-          [c.args[0] for c in sleep_mock2.call_args_list] == [2, 4])
+        check("los 3 espejos fallan -> lanza ErrorDeSitio", "los 3 espejos fallaron" in str(exc), str(exc))
+    check("con los 3 fallando, esperó 1,5s dos veces (no espera tras el último espejo)",
+          [c.args[0] for c in sleep_mock2.call_args_list] == [1.5, 1.5])
 
 print("\n11. _referencia_desde_coordenadas: coords -> RC real (fixtures capturados en vivo para esta tarea)")
 # Cuerpos EXACTOS devueltos por Consulta_RCCOOR para coordenadas reales de
