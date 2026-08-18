@@ -26,8 +26,12 @@
 (function () {
   "use strict";
 
-  var LEAFLET_JS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-  var LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+  // Servido desde el propio origen (tarea 20 del REFACTOR_MASTERPLAN). Antes
+  // venia de unpkg.com. `leaflet.css` referencia sus iconos con rutas
+  // relativas (`images/marker-icon.png`), asi que la carpeta `images/` tiene
+  // que seguir colgando del mismo sitio que el CSS.
+  var LEAFLET_JS = "/vendor/leaflet/1.9.4/leaflet.js";
+  var LEAFLET_CSS = "/vendor/leaflet/1.9.4/leaflet.css";
 
   // Centro por defecto (Madrid) -- solo para que el mapa no arranque
   // centrado en el punto (0,0) del Atlántico cuando no hay ninguna pista de

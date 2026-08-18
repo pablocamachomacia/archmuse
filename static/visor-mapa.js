@@ -64,23 +64,23 @@ function _cargarScript(src) {
   });
 }
 
-// CDN, no vendorizado -- mismo criterio (y la misma deuda ya conocida,
-// REFACTOR_MASTERPLAN #20) que three.js en `viewer-edificio.js`. Cargar
-// Mapbox GL JS + Threebox es la SEGUNDA dependencia de CDN del proyecto,
-// no la primera -- ver la nota de riesgo en
-// `docs/prd/2026-08-15-exportacion-gltf-visor-mapbox.md` §9.
+// Vendorizado desde la tarea 20 del REFACTOR_MASTERPLAN (2026-08-18). La nota
+// de riesgo de `docs/prd/2026-08-15-exportacion-gltf-visor-mapbox.md` §9 queda
+// cerrada. De las dos, la peligrosa era Threebox: se cargaba de
+// `cdn.jsdelivr.net/gh/jscastro76/threebox@v.2.2.2`, es decir de una ETIQUETA
+// DE GIT de un repositorio personal, sin `integrity`. Una etiqueta se mueve.
+//
+// Lo que sigue saliendo a la red es el SERVICIO de Mapbox (estilos y teselas
+// desde `api.mapbox.com`), que no se puede vendorizar porque es el servicio,
+// no una libreria. Regenerar con `python static/vendor/vendorizar.py`.
 function _asegurarMapboxCargado() {
   if (_mapboxCargado) return _mapboxCargado;
-  _cargarCss("https://api.mapbox.com/mapbox-gl-js/v" + MAPBOX_GL_VERSION + "/mapbox-gl.css");
-  _cargarCss(
-    "https://cdn.jsdelivr.net/gh/jscastro76/threebox@" + THREEBOX_VERSION + "/dist/threebox.css"
-  );
+  _cargarCss("/vendor/mapbox-gl/" + MAPBOX_GL_VERSION + "/mapbox-gl.css");
+  _cargarCss("/vendor/threebox/" + THREEBOX_VERSION + "/threebox.css");
   _mapboxCargado = _cargarScript(
-    "https://api.mapbox.com/mapbox-gl-js/v" + MAPBOX_GL_VERSION + "/mapbox-gl.js"
+    "/vendor/mapbox-gl/" + MAPBOX_GL_VERSION + "/mapbox-gl.js"
   ).then(() =>
-    _cargarScript(
-      "https://cdn.jsdelivr.net/gh/jscastro76/threebox@" + THREEBOX_VERSION + "/dist/threebox.min.js"
-    )
+    _cargarScript("/vendor/threebox/" + THREEBOX_VERSION + "/threebox.min.js")
   );
   return _mapboxCargado;
 }

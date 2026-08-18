@@ -4,9 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archmuse — Análisis de calidad arquitectónica</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+<!-- Inter servida desde el propio origen (tarea 20). Antes venia de
+     fonts.googleapis.com + fonts.gstatic.com: dos hosts mas a los que el
+     navegador del arquitecto contaba que estaba usando ArchMuse, y una
+     tipografia que no cargaba sin internet. Regenerar con
+     `python static/vendor/vendorizar.py`. -->
+<link rel="stylesheet" href="/vendor/fuentes/inter.css">
 <link rel="stylesheet" href="/style.css?v=20260817_apple_glass">
 </head>
 <body>
@@ -249,11 +252,17 @@
 <script src="/map-picker.js?v=20260817_invalidate_size"></script>
 <script src="/entrevista.js?v=20260817_referencia_catastral_sandbox"></script>
 
+<!-- three.js servido desde el propio origen (tarea 20). Antes se cargaba de
+     unpkg.com en tiempo de ejecucion: si esa CDN estaba caida el visor 3D no
+     arrancaba, y cualquier cosa que unpkg sirviera se ejecutaba en esta pagina
+     con acceso completo. Solo estan vendorizados los 16 modulos que el grafo
+     de imports alcanza de verdad, no el paquete entero -- ver
+     `static/vendor/vendorizar.py` y su MANIFEST.json. -->
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    "three": "/vendor/three/0.160.0/build/three.module.js",
+    "three/addons/": "/vendor/three/0.160.0/examples/jsm/"
   }
 }
 </script>

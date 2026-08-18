@@ -1,0 +1,175 @@
+{
+  "ficheros": {
+    "fuentes/inter.css": {
+      "bytes": 6699,
+      "origen": "https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap  (URLs de gstatic reescritas a locales)",
+      "sha256": "ba5b76d6539e698a6ea6e91a8957f524ca3638cd34227b5d8e1fc23e31611366"
+    },
+    "fuentes/v20-UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa0ZL7SUc.woff2": {
+      "bytes": 18748,
+      "origen": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa0ZL7SUc.woff2",
+      "sha256": "71d5ee93cc1e9f1d520a3a8b66456de18c7879d8df09d57fcd2eaff75fef0075"
+    },
+    "fuentes/v20-UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2": {
+      "bytes": 48256,
+      "origen": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
+      "sha256": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62"
+    },
+    "fuentes/v20-UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7SUc.woff2": {
+      "bytes": 18996,
+      "origen": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7SUc.woff2",
+      "sha256": "1be3448e292fbf05ffe176fe1e43f135013d50b1e7d324ad1a558f623d3bb6f6"
+    },
+    "fuentes/v20-UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7SUc.woff2": {
+      "bytes": 85068,
+      "origen": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7SUc.woff2",
+      "sha256": "34b9c504cab7a73e37b746343a449132e56cf7b5481af2cb81dc74dcff25c956"
+    },
+    "fuentes/v20-UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2JL7SUc.woff2": {
+      "bytes": 25960,
+      "origen": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2JL7SUc.woff2",
+      "sha256": "ca157063339ac4ad418f214f3abfed119b0798ab4d377386ce5c9e5a7a435ebd"
+    },
+    "fuentes/v20-UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2ZL7SUc.woff2": {
+      "bytes": 11232,
+      "origen": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2ZL7SUc.woff2",
+      "sha256": "6e9e020a25f9b56d418f2c085b1d3c09725a4da23fe693a5b463064606732190"
+    },
+    "fuentes/v20-UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2pL7SUc.woff2": {
+      "bytes": 10252,
+      "origen": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2pL7SUc.woff2",
+      "sha256": "5c66f9e07e90c6d4ac4922cc68d60de26c17b1858e677fb5e603fce3952b3ff2"
+    },
+    "leaflet/1.9.4/images/layers-2x.png": {
+      "bytes": 1259,
+      "origen": "https://unpkg.com/leaflet@1.9.4/dist/images/layers-2x.png",
+      "sha256": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf"
+    },
+    "leaflet/1.9.4/images/layers.png": {
+      "bytes": 696,
+      "origen": "https://unpkg.com/leaflet@1.9.4/dist/images/layers.png",
+      "sha256": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6"
+    },
+    "leaflet/1.9.4/images/marker-icon.png": {
+      "bytes": 1466,
+      "origen": "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+      "sha256": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437"
+    },
+    "leaflet/1.9.4/leaflet.css": {
+      "bytes": 14806,
+      "origen": "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
+      "sha256": "a7837102824184820dfa198d1ebcd109ff6d0ff9a2672a074b9a1b4d147d04c6"
+    },
+    "leaflet/1.9.4/leaflet.js": {
+      "bytes": 147552,
+      "origen": "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+      "sha256": "db49d009c841f5ca34a888c96511ae936fd9f5533e90d8b2c4d57596f4e5641a"
+    },
+    "mapbox-gl/3.28.1/mapbox-gl.css": {
+      "bytes": 40786,
+      "origen": "https://api.mapbox.com/mapbox-gl-js/v3.28.1/mapbox-gl.css",
+      "sha256": "6689604c602eb06c13f0d6ed1e4972c7bf87074169252ee1d6262a93d419da2e"
+    },
+    "mapbox-gl/3.28.1/mapbox-gl.js": {
+      "bytes": 1857916,
+      "origen": "https://api.mapbox.com/mapbox-gl-js/v3.28.1/mapbox-gl.js",
+      "sha256": "e8b580dddb0d214265286019f90442098b54072ba289997436011d1aaa00ab36"
+    },
+    "three/0.160.0/build/three.module.js": {
+      "bytes": 1272972,
+      "origen": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "sha256": "76dea8151bc9352aef3528b4262e249b2604f62543828328db978d060d61a495"
+    },
+    "three/0.160.0/examples/jsm/controls/OrbitControls.js": {
+      "bytes": 29868,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js",
+      "sha256": "5a44a9e86a2a0fb11933eed69bc2cd33c76a496854c1aed6ed776efa87d7b064"
+    },
+    "three/0.160.0/examples/jsm/environments/RoomEnvironment.js": {
+      "bytes": 3735,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/environments/RoomEnvironment.js",
+      "sha256": "e21f41b7ef2016f2984a5d27850b42dffa797a6a194a138e288b06576d765a7b"
+    },
+    "three/0.160.0/examples/jsm/math/SimplexNoise.js": {
+      "bytes": 14351,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/math/SimplexNoise.js",
+      "sha256": "9b8d541b77b0ddc79afaa6a1de8941452c191b8b9006f04e7b8fc422e2b263f7"
+    },
+    "three/0.160.0/examples/jsm/postprocessing/EffectComposer.js": {
+      "bytes": 4651,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js",
+      "sha256": "d234e578618fa816955ebdc059c049c577e203e650e33cf22bde3f232c29e669"
+    },
+    "three/0.160.0/examples/jsm/postprocessing/MaskPass.js": {
+      "bytes": 2231,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/MaskPass.js",
+      "sha256": "328cf7db0da5d9be83ffe39d54b01d5ac1fddf108cc98182ddbb056f5c8b537f"
+    },
+    "three/0.160.0/examples/jsm/postprocessing/OutputPass.js": {
+      "bytes": 2398,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/OutputPass.js",
+      "sha256": "13817fc7a87f662d29d2c5e00f44d3a4588c9afac4a372de0cacb0e44e368ffd"
+    },
+    "three/0.160.0/examples/jsm/postprocessing/Pass.js": {
+      "bytes": 1706,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/Pass.js",
+      "sha256": "b3c6128340eaa37e40a6a2f1b738e894c855239417d50959759b34a2b5e89f92"
+    },
+    "three/0.160.0/examples/jsm/postprocessing/RenderPass.js": {
+      "bytes": 1915,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/RenderPass.js",
+      "sha256": "1c90c085312871c4bcdccfcf519499c6276dd503363fcf7cb7f703add45cf4a2"
+    },
+    "three/0.160.0/examples/jsm/postprocessing/SSAOPass.js": {
+      "bytes": 11421,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/SSAOPass.js",
+      "sha256": "22ef811aeda777d2ba71d8f70cd332aa843782b9ffc559e6ba0dbfffa003061d"
+    },
+    "three/0.160.0/examples/jsm/postprocessing/ShaderPass.js": {
+      "bytes": 1576,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/ShaderPass.js",
+      "sha256": "3b28a1ee27e0eb96c0eab137a1f442ccf127a926904eced2d51e125ec44af781"
+    },
+    "three/0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js": {
+      "bytes": 12406,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js",
+      "sha256": "8f09315c0cec117a0ca2494d3e3586035b3c4323d6dcb037537cc51b04c3cdba"
+    },
+    "three/0.160.0/examples/jsm/shaders/CopyShader.js": {
+      "bytes": 571,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/shaders/CopyShader.js",
+      "sha256": "4e3346db194db56a596cd074e9bdb39fb5eb52040c333e0d29dc4eb1324d3b1d"
+    },
+    "three/0.160.0/examples/jsm/shaders/LuminosityHighPassShader.js": {
+      "bytes": 1192,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/shaders/LuminosityHighPassShader.js",
+      "sha256": "3d841cc594a0c1767d1b0185720b32761a0133c5f1b70b56658e28f2fb9b7900"
+    },
+    "three/0.160.0/examples/jsm/shaders/OutputShader.js": {
+      "bytes": 1393,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/shaders/OutputShader.js",
+      "sha256": "53a52e430c27bc36ceaab8ae90a2b4af7b02672d7ee4b29d6ba3c28e09c92c2a"
+    },
+    "three/0.160.0/examples/jsm/shaders/SSAOShader.js": {
+      "bytes": 6478,
+      "origen": "https://unpkg.com/three@0.160.0/examples/jsm/shaders/SSAOShader.js",
+      "sha256": "bd5cda34d6b52941c1121b77947664848af10dc68febd453dfdc56c59e58ba06"
+    },
+    "threebox/v.2.2.2/threebox.css": {
+      "bytes": 1192,
+      "origen": "https://cdn.jsdelivr.net/gh/jscastro76/threebox@v.2.2.2/dist/threebox.css",
+      "sha256": "375dd3397bb49d373e32c2602861020e45eeedad806fedb9d799bd92d11192a1"
+    },
+    "threebox/v.2.2.2/threebox.min.js": {
+      "bytes": 854698,
+      "origen": "https://cdn.jsdelivr.net/gh/jscastro76/threebox@v.2.2.2/dist/threebox.min.js",
+      "sha256": "850de7a835816aa1ae537dcf00645b2073f0f41dbbdd9e23b7e13b81152cb5e2"
+    }
+  },
+  "versiones": {
+    "leaflet": "1.9.4",
+    "mapbox-gl": "3.28.1",
+    "three": "0.160.0",
+    "threebox": "v.2.2.2"
+  }
+}
