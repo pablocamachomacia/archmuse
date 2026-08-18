@@ -10,3 +10,12 @@
 # ficheros que hoy están en CRLF en el working copy es un cambio masivo y sin
 # relación con esto.
 tests/fixtures/golden/*.json -text
+
+# Mismo motivo, mismo remedio, para las librerías vendorizadas (tarea 20).
+# `static/vendor/MANIFEST.json` sella el sha256 de los BYTES de cada fichero tal
+# y como se descargaron, y `tests/test_vendor_frontend.py` lo recomprueba en
+# cada ejecución de la suite. Sin esta línea, git deja el JavaScript de
+# `three.js` en CRLF al clonar y el manifiesto deja de cuadrar en la máquina de
+# cualquiera que no sea quien lo vendorizó — medido: 22 de los 33 ficheros
+# fallaban al clonar en limpio.
+static/vendor/** -text
