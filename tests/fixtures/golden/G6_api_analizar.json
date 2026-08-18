@@ -125,9 +125,10 @@
           "Recorrido de evacuación en VT4/2",
           "Recorrido de evacuación en VT5/1",
           "Recorrido de evacuación en VT6/2",
-          "Retranqueos"
+          "Retranqueos",
+          "Zona climática"
         ],
-        "n": 22
+        "n": 23
       },
       "n_viviendas": 6,
       "proyecto": {
@@ -575,9 +576,10 @@
           "Recorrido de evacuación en VT4/2",
           "Recorrido de evacuación en VT5/1",
           "Recorrido de evacuación en VT6/2",
-          "Retranqueos"
+          "Retranqueos",
+          "Zona climática"
         ],
-        "n": 22
+        "n": 23
       },
       "n_viviendas": 6,
       "proyecto": {

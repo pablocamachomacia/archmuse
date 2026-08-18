@@ -121,6 +121,9 @@ def get_missing_data_warnings(
     superficie_solar_m2: Optional[float] = None,
     normativa: Optional[dict] = None,
     solar: Optional[dict] = None,
+    zona_cte: Optional[str] = None,
+    zona_cte_supuesta: bool = False,
+    ciudad: Optional[str] = None,
 ) -> List[str]:
     """Avisos informativos (no penalizables) sobre comprobaciones que el
     modelo actual no puede evaluar por falta de datos: geométricos (altura,
@@ -128,7 +131,16 @@ def get_missing_data_warnings(
     modelan) o de parámetros de proyecto (superficie de solar,
     edificabilidad máxima — solo ausentes si no se han indicado). Van al
     campo "limitaciones" del JSON de salida (a nivel de proyecto) — es
-    transparencia hacia el arquitecto, no una penalización de diseño."""
+    transparencia hacia el arquitecto, no una penalización de diseño.
+
+    `zona_cte_supuesta` (tarea 6 del `REFACTOR_MASTERPLAN.md`) es distinto del
+    resto: no dice que algo no se haya podido comprobar, sino que **sí se ha
+    comprobado, con un dato inventado**. Lo calcula
+    `cte_zonas.resolver_zona_cte`, y quien llama tiene que pasarlo — este
+    módulo no importa `cte_zonas` a propósito, para no arrastrar `normativa/`
+    dentro de `evaluator.py`. Si nadie lo pasa, no hay aviso: el valor por
+    defecto `False` conserva exactamente la salida anterior a la tarea 6.
+    """
     normativa = normativa or {}
     solar = solar or {}
     warnings = [
@@ -139,6 +151,21 @@ def get_missing_data_warnings(
         f"de escalera. Mínimo CTE DB-SUA: {MIN_STAIR_WIDTH_M}m de anchura "
         "libre.",
     ]
+    if zona_cte_supuesta:
+        nombre_ciudad = (ciudad or "").strip()
+        motivo = (
+            f"la ciudad indicada («{nombre_ciudad}») no está en la tabla de "
+            "municipios de ArchMuse"
+            if nombre_ciudad
+            else "no se ha indicado la ciudad del proyecto"
+        )
+        warnings.append(
+            f"Zona climática: supuesta, no verificada — {motivo}. El análisis "
+            f"se ha hecho como zona {zona_cte or DEFAULT_ZONA_CTE} (CTE DB-HE, "
+            "Apéndice B), que es el valor por defecto: las comprobaciones que "
+            "dependen del clima (riesgo de condensaciones, horas de sol, "
+            "compacidad) salen de esa suposición, no de un dato del proyecto."
+        )
     if not superficie_solar_m2:
         warnings.append("Ocupación solar: no evaluable sin superficie real del solar.")
     if normativa.get("edificabilidad_maxima") is None:

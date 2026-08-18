@@ -485,8 +485,16 @@ def serialize_analysis(
         # silencioso; ahora dice que no ha comprobado nada, que es la
         # diferencia entre "tu proyecto cumple" y "tu proyecto cumple lo que
         # sé comprobar".
+        # `zona_cte_supuesta` lo pone quien construye `proyecto` (`app.py`,
+        # con `cte_zonas.resolver_zona_cte`). Si no viene, no hay aviso: se
+        # prefiere callar a afirmar que un dato es supuesto sin saberlo.
         "limitaciones": (
-            get_missing_data_warnings(superficie_solar_m2, normativa, solar)
+            get_missing_data_warnings(
+                superficie_solar_m2, normativa, solar,
+                zona_cte=(proyecto or {}).get("zona_cte"),
+                zona_cte_supuesta=bool((proyecto or {}).get("zona_cte_supuesta")),
+                ciudad=(proyecto or {}).get("ciudad"),
+            )
             + [lim for u in unit_scores for lim in u.limitaciones]
         ),
         "proyecto": proyecto,

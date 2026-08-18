@@ -26,6 +26,7 @@ from analyzer.cte_zonas import (  # noqa: E402
     DEFAULT_ZONA_CTE,
     get_densidad_urbana,
     get_zona_cte,
+    resolver_zona_cte,
 )
 
 BASELINE = RAIZ / "tests" / "fixtures" / "cte_zonas_baseline.json"
@@ -43,13 +44,34 @@ def test_comportamiento_identico_al_anterior():
 
 
 def test_el_repliegue_por_defecto_se_conserva():
-    """El repliegue silencioso a "C"/"media" se mantiene A PROPÓSITO aquí,
-    aunque contradiga el principio de "nunca silencio" del subsistema
-    normativo: quitarlo ahora sería una regresión de comportamiento. Quien ya
-    hace lo correcto es `normativa.api.contexto_territorial`, que devuelve
-    None y declara la asunción."""
+    """El repliegue a "C"/"media" se mantiene A PROPÓSITO aquí: cambiar el
+    valor devuelto sería una regresión de comportamiento. Lo que ha dejado de
+    ser silencioso (tarea 6) es que HAYA repliegue — ver el test siguiente.
+    Quien además pregunta al usuario es `normativa.api.contexto_territorial`,
+    que devuelve None y declara la asunción."""
     assert get_zona_cte("Ciudad Que No Existe") == DEFAULT_ZONA_CTE
     assert get_densidad_urbana("") == DEFAULT_DENSIDAD_URBANA
+
+
+def test_resolver_distingue_el_dato_de_la_suposicion():
+    """Tarea 6. `resolver_zona_cte` devuelve, además de la zona, si sale de la
+    tabla o del repliegue.
+
+    Barcelona es el caso que hace falta el segundo valor: **es** zona C por
+    dato. Deducir "supuesta" de "la zona es C" avisaría de una suposición
+    inexistente en Barcelona, Badajoz o Santander, y un aviso que salta cuando
+    no debe deja de leerse a los tres proyectos."""
+    assert resolver_zona_cte("Madrid") == ("D", True)
+    assert resolver_zona_cte("Malaga") == ("A", True)
+    assert resolver_zona_cte("Barcelona") == ("C", True)
+    assert resolver_zona_cte("Cuenca") == (DEFAULT_ZONA_CTE, False)
+    assert resolver_zona_cte("") == (DEFAULT_ZONA_CTE, False)
+
+
+def test_get_zona_cte_es_la_primera_mitad_de_resolver():
+    """La fachada antigua no puede divergir de la nueva: es su primer valor."""
+    for ciudad in ("Madrid", "Malaga", "Barcelona", "Cuenca", "", "Ciudad Que No Existe"):
+        assert get_zona_cte(ciudad) == resolver_zona_cte(ciudad)[0], ciudad
 
 
 def test_una_sola_lista_de_municipios():

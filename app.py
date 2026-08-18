@@ -32,7 +32,7 @@ from analyzer.altura_evacuacion import resolver_altura_evacuacion
 from analyzer.api_serializer import serialize_ai_analysis, serialize_analysis
 from analyzer.avisos_altura_evacuacion import avisos_altura_evacuacion
 from analyzer.checklist_campo import generar_checklist_campo
-from analyzer.cte_zonas import get_densidad_urbana, get_zona_cte
+from analyzer.cte_zonas import get_densidad_urbana, resolver_zona_cte
 # Fase 4 (cuadro de superficies): se reutilizan tal cual las dos piezas de
 # las Fases 2/3 -- este módulo no reimplementa ninguna detección ni cálculo
 # de superficie, solo las expone por HTTP.
@@ -503,7 +503,11 @@ def analizar():
             # hecho, ninguna regla lo consume todavía.
             uso_previsto_declarado = (request.form.get("uso_previsto") or "").strip() or None
             ciudad = request.form.get("ciudad", "")
-            zona_cte = get_zona_cte(ciudad) if ciudad else "C"
+            # Tarea 6: la zona sigue replegando a "C" cuando no se resuelve el
+            # municipio, pero ahora se sabe si es dato o suposición, y se dice
+            # en `limitaciones`. `resolver_zona_cte("")` ya devuelve
+            # ("C", False), así que el `if ciudad` sobraba.
+            zona_cte, zona_cte_resuelta = resolver_zona_cte(ciudad)
             densidad_urbana = get_densidad_urbana(ciudad) if ciudad else "media"
 
             advanced = evaluate_advanced(
@@ -760,6 +764,11 @@ def analizar():
                     "altura_evacuacion": _serializar_altura_evacuacion(altura_hecho),
                     "avisos_evacuacion": _serializar_avisos_evacuacion(avisos_evacuacion),
                     "zona_cte": zona_cte,
+                    # Tarea 6. Un proyecto guardado tiene que poder decir si su
+                    # zona climática es un dato o el valor por defecto: de ella
+                    # dependen condensaciones, horas de sol y compacidad, y
+                    # hasta hoy la suposición era indistinguible del dato.
+                    "zona_cte_supuesta": not zona_cte_resuelta,
                     "ciudad": ciudad,
                     # Un proyecto guardado tiene que poder explicar de dónde
                     # salieron sus superficies: de qué capa, en qué unidad, y
@@ -1164,7 +1173,11 @@ def _generar_proyecto_desde_params(params: dict, project=None):
     decidir si persiste cada opción), lo pasa aquí para que esta función
     reutilice ese resultado en vez de volver a llamar a Claude. `None`
     (el caso de siempre) mantiene el comportamiento exacto de antes."""
-    params["proyecto"]["zona_cte"] = get_zona_cte(params["proyecto"]["ciudad"])
+    zona_resuelta, zona_es_dato = resolver_zona_cte(params["proyecto"]["ciudad"])
+    params["proyecto"]["zona_cte"] = zona_resuelta
+    # Tarea 6: mismo aviso que en `/api/analizar`. Un proyecto generado por IA
+    # sin ciudad se evalúa igualmente contra una zona climática por defecto.
+    params["proyecto"]["zona_cte_supuesta"] = not zona_es_dato
     params["proyecto"]["densidad_urbana"] = get_densidad_urbana(params["proyecto"]["ciudad"])
 
     if project is None:
@@ -1345,7 +1358,9 @@ def generar_opciones():
     if not mixes:
         return jsonify(error="Indica la superficie construida objetivo para derivar las 2 opciones."), 400
 
-    params_base["proyecto"]["zona_cte"] = get_zona_cte(params_base["proyecto"]["ciudad"])
+    zona_base, zona_base_es_dato = resolver_zona_cte(params_base["proyecto"]["ciudad"])
+    params_base["proyecto"]["zona_cte"] = zona_base
+    params_base["proyecto"]["zona_cte_supuesta"] = not zona_base_es_dato  # tarea 6
     params_base["proyecto"]["densidad_urbana"] = get_densidad_urbana(params_base["proyecto"]["ciudad"])
 
     ratio_m2 = _optional_num(body, "ratioM2")
