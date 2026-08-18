@@ -334,6 +334,8 @@ El cuadro de superficies, en cambio:
 
 ### E.1 El conflicto que hay que resolver antes de escribir código
 
+> **Resuelto el 2026-08-18** en `docs/design/2026-08-18-alineacion-estrategica-paso0.md`: se adopta la salida 2 ("el cerebro es el motor; BIM es la superficie"), con cinco consecuencias vinculantes que también cierran §E.2 y §E.4. Lo que sigue es el planteamiento original del conflicto, que se conserva porque es el razonamiento que llevó a esa decisión.
+
 La visión y el North Star aprobado responden lo **contrario** a la misma pregunta:
 
 | | Dice |
@@ -382,7 +384,7 @@ Ordenada por dependencia real, no por atractivo. Cada paso deja el producto en p
 
 | # | Paso | Por qué aquí |
 |---|---|---|
-| **0** | Resolver §E.1 por escrito | Sin un norte único, todo lo demás se construye dos veces |
+| **0** | ~~Resolver §E.1 por escrito~~ · **HECHO** → `docs/design/2026-08-18-alineacion-estrategica-paso0.md` | Sin un norte único, todo lo demás se construye dos veces |
 | **1** | Cerrar la Fase 2 (golden de tipología/zona) | El bug que casi mata la confianza sigue sin red |
 | **2** | Hacer portante a `modelo/` | El grafo pasa a gobernar; `api_serializer` serializa el grafo |
 | **3** | Invertir `classify_problems` (382 líneas) | Es el nudo que impide registrar capacidades |

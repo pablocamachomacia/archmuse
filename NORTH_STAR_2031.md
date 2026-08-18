@@ -1,5 +1,7 @@
 # NORTH_STAR_2031.md — La visión de ArchMuse en 2031
 
+> **Nota de alineación (2026-08-18).** Este documento **no** ha quedado obsoleto por la visión del "Cerebro Arquitecto". El reparto entre ambos está resuelto en `docs/design/2026-08-18-alineacion-estrategica-paso0.md`: el ADR manda sobre *qué* razona ArchMuse, este documento manda sobre *dónde* vive. Leer esa nota antes de usar cualquiera de los dos como criterio.
+
 **Punto de partida de este documento:** ninguno de los párrafos que siguen describe el software que existe hoy. Es 2031. ArchMuse es la plataforma líder de validación de proyectos arquitectónicos en Europa. Miles de estudios la usan cada día. Este documento describe ese producto perfecto y después trabaja hacia atrás para definir qué debe existir en 24, 12, 6, 3 y 1 mes desde hoy para que esa visión sea alcanzable.
 
 ---

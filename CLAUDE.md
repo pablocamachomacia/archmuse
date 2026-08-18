@@ -36,5 +36,6 @@ Si una idea aporta poco valor, es prematura, o contradice la visión ya establec
 - `MOAT_ANALYSIS.md` — qué es defendible y qué no; qué funcionalidades actuales aportan complejidad sin foso real (ver especialmente el visor 3D y el percentil comparativo).
 - `DESTROY_ARCHMUSE.md` — los ataques más plausibles contra el producto tal como está; cualquier PRD que ignore estas debilidades conocidas debe justificar por qué.
 - `NORTH_STAR_2031.md` — la visión a la que debe acercar cada capacidad nueva, y los hitos de 1/3/6/12/24 meses ya definidos hacia ella.
+- `docs/design/2026-08-18-alineacion-estrategica-paso0.md` — **léelo antes que `NORTH_STAR_2031.md` y que el ADR del Cerebro Arquitecto.** Resuelve cuál manda sobre qué y fija cinco consecuencias vinculantes (C1-C5) que son criterios de aceptación de cualquier PRD nuevo.
 
 **Esta regla de proceso (PRD antes de implementar) aplica a capacidades nuevas del producto.** Las correcciones de bugs y las tareas de endurecimiento ya planificadas en `REFACTOR_MASTERPLAN.md` no son "capacidad nueva" — son arreglos sobre lo que ya existe — así que no requieren un PRD nuevo por defecto; si surge duda sobre si algo cuenta como "nuevo" o como "corrección", preguntar antes de asumir.
