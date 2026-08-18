@@ -8,13 +8,17 @@ sabe. Ver lo que NO tiene es la mitad del valor de imprimirlo.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 from analyzer.parser import CapaIndeterminada, EscalaIndeterminada, leer_plano, load_document
 
 from .grafo.constructor import CRITERIO_ACTUAL, CRITERIO_ESTRICTO, construir_grafo
 from .grafo.modelo import CONECTA_CON, ES_CONTIGUO_A
 
-DXF_POR_DEFECTO = r"C:\Users\<usuario>\Desktop\Pablo\Archmuse\ejemplo.dxf"
+#: `ejemplo.dxf` es un plano real y vive JUNTO al repositorio, no dentro. Se
+#: deriva de la ubicación de este fichero y nunca de una ruta personal: misma
+#: convención que `main.py` y que los tests.
+DXF_POR_DEFECTO = str(Path(__file__).resolve().parents[2] / "ejemplo.dxf")
 
 
 def _consola_utf8() -> None:

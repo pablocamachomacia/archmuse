@@ -47,7 +47,11 @@ TIMEOUT_S = int(os.environ.get("ARCHMUSE_TEST_TIMEOUT", "900"))
 
 # Lo que estos scripts imprimen cuando renuncian a comprobar por falta de un
 # fichero externo (`ejemplo.dxf`, `v2s.dxf`), antes de salir con código 0.
-MARCAS_DE_SALTO = ("[SALTA]", "[SALTADO]", "no disponible en este entorno")
+# "no disponible" se busca suelto a propósito: el texto exacto que sigue varía
+# de un script a otro, y un marcador demasiado literal deja de reconocer el
+# salto en cuanto alguien reformula el aviso — que es justo lo que pasó al
+# introducir `ARCHMUSE_DXF_V2S`.
+MARCAS_DE_SALTO = ("[SALTA]", "[SALTADO]", "no disponible")
 
 # Lo que imprime el helper `check()` de estos scripts por cada comprobación
 # realizada. Si no aparece ni una vez, no se comprobó nada.

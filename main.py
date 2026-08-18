@@ -1,10 +1,16 @@
-"""Punto de entrada: analiza un plano DXF y genera un informe de calidad en
-consola y en HTML (junto al propio DXF, como "informe.html").
+"""Herramienta de depuración interna: analiza un plano DXF por línea de
+comandos y vuelca un informe de calidad en consola y en HTML (junto al propio
+DXF, como "informe.html").
+
+**Esto no es el producto.** ArchMuse es `app.py` + la SPA de `static/`; este
+script existe para poder mirar el resultado del motor de reglas sobre un DXF
+sin levantar el servidor. Si dudas de cuál de los dos toca modificar, es
+`app.py`.
 
 Uso:
     python main.py [ruta_al_archivo.dxf] [norte_grados]
 
-- ruta_al_archivo.dxf: si no se indica, usa DXF_PATH.
+- ruta_al_archivo.dxf: si no se indica, usa `ejemplo.dxf` (ver `DXF_POR_DEFECTO`).
 - norte_grados: azimut (grados, sentido horario, 0=Norte) hacia el que
   apunta 'arriba' (+Y) en el plano. Por defecto 0 (arriba = Norte).
 """
@@ -18,7 +24,11 @@ from analyzer.evaluator import evaluate_advanced, evaluate_rooms
 from analyzer.parser import CapaIndeterminada, EscalaIndeterminada, leer_plano, load_document
 from analyzer.reporter import print_advanced_report, print_report, write_html_report
 
-DXF_PATH = r"C:\Users\<usuario>\Desktop\Pablo\Archmuse\ejemplo.dxf"
+#: `ejemplo.dxf` es un plano real y vive JUNTO al repositorio, no dentro (por
+#: eso no está versionado). Se deriva de la ubicación de este fichero y nunca
+#: de una ruta personal: es la misma convención que ya usan `tests/golden.py` y
+#: el resto de los tests, y evita que la carpeta de nadie acabe publicada.
+DXF_POR_DEFECTO = str(Path(__file__).resolve().parents[1] / "ejemplo.dxf")
 AREA_LAYER = "00 areas"
 NORTE_GRADOS = 0.0
 
@@ -32,8 +42,15 @@ def _fix_console_encoding() -> None:
 
 def main() -> int:
     _fix_console_encoding()
-    dxf_path = sys.argv[1] if len(sys.argv) > 1 else DXF_PATH
+    dxf_path = sys.argv[1] if len(sys.argv) > 1 else DXF_POR_DEFECTO
     norte_grados = float(sys.argv[2]) if len(sys.argv) > 2 else NORTE_GRADOS
+
+    if not Path(dxf_path).exists():
+        print("Error: no se encuentra el DXF a analizar: %s" % dxf_path)
+        if len(sys.argv) <= 1:
+            print("  Ese es el valor por defecto: `ejemplo.dxf` junto al repositorio.")
+            print("  Indica una ruta:  python main.py ruta\\a\\tu\\plano.dxf")
+        return 1
 
     try:
         doc = load_document(dxf_path)

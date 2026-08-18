@@ -134,10 +134,14 @@ print()
 print("B, C, D, E, F. `v2s.dxf` real")
 print("-" * 68)
 
-DXF_PATH = r"C:\Users\<usuario>\Desktop\v2s.dxf"
+#: `v2s.dxf` es un plano real de un cliente: no está en el repositorio ni puede
+#: estarlo. Se localiza con la variable de entorno `ARCHMUSE_DXF_V2S`. Sin ella
+#: esta parte se salta, igual que antes — lo que ya no hay es la ruta personal
+#: de nadie escrita en un repositorio público.
+DXF_PATH = os.environ.get("ARCHMUSE_DXF_V2S", "")
 
 if not os.path.exists(DXF_PATH):
-    print("  (v2s.dxf no disponible en este entorno -- secciones omitidas, mismo criterio que")
+    print("  (v2s.dxf no disponible (define ARCHMUSE_DXF_V2S con su ruta) -- secciones omitidas, mismo criterio que")
     print("   tests/test_cuadro_superficies.py)")
 else:
     import ezdxf

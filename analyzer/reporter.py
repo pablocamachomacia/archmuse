@@ -3,6 +3,11 @@
 `print_report` / `print_advanced_report` escriben en consola. `write_html_report`
 genera un informe HTML autocontenido (sin dependencias externas) con tabla
 resumen de viviendas, detalle por vivienda y resumen ejecutivo con colores.
+
+**Quién usa esto.** Sólo `main.py`, la herramienta de depuración por línea de
+comandos. El producto —`app.py` + la SPA— no pasa por aquí: serializa con
+`analyzer/api_serializer.py` y renderiza en el navegador. Un cambio en este
+módulo no se ve en la aplicación.
 """
 from __future__ import annotations
 

@@ -21,6 +21,7 @@ from __future__ import annotations
 import ast
 import inspect
 import sys
+from pathlib import Path
 from typing import List, Tuple
 
 from analyzer.circulation import (
@@ -34,7 +35,10 @@ from analyzer.parser import CapaIndeterminada, EscalaIndeterminada, leer_plano, 
 from .grafo import regla_recorridos
 from .grafo.constructor import CRITERIO_ACTUAL, CRITERIO_ESTRICTO, construir_grafo
 
-DXF_POR_DEFECTO = r"C:\Users\<usuario>\Desktop\Pablo\Archmuse\ejemplo.dxf"
+#: `ejemplo.dxf` es un plano real y vive JUNTO al repositorio, no dentro. Se
+#: deriva de la ubicación de este fichero y nunca de una ruta personal: misma
+#: convención que `main.py` y que los tests.
+DXF_POR_DEFECTO = str(Path(__file__).resolve().parents[2] / "ejemplo.dxf")
 
 Fila = Tuple[str, bool, str, Tuple[str, ...]]
 

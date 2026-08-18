@@ -95,10 +95,14 @@ def check(ok, etiqueta, detalle=""):
         fallos.append(etiqueta)
 
 
-V2S = r"C:\Users\<usuario>\Desktop\v2s.dxf"
+#: `v2s.dxf` es un plano real de un cliente: no está en el repositorio ni puede
+#: estarlo. Se localiza con la variable de entorno `ARCHMUSE_DXF_V2S`. Sin ella
+#: esta parte se salta, igual que antes — lo que ya no hay es la ruta personal
+#: de nadie escrita en un repositorio público.
+V2S = os.environ.get("ARCHMUSE_DXF_V2S", "")
 
 if not os.path.exists(V2S):
-    print("(v2s.dxf no disponible en este entorno -- test omitido, mismo criterio que")
+    print("(v2s.dxf no disponible (define ARCHMUSE_DXF_V2S con su ruta) -- test omitido, mismo criterio que")
     print(" tests/test_cuadro_superficies.py / tests/test_analizar_planta.py)")
     print("Todas las comprobaciones OK (0)")
     sys.exit(0)

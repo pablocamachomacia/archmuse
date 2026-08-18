@@ -4,11 +4,11 @@
 
 Ejecutar:  python tests/test_cuadro_superficies_export.py
 
-Usa `C:\\Users\\<usuario>\\Desktop\\v2s.dxf` real (mismo criterio que
+Usa el `v2s.dxf` real que apunte `ARCHMUSE_DXF_V2S` (mismo criterio que
 `tests/test_cuadro_superficies.py`: si no está disponible, se salta con
-aviso). Genera de verdad `C:\\Users\\<usuario>\\Desktop\\v2s_ArchMuse_relleno.dxf`
--- es el propio entregable de la Fase 3, así que este test NO lo borra al
-terminar.
+aviso). Genera de verdad `v2s_ArchMuse_relleno.dxf` en la misma carpeta que el
+original -- es el propio entregable de la Fase 3, así que este test NO lo borra
+al terminar.
 
 Que protege:
 
@@ -41,11 +41,16 @@ def check(ok, etiqueta, detalle=""):
         fallos.append(etiqueta)
 
 
-ORIGEN = r"C:\Users\<usuario>\Desktop\v2s.dxf"
-DESTINO = r"C:\Users\<usuario>\Desktop\v2s_ArchMuse_relleno.dxf"
+#: `v2s.dxf` es un plano real de un cliente: no está en el repositorio ni puede
+#: estarlo. Se localiza con la variable de entorno `ARCHMUSE_DXF_V2S`. Sin ella
+#: esta parte se salta, igual que antes — lo que ya no hay es la ruta personal
+#: de nadie escrita en un repositorio público.
+ORIGEN = os.environ.get("ARCHMUSE_DXF_V2S", "")
+#: El entregable se genera JUNTO al origen, sea cual sea su carpeta.
+DESTINO = os.path.join(os.path.dirname(ORIGEN), "v2s_ArchMuse_relleno.dxf") if ORIGEN else ""
 
 if not os.path.exists(ORIGEN):
-    print("(v2s.dxf no disponible en este entorno -- test omitido, mismo criterio que")
+    print("(v2s.dxf no disponible (define ARCHMUSE_DXF_V2S con su ruta) -- test omitido, mismo criterio que")
     print(" tests/test_cuadro_superficies.py / tests/test_analizar_planta.py)")
     print("Todas las comprobaciones OK (0)")
     sys.exit(0)

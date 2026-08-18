@@ -154,8 +154,14 @@ python tests/golden.py          # the 9 golden fixtures, G1..G9
 
 Raise `ARCHMUSE_TEST_TIMEOUT` (seconds, default 900) if a script needs longer.
 
-Some tests need `ejemplo.dxf` next to the repository, or `v2s.dxf`; without
-them those tests skip with an explicit reason rather than failing.
+Some tests need real DXF drawings, which are not in the repository (they are
+actual client files). Without them those tests skip with an explicit reason
+rather than failing:
+
+- `ejemplo.dxf` — expected **next to** the repository directory. Same location
+  is the default for `python main.py` and the `experimentos/` scripts.
+- `v2s.dxf` — set `ARCHMUSE_DXF_V2S` to its full path to enable the
+  surface-schedule tests (about 4 minutes of extra coverage).
 
 Two scripts are marked `xfail(strict=True)` in `conftest.py` (`ROJOS_CONOCIDOS`)
 because they fail on one known, written-up defect — see

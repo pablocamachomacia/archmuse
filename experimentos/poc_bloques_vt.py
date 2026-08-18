@@ -11,8 +11,8 @@ imprimir_grafo.py/comparar_regla.py (ver experimentos/README.md).
 Ejecutar:
     python -m experimentos.poc_bloques_vt [ruta.dxf]
 
-Por defecto usa la misma ruta fuera-de-repo que imprimir_grafo.py:
-    C:\\Users\\<usuario>\\Desktop\\Pablo\\Archmuse\\ejemplo.dxf
+Por defecto usa el mismo `ejemplo.dxf` fuera-de-repo que imprimir_grafo.py,
+derivado de la ubicacion de este fichero (ver DXF_POR_DEFECTO).
 
 Respalda el informe docs/design/2026-08-11-poc-bloques-vt.md — los numeros
 de ese informe salen de correr este script, no estan inventados.
@@ -22,11 +22,15 @@ from __future__ import annotations
 import math
 import sys
 from collections import Counter, defaultdict
+from pathlib import Path
 
 import ezdxf
 import ezdxf.bbox as bbox
 
-DXF_POR_DEFECTO = r"C:\Users\<usuario>\Desktop\Pablo\Archmuse\ejemplo.dxf"
+#: `ejemplo.dxf` es un plano real y vive JUNTO al repositorio, no dentro. Se
+#: deriva de la ubicación de este fichero y nunca de una ruta personal: misma
+#: convención que `main.py` y que los tests.
+DXF_POR_DEFECTO = str(Path(__file__).resolve().parents[2] / "ejemplo.dxf")
 
 
 def full_expand(block):
