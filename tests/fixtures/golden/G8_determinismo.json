@@ -41,7 +41,10 @@
     "G1_plano.recintos[7].capa",
     "G1_plano.recintos[8].capa",
     "G1_plano.recintos[9].capa",
-    "G6_api_analizar.proyecto.capa"
+    "G6_api_analizar.escenarios.ciudad_no_reconocida.proyecto.capa",
+    "G6_api_analizar.escenarios.por_defecto.proyecto.capa",
+    "G6_api_analizar.escenarios.rehabilitacion_zona_a.proyecto.capa",
+    "G6_api_analizar.escenarios.unifamiliar_zona_d.proyecto.capa"
   ],
   "fixtures_no_canonicos": [],
   "floats_con_mas_de_3_decimales": [],
@@ -82,11 +85,11 @@
       "sha256": "4b615dc396ec4b46754998cce2626b4fe18f3192759104db66326d868d51c7df"
     },
     {
-      "bytes": 12138,
+      "bytes": 62447,
       "crlf": false,
-      "lineas": 422,
+      "lineas": 1880,
       "nombre": "G6_api_analizar",
-      "sha256": "32c439e7d438d6d668df4164836798d76e37cd1cf4cf8a81c1bc7b3867c5b035"
+      "sha256": "a705d34673b71c6d28ecdecbbd74afa6682a6e4567a6aab65ca7eacdf759610a"
     },
     {
       "bytes": 19935,

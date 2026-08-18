@@ -121,6 +121,12 @@ def construir():
         # Deuda del principio P6, enumerada. Los de G1 y G6 son del lector y
         # del contrato público de hoy y se quedan; lo que importa es que la
         # lista no crezca, y sobre todo que el modelo (G9) no aporte ninguno.
+        #
+        # Aviso de lectura (2026-08-18): las cuatro entradas de G6 son **el
+        # mismo campo** (`proyecto.capa`) contado una vez por escenario, desde
+        # que G6 pasó a cubrir cuatro. No es deuda nueva. Lo que hay que
+        # vigilar aquí es que aparezca un campo con un NOMBRE distinto, no que
+        # suba el recuento porque un golden cubra más casos.
         "campos_con_nombre_de_formato": sorted(set(campos_formato)),
         # Los que el contrato C7.6 sí admite: dentro de `procedencia`, que es
         # el único sitio del modelo donde puede vivir un nombre de formato.

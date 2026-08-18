@@ -1,422 +1,1880 @@
 {
-  "analisis_ia_es_null": true,
-  "claves_primer_nivel": [
-    "advertencias",
-    "analisis_ia",
-    "archivo",
-    "calidad_espacial",
-    "capas_am_detectadas",
-    "circulacion",
-    "desglose_puntuacion",
-    "diagnosticos_clasificacion",
-    "edificio",
-    "geometria_no_leida",
-    "issues",
-    "issues_por_impacto",
-    "issues_summary",
-    "limitaciones",
-    "normativa_aviso",
-    "norte_grados",
-    "problemas_edificio",
-    "proyecto",
-    "proyecto_id",
-    "puntuacion_global",
-    "total_habitaciones",
-    "total_problemas",
-    "urbanismo",
-    "valoracion_global",
-    "viviendas"
-  ],
-  "http": 200,
-  "issues": {
-    "n": 36,
-    "por_severidad": {
-      "CRITICO": 3,
-      "IMPORTANTE": 32,
-      "RECOMENDACION": 1
-    },
-    "titulos": [
-      "CRITICO | CTE-DB-SUA-1 | VT1/3 | Ningún baño de la vivienda es accesible",
-      "CRITICO | GEOMETRIA-SOLAPE | VT6/2 | Superficies solapadas dentro de la vivienda",
-      "CRITICO | GEOMETRIA-SOLAPE | VT6/2 | Superficies solapadas dentro de la vivienda",
-      "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT2/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT2/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT4/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT4/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT5/1 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT6/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HR | VT6/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
-      "IMPORTANTE | CTE-DB-HS | VT3/3 | Habitación sin ventilación/iluminación natural",
-      "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | CTE-DB-HS3 | VT2/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | CTE-DB-HS3 | VT2/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | CTE-DB-HS3 | VT3/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | CTE-DB-HS3 | VT3/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | CTE-DB-HS3 | VT4/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | CTE-DB-HS3 | VT4/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | CTE-DB-HS3 | VT5/1 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | CTE-DB-HS3 | VT5/1 | Vivienda sin ventilación cruzada",
-      "IMPORTANTE | CTE-DB-HS3 | VT6/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
-      "IMPORTANTE | HABITABILIDAD | VT3/3 | Jerarquía de dormitorios incorrecta",
-      "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
-      "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
-      "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
-      "RECOMENDACION | EFICIENCIA | VT6/2 | Ratio de superficie útil/total por debajo del recomendado"
-    ]
-  },
-  "n_viviendas": 6,
-  "proyecto": {
-    "altura_evacuacion_estado": "UNKNOWN",
-    "capa": "00 areas",
-    "escala": {
-      "origen": "acuerdo",
-      "unidad": "metros"
-    },
-    "estados_planta": [
-      "UNKNOWN",
-      "UNKNOWN",
-      "UNKNOWN",
-      "UNKNOWN",
-      "UNKNOWN",
-      "UNKNOWN"
-    ],
-    "n_avisos_evacuacion": 0,
-    "ocupacion": [
-      {
-        "agregado_no_normativo": true,
-        "ambito": "vivienda VT1/3",
-        "ambito_emitido": "vivienda",
-        "confianza": "Media",
-        "estado": "ESTIMATED",
-        "personas": 3.316
+  "entradas": {
+    "ciudad_no_reconocida": {
+      "campos": {
+        "ciudad": "Cuenca"
       },
-      {
-        "agregado_no_normativo": true,
-        "ambito": "vivienda VT2/2",
-        "ambito_emitido": "vivienda",
-        "confianza": "Media",
-        "estado": "ESTIMATED",
-        "personas": 2.922
+      "para_que": "municipio fuera de la tabla: zona C por suposicion, no por dato"
+    },
+    "por_defecto": {
+      "campos": {},
+      "para_que": "sin tipologia ni ciudad: plurifamiliar + zona C, el contrato historico"
+    },
+    "rehabilitacion_zona_a": {
+      "campos": {
+        "ciudad": "Malaga",
+        "tipologia": "rehabilitacion"
       },
-      {
-        "agregado_no_normativo": true,
-        "ambito": "vivienda VT3/3",
-        "ambito_emitido": "vivienda",
-        "confianza": "Media",
-        "estado": "ESTIMATED",
-        "personas": 3.327
+      "para_que": "tipologia y zona climatica declaradas, extremo calido"
+    },
+    "unifamiliar_zona_d": {
+      "campos": {
+        "ciudad": "Madrid",
+        "tipologia": "unifamiliar"
       },
-      {
-        "agregado_no_normativo": true,
-        "ambito": "vivienda VT4/2",
-        "ambito_emitido": "vivienda",
-        "confianza": "Media",
-        "estado": "ESTIMATED",
-        "personas": 2.923
-      },
-      {
-        "agregado_no_normativo": true,
-        "ambito": "vivienda VT5/1",
-        "ambito_emitido": "vivienda",
-        "confianza": "Media",
-        "estado": "ESTIMATED",
-        "personas": 2.266
-      },
-      {
-        "agregado_no_normativo": true,
-        "ambito": "vivienda VT6/2",
-        "ambito_emitido": "vivienda",
-        "confianza": null,
-        "estado": "UNKNOWN",
-        "personas": null
-      }
-    ],
-    "planta_declarada": null,
-    "sectorizacion_veredictos": [
-      "",
-      "",
-      "",
-      "",
-      "",
-      ""
-    ],
-    "tipologia": "plurifamiliar",
-    "zona_cte": "C"
-  },
-  "puntuacion_global": null,
-  "valoracion_global": null,
-  "viviendas": [
-    {
-      "habitaciones": [
-        {
-          "area_m2": 3.14,
-          "nombre": "Aseo",
-          "tipo": "bano"
-        },
-        {
-          "area_m2": 4.01,
-          "nombre": "Baño",
-          "tipo": "bano"
-        },
-        {
-          "area_m2": 12.72,
-          "nombre": "Dormitorio 1",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 8.48,
-          "nombre": "Dormitorio 2",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 8.53,
-          "nombre": "Dormitorio 3",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 21.9,
-          "nombre": "Salón/cocina",
-          "tipo": "salon_cocina"
-        },
-        {
-          "area_m2": 4.22,
-          "nombre": "Tendedero",
-          "tipo": "tendedero"
-        },
-        {
-          "area_m2": 3.32,
-          "nombre": "Terraza",
-          "tipo": "terraza"
-        }
-      ],
-      "n_habitaciones": 8,
-      "nombre": "VT1/3",
-      "problemas_vivienda": [],
-      "puntuacion": 89,
-      "superficie_total_m2": 66.33,
-      "valoracion": "rojo"
-    },
-    {
-      "habitaciones": [
-        {
-          "area_m2": 4.18,
-          "nombre": "Baño",
-          "tipo": "bano"
-        },
-        {
-          "area_m2": 15.07,
-          "nombre": "Dormitorio 1",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 8.34,
-          "nombre": "Dormitorio 2",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 23.38,
-          "nombre": "Salón/cocina",
-          "tipo": "salon_cocina"
-        },
-        {
-          "area_m2": 4.21,
-          "nombre": "Tendedero",
-          "tipo": "tendedero"
-        },
-        {
-          "area_m2": 3.26,
-          "nombre": "Terraza",
-          "tipo": "terraza"
-        }
-      ],
-      "n_habitaciones": 6,
-      "nombre": "VT2/2",
-      "problemas_vivienda": [],
-      "puntuacion": 94,
-      "superficie_total_m2": 58.44,
-      "valoracion": "verde"
-    },
-    {
-      "habitaciones": [
-        {
-          "area_m2": 3.03,
-          "nombre": "Aseo",
-          "tipo": "bano"
-        },
-        {
-          "area_m2": 4.06,
-          "nombre": "Baño",
-          "tipo": "bano"
-        },
-        {
-          "area_m2": 12.53,
-          "nombre": "Dormitorio 1",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 7.17,
-          "nombre": "Dormitorio 2",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 8.47,
-          "nombre": "Dormitorio 3",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 23.85,
-          "nombre": "Salón/cocina",
-          "tipo": "salon_cocina"
-        },
-        {
-          "area_m2": 4.2,
-          "nombre": "Tendedero",
-          "tipo": "tendedero"
-        },
-        {
-          "area_m2": 3.25,
-          "nombre": "Terraza",
-          "tipo": "terraza"
-        }
-      ],
-      "n_habitaciones": 8,
-      "nombre": "VT3/3",
-      "problemas_vivienda": [],
-      "puntuacion": 88,
-      "superficie_total_m2": 66.55,
-      "valoracion": "verde"
-    },
-    {
-      "habitaciones": [
-        {
-          "area_m2": 4.11,
-          "nombre": "Baño",
-          "tipo": "bano"
-        },
-        {
-          "area_m2": 14.67,
-          "nombre": "Dormitorio 1",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 8.83,
-          "nombre": "Dormitorio 2",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 23.3,
-          "nombre": "Salón/cocina",
-          "tipo": "salon_cocina"
-        },
-        {
-          "area_m2": 4.22,
-          "nombre": "Tendedero",
-          "tipo": "tendedero"
-        },
-        {
-          "area_m2": 3.34,
-          "nombre": "Terraza",
-          "tipo": "terraza"
-        }
-      ],
-      "n_habitaciones": 6,
-      "nombre": "VT4/2",
-      "problemas_vivienda": [],
-      "puntuacion": 91,
-      "superficie_total_m2": 58.47,
-      "valoracion": "verde"
-    },
-    {
-      "habitaciones": [
-        {
-          "area_m2": 3.77,
-          "nombre": "Baño",
-          "tipo": "bano"
-        },
-        {
-          "area_m2": 12.09,
-          "nombre": "Dormitorio 1",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 25.19,
-          "nombre": "Salón/cocina",
-          "tipo": "salon_cocina"
-        },
-        {
-          "area_m2": 4.27,
-          "nombre": "Tendedero",
-          "tipo": "tendedero"
-        }
-      ],
-      "n_habitaciones": 4,
-      "nombre": "VT5/1",
-      "problemas_vivienda": [
-        "Vivienda: sin ventilación cruzada — todas las fachadas orientadas al mismo lado"
-      ],
-      "puntuacion": 92,
-      "superficie_total_m2": 45.31,
-      "valoracion": "verde"
-    },
-    {
-      "habitaciones": [
-        {
-          "area_m2": 4.0,
-          "nombre": "Baño",
-          "tipo": "bano"
-        },
-        {
-          "area_m2": 13.04,
-          "nombre": "Dormitorio 1",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 7.24,
-          "nombre": "Dormitorio 2",
-          "tipo": "dormitorio"
-        },
-        {
-          "area_m2": 21.95,
-          "nombre": "Salón/cocina",
-          "tipo": "salon_cocina"
-        },
-        {
-          "area_m2": 4.93,
-          "nombre": "Terraza",
-          "tipo": "terraza"
-        },
-        {
-          "area_m2": 5.36,
-          "nombre": "Terraza",
-          "tipo": "terraza"
-        },
-        {
-          "area_m2": 6.3,
-          "nombre": "Terraza",
-          "tipo": "terraza"
-        },
-        {
-          "area_m2": 11.55,
-          "nombre": "Terraza",
-          "tipo": "terraza"
-        }
-      ],
-      "n_habitaciones": 8,
-      "nombre": "VT6/2",
-      "problemas_vivienda": [],
-      "puntuacion": 86,
-      "superficie_total_m2": 74.37,
-      "valoracion": "rojo"
+      "para_que": "tipologia y zona climatica declaradas, extremo frio"
     }
-  ]
+  },
+  "escenarios": {
+    "ciudad_no_reconocida": {
+      "analisis_ia_es_null": true,
+      "claves_primer_nivel": [
+        "advertencias",
+        "analisis_ia",
+        "archivo",
+        "calidad_espacial",
+        "capas_am_detectadas",
+        "circulacion",
+        "desglose_puntuacion",
+        "diagnosticos_clasificacion",
+        "edificio",
+        "geometria_no_leida",
+        "issues",
+        "issues_por_impacto",
+        "issues_summary",
+        "limitaciones",
+        "normativa_aviso",
+        "norte_grados",
+        "problemas_edificio",
+        "proyecto",
+        "proyecto_id",
+        "puntuacion_global",
+        "total_habitaciones",
+        "total_problemas",
+        "urbanismo",
+        "valoracion_global",
+        "viviendas"
+      ],
+      "http": 200,
+      "issues": {
+        "n": 36,
+        "por_severidad": {
+          "CRITICO": 3,
+          "IMPORTANTE": 32,
+          "RECOMENDACION": 1
+        },
+        "titulos": [
+          "CRITICO | CTE-DB-SUA-1 | VT1/3 | Ningún baño de la vivienda es accesible",
+          "CRITICO | GEOMETRIA-SOLAPE | VT6/2 | Superficies solapadas dentro de la vivienda",
+          "CRITICO | GEOMETRIA-SOLAPE | VT6/2 | Superficies solapadas dentro de la vivienda",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT2/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT2/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT4/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT4/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT5/1 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT6/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT6/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HS | VT3/3 | Habitación sin ventilación/iluminación natural",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT2/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT2/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT3/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT3/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT4/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT4/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT5/1 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT5/1 | Vivienda sin ventilación cruzada",
+          "IMPORTANTE | CTE-DB-HS3 | VT6/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | HABITABILIDAD | VT3/3 | Jerarquía de dormitorios incorrecta",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "RECOMENDACION | EFICIENCIA | VT6/2 | Ratio de superficie útil/total por debajo del recomendado"
+        ]
+      },
+      "limitaciones": {
+        "etiquetas": [
+          "Aislamiento entre viviendas",
+          "Altura libre",
+          "Anchura de puertas",
+          "Compartimentación contra incendios",
+          "Demanda energética",
+          "Edificabilidad",
+          "Escalera",
+          "Itinerario accesible en VT1/3",
+          "Itinerario accesible en VT2/2",
+          "Itinerario accesible en VT3/3",
+          "Itinerario accesible en VT4/2",
+          "Itinerario accesible en VT5/1",
+          "Itinerario accesible en VT6/2",
+          "Ocupación solar",
+          "Puertas de evacuación",
+          "Recorrido de evacuación en VT1/3",
+          "Recorrido de evacuación en VT2/2",
+          "Recorrido de evacuación en VT3/3",
+          "Recorrido de evacuación en VT4/2",
+          "Recorrido de evacuación en VT5/1",
+          "Recorrido de evacuación en VT6/2",
+          "Retranqueos"
+        ],
+        "n": 22
+      },
+      "n_viviendas": 6,
+      "proyecto": {
+        "altura_evacuacion_estado": "UNKNOWN",
+        "capa": "00 areas",
+        "ciudad": "Cuenca",
+        "escala": {
+          "origen": "acuerdo",
+          "unidad": "metros"
+        },
+        "estados_planta": [
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN"
+        ],
+        "n_avisos_evacuacion": 0,
+        "ocupacion": [
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT1/3",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 3.316
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT2/2",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 2.922
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT3/3",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 3.327
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT4/2",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 2.923
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT5/1",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 2.266
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT6/2",
+            "ambito_emitido": "vivienda",
+            "confianza": null,
+            "estado": "UNKNOWN",
+            "personas": null
+          }
+        ],
+        "planta_declarada": null,
+        "sectorizacion_veredictos": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "tipologia": "plurifamiliar",
+        "zona_cte": "C"
+      },
+      "puntuacion_global": 90,
+      "valoracion_global": "rojo",
+      "viviendas": [
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.14,
+              "nombre": "Aseo",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 4.01,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.72,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.48,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.53,
+              "nombre": "Dormitorio 3",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 21.9,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.22,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.32,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT1/3",
+          "problemas_vivienda": [],
+          "puntuacion": 89,
+          "superficie_total_m2": 66.33,
+          "valoracion": "rojo"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.18,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 15.07,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.34,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.38,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.21,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.26,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 6,
+          "nombre": "VT2/2",
+          "problemas_vivienda": [],
+          "puntuacion": 94,
+          "superficie_total_m2": 58.44,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.03,
+              "nombre": "Aseo",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 4.06,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.53,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 7.17,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.47,
+              "nombre": "Dormitorio 3",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.85,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.2,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.25,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT3/3",
+          "problemas_vivienda": [],
+          "puntuacion": 88,
+          "superficie_total_m2": 66.55,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.11,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 14.67,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.83,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.3,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.22,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.34,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 6,
+          "nombre": "VT4/2",
+          "problemas_vivienda": [],
+          "puntuacion": 91,
+          "superficie_total_m2": 58.47,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.77,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.09,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 25.19,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.27,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            }
+          ],
+          "n_habitaciones": 4,
+          "nombre": "VT5/1",
+          "problemas_vivienda": [
+            "Vivienda: sin ventilación cruzada — todas las fachadas orientadas al mismo lado"
+          ],
+          "puntuacion": 92,
+          "superficie_total_m2": 45.31,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.0,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 13.04,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 7.24,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 21.95,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.93,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 5.36,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 6.3,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 11.55,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT6/2",
+          "problemas_vivienda": [],
+          "puntuacion": 86,
+          "superficie_total_m2": 74.37,
+          "valoracion": "rojo"
+        }
+      ]
+    },
+    "por_defecto": {
+      "analisis_ia_es_null": true,
+      "claves_primer_nivel": [
+        "advertencias",
+        "analisis_ia",
+        "archivo",
+        "calidad_espacial",
+        "capas_am_detectadas",
+        "circulacion",
+        "desglose_puntuacion",
+        "diagnosticos_clasificacion",
+        "edificio",
+        "geometria_no_leida",
+        "issues",
+        "issues_por_impacto",
+        "issues_summary",
+        "limitaciones",
+        "normativa_aviso",
+        "norte_grados",
+        "problemas_edificio",
+        "proyecto",
+        "proyecto_id",
+        "puntuacion_global",
+        "total_habitaciones",
+        "total_problemas",
+        "urbanismo",
+        "valoracion_global",
+        "viviendas"
+      ],
+      "http": 200,
+      "issues": {
+        "n": 36,
+        "por_severidad": {
+          "CRITICO": 3,
+          "IMPORTANTE": 32,
+          "RECOMENDACION": 1
+        },
+        "titulos": [
+          "CRITICO | CTE-DB-SUA-1 | VT1/3 | Ningún baño de la vivienda es accesible",
+          "CRITICO | GEOMETRIA-SOLAPE | VT6/2 | Superficies solapadas dentro de la vivienda",
+          "CRITICO | GEOMETRIA-SOLAPE | VT6/2 | Superficies solapadas dentro de la vivienda",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT2/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT2/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT4/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT4/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT5/1 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT6/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT6/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HS | VT3/3 | Habitación sin ventilación/iluminación natural",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT2/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT2/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT3/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT3/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT4/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT4/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT5/1 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT5/1 | Vivienda sin ventilación cruzada",
+          "IMPORTANTE | CTE-DB-HS3 | VT6/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | HABITABILIDAD | VT3/3 | Jerarquía de dormitorios incorrecta",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "RECOMENDACION | EFICIENCIA | VT6/2 | Ratio de superficie útil/total por debajo del recomendado"
+        ]
+      },
+      "limitaciones": {
+        "etiquetas": [
+          "Aislamiento entre viviendas",
+          "Altura libre",
+          "Anchura de puertas",
+          "Compartimentación contra incendios",
+          "Demanda energética",
+          "Edificabilidad",
+          "Escalera",
+          "Itinerario accesible en VT1/3",
+          "Itinerario accesible en VT2/2",
+          "Itinerario accesible en VT3/3",
+          "Itinerario accesible en VT4/2",
+          "Itinerario accesible en VT5/1",
+          "Itinerario accesible en VT6/2",
+          "Ocupación solar",
+          "Puertas de evacuación",
+          "Recorrido de evacuación en VT1/3",
+          "Recorrido de evacuación en VT2/2",
+          "Recorrido de evacuación en VT3/3",
+          "Recorrido de evacuación en VT4/2",
+          "Recorrido de evacuación en VT5/1",
+          "Recorrido de evacuación en VT6/2",
+          "Retranqueos"
+        ],
+        "n": 22
+      },
+      "n_viviendas": 6,
+      "proyecto": {
+        "altura_evacuacion_estado": "UNKNOWN",
+        "capa": "00 areas",
+        "ciudad": "",
+        "escala": {
+          "origen": "acuerdo",
+          "unidad": "metros"
+        },
+        "estados_planta": [
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN"
+        ],
+        "n_avisos_evacuacion": 0,
+        "ocupacion": [
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT1/3",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 3.316
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT2/2",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 2.922
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT3/3",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 3.327
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT4/2",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 2.923
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT5/1",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 2.266
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT6/2",
+            "ambito_emitido": "vivienda",
+            "confianza": null,
+            "estado": "UNKNOWN",
+            "personas": null
+          }
+        ],
+        "planta_declarada": null,
+        "sectorizacion_veredictos": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "tipologia": "plurifamiliar",
+        "zona_cte": "C"
+      },
+      "puntuacion_global": 90,
+      "valoracion_global": "rojo",
+      "viviendas": [
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.14,
+              "nombre": "Aseo",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 4.01,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.72,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.48,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.53,
+              "nombre": "Dormitorio 3",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 21.9,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.22,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.32,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT1/3",
+          "problemas_vivienda": [],
+          "puntuacion": 89,
+          "superficie_total_m2": 66.33,
+          "valoracion": "rojo"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.18,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 15.07,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.34,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.38,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.21,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.26,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 6,
+          "nombre": "VT2/2",
+          "problemas_vivienda": [],
+          "puntuacion": 94,
+          "superficie_total_m2": 58.44,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.03,
+              "nombre": "Aseo",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 4.06,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.53,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 7.17,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.47,
+              "nombre": "Dormitorio 3",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.85,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.2,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.25,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT3/3",
+          "problemas_vivienda": [],
+          "puntuacion": 88,
+          "superficie_total_m2": 66.55,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.11,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 14.67,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.83,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.3,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.22,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.34,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 6,
+          "nombre": "VT4/2",
+          "problemas_vivienda": [],
+          "puntuacion": 91,
+          "superficie_total_m2": 58.47,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.77,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.09,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 25.19,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.27,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            }
+          ],
+          "n_habitaciones": 4,
+          "nombre": "VT5/1",
+          "problemas_vivienda": [
+            "Vivienda: sin ventilación cruzada — todas las fachadas orientadas al mismo lado"
+          ],
+          "puntuacion": 92,
+          "superficie_total_m2": 45.31,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.0,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 13.04,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 7.24,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 21.95,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.93,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 5.36,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 6.3,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 11.55,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT6/2",
+          "problemas_vivienda": [],
+          "puntuacion": 86,
+          "superficie_total_m2": 74.37,
+          "valoracion": "rojo"
+        }
+      ]
+    },
+    "rehabilitacion_zona_a": {
+      "analisis_ia_es_null": true,
+      "claves_primer_nivel": [
+        "advertencias",
+        "analisis_ia",
+        "archivo",
+        "calidad_espacial",
+        "capas_am_detectadas",
+        "circulacion",
+        "desglose_puntuacion",
+        "diagnosticos_clasificacion",
+        "edificio",
+        "geometria_no_leida",
+        "issues",
+        "issues_por_impacto",
+        "issues_summary",
+        "limitaciones",
+        "normativa_aviso",
+        "norte_grados",
+        "problemas_edificio",
+        "proyecto",
+        "proyecto_id",
+        "puntuacion_global",
+        "total_habitaciones",
+        "total_problemas",
+        "urbanismo",
+        "valoracion_global",
+        "viviendas"
+      ],
+      "http": 200,
+      "issues": {
+        "n": 39,
+        "por_severidad": {
+          "CRITICO": 2,
+          "IMPORTANTE": 36,
+          "RECOMENDACION": 1
+        },
+        "titulos": [
+          "CRITICO | GEOMETRIA-SOLAPE | VT6/2 | Superficies solapadas dentro de la vivienda",
+          "CRITICO | GEOMETRIA-SOLAPE | VT6/2 | Superficies solapadas dentro de la vivienda",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT2/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT2/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT2/2 | Fachada expuesta a ruido urbano intenso",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT4/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT4/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT4/2 | Fachada expuesta a ruido urbano intenso",
+          "IMPORTANTE | CTE-DB-HR | VT5/1 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT6/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT6/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT6/2 | Fachada expuesta a ruido urbano intenso",
+          "IMPORTANTE | CTE-DB-HS | VT3/3 | Habitación sin ventilación/iluminación natural",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT2/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT2/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT3/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT3/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT4/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT4/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT5/1 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT5/1 | Vivienda sin ventilación cruzada",
+          "IMPORTANTE | CTE-DB-HS3 | VT6/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-SUA-1 | VT1/3 | Ningún baño de la vivienda es accesible",
+          "IMPORTANTE | HABITABILIDAD | VT3/3 | Jerarquía de dormitorios incorrecta",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "RECOMENDACION | EFICIENCIA | VT6/2 | Ratio de superficie útil/total por debajo del recomendado"
+        ]
+      },
+      "limitaciones": {
+        "etiquetas": [
+          "Aislamiento entre viviendas",
+          "Altura libre",
+          "Anchura de puertas",
+          "Compartimentación contra incendios",
+          "Demanda energética",
+          "Edificabilidad",
+          "Escalera",
+          "Ocupación solar",
+          "Puertas de evacuación",
+          "Recorrido de evacuación en VT1/3",
+          "Recorrido de evacuación en VT2/2",
+          "Recorrido de evacuación en VT3/3",
+          "Recorrido de evacuación en VT4/2",
+          "Recorrido de evacuación en VT5/1",
+          "Recorrido de evacuación en VT6/2",
+          "Retranqueos"
+        ],
+        "n": 16
+      },
+      "n_viviendas": 6,
+      "proyecto": {
+        "altura_evacuacion_estado": "UNKNOWN",
+        "capa": "00 areas",
+        "ciudad": "Malaga",
+        "escala": {
+          "origen": "acuerdo",
+          "unidad": "metros"
+        },
+        "estados_planta": [
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN"
+        ],
+        "n_avisos_evacuacion": 0,
+        "ocupacion": [
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT1/3",
+            "ambito_emitido": "vivienda",
+            "confianza": null,
+            "estado": "UNKNOWN",
+            "personas": null
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT2/2",
+            "ambito_emitido": "vivienda",
+            "confianza": null,
+            "estado": "UNKNOWN",
+            "personas": null
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT3/3",
+            "ambito_emitido": "vivienda",
+            "confianza": null,
+            "estado": "UNKNOWN",
+            "personas": null
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT4/2",
+            "ambito_emitido": "vivienda",
+            "confianza": null,
+            "estado": "UNKNOWN",
+            "personas": null
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT5/1",
+            "ambito_emitido": "vivienda",
+            "confianza": null,
+            "estado": "UNKNOWN",
+            "personas": null
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT6/2",
+            "ambito_emitido": "vivienda",
+            "confianza": null,
+            "estado": "UNKNOWN",
+            "personas": null
+          }
+        ],
+        "planta_declarada": null,
+        "sectorizacion_veredictos": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "tipologia": "rehabilitacion",
+        "zona_cte": "A"
+      },
+      "puntuacion_global": 90,
+      "valoracion_global": "rojo",
+      "viviendas": [
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.14,
+              "nombre": "Aseo",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 4.01,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.72,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.48,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.53,
+              "nombre": "Dormitorio 3",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 21.9,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.22,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.32,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT1/3",
+          "problemas_vivienda": [],
+          "puntuacion": 91,
+          "superficie_total_m2": 66.33,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.18,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 15.07,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.34,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.38,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.21,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.26,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 6,
+          "nombre": "VT2/2",
+          "problemas_vivienda": [],
+          "puntuacion": 94,
+          "superficie_total_m2": 58.44,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.03,
+              "nombre": "Aseo",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 4.06,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.53,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 7.17,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.47,
+              "nombre": "Dormitorio 3",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.85,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.2,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.25,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT3/3",
+          "problemas_vivienda": [],
+          "puntuacion": 88,
+          "superficie_total_m2": 66.55,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.11,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 14.67,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.83,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.3,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.22,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.34,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 6,
+          "nombre": "VT4/2",
+          "problemas_vivienda": [],
+          "puntuacion": 91,
+          "superficie_total_m2": 58.47,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.77,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.09,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 25.19,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.27,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            }
+          ],
+          "n_habitaciones": 4,
+          "nombre": "VT5/1",
+          "problemas_vivienda": [
+            "Vivienda: sin ventilación cruzada — todas las fachadas orientadas al mismo lado"
+          ],
+          "puntuacion": 92,
+          "superficie_total_m2": 45.31,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.0,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 13.04,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 7.24,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 21.95,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.93,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 5.36,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 6.3,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 11.55,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT6/2",
+          "problemas_vivienda": [],
+          "puntuacion": 86,
+          "superficie_total_m2": 74.37,
+          "valoracion": "rojo"
+        }
+      ]
+    },
+    "unifamiliar_zona_d": {
+      "analisis_ia_es_null": true,
+      "claves_primer_nivel": [
+        "advertencias",
+        "analisis_ia",
+        "archivo",
+        "calidad_espacial",
+        "capas_am_detectadas",
+        "circulacion",
+        "desglose_puntuacion",
+        "diagnosticos_clasificacion",
+        "edificio",
+        "geometria_no_leida",
+        "issues",
+        "issues_por_impacto",
+        "issues_summary",
+        "limitaciones",
+        "normativa_aviso",
+        "norte_grados",
+        "problemas_edificio",
+        "proyecto",
+        "proyecto_id",
+        "puntuacion_global",
+        "total_habitaciones",
+        "total_problemas",
+        "urbanismo",
+        "valoracion_global",
+        "viviendas"
+      ],
+      "http": 200,
+      "issues": {
+        "n": 42,
+        "por_severidad": {
+          "CRITICO": 2,
+          "IMPORTANTE": 39,
+          "RECOMENDACION": 1
+        },
+        "titulos": [
+          "CRITICO | GEOMETRIA-SOLAPE | VT6/2 | Superficies solapadas dentro de la vivienda",
+          "CRITICO | GEOMETRIA-SOLAPE | VT6/2 | Superficies solapadas dentro de la vivienda",
+          "IMPORTANTE | CTE-DB-HE-COND | VT3/3 | Riesgo de condensaciones en fachada norte",
+          "IMPORTANTE | CTE-DB-HE-COND | VT4/2 | Riesgo de condensaciones en fachada norte",
+          "IMPORTANTE | CTE-DB-HE-COND | VT6/2 | Riesgo de condensaciones en fachada norte",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT1/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT2/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT2/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT2/2 | Fachada expuesta a ruido urbano intenso",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT3/3 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT4/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT4/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT4/2 | Fachada expuesta a ruido urbano intenso",
+          "IMPORTANTE | CTE-DB-HR | VT5/1 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT6/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT6/2 | Dormitorio adyacente a zona húmeda sin aislamiento verificado",
+          "IMPORTANTE | CTE-DB-HR | VT6/2 | Fachada expuesta a ruido urbano intenso",
+          "IMPORTANTE | CTE-DB-HS | VT3/3 | Habitación sin ventilación/iluminación natural",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT1/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT2/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT2/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT3/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT3/3 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT4/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT4/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT5/1 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-HS3 | VT5/1 | Vivienda sin ventilación cruzada",
+          "IMPORTANTE | CTE-DB-HS3 | VT6/2 | Superficie de huecos de iluminación insuficiente (regla 1/8)",
+          "IMPORTANTE | CTE-DB-SUA-1 | VT1/3 | Ningún baño de la vivienda es accesible",
+          "IMPORTANTE | HABITABILIDAD | VT3/3 | Jerarquía de dormitorios incorrecta",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "IMPORTANTE | HABITABILIDAD | VT6/2 | Habitación con proporción 'tubo'",
+          "RECOMENDACION | EFICIENCIA | VT6/2 | Ratio de superficie útil/total por debajo del recomendado"
+        ]
+      },
+      "limitaciones": {
+        "etiquetas": [
+          "Aislamiento entre viviendas",
+          "Altura libre",
+          "Anchura de puertas",
+          "Compartimentación contra incendios",
+          "Demanda energética",
+          "Edificabilidad",
+          "Escalera",
+          "Ocupación solar",
+          "Puertas de evacuación",
+          "Recorrido de evacuación en VT1/3",
+          "Recorrido de evacuación en VT2/2",
+          "Recorrido de evacuación en VT3/3",
+          "Recorrido de evacuación en VT4/2",
+          "Recorrido de evacuación en VT5/1",
+          "Recorrido de evacuación en VT6/2",
+          "Retranqueos"
+        ],
+        "n": 16
+      },
+      "n_viviendas": 6,
+      "proyecto": {
+        "altura_evacuacion_estado": "UNKNOWN",
+        "capa": "00 areas",
+        "ciudad": "Madrid",
+        "escala": {
+          "origen": "acuerdo",
+          "unidad": "metros"
+        },
+        "estados_planta": [
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN",
+          "UNKNOWN"
+        ],
+        "n_avisos_evacuacion": 0,
+        "ocupacion": [
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT1/3",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 3.316
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT2/2",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 2.922
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT3/3",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 3.327
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT4/2",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 2.923
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT5/1",
+            "ambito_emitido": "vivienda",
+            "confianza": "Media",
+            "estado": "ESTIMATED",
+            "personas": 2.266
+          },
+          {
+            "agregado_no_normativo": true,
+            "ambito": "vivienda VT6/2",
+            "ambito_emitido": "vivienda",
+            "confianza": null,
+            "estado": "UNKNOWN",
+            "personas": null
+          }
+        ],
+        "planta_declarada": null,
+        "sectorizacion_veredictos": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "tipologia": "unifamiliar",
+        "zona_cte": "D"
+      },
+      "puntuacion_global": 90,
+      "valoracion_global": "rojo",
+      "viviendas": [
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.14,
+              "nombre": "Aseo",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 4.01,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.72,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.48,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.53,
+              "nombre": "Dormitorio 3",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 21.9,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.22,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.32,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT1/3",
+          "problemas_vivienda": [],
+          "puntuacion": 91,
+          "superficie_total_m2": 66.33,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.18,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 15.07,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.34,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.38,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.21,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.26,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 6,
+          "nombre": "VT2/2",
+          "problemas_vivienda": [],
+          "puntuacion": 94,
+          "superficie_total_m2": 58.44,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.03,
+              "nombre": "Aseo",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 4.06,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.53,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 7.17,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.47,
+              "nombre": "Dormitorio 3",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.85,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.2,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.25,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT3/3",
+          "problemas_vivienda": [],
+          "puntuacion": 88,
+          "superficie_total_m2": 66.55,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.11,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 14.67,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 8.83,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 23.3,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.22,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            },
+            {
+              "area_m2": 3.34,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 6,
+          "nombre": "VT4/2",
+          "problemas_vivienda": [],
+          "puntuacion": 91,
+          "superficie_total_m2": 58.47,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 3.77,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 12.09,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 25.19,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.27,
+              "nombre": "Tendedero",
+              "tipo": "tendedero"
+            }
+          ],
+          "n_habitaciones": 4,
+          "nombre": "VT5/1",
+          "problemas_vivienda": [
+            "Vivienda: sin ventilación cruzada — todas las fachadas orientadas al mismo lado"
+          ],
+          "puntuacion": 92,
+          "superficie_total_m2": 45.31,
+          "valoracion": "verde"
+        },
+        {
+          "habitaciones": [
+            {
+              "area_m2": 4.0,
+              "nombre": "Baño",
+              "tipo": "bano"
+            },
+            {
+              "area_m2": 13.04,
+              "nombre": "Dormitorio 1",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 7.24,
+              "nombre": "Dormitorio 2",
+              "tipo": "dormitorio"
+            },
+            {
+              "area_m2": 21.95,
+              "nombre": "Salón/cocina",
+              "tipo": "salon_cocina"
+            },
+            {
+              "area_m2": 4.93,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 5.36,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 6.3,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            },
+            {
+              "area_m2": 11.55,
+              "nombre": "Terraza",
+              "tipo": "terraza"
+            }
+          ],
+          "n_habitaciones": 8,
+          "nombre": "VT6/2",
+          "problemas_vivienda": [],
+          "puntuacion": 86,
+          "superficie_total_m2": 74.37,
+          "valoracion": "rojo"
+        }
+      ]
+    }
+  },
+  "n_escenarios": 4,
+  "sensibilidad": {
+    "analisis_identico_al_defecto": {
+      "ciudad_no_reconocida": true,
+      "rehabilitacion_zona_a": false,
+      "unifamiliar_zona_d": false
+    },
+    "puntuacion_global": {
+      "ciudad_no_reconocida": 90,
+      "por_defecto": 90,
+      "rehabilitacion_zona_a": 90,
+      "unifamiliar_zona_d": 90
+    },
+    "tipologia": {
+      "ciudad_no_reconocida": "plurifamiliar",
+      "por_defecto": "plurifamiliar",
+      "rehabilitacion_zona_a": "rehabilitacion",
+      "unifamiliar_zona_d": "unifamiliar"
+    },
+    "titulos_que_faltan_frente_al_defecto": {
+      "ciudad_no_reconocida": [],
+      "rehabilitacion_zona_a": [
+        "CRITICO | CTE-DB-SUA-1 | VT1/3 | Ningún baño de la vivienda es accesible"
+      ],
+      "unifamiliar_zona_d": [
+        "CRITICO | CTE-DB-SUA-1 | VT1/3 | Ningún baño de la vivienda es accesible"
+      ]
+    },
+    "titulos_solo_en_este": {
+      "ciudad_no_reconocida": [],
+      "rehabilitacion_zona_a": [
+        "IMPORTANTE | CTE-DB-HR | VT2/2 | Fachada expuesta a ruido urbano intenso",
+        "IMPORTANTE | CTE-DB-HR | VT4/2 | Fachada expuesta a ruido urbano intenso",
+        "IMPORTANTE | CTE-DB-HR | VT6/2 | Fachada expuesta a ruido urbano intenso",
+        "IMPORTANTE | CTE-DB-SUA-1 | VT1/3 | Ningún baño de la vivienda es accesible"
+      ],
+      "unifamiliar_zona_d": [
+        "IMPORTANTE | CTE-DB-HE-COND | VT3/3 | Riesgo de condensaciones en fachada norte",
+        "IMPORTANTE | CTE-DB-HE-COND | VT4/2 | Riesgo de condensaciones en fachada norte",
+        "IMPORTANTE | CTE-DB-HE-COND | VT6/2 | Riesgo de condensaciones en fachada norte",
+        "IMPORTANTE | CTE-DB-HR | VT2/2 | Fachada expuesta a ruido urbano intenso",
+        "IMPORTANTE | CTE-DB-HR | VT4/2 | Fachada expuesta a ruido urbano intenso",
+        "IMPORTANTE | CTE-DB-HR | VT6/2 | Fachada expuesta a ruido urbano intenso",
+        "IMPORTANTE | CTE-DB-SUA-1 | VT1/3 | Ningún baño de la vivienda es accesible"
+      ]
+    },
+    "zona_cte": {
+      "ciudad_no_reconocida": "C",
+      "por_defecto": "C",
+      "rehabilitacion_zona_a": "A",
+      "unifamiliar_zona_d": "D"
+    }
+  }
 }
