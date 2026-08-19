@@ -38,6 +38,17 @@ PDF = os.path.join(RAIZ, "ingesta", "estado", "cache",
                    "codigotecnico__DB-SI__0a2e78cd6247.pdf")
 XML = os.path.join(RAIZ, "tests", "fixtures", "boe", "BOE-A-2006-5515.xml")
 
+# El PDF vive en `ingesta/estado/cache/`, que es una cache derivada y esta en
+# `.gitignore`: se descarga, no se versiona. En una copia recien clonada no
+# esta, y sin el este script no puede comprobar nada. Se dice y se sale con 0,
+# como el resto de los scripts que dependen de una entrada externa.
+for _ruta, _que in ((PDF, "el PDF del DB-SI (cache de ingesta, no se versiona)"),
+                    (XML, "el XML del BOE")):
+    if not os.path.isfile(_ruta):
+        print("[SALTA] %s no disponible en %s. Ninguna comprobacion ejecutada."
+              % (_que, _ruta))
+        raise SystemExit(0)
+
 fallos = []
 comprobaciones = 0
 

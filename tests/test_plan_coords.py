@@ -25,6 +25,17 @@ from analyzer.evaluator import evaluate_advanced  # noqa: E402
 from analyzer import plan_svg  # noqa: E402
 
 DXF = os.path.join(os.path.dirname(RAIZ), "ejemplo.dxf")
+
+# `ejemplo.dxf` es un plano real de cliente: no esta -- ni puede estar -- en el
+# repositorio, que es publico. Sin el, este script no comprueba nada, y decirlo
+# es la unica salida honesta: reventar con `FileNotFoundError` presenta como
+# fallo del producto lo que solo es un fichero que no se puede publicar, y es
+# lo primero que le pasaria a cualquiera que clone el repositorio.
+if not os.path.isfile(DXF):
+    print("[SALTA] ejemplo.dxf no disponible en %s -- este script necesita un "
+          "plano real, que no se versiona. Ninguna comprobacion ejecutada." % DXF)
+    raise SystemExit(0)
+
 print("parseando", DXF, "...")
 doc = load_document(DXF)
 rooms = build_rooms_from_document(doc, layer=AREA_LAYER)
