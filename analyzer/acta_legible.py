@@ -95,20 +95,73 @@ def _explicacion_vivienda_sin_total(vivienda: str, motivo: str) -> Optional[Expl
     return Explicacion(porque=porque, cifra=cifra)
 
 
-def clasificar(texto: str) -> dict:
+def _vivienda_en_datos(nombre_vivienda: str, datos) -> Optional[dict]:
+    """Busca `nombre_vivienda` dentro de `medicion.viviendas` en los datos
+    del acta y devuelve su dict tal cual lo produjo el motor de medición
+    (piezas, solapes...). `None` si el acta no trae ese dato o esa vivienda
+    -- nunca se inventa una entidad a partir de sólo el texto del motivo."""
+    for d in datos or ():
+        if d.get("nombre") != "medicion.viviendas":
+            continue
+        for v in d.get("valor") or ():
+            if v.get("vivienda") == nombre_vivienda:
+                return v
+    return None
+
+
+def _capa_de_pieza(vivienda: dict, rotulo: str) -> Optional[str]:
+    for p in vivienda.get("piezas") or ():
+        if p.get("rotulo") == rotulo:
+            return p.get("capa")
+    return None
+
+
+def _entidades_del_solape(vivienda: dict) -> Optional[list]:
+    """Las piezas concretas del DXF -- rótulo y capa, tal cual vienen del
+    motor de medición -- responsables de que esta vivienda se quede sin
+    total: las dos partes de cada solape registrado. `None` si el propio
+    acta no trae ningún `solape` que señalar (no se inventa una entidad que
+    el motor no ha dado); DXF no tiene un identificador tipo GUID, así que
+    rótulo + capa es la referencia más concreta que hay."""
+    solapes = vivienda.get("solapes") or ()
+    if not solapes:
+        return None
+    vistos: list = []
+    lineas: list = []
+    for s in solapes:
+        for rotulo in (s.get("una"), s.get("otra")):
+            if not rotulo or rotulo in vistos:
+                continue
+            vistos.append(rotulo)
+            capa = _capa_de_pieza(vivienda, rotulo)
+            lineas.append("Pieza: %s · Capa: %s" % (rotulo, capa or "sin capa registrada"))
+    return lineas or None
+
+
+def clasificar(texto: str, datos=()) -> dict:
     """Una limitación del acta -> qué mostrar debajo de su desplegable.
 
     Devuelve siempre `tipo`: `"caso_conocido"` (con `porque` y `cifra`, los
-    dos no vacíos) o `"pendiente"` (los dos `None`, y la página lo marca como
-    TODO en vez de mostrar un hueco).
+    dos no vacíos, y `entidades` -- lista de líneas "Pieza: ... · Capa: ..."
+    o `None` si el acta no trae con qué señalarlas) o `"pendiente"`
+    (`porque`/`cifra`/`entidades` los tres `None`: sin caso real, tampoco hay
+    entidad que señalar).
+
+    `datos` es la sección "Qué se ha establecido" del propio acta
+    (`Acta.a_dict()["datos"]`) -- de ahí, y sólo de ahí, sale la entidad del
+    DXF. Se puede omitir (por compatibilidad con quien sólo quiera
+    porqué/cifra), y entonces `entidades` sale siempre `None`.
     """
     coincide = _PATRON_SIN_TOTAL.match(texto)
     if coincide:
-        explicacion = _explicacion_vivienda_sin_total(coincide.group(1), coincide.group(2))
+        nombre_vivienda = coincide.group(1)
+        explicacion = _explicacion_vivienda_sin_total(nombre_vivienda, coincide.group(2))
         if explicacion:
+            vivienda = _vivienda_en_datos(nombre_vivienda, datos)
+            entidades = _entidades_del_solape(vivienda) if vivienda else None
             return {"tipo": "caso_conocido", "porque": explicacion.porque,
-                    "cifra": explicacion.cifra}
-    return {"tipo": "pendiente", "porque": None, "cifra": None}
+                    "cifra": explicacion.cifra, "entidades": entidades}
+    return {"tipo": "pendiente", "porque": None, "cifra": None, "entidades": None}
 
 
 # --- «Qué se ha establecido» en español llano ---------------------------------
@@ -255,6 +308,8 @@ details.limitacion[open] summary::before { content: "▾ "; color: var(--acento)
          background: var(--panel-alto); border-radius: 4px; padding: 1px 7px; margin-top: 8px; }
 .pendiente { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--borde);
              font-size: 12.5px; color: var(--tenue); }
+.entidad { margin-top: 8px; font-family: var(--mono); font-size: 11.5px; color: var(--texto); }
+.entidad-vacia { font-family: inherit; font-style: italic; color: var(--tenue); }
 .todo { font-family: var(--mono); font-size: 10.5px; color: var(--aviso);
         border: 1px solid var(--aviso); border-radius: 4px; padding: 0 5px; margin-right: 6px; }
 .sello { margin-top: 34px; font-family: var(--mono); font-size: 11px; color: var(--tenue);
@@ -281,12 +336,25 @@ def _seccion_datos(datos) -> str:
     return "\n".join(filas)
 
 
-def _seccion_limitaciones(no_comprobado) -> str:
+def _bloque_entidad(entidades: Optional[list], *, hay_caso_real: bool) -> str:
+    """El último eslabón de la trazabilidad: la pieza y capa concretas del
+    DXF, o -- si no hay -- por qué no las hay, nunca en silencio."""
+    if entidades:
+        lineas = "<br>".join(_e(linea) for linea in entidades)
+        return "<div class='entidad'>%s</div>" % lineas
+    if hay_caso_real:
+        motivo = "el acta de esta ejecución no trae los solapes con los que señalarlas"
+    else:
+        motivo = "no hay un caso real todavía del que señalar una entidad concreta"
+    return "<div class='entidad entidad-vacia'>Pieza del DXF: %s.</div>" % _e(motivo)
+
+
+def _seccion_limitaciones(no_comprobado, datos=()) -> str:
     if not no_comprobado:
         return "<p class='meta'>(nada que declarar)</p>"
     bloques = []
     for texto in no_comprobado:
-        ficha = clasificar(texto)
+        ficha = clasificar(texto, datos)
         if ficha["tipo"] == "caso_conocido":
             # Etiqueta visible en el `<summary>`, no sólo dentro del
             # desplegable: tiene que distinguirse de un caso pendiente sin
@@ -295,7 +363,9 @@ def _seccion_limitaciones(no_comprobado) -> str:
             cuerpo = (
                 "<div class='porque'>%s</div>"
                 "<div class='cifra'>%s</div>"
-                % (_e(ficha["porque"]), _e(ficha["cifra"]))
+                "%s"
+                % (_e(ficha["porque"]), _e(ficha["cifra"]),
+                   _bloque_entidad(ficha["entidades"], hay_caso_real=True))
             )
         else:
             etiqueta = "<span class='etiqueta etiqueta-todo'>TODO · sin caso real</span>"
@@ -304,6 +374,7 @@ def _seccion_limitaciones(no_comprobado) -> str:
                 "Todavía no hay un caso real probado de esta limitación con el que "
                 "escribir su explicación en lenguaje llano sin inventarla. Se "
                 "muestra el texto técnico del acta tal cual, sin traducir.</div>"
+                "%s" % _bloque_entidad(None, hay_caso_real=False)
             )
         bloques.append(
             "<details class='limitacion'><summary>%s%s</summary>%s</details>"
@@ -325,6 +396,7 @@ def render(acta: dict) -> str:
         _e(acta.get("proyecto_id")), _e(acta.get("ejecucion_id")), _e(acta.get("emitida_en")))
     leyenda = _e(acta.get("leyenda") or "")
     sello = _e(acta.get("sello") or "(sin sellar)")
+    datos = acta.get("datos") or ()
 
     return """<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
@@ -343,7 +415,7 @@ def render(acta: dict) -> str:
 <div class="sello">Sello: %s</div>
 </main></body></html>""" % (
         titulo, _ESTILO, titulo, meta, leyenda,
-        _seccion_datos(acta.get("datos") or ()),
-        _seccion_limitaciones(acta.get("no_comprobado") or ()),
+        _seccion_datos(datos),
+        _seccion_limitaciones(acta.get("no_comprobado") or (), datos),
         sello,
     )

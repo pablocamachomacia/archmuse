@@ -125,18 +125,18 @@
       "nombre": "medicion.informe",
       "origen": "derivado",
       "unidad": null,
-      "valor": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmp5dglu3xh\\medicion.pdf",
+      "valor": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmpw2yjs7_8\\medicion.pdf",
       "verificable": true
     }
   ],
   "ejecucion_id": "e-demo-doc1",
-  "emitida_en": "2026-08-19T14:31:06+00:00",
+  "emitida_en": "2026-08-19T20:25:52+00:00",
   "entregables": [
     {
       "borrador": true,
       "nombre": "Medición de superficies útiles",
-      "ruta": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmp5dglu3xh\\medicion.pdf",
-      "sello": "ab966b26cac4623e7bc381c9d4f838e5db9a53a8f206d4ce5120e4d561d854f6",
+      "ruta": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmpw2yjs7_8\\medicion.pdf",
+      "sello": "f970ef01c85d1d643e1e59a0d3cd88b241be47fe1c9dc5788ac840c0bf585c65",
       "tipo": "pdf"
     }
   ],
@@ -232,7 +232,7 @@
           "argumentos": {
             "capa": null,
             "factor_escala": null,
-            "ruta": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmp5dglu3xh\\planta_sintetica.dxf"
+            "ruta": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmpw2yjs7_8\\planta_sintetica.dxf"
           },
           "capacidad": "plano.medicion_de_la_planta",
           "ok": true,
@@ -242,23 +242,23 @@
           "argumentos": {
             "capa": null,
             "factor_escala": null,
-            "ruta": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmp5dglu3xh\\planta_sintetica.dxf",
-            "ruta_destino": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmp5dglu3xh\\medicion.pdf"
+            "ruta": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmpw2yjs7_8\\planta_sintetica.dxf",
+            "ruta_destino": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmpw2yjs7_8\\medicion.pdf"
           },
           "capacidad": "plano.medicion_en_pdf",
           "ok": true,
           "version": "1.0.0"
         }
       ],
-      "momento": "2026-08-19T14:31:06+00:00",
+      "momento": "2026-08-19T20:25:52+00:00",
       "motivo": "",
       "paso_id": "medir",
-      "sello_del_paso": "c470c3c9b8d39ea4ef3058feac1c884252c6374802d8caa2cdb697c6c292003c",
+      "sello_del_paso": "dc4d6903e90f933d9d52f68101f731afe2d5b667c2ee3fab08b948914670bc23",
       "skill": "superficies.medicion_de_planta@1.0.0",
       "verificado": true
     }
   ],
   "preguntas_abiertas": [],
   "proyecto_id": "proyecto-demo-doc1",
-  "sello": "584261a91e7030f338456c9a49dcf3203fe4f31f39f365b8b304cc109925c844"
+  "sello": "9f876832924f0b9d1a6829b516c974bd4ca2281b9053cacc5a598b9ecd9d7992"
 }

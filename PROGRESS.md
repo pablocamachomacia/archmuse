@@ -713,3 +713,35 @@ tocado, como se pidió.
 veterano) -- la hace Pablo, no el agente.
 
 Sin commit adicional más allá del backlog.
+
+## noche 14: el último eslabón de la trazabilidad -- la pieza y la capa del DXF
+
+Pedido de Pablo tras validar el criterio de DOC-1: cada bloque desplegado
+del acta legible explicaba el motivo en prosa pero no señalaba la entidad
+concreta del DXF de la que sale (rótulo de la pieza, capa).
+
+**Hecho, sin tocar medición ni el resto de la interfaz:**
+- `analyzer/acta_legible.py::clasificar()` acepta ahora `datos` (la sección
+  "Qué se ha establecido" del propio acta) y, para el caso conocido ("sin
+  total útil" por solape), busca la vivienda en `medicion.viviendas` y lee
+  sus `solapes` -- las piezas concretas que se disputan el mismo suelo -- y
+  su `capa`, tal cual las trae el motor de medición. Ningún dato nuevo:
+  rótulo y capa ya estaban en el acta, sólo faltaba mostrarlos.
+- Nueva línea "Pieza: X · Capa: Y" por cada pieza implicada, dentro del
+  mismo `<details>`, debajo de la cifra.
+- Los TODO (sin caso real) llevan ahora, en vez de silencio, "Pieza del
+  DXF: no hay un caso real todavía del que señalar una entidad concreta." --
+  mismo criterio que el resto del módulo: nunca omitir, decir el porqué.
+- DXF no tiene un identificador tipo GUID (a diferencia de IFC): rótulo +
+  capa es la referencia más concreta que hay, y así se documenta en el
+  código para que nadie intente inventar un GUID más adelante.
+
+**Tests:** 2 nuevos en `tests/test_acta_legible.py` (16/16 en el fichero) --
+uno verifica que las piezas señaladas son las mismas que trae el acta para
+esa vivienda (no un rótulo cualquiera), otro que ningún bloque, ni caso
+conocido ni TODO, se queda sin decir algo sobre la entidad. Regresión sobre
+`test_acta_legible_endpoint.py`, `test_memoria_justificativa.py`,
+`test_memoria_superficies_endpoint.py`, `test_conversacion_memoria_superficies.py`,
+`test_preguntar_endpoint.py`, `test_conversacion_archmuse_ui.py`: 46/46.
+
+Demo regenerada: `docs/design/2026-08-19-doc1-acta-legible-demo.html`.

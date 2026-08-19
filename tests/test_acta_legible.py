@@ -158,6 +158,68 @@ def test_cada_limitacion_lleva_una_etiqueta_visible_de_caso_o_todo(acta):
         assert not (tiene_comprobado and tiene_todo)
 
 
+# --- El último eslabón: la pieza y la capa concretas del DXF ---------------
+# (petición de Pablo, sesión 2026-08-19, noche 14: cada bloque desplegado
+# explicaba el motivo pero no señalaba la entidad del DXF de la que sale.)
+
+_PATRON_PIEZA_CAPA = re.compile(r"^Pieza: .+ · Capa: .+$")
+
+
+def test_todo_caso_conocido_con_solapes_trae_las_piezas_implicadas(acta):
+    """La entidad no se inventa desde el texto del motivo: sale de
+    `medicion.viviendas` -> `solapes`, que es donde el motor de medición ya
+    dice qué dos piezas se disputan el mismo suelo."""
+    datos = acta.get("datos") or ()
+    vio_alguna = False
+    for texto in acta.get("no_comprobado") or ():
+        ficha = acta_legible.clasificar(texto, datos)
+        if ficha["tipo"] != "caso_conocido":
+            continue
+        vio_alguna = True
+        assert ficha["entidades"], (
+            "caso conocido sin ninguna pieza señalada: %s" % texto)
+        for linea in ficha["entidades"]:
+            assert _PATRON_PIEZA_CAPA.match(linea), (
+                "la línea de entidad no tiene la forma «Pieza: ... · Capa: ...»: %r" % linea)
+        # Las piezas nombradas tienen que ser las mismas que trae el acta
+        # para esa vivienda -- no cualquier rótulo.
+        vivienda = next(
+            v for d in datos if d.get("nombre") == "medicion.viviendas"
+            for v in d.get("valor") or () if v.get("vivienda") in texto
+        )
+        rotulos_reales = {p.get("rotulo") for p in vivienda.get("piezas") or ()}
+        for linea in ficha["entidades"]:
+            rotulo = linea.split(" · ")[0].removeprefix("Pieza: ")
+            assert rotulo in rotulos_reales, (
+                "la entidad nombra una pieza que no está en la vivienda: %r" % linea)
+    assert vio_alguna, "el acta demo no tiene ningún caso conocido que probar"
+
+
+def test_todo_pendiente_deja_explicito_que_no_hay_entidad_que_senalar(acta):
+    """Criterio de Pablo: nunca en silencio -- para un TODO sin caso real
+    tampoco hay pieza que señalar, y la página lo tiene que decir, no
+    omitirlo."""
+    datos = acta.get("datos") or ()
+    vio_algun_pendiente = False
+    for texto in acta.get("no_comprobado") or ():
+        ficha = acta_legible.clasificar(texto, datos)
+        if ficha["tipo"] != "pendiente":
+            continue
+        vio_algun_pendiente = True
+        assert ficha["entidades"] is None
+
+    assert vio_algun_pendiente, "el acta demo no tiene ningún pendiente que probar"
+
+    pagina = acta_legible.render(acta)
+    bloques = re.findall(r"<details class='limitacion'>.*?</details>", pagina, re.S)
+    for bloque in bloques:
+        # Cada bloque, sea caso conocido o TODO, tiene un `<div class='entidad'>`
+        # (con las piezas) o un `<div class='entidad entidad-vacia'>` (con el
+        # motivo de que no las hay) -- nunca ninguno de los dos.
+        assert "class='entidad" in bloque, (
+            "un desplegable no dice nada sobre la entidad del DXF: %s" % bloque[:200])
+
+
 def test_una_vista_no_varias_pestanas():
     """HAZ #1 del encargo del 2026-08-19 (noche): una sola vista."""
     fuente = (RAIZ / "analyzer" / "acta_legible.py").read_text(encoding="utf-8")
