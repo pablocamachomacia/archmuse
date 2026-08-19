@@ -103,6 +103,24 @@ def test_una_pregunta_puede_citar_las_cifras_del_estado_sin_inventarlas(cliente_
     assert datos["cifras_sin_respaldo"] == []
 
 
+def test_una_cifra_inventada_si_se_marca_como_sin_respaldo(cliente_http, monkeypatch):
+    """Criterio nº4 del PRD, mitad sin cubrir hasta ahora (`CP-7`, sesión
+    2026-08-19, noche 12): el test anterior sólo probaba que una cifra REAL
+    no se marca. Eso no demuestra que `cifras_sin_respaldo` sepa detectar
+    nada -- un mecanismo que nunca se dispara y uno que funciona se ven
+    idénticos si sólo se le da a probar el caso positivo. Aquí el modelo
+    (guionizado) cita un margen que no está en ninguna alternativa del
+    estado (`ALTERNATIVAS` sólo trae 18.2 % y 21.4 %) y el endpoint tiene
+    que devolverla en `cifras_sin_respaldo`, no dejarla pasar como si
+    viniera de una herramienta."""
+    modulo_app, http = cliente_http
+    _guionizar(monkeypatch, modulo_app, RespuestaFalsa(
+        BloqueTexto("La B, con 94.7 % de margen.")))
+
+    datos = _pedir(http, "¿Cuál tiene mejor rentabilidad?").get_json()
+    assert "94.7" in datos["cifras_sin_respaldo"]
+
+
 # --- 2. Una orden sí modifica --------------------------------------------
 
 def test_una_orden_invoca_la_herramienta_y_devuelve_los_parametros_nuevos(cliente_http, monkeypatch):
@@ -124,6 +142,62 @@ def test_una_orden_invoca_la_herramienta_y_devuelve_los_parametros_nuevos(client
     assert datos["antes"]["dorm_2"] == 6 and datos["despues"]["dorm_2"] == 5
     assert datos["hay_que_regenerar"] is True
     assert [p["capacidad"] for p in datos["pasos"]] == ["proyecto.ajustar_programa"]
+
+
+def test_toda_modificacion_queda_en_el_acta(cliente_http, monkeypatch):
+    """Criterio de aceptación nº7 del PRD, nunca comprobado hasta ahora
+    (sesión 2026-08-19, noche 8): "Toda modificación queda en el acta:
+    petición, herramienta, argumentos, resultado." No es un acta de Skill
+    (el copiloto no invoca ninguna) -- `agente.acta.levantar_de_pasos()`,
+    construida directamente desde los pasos del bucle."""
+    modulo_app, http = cliente_http
+    _guionizar(
+        monkeypatch, modulo_app,
+        RespuestaFalsa(BloqueHerramienta(NOMBRE_HERRAMIENTA, {
+            "parametros": copy.deepcopy(PARAMS),
+            "operacion": "cambiar_mix",
+            "argumentos": {"dorm_2": "-1"},
+        })),
+        RespuestaFalsa(BloqueTexto("Quitada una vivienda de 2 dormitorios: de 6 a 5.")),
+    )
+
+    datos = _pedir(http, "Elimina una vivienda de dos dormitorios").get_json()
+
+    acta = datos["acta"]
+    assert acta["objetivo"] == "Elimina una vivienda de dos dormitorios"  # la petición
+    assert acta["sello"]  # sellada, como cualquier acta
+
+    (paso,) = acta["pasos"]
+    assert paso["skill"] == "proyecto.ajustar_programa"  # la herramienta
+    assert paso["argumentos"] == {"operacion": "cambiar_mix", "argumentos": {"dorm_2": "-1"},
+                                   "parametros": PARAMS}  # los argumentos, tal cual se invocó
+    assert paso["resultado"]["despues"]["dorm_2"] == 5  # el resultado
+    assert paso["verificado"] is True
+
+    # La cifra que de verdad importa (el mix nuevo) tiene que estar en "qué
+    # se ha establecido", trazable a la capacidad que la produjo. `despues`
+    # de `ajustar_programa()` ya es plano (`{"dorm_2": 5, ...}`, no anidado
+    # bajo "mix_viviendas") -- una sola entrada por cifra, sin dict en
+    # crudo (ver `_aplanar` en agente/acta.py, para cuando sí venga anidado).
+    dato_dorm2 = next(d for d in acta["datos"] if d["nombre"].endswith(".dorm_2"))
+    assert dato_dorm2["valor"] == 5
+    assert dato_dorm2["fuente"] == "proyecto.ajustar_programa@1.0.0"
+
+
+def test_una_pregunta_sin_cambios_tambien_lleva_acta_pero_vacia(cliente_http, monkeypatch):
+    """Una pregunta no modifica nada (criterio nº2) -- el acta lo dice con
+    hechos (cero pasos), no lo omite. Un acta ausente sería peor que una
+    vacía: obligaría a adivinar si "no hay acta" significa "no se comprobó
+    nada" o "no se ejecutó nada"."""
+    modulo_app, http = cliente_http
+    _guionizar(monkeypatch, modulo_app, RespuestaFalsa(
+        BloqueTexto("La alternativa B: 21.4 % de margen frente a 18.2 % de la A.")))
+
+    datos = _pedir(http, "¿Cuál tiene mejor rentabilidad?").get_json()
+
+    assert datos["acta"]["pasos"] == []
+    assert datos["acta"]["datos"] == []
+    assert datos["acta"]["completa"] is False  # nada que ejecutar no es "completo"
 
 
 def test_un_ajuste_imposible_no_deja_el_proyecto_a_medias(cliente_http, monkeypatch):
@@ -179,6 +253,48 @@ def test_el_estado_del_proyecto_llega_al_modelo(cliente_http, monkeypatch):
 
 
 # --- 4. Las negativas ----------------------------------------------------
+
+def test_una_operacion_no_soportada_es_una_negativa_explicita_no_un_intento_aproximado(
+        cliente_http, monkeypatch):
+    """Criterio nº3 del PRD, sin cubrir hasta ahora (`CP-7`, sesión
+    2026-08-19, noche 12): "una petición que ArchMuse no sabe atender produce
+    una negativa explícita, no un intento aproximado". Existía el test de la
+    capacidad suelta (`tests/test_agente_proyecto.py`), pero no a través del
+    endpoint -- que es donde vive de verdad el criterio de aceptación, porque
+    es lo que ve el arquitecto.
+
+    Aquí el modelo (guionizado) pide una operación que
+    `proyecto.ajustar_programa` no sabe hacer. Se rechaza en el primer punto
+    posible -- la validación de argumentos contra el `enum` del esquema,
+    antes de que la función llegue a ejecutarse -- en vez de aproximarla a la
+    más parecida (p. ej. tratar "cambia el material" como si fuera "cambia
+    la superficie"), y esa negativa explícita -- con el nombre de la
+    operación pedida y las que sí admite -- tiene que llegar íntegra hasta
+    la respuesta."""
+    modulo_app, http = cliente_http
+    _guionizar(
+        monkeypatch, modulo_app,
+        RespuestaFalsa(BloqueHerramienta(NOMBRE_HERRAMIENTA, {
+            "parametros": copy.deepcopy(PARAMS),
+            "operacion": "cambiar_material_fachada",
+            "argumentos": {},
+        })),
+        RespuestaFalsa(BloqueTexto(
+            "No puedo cambiar el material de fachada: puedo ajustar el mix "
+            "de viviendas, las plantas o la superficie objetivo.")),
+    )
+
+    datos = _pedir(http, "Cambia el material de fachada a ladrillo").get_json()
+
+    assert datos["hubo_cambio"] is False
+    assert "parametros" not in datos
+    assert datos["pasos"] and datos["pasos"][0]["ok"] is False
+    # La negativa, íntegra y explícita, en "qué no se ha comprobado" del
+    # acta -- no un "no se ha podido" genérico ni un ajuste silencioso.
+    (motivo,) = [d for d in datos["acta"]["no_comprobado"] if "ajustar_programa" in d]
+    assert "cambiar_material_fachada" in motivo
+    assert "cambiar_mix" in motivo and "cambiar_plantas" in motivo
+
 
 def test_sin_peticion_no_se_llama_al_modelo(cliente_http, monkeypatch):
     modulo_app, http = cliente_http

@@ -32,7 +32,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
 from .ejecucion import HECHO, ResultadoDeEjecucion
 from .registro import CapacidadDesconocida, Registro, RegistroDeSkills, SkillDesconocida
@@ -234,6 +234,116 @@ def levantar(resultado: ResultadoDeEjecucion, *, capacidades: Registro,
         preguntas_abiertas=tuple(resultado.preguntas),
         entregables=tuple(entregables),
         completa=resultado.completa,
+    )
+
+
+def _aplanar(prefijo: str, valor) -> List[Tuple[str, Any]]:
+    """Un `dict` anidado (p.ej. `mix_viviendas`) -> una entrada por hoja.
+
+    `proyecto.ajustar_programa.mix_viviendas` como una sola entrada obligaría
+    a `_formatear_dato` (analyzer/acta_legible.py) a mostrar "dato
+    estructurado, sin traducción" -- exactamente lo que ese módulo existe
+    para evitar. Aplanado, cada cifra (dorm_1, dorm_2...) queda trazable por
+    separado, que es lo que pide la regla de oro."""
+    if isinstance(valor, dict) and valor:
+        piezas: List[Tuple[str, Any]] = []
+        for clave, sub in valor.items():
+            piezas.extend(_aplanar("%s.%s" % (prefijo, clave), sub))
+        return piezas
+    return [(prefijo, valor)]
+
+
+def levantar_de_pasos(peticion: str, pasos: Sequence[Any], *, capacidades: Registro,
+                      proyecto_id: str, ejecucion_id: str,
+                      emitida_en: Optional[str] = None) -> Acta:
+    """Acta para el bucle de capacidades sueltas del copiloto
+    (`agente.nucleo.ejecutar` sin Skills, sin `Ejecutor` ni `Plan`).
+
+    Cubre el criterio de aceptación nº7 de
+    `docs/prd/2026-08-19-copiloto-que-modifica-el-proyecto.md`: **"Toda
+    modificación queda en el acta: petición, herramienta, argumentos,
+    resultado."** No es un `levantar()` en pequeño: `levantar()` necesita un
+    `ResultadoDeEjecucion` que sólo existe cuando hubo una Skill de por
+    medio, y el copiloto —hoy, con `_CAPACIDADES_DEL_COPILOTO`— nunca
+    invoca ninguna. De ahí que el copiloto no levantara acta hasta ahora: no
+    es un olvido de una llamada, es que las dos arquitecturas de ejecución
+    (Skill vía `Ejecutor`, capacidad suelta vía este bucle) no se tocaban en
+    ningún punto. Este es ese punto.
+
+    `pasos` es cualquier secuencia de objetos con `.capacidad`, `.version`,
+    `.argumentos`, `.resultado` (`dict`) y `.ok` -- la forma de
+    `agente.nucleo.PasoEjecutado`, sin importar el tipo en tiempo de
+    ejecución (evita el ciclo `acta -> nucleo -> ... -> acta`).
+
+    Un paso con `ok=False` no aporta ningún dato: va a "qué no se ha
+    comprobado" con su motivo, igual que el resto del acta.
+    """
+    datos: List[dict] = []
+    pasos_acta: List[dict] = []
+    no_comprobado: List[str] = []
+
+    for indice, paso in enumerate(pasos):
+        resultado = paso.resultado or {}
+        fuente = "%s@%s" % (paso.capacidad, paso.version)
+        motivo = None if paso.ok else (resultado.get("detalle") or resultado.get("error"))
+
+        pasos_acta.append({
+            "paso_id": "paso-%d" % (indice + 1),
+            "skill": paso.capacidad,
+            "argumentos": dict(paso.argumentos),
+            "resultado": resultado,
+            "estado": HECHO if paso.ok else "fallido",
+            "momento": None,
+            "motivo": motivo,
+            "invocaciones": [{"capacidad": paso.capacidad, "version": paso.version}],
+            "comprobaciones": [],
+            "verificado": paso.ok,
+            "sello_del_paso": None,
+        })
+
+        if not paso.ok:
+            no_comprobado.append(
+                "«%s»: no se aplicó — %s" % (paso.capacidad, motivo or "sin detalle")
+            )
+            continue
+
+        # `antes`/`despues` es la convención de `proyecto.ajustar_programa`
+        # (y la que se espera de cualquier capacidad de escritura futura,
+        # ver su docstring). Si una capacidad no la sigue, no se inventa un
+        # dato: se listan sus campos de nivel superior tal cual, en vez de
+        # fingir que no hubo resultado.
+        despues = resultado.get("despues")
+        if isinstance(despues, dict) and despues:
+            for campo, valor_nuevo in despues.items():
+                for nombre, hoja in _aplanar("%s.%s" % (paso.capacidad, campo), valor_nuevo):
+                    datos.append({
+                        "nombre": nombre, "valor": hoja, "unidad": None,
+                        "etiqueta": "hecho", "fuente": fuente,
+                    })
+        else:
+            for campo, valor in resultado.items():
+                if campo in ("ok", "antes", "despues"):
+                    continue
+                for nombre, hoja in _aplanar("%s.%s" % (paso.capacidad, campo), valor):
+                    datos.append({
+                        "nombre": nombre, "valor": hoja, "unidad": None,
+                        "etiqueta": "hecho", "fuente": fuente,
+                    })
+
+        no_comprobado.extend(_limitaciones_de_capacidad(paso.capacidad, capacidades))
+
+    pasos_lista = list(pasos)
+    return Acta(
+        objetivo=peticion,
+        proyecto_id=proyecto_id,
+        ejecucion_id=ejecucion_id,
+        emitida_en=emitida_en or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        datos=tuple(datos),
+        pasos=tuple(pasos_acta),
+        no_comprobado=tuple(dict.fromkeys(no_comprobado)),
+        preguntas_abiertas=(),
+        entregables=(),
+        completa=bool(pasos_lista) and all(p.ok for p in pasos_lista),
     )
 
 
