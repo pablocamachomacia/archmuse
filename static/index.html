@@ -232,6 +232,107 @@
   </div>
 </div>
 
+<!-- Conversación con ArchMuse. Sesión 2026-08-19, noche 4: la primera puerta
+     de conversación real del producto, dentro de la SPA -- no una página
+     aparte (retira /preguntar, que cubría el mismo endpoint por separado).
+     Noche 5: "/" abre esto directamente (ver app.py e init() en app.js), y
+     el panel se rediseña con el nivel de acabado de la portada clásica --
+     su propio `<aside>` (misma familia de clases que `#sidebar`: `.sidebar`,
+     `.sidebar-item`, `.sidebar-icono`, `.sidebar-badge-proximamente` -- CERO
+     clase nueva ahí, es el mismo componente), fila de "acciones rápidas" y
+     barra de estado. Mismo lienzo oscuro/vidrio que gobierna el resto de la
+     app (--bg-primary/--bg-card/--glass-blur/--accent) -- A PROPÓSITO no
+     hereda la paleta "papel" de #checklist-cte y compañía: aquellos son
+     documentos que se leen, esto es el agente hablando. Cableado enteramente
+     desde static/app.js. Iconos: glifos tipográficos monocromos, no emoji
+     (mismo criterio que el resto de la app, ver el comentario junto a
+     #btn-toggle-entorno) -- nada de mascota ni avatar. -->
+<div id="conversacion-archmuse" class="bg-technical">
+  <div class="conv-shell">
+    <aside class="sidebar conv-sidebar">
+      <div class="sidebar-top">
+        <span class="sidebar-brand conv-sidebar-marca">ArchMuse</span>
+      </div>
+      <div class="sidebar-acciones">
+        <span class="sidebar-item sidebar-item-primary conv-sidebar-activo" aria-current="page">
+          <span class="sidebar-icono" aria-hidden="true">?</span>
+          <span class="sidebar-etiqueta">Conversación</span>
+        </span>
+        <a class="sidebar-item" href="/proyectos">
+          <span class="sidebar-icono" aria-hidden="true">&#9750;</span>
+          <span class="sidebar-etiqueta">Proyectos</span>
+        </a>
+      </div>
+      <div class="sidebar-pie">
+        <button type="button" class="sidebar-item" disabled title="Ajustes — próximamente. Aún no hay opciones que configurar.">
+          <span class="sidebar-icono" aria-hidden="true">&#9881;</span>
+          <span class="sidebar-etiqueta">Ajustes</span>
+          <span class="sidebar-badge-proximamente">próximamente</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="conv-main">
+      <div class="conv-header">
+        <span class="conv-header-marca">ArchMuse</span>
+        <span class="conv-header-sub" id="conv-header-sub">conversación</span>
+        <button type="button" id="btn-conversacion-cerrar" class="conv-cerrar">&larr; Volver</button>
+      </div>
+
+      <!-- Acciones rápidas: la única real mide de verdad (misma pregunta que
+           dispara `superficies.medicion_de_planta`); el resto se rellena
+           desde `CONV_ROADMAP` en app.js -- una sola lista con la del panel
+           "fuera de alcance", nunca dos catálogos que se puedan desincronizar. -->
+      <div class="conv-acciones-rapidas" id="conv-acciones-rapidas">
+        <button type="button" class="conv-accion-card conv-accion-card-real"
+                data-pregunta="¿Cuánta superficie útil tiene esta planta?">
+          <span class="conv-accion-icono" aria-hidden="true">&#9638;</span>
+          <span class="conv-accion-titulo">Medir superficies</span>
+          <span class="conv-accion-sub">Superficie útil por estancia, con procedencia</span>
+        </button>
+        <div class="conv-accion-card-resto" id="conv-acciones-rapidas-resto"></div>
+      </div>
+
+      <div class="conv-log" id="conv-log">
+        <div class="conv-vacio">
+          Pregunta algo sobre un plano, en tus palabras. ArchMuse solo contesta con
+          lo que una capacidad real ya ejecutada puede comprobar — si no tiene una
+          para tu pregunta, te lo dice en vez de inventar.
+        </div>
+      </div>
+
+      <form id="conv-form" class="conv-form" autocomplete="off">
+        <div class="conv-adjunto" id="conv-adjunto" hidden></div>
+        <div class="conv-entrada">
+          <!-- Sugerencia en línea (noche 7): `#conv-sugerencia-fantasma` vive
+               DETRÁS del textarea (mismo tipo de letra/relleno, ver CSS),
+               mostrando lo ya escrito en transparente (sólo para ocupar el
+               mismo espacio) + el resto de la pregunta en gris. TAB la
+               acepta -- ver `convActualizarSugerencia()`/wireConversacion en
+               app.js. Nunca sustituye al valor real del textarea. -->
+          <div class="conv-campo-pregunta">
+            <textarea id="conv-pregunta" class="conv-textarea" rows="1"
+                      placeholder="¿Cuánta superficie útil tiene esta planta?" required></textarea>
+            <div class="conv-sugerencia-fantasma" id="conv-sugerencia-fantasma" aria-hidden="true"></div>
+          </div>
+          <input type="file" id="conv-dxf" accept=".dxf" hidden>
+          <button type="button" id="conv-btn-adjuntar" class="btn-ghost conv-btn-adjuntar">Adjuntar DXF</button>
+          <button type="submit" id="conv-btn-enviar" class="btn-primary conv-btn-enviar">Preguntar</button>
+        </div>
+      </form>
+
+      <!-- Barra de estado: SOLO hechos (nombre del fichero adjunto, si lo
+           hay, y el nombre de la Skill que atendería la pregunta) -- nunca
+           una cifra ni un check, ver renderConvAdjunto() en app.js. -->
+      <div class="conv-statusbar">
+        <span class="conv-statusbar-dot" id="conv-statusbar-dot" aria-hidden="true"></span>
+        <span class="conv-statusbar-proyecto" id="conv-statusbar-proyecto">Sin plano adjunto</span>
+        <span class="conv-statusbar-capacidad">superficies.medicion_de_planta</span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Visor georreferenciado (Mapbox GL JS + Threebox) -- ver
      `static/visor-mapa.js`. Mapbox GL JS/Threebox se cargan por CDN desde
      ESE módulo, no desde aquí (a diferencia de three.js, que sí usa el

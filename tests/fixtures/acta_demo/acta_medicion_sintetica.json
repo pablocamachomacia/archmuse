@@ -1,0 +1,264 @@
+{
+  "completa": true,
+  "datos": [
+    {
+      "cita": null,
+      "estado": "KNOWN",
+      "etiqueta": "Calculado por ArchMuse",
+      "fuente": "superficies.medicion_de_planta@1.0.0",
+      "hipotesis": [],
+      "motivo": null,
+      "naturaleza": "calculo",
+      "nombre": "medicion.viviendas",
+      "origen": "derivado",
+      "unidad": null,
+      "valor": [
+        {
+          "exterior_m2": 9.0,
+          "impedimentos": [
+            "hay 2,00 m² dibujados dos veces: la suma de las piezas da 39,00 m² y la superficie que ocupan realmente es 37,00 m²"
+          ],
+          "interior_m2": 30.0,
+          "piezas": [
+            {
+              "ambito": "interior",
+              "area_m2": 20.0,
+              "capa": "00 areas",
+              "familia": "salón + cocina",
+              "rotulo": "Salón/cocina"
+            },
+            {
+              "ambito": "interior",
+              "area_m2": 6.0,
+              "capa": "00 areas",
+              "familia": "dormitorio",
+              "rotulo": "Dormitorio 1"
+            },
+            {
+              "ambito": "interior",
+              "area_m2": 4.0,
+              "capa": "00 areas",
+              "familia": "baño",
+              "rotulo": "Baño"
+            },
+            {
+              "ambito": "exterior",
+              "area_m2": 9.0,
+              "capa": "00 areas",
+              "familia": "terraza",
+              "rotulo": "Terraza"
+            }
+          ],
+          "repartos_dudosos": [],
+          "solapes": [
+            {
+              "area_m2": 2.0,
+              "otra": "Dormitorio 1",
+              "una": "Salón/cocina"
+            }
+          ],
+          "suma_de_piezas_m2": 39.0,
+          "superficie_por_union_m2": 37.0,
+          "total_util_m2": null,
+          "vivienda": "VT1/1"
+        }
+      ],
+      "verificable": true
+    },
+    {
+      "cita": null,
+      "estado": "KNOWN",
+      "etiqueta": "Calculado por ArchMuse",
+      "fuente": "superficies.medicion_de_planta@1.0.0",
+      "hipotesis": [],
+      "motivo": null,
+      "naturaleza": "calculo",
+      "nombre": "medicion.piezas",
+      "origen": "derivado",
+      "unidad": null,
+      "valor": 4,
+      "verificable": true
+    },
+    {
+      "cita": null,
+      "estado": "KNOWN",
+      "etiqueta": "Calculado por ArchMuse",
+      "fuente": "superficies.medicion_de_planta@1.0.0",
+      "hipotesis": [],
+      "motivo": null,
+      "naturaleza": "calculo",
+      "nombre": "medicion.viviendas_con_total",
+      "origen": "derivado",
+      "unidad": null,
+      "valor": 0,
+      "verificable": true
+    },
+    {
+      "cita": null,
+      "estado": "KNOWN",
+      "etiqueta": "Calculado por ArchMuse",
+      "fuente": "superficies.medicion_de_planta@1.0.0",
+      "hipotesis": [],
+      "motivo": null,
+      "naturaleza": "calculo",
+      "nombre": "medicion.sin_total",
+      "origen": "derivado",
+      "unidad": null,
+      "valor": [
+        {
+          "impedimentos": [
+            "hay 2,00 m² dibujados dos veces: la suma de las piezas da 39,00 m² y la superficie que ocupan realmente es 37,00 m²"
+          ],
+          "vivienda": "VT1/1"
+        }
+      ],
+      "verificable": true
+    },
+    {
+      "cita": null,
+      "estado": "KNOWN",
+      "etiqueta": "Calculado por ArchMuse",
+      "fuente": "superficies.medicion_de_planta@1.0.0",
+      "hipotesis": [],
+      "motivo": null,
+      "naturaleza": "calculo",
+      "nombre": "medicion.informe",
+      "origen": "derivado",
+      "unidad": null,
+      "valor": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmp5dglu3xh\\medicion.pdf",
+      "verificable": true
+    }
+  ],
+  "ejecucion_id": "e-demo-doc1",
+  "emitida_en": "2026-08-19T14:31:06+00:00",
+  "entregables": [
+    {
+      "borrador": true,
+      "nombre": "Medición de superficies útiles",
+      "ruta": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmp5dglu3xh\\medicion.pdf",
+      "sello": "ab966b26cac4623e7bc381c9d4f838e5db9a53a8f206d4ce5120e4d561d854f6",
+      "tipo": "pdf"
+    }
+  ],
+  "leyenda": "BORRADOR PARA REVISIÓN DE UN COLEGIADO. ArchMuse asesora; el proyecto lo firma el arquitecto que lo redacta.",
+  "no_comprobado": [
+    "«VT1/1» no lleva superficie útil total: hay 2,00 m² dibujados dos veces: la suma de las piezas da 39,00 m² y la superficie que ocupan realmente es 37,00 m²",
+    "superficies.medicion_de_planta no comprueba: es superficie útil, no construida: no incluye espesores de muro",
+    "superficies.medicion_de_planta no comprueba: no comprueba normativa ni ningún mínimo de superficie: mide, no dictamina",
+    "superficies.medicion_de_planta no comprueba: no rellena el cuadro de superficies del DXF ni escribe nada en el plano: para eso está superficies.cuadro_de_vivienda",
+    "superficies.medicion_de_planta no comprueba: el reparto entre viviendas sale de los rótulos «VT…» del plano; sin ellos se agrupa por proximidad y eso es una suposición de ArchMuse",
+    "superficies.medicion_de_planta no comprueba: el ámbito interior o exterior de una pieza sale de su rótulo, no de su geometría: una pieza mal rotulada se clasifica mal",
+    "superficies.medicion_de_planta no comprueba: no lee muros, huecos ni carpintería: sólo los recintos de la capa de áreas",
+    "plano.medicion_de_la_planta no comprueba: es superficie útil, no construida: no incluye espesores de muro",
+    "plano.medicion_de_la_planta no comprueba: no comprueba normativa ni ningún mínimo de superficie: mide, no dictamina",
+    "plano.medicion_de_la_planta no comprueba: el reparto de recintos entre viviendas sale de los rótulos «VT…» del plano; si el plano no los trae, se agrupa por proximidad geométrica y eso es una suposición de ArchMuse, no una declaración del arquitecto",
+    "plano.medicion_de_la_planta no comprueba: el ámbito interior o exterior de una pieza sale de su rótulo; una pieza rotulada de forma desconocida no se asigna a ninguno de los dos y bloquea el total de su vivienda",
+    "plano.medicion_de_la_planta no comprueba: una vivienda con piezas solapadas, con reparto dudoso o con piezas sin clasificar NO lleva total: las piezas se miden igual y el motivo va escrito",
+    "plano.medicion_de_la_planta no comprueba: no rellena el cuadro de superficies del DXF: para eso está superficies.cuadro_de_vivienda, que sí escribe en el plano",
+    "plano.medicion_en_pdf no comprueba: no calcula nada: presenta la medición tal como la resolvió plano.medicion_de_la_planta",
+    "plano.medicion_en_pdf no comprueba: sale marcado como borrador para revisión de un colegiado, sin opción de quitarlo"
+  ],
+  "objetivo": "Medir una planta con una vivienda que tiene un solape (demo DOC-1)",
+  "pasos": [
+    {
+      "comprobaciones": [
+        {
+          "bloqueante": true,
+          "detalle": "",
+          "no_procede": false,
+          "nombre": "ningun_total_publicado_con_impedimento",
+          "ok": true
+        },
+        {
+          "bloqueante": true,
+          "detalle": "",
+          "no_procede": false,
+          "nombre": "todo_total_suma_todas_sus_piezas",
+          "ok": true
+        },
+        {
+          "bloqueante": true,
+          "detalle": "",
+          "no_procede": false,
+          "nombre": "toda_pieza_dice_donde_esta",
+          "ok": true
+        },
+        {
+          "bloqueante": true,
+          "detalle": "",
+          "no_procede": false,
+          "nombre": "el_original_no_se_ha_tocado",
+          "ok": true
+        },
+        {
+          "bloqueante": true,
+          "detalle": "",
+          "no_procede": false,
+          "nombre": "la_medicion_no_califica",
+          "ok": true
+        },
+        {
+          "bloqueante": true,
+          "detalle": "",
+          "no_procede": false,
+          "nombre": "toda_cifra_tiene_fuente",
+          "ok": true
+        },
+        {
+          "bloqueante": true,
+          "detalle": "",
+          "no_procede": false,
+          "nombre": "ningun_hueco_mudo",
+          "ok": true
+        },
+        {
+          "bloqueante": true,
+          "detalle": "",
+          "no_procede": false,
+          "nombre": "las_inferencias_declaran_su_hipotesis",
+          "ok": true
+        },
+        {
+          "bloqueante": true,
+          "detalle": "",
+          "no_procede": false,
+          "nombre": "produce_lo_declarado",
+          "ok": true
+        }
+      ],
+      "estado": "hecho",
+      "invocaciones": [
+        {
+          "argumentos": {
+            "capa": null,
+            "factor_escala": null,
+            "ruta": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmp5dglu3xh\\planta_sintetica.dxf"
+          },
+          "capacidad": "plano.medicion_de_la_planta",
+          "ok": true,
+          "version": "1.0.0"
+        },
+        {
+          "argumentos": {
+            "capa": null,
+            "factor_escala": null,
+            "ruta": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmp5dglu3xh\\planta_sintetica.dxf",
+            "ruta_destino": "C:\\Users\\<usuario>\\AppData\\Local\\Temp\\tmp5dglu3xh\\medicion.pdf"
+          },
+          "capacidad": "plano.medicion_en_pdf",
+          "ok": true,
+          "version": "1.0.0"
+        }
+      ],
+      "momento": "2026-08-19T14:31:06+00:00",
+      "motivo": "",
+      "paso_id": "medir",
+      "sello_del_paso": "c470c3c9b8d39ea4ef3058feac1c884252c6374802d8caa2cdb697c6c292003c",
+      "skill": "superficies.medicion_de_planta@1.0.0",
+      "verificado": true
+    }
+  ],
+  "preguntas_abiertas": [],
+  "proyecto_id": "proyecto-demo-doc1",
+  "sello": "584261a91e7030f338456c9a49dcf3203fe4f31f39f365b8b304cc109925c844"
+}

@@ -2870,3 +2870,296 @@ body::before {
   .entrevista-acciones .btn-primary, .entrevista-acciones .btn-ghost { width: 100%; }
   .entrevista-acciones-derecha { flex-direction: column-reverse; width: 100%; }
 }
+
+/* ============================================================================
+   Conversación con ArchMuse (sesión 2026-08-19, noche 4; rediseño noche 5)
+   ============================================================================
+   Deliberadamente NO hereda la paleta "papel" de #checklist-cte/#viabilidad-
+   economica/#comparador-opciones: aquellos son documentos que se leen: este
+   panel es el agente hablando, así que usa el lienzo oscuro/vidrio que ya
+   gobierna el resto de la app (--bg-primary/--bg-card/--glass-blur/--accent),
+   no una paleta inventada -- ver la nota junto al `<div id="conversacion-
+   archmuse">` en index.html. Cero color nuevo: cada token de aquí abajo ya
+   existe en el `:root` de arriba. La sidebar reutiliza literalmente las
+   clases `.sidebar`/`.sidebar-item`/`.sidebar-icono` de #sidebar (definidas
+   más arriba en esta hoja) -- no hay una segunda declaración de esas clases
+   aquí abajo, sólo los pequeños ajustes que necesita vivir dentro de este
+   panel (`.conv-sidebar`, `.conv-sidebar-activo`). */
+
+#conversacion-archmuse {
+  position: fixed; inset: 0; z-index: 100; display: none;
+  background: var(--bg-primary); color: var(--text-primary);
+}
+#conversacion-archmuse.open { display: flex; }
+
+.conv-shell { display: flex; width: 100%; height: 100%; min-height: 0; }
+
+/* La sidebar es literalmente `.sidebar` (mismo componente que la portada
+   clásica) -- estos son los únicos ajustes que necesita para vivir dentro
+   del panel en vez de dentro de `#app`. */
+.conv-sidebar { border-right: 1px solid var(--border); }
+.conv-sidebar-marca { cursor: default; }
+.conv-sidebar-marca:hover { background: transparent; }
+.conv-sidebar-activo {
+  background: var(--overlay-active); color: var(--text-primary); cursor: default;
+}
+.conv-sidebar a.sidebar-item { text-decoration: none; }
+
+.conv-main {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0;
+}
+
+.conv-header {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 0.6rem 1.5rem; background: var(--bg-toolbar);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.conv-header-marca { font-weight: var(--font-semibold); font-size: var(--text-lg); letter-spacing: -0.01em; }
+.conv-header-sub { color: var(--text-tertiary); font-size: var(--text-sm); }
+.conv-cerrar {
+  margin-left: auto; background: none; border: none; color: var(--text-secondary);
+  cursor: pointer; font: inherit; font-size: var(--text-sm); padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm); transition: color 0.15s ease, background 0.15s ease;
+}
+.conv-cerrar:hover { color: var(--text-primary); background: var(--overlay-subtle); }
+
+/* Acciones rápidas: SOLO una tarjeta ofrece algo real (la que dispara la
+   pregunta que mide de verdad). El resto se inyecta desde `CONV_ROADMAP` en
+   app.js -- la misma lista que ya usaba "En el mapa, todavía no" dentro de
+   la tarjeta "fuera de alcance", nunca un catálogo nuevo y separado. Ver
+   HAZ del encargo: "solo pueden ofrecer lo que existe hoy". */
+.conv-acciones-rapidas {
+  display: flex; flex-wrap: wrap; gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) 0; flex-shrink: 0;
+}
+.conv-accion-card {
+  flex: 1 1 220px; min-width: 200px; max-width: 320px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: var(--space-4); border-radius: var(--radius-lg);
+  background: var(--bg-card); border: 1px solid var(--border);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  text-align: left; font-family: inherit;
+}
+.conv-accion-card-real {
+  cursor: pointer; color: inherit; transition: border-color 0.15s ease, background 0.15s ease;
+}
+.conv-accion-card-real:hover { border-color: var(--accent); background: var(--accent-soft); }
+.conv-accion-icono { font-size: var(--text-lg); color: var(--accent); line-height: 1; }
+.conv-accion-titulo { font-weight: var(--font-medium); font-size: var(--text-base); }
+.conv-accion-sub { color: var(--text-tertiary); font-size: var(--text-xs); line-height: 1.4; }
+/* "Próximamente": mismo tratamiento que `.sidebar-item:disabled` -- texto
+   apagado y `not-allowed`, nunca una cifra ni un check de relleno. */
+.conv-accion-card-resto { display: contents; }
+.conv-accion-card-proximamente { cursor: not-allowed; opacity: 0.55; }
+.conv-accion-card-proximamente .conv-accion-icono { color: var(--text-tertiary); }
+.conv-accion-card-proximamente .conv-accion-titulo { display: flex; align-items: center; gap: var(--space-2); }
+
+.conv-log {
+  flex: 1; overflow-y: auto; padding: var(--space-6) var(--space-4) var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-4);
+}
+.conv-log > * { max-width: 720px; width: 100%; margin: 0 auto; }
+
+.conv-vacio {
+  color: var(--text-tertiary); text-align: center; line-height: 1.6;
+  padding: var(--space-8) var(--space-4); margin-top: 4vh !important;
+}
+
+/* Burbujas de chat (rediseño noche 5, pedido explícito) -- sustituye al
+   trazo vertical de la noche 4. El usuario, a la derecha, en vidrio de
+   acento; ArchMuse, a la izquierda, con su identidad de marca en texto
+   encima de la tarjeta (logo + tipografía, nunca un avatar/mascota -- ver
+   PROHIBIDO del encargo). */
+.conv-fila { display: flex; flex-direction: column; max-width: 84%; }
+.conv-fila-usuario { align-self: flex-end; align-items: flex-end; }
+.conv-fila-asistente { align-self: flex-start; align-items: flex-start; }
+.conv-usuario {
+  color: var(--text-primary); font-size: var(--text-base); line-height: 1.5;
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg) var(--radius-lg) var(--space-1) var(--radius-lg);
+  background: var(--accent-soft); border: 1px solid var(--accent);
+}
+.conv-usuario-adjunto {
+  display: block; font-size: var(--text-xs); color: var(--text-secondary); margin-top: 4px; opacity: 0.85;
+}
+.conv-burbuja-marca {
+  font-size: var(--text-xs); font-weight: var(--font-semibold); letter-spacing: 0.02em;
+  color: var(--text-tertiary); margin-bottom: var(--space-1); padding-left: var(--space-1);
+}
+
+.conv-estado {
+  color: var(--text-tertiary); font-size: var(--text-sm); padding: 0 var(--space-1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .conv-estado { animation: conv-pulso 1.4s ease-in-out infinite; }
+}
+@keyframes conv-pulso { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+/* La tarjeta de respuesta: el mismo vidrio y la misma entrada (`fade-in-up`,
+   ya definida arriba para modales/tarjetas) que el resto de la app -- cero
+   animación nueva inventada. Ahora es el cuerpo de la burbuja del asistente,
+   con la esquina inferior izquierda recortada para leerse como burbuja. */
+.conv-respuesta { animation: fade-in-up 0.2s var(--ease-apple); width: 100%; }
+.conv-tarjeta {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--space-1);
+  padding: var(--space-5) var(--space-6); box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Insignias -- misma anatomía que .hecho-badge (mas arriba en esta hoja):
+   sin relleno, solo borde y texto del color de estado, radio de capsula. */
+.conv-badge {
+  display: inline-block; font-size: var(--text-xs); font-weight: var(--font-semibold);
+  padding: 1px 8px; border-radius: 999px; margin-bottom: var(--space-3);
+}
+.conv-badge-hallazgo { color: var(--color-important); border: 1px solid var(--color-important); }
+.conv-badge-limpio { color: var(--color-success); border: 1px solid var(--color-success); }
+/* "Fuera de alcance" usa EXACTAMENTE el mismo tratamiento que
+   .hecho-badge-unknown: gris neutro, nunca rojo. La decision de diseno
+   completa esta en el comentario de convTarjetaFueraDeAlcance en app.js. */
+.conv-badge-fuera { color: var(--text-tertiary); border: 1px solid var(--border); }
+.conv-badge-error { color: var(--color-critical); border: 1px solid var(--color-critical); }
+
+.conv-titulo { margin: 0 0 var(--space-2); font-size: var(--text-lg); font-weight: var(--font-medium); letter-spacing: -0.01em; }
+.conv-cuerpo { margin: 0; color: var(--text-secondary); line-height: 1.6; font-size: var(--text-base); }
+.conv-cifra {
+  display: inline-block; margin-top: var(--space-3); padding: 2px 9px; border-radius: var(--radius-sm);
+  background: var(--overlay-subtle); color: var(--accent); font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.conv-detalle { margin-top: var(--space-4); }
+.conv-detalle summary {
+  cursor: pointer; list-style: none; font-size: var(--text-sm); color: var(--text-tertiary);
+  padding-top: var(--space-3); border-top: 1px dashed var(--border);
+}
+.conv-detalle summary::-webkit-details-marker { display: none; }
+.conv-detalle summary::before { content: "\25B8 "; }
+.conv-detalle[open] summary::before { content: "\25BE "; }
+.conv-detalle summary:hover { color: var(--text-secondary); }
+.conv-acta-frame {
+  width: 100%; height: min(60vh, 560px); margin-top: var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-primary);
+}
+
+.conv-procedencia {
+  margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border);
+  color: var(--text-tertiary); font-size: var(--text-xs); font-variant-numeric: tabular-nums;
+}
+
+/* Descarga de la memoria (MJ-4): mismo `.btn-ghost` que el resto de la app,
+   sólo el espaciado propio de vivir dentro de la tarjeta de hallazgo. */
+.conv-btn-memoria { margin-top: var(--space-4); font-size: var(--text-sm); padding: 0.55rem 1rem; }
+.conv-btn-memoria:disabled { opacity: 0.5; cursor: default; }
+
+/* El estado "sin capacidad": mismo vidrio, mismo radio, ninguna tinta de
+   error -- ver .conv-badge-fuera arriba. */
+.conv-sugerencias, .conv-en-el-mapa { margin-top: var(--space-4); }
+.conv-sugerencias-titulo, .conv-en-el-mapa-titulo {
+  display: block; font-size: var(--text-xs); color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: var(--space-2);
+}
+.conv-chip {
+  display: inline-block; margin: 0 var(--space-2) var(--space-2) 0; padding: 0.4rem 0.9rem;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid var(--panel-border); border-radius: var(--radius-pill);
+  color: var(--text-secondary); font: inherit; font-size: var(--text-sm); cursor: pointer;
+  transition: all 0.15s ease;
+}
+.conv-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.conv-en-el-mapa-item {
+  display: inline-flex; align-items: center; gap: var(--space-2); margin-right: var(--space-4);
+  color: var(--text-tertiary); font-size: var(--text-sm);
+}
+
+/* --- Entrada ---------------------------------------------------------------- */
+.conv-form {
+  flex-shrink: 0; padding: var(--space-4); background: var(--bg-toolbar);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--border);
+}
+.conv-form > * { max-width: 720px; margin: 0 auto; }
+.conv-adjunto { margin-bottom: var(--space-2); }
+.conv-adjunto-chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  background: var(--green-bg); border: 1px solid rgba(22, 163, 74, 0.35); color: var(--green);
+  padding: 0.3rem 0.5rem 0.3rem 0.8rem; border-radius: var(--radius-pill); font-size: var(--text-sm);
+}
+.conv-adjunto-quitar {
+  background: none; border: none; color: inherit; opacity: 0.7; cursor: pointer;
+  font-size: 1rem; line-height: 1; padding: 0 var(--space-1);
+}
+.conv-adjunto-quitar:hover { opacity: 1; }
+
+.conv-entrada { display: flex; align-items: flex-end; gap: var(--space-2); }
+
+/* Sugerencia en línea (noche 7): el fantasma vive DETRÁS del textarea real
+   -- por eso el "cuadro" visual (fondo/borde/radio) se traslada aquí, al
+   contenedor, y el textarea pasa a transparente (ver abajo). El fantasma y
+   el textarea comparten exactamente el mismo padding/tipo de letra para que
+   el texto ya escrito quede pixel a pixel sobre su gemelo invisible del
+   fantasma, y sólo asome el resto en gris. */
+.conv-campo-pregunta {
+  position: relative; flex: 1;
+  background: var(--bg); border: 1px solid var(--panel-border); border-radius: var(--radius-lg);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.conv-campo-pregunta:focus-within {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.conv-textarea {
+  position: relative; z-index: 1; display: block; width: 100%;
+  resize: none; min-height: 2.6rem; max-height: 160px; padding: var(--space-3);
+  background: transparent; border: none; color: var(--text);
+  font-family: inherit; font-size: var(--text-base); line-height: 1.4;
+}
+.conv-textarea:focus { outline: none; }
+.conv-sugerencia-fantasma {
+  position: absolute; inset: 0; z-index: 0; padding: var(--space-3);
+  font-family: inherit; font-size: var(--text-base); line-height: 1.4;
+  white-space: pre-wrap; word-break: break-word; overflow: hidden;
+  pointer-events: none;
+}
+.conv-sugerencia-tipeado { color: transparent; } /* sólo reserva el hueco del texto ya escrito */
+.conv-sugerencia-resto { color: var(--text-tertiary); }
+
+.conv-entrada .btn-ghost, .conv-entrada .btn-primary { flex-shrink: 0; padding: 0.7rem 1.3rem; font-size: var(--text-sm); }
+
+/* --- Barra de estado --------------------------------------------------------
+   Sólo hechos: el fichero adjunto (si lo hay) y el nombre de la única Skill
+   que puede atenderlo. Nunca una cifra ni un check -- `renderConvAdjunto()`
+   en app.js es lo único que la escribe, y sólo con datos que ya existen en
+   `convState`. El punto es un estado binario (adjunto/no adjunto), no un
+   semáforo de calidad: por eso usa `--text-tertiary`/`--color-success`, el
+   mismo par que ya distingue "sin dato" de "hay dato" en el resto de la app,
+   nunca `--color-critical` ni `--color-important`. */
+.conv-statusbar {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4); flex-shrink: 0;
+  background: var(--bg-toolbar); border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-xs); color: var(--text-tertiary);
+}
+.conv-statusbar-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); flex-shrink: 0;
+}
+.conv-statusbar-dot.conv-statusbar-dot-activo { background: var(--color-success); }
+.conv-statusbar-proyecto { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.conv-statusbar-capacidad {
+  margin-left: auto; font-family: var(--font-mono, monospace); opacity: 0.8;
+}
+
+@media (max-width: 900px) {
+  .conv-sidebar { display: none; }
+}
+
+@media (max-width: 720px) {
+  .conv-header { padding: 0.6rem var(--space-4); }
+  .conv-acciones-rapidas { padding: var(--space-3) var(--space-3) 0; }
+  .conv-accion-card { flex-basis: 100%; max-width: none; }
+  .conv-log { padding: var(--space-4) var(--space-3); }
+  .conv-tarjeta { padding: var(--space-4); }
+  .conv-fila { max-width: 100%; }
+  .conv-entrada { flex-wrap: wrap; }
+  .conv-entrada .conv-campo-pregunta { flex-basis: 100%; }
+  .conv-statusbar-capacidad { display: none; }
+}

@@ -1667,6 +1667,24 @@
       // con `checklist_cte` ya calculado por el backend (`api_serializer.py`).
       ((state.data && (state.data.viviendas || []).length)
         ? grupoRibbon("CTE", botonRibbon("Checklist CTE", 'data-accion="abrir-checklist-cte" id="btn-checklist-cte"'))
+        : "") +
+      // Acta de procedencia legible (`DOC-1`, docs/AGENTE_BACKLOG.md §10,
+      // 2026-08-19): sólo si el `File` original sigue en memoria
+      // (`state.archivoAnalizado`) -- mismo motivo que "Descargar DXF
+      // rellenado", ver el comentario de `botonDescargaDxfRellenoHtml`. No
+      // depende de `cuadro_superficies_detectado`: la Skill de medición mide
+      // lo que hay dibujado, no necesita ningún cuadro reconocible en el DXF.
+      (state.archivoAnalizado
+        ? grupoRibbon("Acta", botonRibbon("Acta de procedencia legible", 'data-accion="abrir-acta-legible" id="btn-acta-legible"'))
+        : "") +
+      // Conversación con ArchMuse (sesión 2026-08-19, noche 4): misma
+      // condición que "Acta de procedencia legible" -- necesita un DXF en
+      // memoria porque `/api/preguntar` lo exige hoy (la única capacidad
+      // registrada, medición de superficies, no funciona sin plano). Grupo
+      // aparte y no fundido con "Acta": una es "ver el documento", esta es
+      // "preguntar en tus palabras".
+      (state.archivoAnalizado
+        ? grupoRibbon("Conversación", botonRibbon("Preguntar a ArchMuse", 'data-accion="abrir-conversacion" id="btn-conversacion"'))
         : "");
   }
 
@@ -1759,7 +1777,9 @@
     "descargar-cuadro-completo": function () { descargarCuadroCompletoDesdeTabla(); },
     "abrir-checklist-campo": function () { abrirChecklistCampo(); },
     "abrir-viabilidad-economica": function () { abrirViabilidadEconomica(); },
-    "abrir-checklist-cte": function () { abrirChecklistCte(); }
+    "abrir-checklist-cte": function () { abrirChecklistCte(); },
+    "abrir-acta-legible": function () { abrirActaLegible(); },
+    "abrir-conversacion": function () { abrirConversacion(); }
   };
 
   // --- Capas -----------------------------------------------------------------
@@ -5221,6 +5241,764 @@
       });
   }
 
+  // `DOC-1` (docs/AGENTE_BACKLOG.md §10, sesión 2026-08-19): reenvía el
+  // `File` original (`state.archivoAnalizado`, mismo patrón que
+  // `descargarDxfRelleno`) a `/api/acta-legible`, que ejecuta de verdad la
+  // Skill `superficies.medicion_de_planta` y devuelve HTML ya renderizado
+  // por `analyzer/acta_legible.py` -- nada se traduce ni se recalcula aquí.
+  // Se abre en pestaña nueva (no se descarga) porque es una página para
+  // leer, no un fichero para guardar.
+  function abrirActaLegible() {
+    if (!state.archivoAnalizado) return;
+    var btn = document.getElementById("btn-acta-legible");
+    if (btn) btn.disabled = true;
+
+    var formData = new FormData();
+    formData.append("dxf", state.archivoAnalizado);
+
+    fetch("/api/acta-legible", { method: "POST", body: formData })
+      .then(function (resp) {
+        if (!resp.ok) {
+          return resp.json()
+            .then(function (json) { throw new Error(json.error || "No se pudo levantar el acta."); })
+            .catch(function (err) { throw err instanceof Error ? err : new Error("No se pudo levantar el acta."); });
+        }
+        return resp.text();
+      })
+      .then(function (html) {
+        // Blob + URL.createObjectURL, no `document.write`: mismo patrón que
+        // ya usa `exportarCSV` en este fichero para el CSV, aquí con
+        // `text/html` para que el navegador la muestre en vez de descargarla.
+        var blob = new Blob([html], { type: "text/html;charset=utf-8;" });
+        var url = URL.createObjectURL(blob);
+        var ventana = window.open(url, "_blank");
+        if (!ventana) {
+          alert("El navegador ha bloqueado la pestaña nueva. Permite las ventanas emergentes para ver el acta.");
+        }
+        setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+      })
+      .catch(function (err) {
+        // Igual que `descargarDxfRelleno`: el análisis en pantalla no
+        // depende de esta llamada, es una petición aparte.
+        alert((err && err.message) || "No se pudo levantar el acta.");
+      })
+      .then(function () {
+        if (btn) btn.disabled = false;
+      });
+  }
+
+  // =========================================================================
+  // Conversación con ArchMuse (sesión 2026-08-19, noche 4)
+  // =========================================================================
+  //
+  // La primera puerta de conversación real: en tus palabras, con o sin DXF
+  // adjunto, y la respuesta es siempre trazable hasta una Skill real. Este
+  // bloque NO decide nada por su cuenta -- llama a `/api/preguntar`, que ya
+  // hace la única decisión que importa (`_capacidad_que_coincide`, en
+  // `app.py`), y sólo presenta lo que vuelve. Cero cálculo, cero criterio
+  // nuevo: es una tarea de interfaz, tal como se encargó.
+  //
+  // Dos preguntas de ejemplo, no una lista de "capacidades" inventada: son
+  // literalmente formas de pedir lo único que la única Skill registrada hoy
+  // sabe hacer (`superficies.medicion_de_planta`) -- si mañana hay una
+  // segunda Skill, esta lista crece, no se inventa una entrada nueva sin
+  // Skill detrás.
+  var CONV_EJEMPLOS = [
+    "¿Cuánta superficie útil tiene esta planta?",
+    "Enséñame el acta de procedencia de este plano"
+  ];
+  // Áreas del mapa del producto que HOY no tienen ninguna capacidad
+  // registrada -- nunca una cifra, nunca un check, sólo la palabra y la
+  // misma etiqueta "todavía no" que ya usa el sidebar (`sidebar-badge-
+  // proximamente`) para lo mismo. Ver HAZ #5 del encargo.
+  var CONV_ROADMAP = ["Normativa (CTE)", "Presupuesto", "Geometría 3D"];
+
+  var convState = {
+    archivoAdjunto: null,
+    // Últimos DXF adjuntados en ESTA sesión (noche 7): un navegador no
+    // puede rastrear el disco por seguridad, así que "recordar" sólo puede
+    // significar "seguir sujetando el `File` ya concedido" -- se pierde al
+    // recargar la página, nunca sobrevive entre sesiones. Máximo 5, más
+    // reciente primero.
+    historialArchivos: [],
+    // Última entidad (vivienda/estancia) que salió en una respuesta real
+    // -- sólo para la sugerencia en línea, ver `convTarjetaHallazgo` y
+    // `CONV_SUGERENCIAS_POR_CAPACIDAD`.
+    ultimoContexto: null,
+    sugerenciaActual: null
+  };
+
+  // Saludo o frase suelta, no una pregunta de medición (sesión 2026-08-19,
+  // noche 6, petición directa de Pablo): "hola" no debería chocar con el
+  // mismo bloqueo que protege la regla de oro ("Adjunta un DXF antes de
+  // preguntar"), porque no es una pregunta que el backend pudiera
+  // responder mal por falta de plano -- no es una pregunta. Función PURA
+  // (sin DOM, sin `escapeHtml`) a propósito: sólo texto, para poder
+  // extraerla y probarla aislada -- ver tests/test_conversacion_saludo.py.
+  // Se compara el mensaje ENTERO (normalizado), nunca una subcadena: "hola,
+  // ¿cuánta superficie tiene esto?" contiene "hola" pero es una pregunta
+  // real y debe seguir bloqueando sin DXF, tal como pide el encargo.
+  var CONV_SALUDOS = [
+    "hola", "hey", "holi", "buenas", "buenos dias", "buenas tardes", "buenas noches",
+    "que tal", "como estas", "como andas", "como va", "saludos", "hi", "hello",
+    "hey archmuse", "hola archmuse", "gracias", "adios", "hasta luego"
+  ];
+  function _convEsSaludo(pregunta) {
+    var t = (pregunta || "")
+      .toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quita acentos: "qué" -> "que"
+      .replace(/[¿?¡!.;:]/g, "") // la coma NO se quita aquí -- separa saludos, ver abajo
+      .trim();
+    if (!t) return false;
+    // Un saludo real cabe en pocas palabras -- una pregunta larga que
+    // empiece por "hola" no debe colar sólo por ser corta de más.
+    if (t.split(/\s+/).length > 8) return false;
+    // Cada trozo separado por coma tiene que ser, ÉL SOLO, un saludo
+    // conocido ("hola, buenas" sí; "hola, ¿cuánta superficie...?" no,
+    // porque el segundo trozo no está en `CONV_SALUDOS`). Así una pregunta
+    // real que empiece con un saludo sigue bloqueando sin DXF, tal como
+    // pide la regla de oro.
+    var partes = t.split(",").map(function (p) {
+      return p.replace(/\s+/g, " ").trim();
+    }).filter(Boolean);
+    return partes.length > 0 && partes.every(function (p) {
+      return CONV_SALUDOS.indexOf(p) !== -1;
+    });
+  }
+
+  function convMensajeSaludo() {
+    return convState.archivoAdjunto
+      ? "Hola, soy ArchMuse. Ya tienes " + convState.archivoAdjunto.name +
+        " adjunto -- ¿qué quieres que mida?"
+      : "Hola, soy ArchMuse. ¿Analizamos un plano? Adjunta un DXF y pregúntame lo que necesites medir.";
+  }
+
+  // Adjuntar hablando (sesión 2026-08-19, noche 7, petición directa de
+  // Pablo). Un navegador no puede rastrear el disco del usuario por
+  // seguridad -- la solución real es que ArchMuse dispare el selector
+  // NATIVO del sistema desde la propia respuesta, en vez de exigir el
+  // botón "Adjuntar DXF" aparte. Detector PURO (sin DOM), mismo criterio
+  // que `_convEsSaludo`: nunca dispara sobre una pregunta real (si lleva
+  // "?", no es una orden de adjuntar, es una pregunta -- y una pregunta
+  // real sin DXF sigue bloqueando, tal como pide la regla de oro).
+  var CONV_VERBOS_ADJUNTAR = [
+    "abre", "abrir", "adjunta", "adjuntar", "sube", "subir", "carga", "cargar",
+    "selecciona", "seleccionar", "elige", "elegir", "importa", "importar", "anade", "anadir", "pon",
+    "analiza", "analizar"
+  ];
+  var CONV_SUSTANTIVOS_ARCHIVO = ["plano", "planos", "dxf", "archivo", "ficheros", "fichero", "documento"];
+  function _convEsIntencionDeAdjuntar(pregunta) {
+    var t = (pregunta || "")
+      .toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .trim();
+    if (!t || t.indexOf("?") !== -1) return false;
+    var tieneVerbo = CONV_VERBOS_ADJUNTAR.some(function (v) {
+      return new RegExp("\\b" + v + "\\b").test(t);
+    });
+    var tieneSustantivo = CONV_SUSTANTIVOS_ARCHIVO.some(function (s) {
+      return new RegExp("\\b" + s + "\\b").test(t);
+    });
+    return tieneVerbo && tieneSustantivo;
+  }
+
+  // Recuerda el `File` (no sólo el nombre) -- así una elección posterior
+  // desde el chat reutiliza los bytes ya concedidos, sin repetir el
+  // selector nativo. Deduplicado por nombre, más reciente primero, tope 5.
+  function convRegistrarArchivoUsado(file) {
+    if (!file) return;
+    convState.historialArchivos = convState.historialArchivos.filter(function (item) {
+      return item.name !== file.name;
+    });
+    convState.historialArchivos.unshift({ name: file.name, file: file });
+    convState.historialArchivos = convState.historialArchivos.slice(0, 5);
+  }
+
+  function abrirConversacion() {
+    var overlay = document.getElementById("conversacion-archmuse");
+    if (!overlay) return;
+    // El DXF ya analizado se ofrece como punto de partida (mismo criterio
+    // que "Acta de procedencia legible"), pero sigue siendo reemplazable
+    // dentro del propio panel -- adjuntar aquí no toca `state.archivoAnalizado`.
+    if (!convState.archivoAdjunto && state.archivoAnalizado) {
+      convState.archivoAdjunto = state.archivoAnalizado;
+    }
+    renderConvAdjunto();
+    overlay.classList.add("open");
+    var textarea = document.getElementById("conv-pregunta");
+    if (textarea) textarea.focus();
+  }
+
+  function cerrarConversacion() {
+    var overlay = document.getElementById("conversacion-archmuse");
+    if (overlay) overlay.classList.remove("open");
+  }
+
+  function renderConvAdjunto() {
+    var cont = document.getElementById("conv-adjunto");
+    if (cont) {
+      if (!convState.archivoAdjunto) {
+        cont.hidden = true;
+        cont.innerHTML = "";
+      } else {
+        cont.hidden = false;
+        cont.innerHTML = '<span class="conv-adjunto-chip">' + escapeHtml(convState.archivoAdjunto.name) +
+          '<button type="button" class="conv-adjunto-quitar" id="conv-adjunto-quitar" aria-label="Quitar plano adjunto">&times;</button></span>';
+      }
+    }
+    // Barra de estado: el mismo hecho (nombre de fichero adjunto o no) que
+    // el chip de arriba, sólo que siempre visible -- nunca un dato nuevo.
+    var dot = document.getElementById("conv-statusbar-dot");
+    var nombre = document.getElementById("conv-statusbar-proyecto");
+    if (dot) dot.classList.toggle("conv-statusbar-dot-activo", !!convState.archivoAdjunto);
+    if (nombre) {
+      nombre.textContent = convState.archivoAdjunto
+        ? convState.archivoAdjunto.name
+        : "Sin plano adjunto";
+    }
+  }
+
+  // Fila "próximamente" de las acciones rápidas -- misma lista que "En el
+  // mapa, todavía no" (`CONV_ROADMAP`), nunca un catálogo aparte. Cada
+  // tarjeta es un `<div>`, no un `<button>`: no hay nada que pulsar, es un
+  // estado, no una acción.
+  function renderConvAccionesRapidasResto() {
+    var cont = document.getElementById("conv-acciones-rapidas-resto");
+    if (!cont) return;
+    cont.innerHTML = CONV_ROADMAP.map(function (r) {
+      return '<div class="conv-accion-card conv-accion-card-proximamente">' +
+        '<span class="conv-accion-titulo">' + escapeHtml(r) +
+        '<span class="sidebar-badge-proximamente">próximamente</span></span>' +
+        '<span class="conv-accion-sub">Todavía no hay una capacidad real para esto</span></div>';
+    }).join("");
+  }
+
+  // El `<summary>` de cada `<details class="limitacion">` lleva la etiqueta
+  // Y el texto técnico juntos (ver `analyzer/acta_legible.py`) -- aquí se
+  // separan leyendo sólo los nodos de texto, sin recalcular ni reinterpretar
+  // nada de lo que la Skill ya decidió.
+  function _convParsearActa(html) {
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    var datos = Array.prototype.map.call(doc.querySelectorAll(".dato"), function (n) {
+      return n.textContent.trim();
+    }).filter(Boolean);
+    var limitaciones = Array.prototype.map.call(doc.querySelectorAll("details.limitacion"), function (n) {
+      var resumen = n.querySelector("summary");
+      var textoResumen = "";
+      if (resumen) {
+        Array.prototype.forEach.call(resumen.childNodes, function (nodo) {
+          if (nodo.nodeType === 3) textoResumen += nodo.textContent;
+        });
+      }
+      var porque = n.querySelector(".porque");
+      var cifra = n.querySelector(".cifra");
+      return {
+        comprobado: !!n.querySelector(".etiqueta-comprobado"),
+        texto: textoResumen.trim(),
+        porque: porque ? porque.textContent.trim() : null,
+        cifra: cifra ? cifra.textContent.trim() : null
+      };
+    });
+    return { datos: datos, limitaciones: limitaciones };
+  }
+
+  // Tarjeta de un hallazgo real: jerarquía "lo principal primero" (HAZ #3
+  // del encargo) -- el caso comprobado (si lo hay) es el titular, el resto
+  // de limitaciones (los "TODO, sin caso real" internos) quedan siempre
+  // detrás de un `<details>` cerrado, nunca visibles por defecto.
+  function convTarjetaHallazgo(capacidad, htmlActa) {
+    var parsed = _convParsearActa(htmlActa);
+    var comprobadas = parsed.limitaciones.filter(function (l) { return l.comprobado; });
+    var pendientes = parsed.limitaciones.filter(function (l) { return !l.comprobado; });
+
+    var badge, titulo, cuerpo;
+    if (comprobadas.length) {
+      var principal = comprobadas[0];
+      var entidad = (principal.texto.match(/«([^»]+)»/) || [])[1];
+      // Contexto para la sugerencia en línea (noche 7): la próxima
+      // sugerencia puede referirse a esta misma entidad ("¿cuánta
+      // superficie tiene VT1/3?") -- ver `CONV_SUGERENCIAS_POR_CAPACIDAD`.
+      // Se sobrescribe en cada respuesta real: sólo el hallazgo MÁS
+      // reciente puede sugerirse, nunca uno de una pregunta anterior.
+      if (entidad) convState.ultimoContexto = { entidadMencionada: entidad };
+      badge = '<span class="conv-badge conv-badge-hallazgo">Hallazgo</span>';
+      titulo = entidad ? "Problema encontrado en «" + escapeHtml(entidad) + "»" : "Problema encontrado";
+      cuerpo = '<p class="conv-cuerpo">' + escapeHtml(principal.porque || principal.texto) + "</p>" +
+        (principal.cifra ? '<span class="conv-cifra">' + escapeHtml(principal.cifra) + "</span>" : "");
+    } else {
+      badge = '<span class="conv-badge conv-badge-limpio">Sin incidencias</span>';
+      titulo = "No se ha encontrado ningún problema en esta medición";
+      cuerpo = '<p class="conv-cuerpo">' + escapeHtml(parsed.datos.join(" ")) + "</p>";
+    }
+
+    var etiquetaDetalle = pendientes.length
+      ? "Ver alcance completo de esta comprobación (" + pendientes.length + " punto(s) más, sin caso real todavía)"
+      : "Ver el acta de procedencia completa";
+
+    // Botón de la memoria (MJ-4, sesión 2026-08-19 noche 11): sólo cuando de
+    // verdad hay algo que documentar -- mismo criterio que
+    // `ActaSinDatos` en `analyzer/memoria_justificativa.py`, comprobado aquí
+    // con la misma señal que ya usa el resto de la tarjeta (`parsed.datos`,
+    // los `.dato` que trajo el acta HTML). El `data-` lleva la capacidad
+    // para que quien conecte el clic sepa qué Skill la produjo, sin tener
+    // que volver a mirar `htmlActa`.
+    var botonMemoria = parsed.datos.length
+      ? '<button type="button" class="btn-ghost conv-btn-memoria" data-descargar-memoria="1">' +
+        "Descargar apartado de superficies (PDF)</button>"
+      : "";
+
+    return '<div class="conv-tarjeta">' + badge +
+      '<h3 class="conv-titulo">' + titulo + "</h3>" + cuerpo +
+      '<details class="conv-detalle"><summary>' + escapeHtml(etiquetaDetalle) + "</summary>" +
+      '<iframe class="conv-acta-frame" title="Acta de procedencia completa"></iframe>' +
+      "</details>" +
+      botonMemoria +
+      '<div class="conv-procedencia">' + escapeHtml(capacidad) + "</div>" +
+      "</div>";
+  }
+
+  // Reenvía el MISMO `File` que se acaba de medir -- nunca
+  // `convState.archivoAdjunto` en el momento del clic, que puede haber
+  // cambiado si el arquitecto adjuntó otro plano entre la respuesta y la
+  // descarga. Mismo patrón de descarga por blob que `descargarPdf()`
+  // (`/api/informe-pdf`, más arriba en este fichero).
+  function convDescargarMemoria(archivo, boton) {
+    if (!archivo) return;
+    if (boton) boton.disabled = true;
+    var formData = new FormData();
+    formData.append("dxf", archivo);
+    fetch("/api/memoria-superficies", { method: "POST", body: formData })
+      .then(function (resp) {
+        if (!resp.ok) {
+          return resp.json().then(function (j) {
+            throw new Error(j.error || "No se pudo generar la memoria de superficies.");
+          });
+        }
+        return resp.blob();
+      })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "apartado_de_superficies.pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      })
+      .catch(function (exc) {
+        alert(exc.message || "No se pudo generar la memoria de superficies.");
+      })
+      .then(function () {
+        if (boton) boton.disabled = false;
+      });
+  }
+
+  // El estado "sin capacidad" -- la parte más difícil de acertar del
+  // encargo. Decisión de diseño: se trata exactamente como ArchMuse trata
+  // cualquier otro dato que no tiene (ver `.hecho-badge-unknown` en
+  // style.css: "no determinado no es un error ni un aviso, es que ArchMuse
+  // no tiene el dato"). Mismo registro tranquilo, mismo gris neutro, misma
+  // ausencia de disculpa -- nunca rojo, nunca un tono de error.
+  function convTarjetaFueraDeAlcance(mensaje) {
+    // Sesión 2026-08-19, noche 7 (petición directa de Pablo): los chips
+    // "Prueba en su lugar" desaparecen de aquí -- la sugerencia de qué
+    // preguntar ahora vive en línea, en la propia caja de texto (fantasma +
+    // TAB, ver `convActualizarSugerencia`), no como chips que sólo
+    // aparecían tras un intento fallido. `CONV_EJEMPLOS` sigue viva: es la
+    // base de esa sugerencia en línea para `superficies.medicion_de_planta`
+    // (ver `CONV_SUGERENCIAS_POR_CAPACIDAD`), un solo catálogo de preguntas
+    // reales, no dos que se puedan desincronizar.
+    var roadmap = CONV_ROADMAP.map(function (r) {
+      return '<span class="conv-en-el-mapa-item">' + escapeHtml(r) +
+        '<span class="sidebar-badge-proximamente">todavía no</span></span>';
+    }).join("");
+    return '<div class="conv-tarjeta conv-tarjeta-fuera">' +
+      '<span class="conv-badge conv-badge-fuera">Fuera de alcance hoy</span>' +
+      '<h3 class="conv-titulo">Esto no lo mide ArchMuse todavía</h3>' +
+      '<p class="conv-cuerpo">' + escapeHtml(mensaje) + "</p>" +
+      '<div class="conv-en-el-mapa"><span class="conv-en-el-mapa-titulo">En el mapa, todavía no</span>' +
+      roadmap + "</div>" +
+      "</div>";
+  }
+
+  function convTarjetaError(mensaje) {
+    return '<div class="conv-tarjeta conv-tarjeta-error">' +
+      '<span class="conv-badge conv-badge-error">Error</span>' +
+      '<p class="conv-cuerpo">' + escapeHtml(mensaje) + "</p></div>";
+  }
+
+  // Sin insignia a propósito: no es un hallazgo, no es un error, es sólo
+  // el agente respondiendo -- la misma tarjeta de vidrio que el resto,
+  // pero sin la anatomía de estado (ver .conv-badge-*) que las otras
+  // llevan siempre. "Cálida" es esto: nada que gritar, sólo texto.
+  function convTarjetaSaludo(mensaje) {
+    return '<div class="conv-tarjeta conv-tarjeta-saludo">' +
+      '<p class="conv-cuerpo">' + escapeHtml(mensaje) + "</p></div>";
+  }
+
+  // Ofrece los DXF ya usados en esta sesión como opciones rápidas -- así
+  // "abre el plano" no repite el selector nativo si ya se subió. Cada chip
+  // reutiliza el `File` guardado en `convState.historialArchivos`
+  // directamente (mismos bytes, sin volver a pedirlos al sistema).
+  function convTarjetaOfrecerRecientes() {
+    var chips = convState.historialArchivos.map(function (item, i) {
+      return '<button type="button" class="conv-chip" data-adjuntar-historial="' + i + '">' +
+        escapeHtml(item.name) + "</button>";
+    }).join("");
+    var reciente = convState.historialArchivos[0];
+    return '<div class="conv-tarjeta conv-tarjeta-saludo">' +
+      '<p class="conv-cuerpo">¿Te refieres a ' + escapeHtml(reciente.name) +
+      ", que usaste antes en esta sesión? Elige uno de los que ya adjuntaste, o uno nuevo.</p>" +
+      '<div class="conv-sugerencias">' + chips +
+      '<button type="button" class="conv-chip" data-adjuntar-otro="1">Elegir otro archivo…</button>' +
+      "</div></div>";
+  }
+
+  // Si hay planos recientes en esta sesión, los ofrece en vez de repetir el
+  // selector nativo; si no hay ninguno, no queda otra que pedírselo al
+  // sistema -- y se abre directamente, en la misma pila de ejecución del
+  // clic/Enter que disparó `convEnviarPregunta` (gesto de usuario todavía
+  // "caliente"), para que el navegador lo permita sin bloquearlo.
+  function convOfrecerAdjuntar() {
+    if (convState.historialArchivos.length) {
+      convAnadirRespuesta(convTarjetaOfrecerRecientes());
+      return;
+    }
+    convAnadirRespuesta(convTarjetaSaludo(
+      "Voy a abrir el selector de archivos -- elige el plano que quieras analizar."));
+    var inputDxf = document.getElementById("conv-dxf");
+    if (inputDxf) inputDxf.click();
+  }
+
+  // Sugerencia en línea, estilo autocompletado de buscador (noche 7,
+  // petición directa de Pablo): SIEMPRE plantillas locales, cero llamada a
+  // la API del modelo sólo por escribir en la caja. Registrada POR
+  // CAPACIDAD -- el día que se registre una segunda Skill real, esto crece
+  // con una entrada nueva en este objeto, nunca tocando `_convSugerirCompletado`
+  // ni `convActualizarSugerencia`. Nunca normativa/coste/3D: no hay
+  // entrada aquí para ninguna de esas, así que no hay nada que sugerir
+  // hacia ellas -- prometerlo como sugerencia sería la misma alucinación
+  // que prometerlo como respuesta.
+  var CONV_SUGERENCIAS_POR_CAPACIDAD = {
+    "superficies.medicion_de_planta": function (ctx) {
+      var candidatas = CONV_EJEMPLOS.slice();
+      if (ctx.entidadMencionada) {
+        candidatas.unshift("¿cuánta superficie tiene " + ctx.entidadMencionada + "?");
+      }
+      return candidatas;
+    }
+  };
+
+  function _convCandidatasDeSugerencia() {
+    var ctx = convState.ultimoContexto || {};
+    var candidatas = [];
+    Object.keys(CONV_SUGERENCIAS_POR_CAPACIDAD).forEach(function (cap) {
+      candidatas = candidatas.concat(CONV_SUGERENCIAS_POR_CAPACIDAD[cap](ctx));
+    });
+    return candidatas;
+  }
+
+  // Función PURA (sin DOM): dado lo ya escrito y una lista de preguntas
+  // candidatas, devuelve la primera cuyo prefijo coincide, con el resto
+  // por completar. `null` si nada encaja todavía -- no hay sugerencia que
+  // forzar. La comparación ignora mayúsculas, acentos ("cuanta" encaja con
+  // "¿Cuánta...", de sobra habitual al escribir rápido) y un "¿"/"¡" inicial
+  // de la candidata (el usuario no empieza a teclear por la apertura) --
+  // pero el `resto` que se muestra y el `completo` que TAB inserta
+  // conservan la candidata tal cual, acentos y apertura incluidos.
+  function _convSinAcentos(s) {
+    return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "");
+  }
+  function _convSugerirCompletado(escrito, candidatas) {
+    var t = _convSinAcentos((escrito || "").toLowerCase());
+    if (!t || !candidatas) return null;
+    for (var i = 0; i < candidatas.length; i++) {
+      var c = candidatas[i];
+      var cSinApertura = c.replace(/^[¿¡]+/, "");
+      var cComparable = _convSinAcentos(cSinApertura.toLowerCase());
+      if (cComparable.indexOf(t) === 0 && cSinApertura.length > escrito.length) {
+        return { completo: c, resto: cSinApertura.slice(escrito.length) };
+      }
+    }
+    return null;
+  }
+
+  function convActualizarSugerencia() {
+    var textarea = document.getElementById("conv-pregunta");
+    var fantasma = document.getElementById("conv-sugerencia-fantasma");
+    if (!textarea || !fantasma) return;
+    var escrito = textarea.value;
+    if (!escrito) {
+      convState.sugerenciaActual = null;
+      fantasma.innerHTML = "";
+      return;
+    }
+    // Sin plano adjunto, la sugerencia anima a adjuntar uno -- nunca a
+    // preguntar algo que hoy no se podría responder sin él.
+    var candidatas = convState.archivoAdjunto
+      ? _convCandidatasDeSugerencia()
+      : ["adjunta un plano dxf para que pueda medir algo real"];
+    var sugerencia = _convSugerirCompletado(escrito, candidatas);
+    convState.sugerenciaActual = sugerencia;
+    fantasma.innerHTML = sugerencia
+      ? '<span class="conv-sugerencia-tipeado">' + escapeHtml(escrito) + "</span>" +
+        '<span class="conv-sugerencia-resto">' + escapeHtml(sugerencia.resto) + "</span>"
+      : "";
+  }
+
+  function convAnadirFilaUsuario(pregunta, nombreArchivo) {
+    var log = document.getElementById("conv-log");
+    if (!log) return;
+    var vacio = log.querySelector(".conv-vacio");
+    if (vacio) vacio.remove();
+    var fila = document.createElement("div");
+    fila.className = "conv-fila conv-fila-usuario";
+    var burbuja = document.createElement("div");
+    burbuja.className = "conv-usuario";
+    burbuja.innerHTML = escapeHtml(pregunta) +
+      (nombreArchivo ? '<span class="conv-usuario-adjunto">' + escapeHtml(nombreArchivo) + "</span>" : "");
+    fila.appendChild(burbuja);
+    log.appendChild(fila);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // Devuelve el nodo insertado -- quien llama rellena el `<iframe>` (si lo
+  // hay) con `.srcdoc` como PROPIEDAD, nunca como atributo de la cadena de
+  // HTML: evita cualquier problema de escapado del acta completa dentro de
+  // un atributo. La burbuja del asistente lleva su identidad encima en
+  // texto (`.conv-burbuja-marca`, "ArchMuse") -- logo + tipografía, nunca un
+  // avatar (PROHIBIDO del encargo).
+  function convAnadirRespuesta(htmlTarjeta) {
+    var log = document.getElementById("conv-log");
+    if (!log) return null;
+    var fila = document.createElement("div");
+    fila.className = "conv-fila conv-fila-asistente";
+    var marca = document.createElement("div");
+    marca.className = "conv-burbuja-marca";
+    marca.textContent = "ArchMuse";
+    var envoltorio = document.createElement("div");
+    envoltorio.className = "conv-respuesta";
+    envoltorio.innerHTML = htmlTarjeta;
+    fila.appendChild(marca);
+    fila.appendChild(envoltorio);
+    log.appendChild(fila);
+    log.scrollTop = log.scrollHeight;
+    return envoltorio;
+  }
+
+  function convEnviarPregunta(pregunta) {
+    var btn = document.getElementById("conv-btn-enviar");
+    var textarea = document.getElementById("conv-pregunta");
+    var archivo = convState.archivoAdjunto;
+
+    // Un saludo no es una pregunta -- se responde y se sale ANTES de
+    // llegar al bloqueo de "sin DXF" (regla de oro) y ANTES de tocar la
+    // red: no hay nada que `/api/preguntar` pueda decidir sobre "hola".
+    if (_convEsSaludo(pregunta)) {
+      convAnadirFilaUsuario(pregunta, archivo ? archivo.name : null);
+      convAnadirRespuesta(convTarjetaSaludo(convMensajeSaludo()));
+      if (textarea) textarea.value = "";
+      convActualizarSugerencia();
+      return;
+    }
+
+    // "Abre el plano de mi escritorio" tampoco es una pregunta de medición
+    // -- es una orden de adjuntar. Mismo criterio que el saludo: se
+    // atiende y se sale antes del bloqueo y antes de la red.
+    if (_convEsIntencionDeAdjuntar(pregunta)) {
+      convAnadirFilaUsuario(pregunta, archivo ? archivo.name : null);
+      if (textarea) textarea.value = "";
+      convActualizarSugerencia();
+      convOfrecerAdjuntar();
+      return;
+    }
+
+    if (!archivo) {
+      convAnadirFilaUsuario(pregunta, null);
+      convAnadirRespuesta(convTarjetaError(
+        "Adjunta un DXF antes de preguntar -- hoy ArchMuse sólo puede medir lo que hay dibujado en un plano real."));
+      return;
+    }
+
+    convRegistrarArchivoUsado(archivo); // idempotente -- ya puede estar en el historial
+    convAnadirFilaUsuario(pregunta, archivo.name);
+    if (btn) btn.disabled = true;
+    if (textarea) textarea.value = "";
+    convActualizarSugerencia();
+
+    var log = document.getElementById("conv-log");
+    var estado = document.createElement("div");
+    estado.className = "conv-estado";
+    estado.id = "conv-estado-actual";
+    estado.textContent = "Interpretando la pregunta…";
+    if (log) { log.appendChild(estado); log.scrollTop = log.scrollHeight; }
+
+    var formData = new FormData();
+    formData.append("pregunta", pregunta);
+    formData.append("dxf", archivo);
+
+    fetch("/api/preguntar", { method: "POST", body: formData })
+      .then(function (resp) {
+        return resp.json().then(function (json) { return { ok: resp.ok, json: json }; });
+      })
+      .then(function (r) {
+        var actual = document.getElementById("conv-estado-actual");
+        if (actual) actual.remove();
+        if (!r.ok) {
+          convAnadirRespuesta(convTarjetaError(r.json.error || "No se pudo atender la pregunta."));
+          return;
+        }
+        if (!r.json.coincide) {
+          convAnadirRespuesta(convTarjetaFueraDeAlcance(r.json.mensaje || "ArchMuse no tiene esa capacidad todavía."));
+          return;
+        }
+        var nodo = convAnadirRespuesta(convTarjetaHallazgo(r.json.capacidad, r.json.html));
+        var iframe = nodo && nodo.querySelector(".conv-acta-frame");
+        if (iframe) iframe.srcdoc = r.json.html;
+        var botonMemoria = nodo && nodo.querySelector("[data-descargar-memoria]");
+        if (botonMemoria) {
+          // `archivo` es el `File` de ESTA medición (cierre de
+          // `convEnviarPregunta`), no `convState.archivoAdjunto` -- ver el
+          // comentario de `convDescargarMemoria`.
+          botonMemoria.addEventListener("click", function () {
+            convDescargarMemoria(archivo, botonMemoria);
+          });
+        }
+      })
+      .catch(function () {
+        var actual = document.getElementById("conv-estado-actual");
+        if (actual) actual.remove();
+        convAnadirRespuesta(convTarjetaError("Error de red al atender la pregunta."));
+      })
+      .then(function () {
+        if (btn) btn.disabled = false;
+        if (textarea) textarea.focus();
+      });
+  }
+
+  function wireConversacion() {
+    renderConvAccionesRapidasResto();
+    renderConvAdjunto(); // pinta la barra de estado también en el arranque, sin adjunto todavía.
+
+    var cerrar = document.getElementById("btn-conversacion-cerrar");
+    if (cerrar) cerrar.addEventListener("click", cerrarConversacion);
+
+    // Acciones rápidas: la única tarjeta real (`data-pregunta`) se comporta
+    // exactamente como una sugerencia del panel "fuera de alcance" -- si ya
+    // hay un DXF adjunto, pregunta directamente; si no, sólo rellena el
+    // campo y deja que el arquitecto adjunte primero. Las tarjetas
+    // "próximamente" no llevan `data-pregunta`, así que no hacen nada al
+    // pulsarlas -- ni falta que hace, `cursor: not-allowed` ya lo dice.
+    var accionesRapidas = document.getElementById("conv-acciones-rapidas");
+    if (accionesRapidas) accionesRapidas.addEventListener("click", function (e) {
+      var tarjeta = e.target.closest("[data-pregunta]");
+      if (!tarjeta) return;
+      var pregunta = tarjeta.dataset.pregunta || "";
+      var textarea = document.getElementById("conv-pregunta");
+      if (textarea) textarea.value = pregunta;
+      if (convState.archivoAdjunto) {
+        convEnviarPregunta(pregunta);
+      } else if (textarea) {
+        textarea.focus();
+      }
+    });
+
+    var form = document.getElementById("conv-form");
+    if (form) form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var textarea = document.getElementById("conv-pregunta");
+      var pregunta = textarea ? textarea.value.trim() : "";
+      if (!pregunta) return;
+      convEnviarPregunta(pregunta);
+    });
+
+    var btnAdjuntar = document.getElementById("conv-btn-adjuntar");
+    var inputDxf = document.getElementById("conv-dxf");
+    if (btnAdjuntar && inputDxf) {
+      btnAdjuntar.addEventListener("click", function () { inputDxf.click(); });
+      inputDxf.addEventListener("change", function () {
+        if (inputDxf.files && inputDxf.files[0]) {
+          convState.archivoAdjunto = inputDxf.files[0];
+          convState.ultimoContexto = null; // plano nuevo: el contexto del anterior ya no aplica
+          convRegistrarArchivoUsado(inputDxf.files[0]);
+          renderConvAdjunto();
+          convActualizarSugerencia();
+        }
+      });
+    }
+
+    var adjuntoCont = document.getElementById("conv-adjunto");
+    if (adjuntoCont) adjuntoCont.addEventListener("click", function (e) {
+      if (!e.target.closest("#conv-adjunto-quitar")) return;
+      convState.archivoAdjunto = null;
+      renderConvAdjunto();
+      convActualizarSugerencia();
+    });
+
+    var log = document.getElementById("conv-log");
+    if (log) log.addEventListener("click", function (e) {
+      // Chip de un DXF ya usado en esta sesión (respuesta a "abre el
+      // plano..."): reutiliza el `File` guardado, nunca vuelve a pedirlo
+      // al sistema.
+      var histBtn = e.target.closest("[data-adjuntar-historial]");
+      if (histBtn) {
+        var item = convState.historialArchivos[Number(histBtn.dataset.adjuntarHistorial)];
+        if (item) {
+          convState.archivoAdjunto = item.file;
+          convState.ultimoContexto = null;
+          convRegistrarArchivoUsado(item.file);
+          renderConvAdjunto();
+          convActualizarSugerencia();
+          convAnadirRespuesta(convTarjetaSaludo("Adjunté " + item.name + ". ¿Qué quieres que mida?"));
+        }
+        return;
+      }
+      // "Elegir otro archivo…": aquí sí hace falta el selector nativo.
+      if (e.target.closest("[data-adjuntar-otro]")) {
+        var inputDxf = document.getElementById("conv-dxf");
+        if (inputDxf) inputDxf.click();
+        return;
+      }
+      var chip = e.target.closest(".conv-chip[data-pregunta]");
+      if (!chip) return;
+      var pregunta = chip.dataset.pregunta || "";
+      var textarea = document.getElementById("conv-pregunta");
+      if (textarea) textarea.value = pregunta;
+      if (convState.archivoAdjunto) {
+        convEnviarPregunta(pregunta);
+      } else if (textarea) {
+        textarea.focus();
+      }
+    });
+
+    // El `<textarea>` crece con el contenido (una línea de sobra, nunca
+    // scroll interno) -- mismo criterio que cualquier campo de pregunta
+    // libre: el arquitecto ve lo que ha escrito entero.
+    var textarea = document.getElementById("conv-pregunta");
+    if (textarea) {
+      textarea.addEventListener("input", function () {
+        textarea.style.height = "auto";
+        textarea.style.height = Math.min(textarea.scrollHeight, 160) + "px";
+        convActualizarSugerencia();
+      });
+      textarea.addEventListener("keydown", function (e) {
+        // TAB acepta la sugerencia en línea (si hay una) -- se queda en el
+        // campo para seguir editando antes de enviar, nunca envía sola.
+        if (e.key === "Tab" && convState.sugerenciaActual) {
+          e.preventDefault();
+          textarea.value = convState.sugerenciaActual.completo;
+          convActualizarSugerencia();
+          return;
+        }
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          if (form) form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event("submit", { cancelable: true }));
+        }
+      });
+    }
+  }
+
   // --- Fase 5: formulario "Datos necesarios para completar el cuadro" --------
   //
   // Nada de esto calcula superficies ni decide qué preguntar: eso vive
@@ -5487,6 +6265,20 @@
   wireChecklistCampo();
   wireViabilidadEconomica();
   wireChecklistCte();
+  wireConversacion();
+
+  // Fase 6 (sesión 2026-08-19, noche 5, petición directa de Pablo): "/"
+  // abre la conversación sola, sin ningún clic previo -- el usuario no
+  // encontraba el botón dentro del ribbon. `/proyectos` conserva la
+  // portada clásica (subir DXF, analizar, listado de viviendas) intacta;
+  // es el mismo `index.html` en ambas rutas (ver `app.py`), así que la
+  // única diferencia de arranque es esta. El panel ya trae su propio
+  // selector de DXF (`#conv-dxf`) y funciona sin ningún proyecto
+  // analizado -- `abrirConversacion()` no depende de `state.archivoAnalizado`.
+  if (window.location.pathname === "/") {
+    abrirConversacion();
+  }
+
   restaurarColapso();
   restaurarInspectorPlegado();
 

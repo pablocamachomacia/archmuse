@@ -163,6 +163,22 @@ def _sin_cache_en_estaticos(response):
 
 @app.route("/")
 def index():
+    """Desde el 2026-08-19 (noche 5, petición directa de Pablo) "/" abre
+    directamente el panel de conversación, no la portada de subir/analizar
+    un plano -- el usuario no encontraba el botón "Preguntar a ArchMuse"
+    dentro del ribbon. Es el mismo `index.html` que `/proyectos`: la
+    decisión de qué se ve primero la toma el JS por `location.pathname`
+    (ver el arranque de `static/app.js`), para no mantener dos copias de la
+    SPA. `/api/preguntar` y la Skill no cambian -- esto es sólo qué se sirve
+    en la raíz."""
+    return app.send_static_file("index.html")
+
+
+@app.route("/proyectos")
+def proyectos():
+    """La portada clásica (subir DXF, analizar, navegar el listado de
+    viviendas): vivía en "/" hasta hoy. Mismo fichero que "/" -- ver el
+    docstring de `index()`."""
     return app.send_static_file("index.html")
 
 
@@ -2836,6 +2852,7 @@ def copiloto():
     parametros = body.get("parametros") or {}
     alternativas = body.get("alternativas") or []
 
+    from agente import acta as _acta
     from agente import nucleo as _nucleo
     from agente.registro import Registro
     from agente.registro import registro as _registro_completo
@@ -2882,7 +2899,309 @@ def copiloto():
         salida["antes"] = cambio.get("antes")
         salida["despues"] = cambio.get("despues")
         salida["hay_que_regenerar"] = bool(cambio.get("hay_que_regenerar"))
+
+    # Criterio de aceptación 7 del PRD de este endpoint
+    # (docs/prd/2026-08-19-copiloto-que-modifica-el-proyecto.md): "Toda
+    # modificación queda en el acta: petición, herramienta, argumentos,
+    # resultado." No había proyecto_id real que levantar (el copiloto opera
+    # sobre `parametros` en memoria del cliente, no sobre un `Project`
+    # persistido) -- si el cliente manda uno, se usa; si no, se sintetiza uno
+    # estable a partir de la petición, mismo criterio que `nucleo.ejecutar()`
+    # usa para su propio `ejecucion_id` por defecto.
+    proyecto_id = str(body.get("proyecto_id") or ("copiloto-%d" % abs(hash(intencion))))
+    ejecucion_id = "copiloto-%d" % abs(hash(peticion + repr(len(respuesta.pasos))))
+    salida["acta"] = _acta.levantar_de_pasos(
+        peticion, respuesta.pasos, capacidades=estrecho,
+        proyecto_id=proyecto_id, ejecucion_id=ejecucion_id,
+    ).a_dict()
     return jsonify(salida)
+
+
+class _FalloDeMedicion(Exception):
+    """La Skill de medición no ha podido completarse. El mensaje ya es el
+    que se le enseña al usuario -- ver dónde se captura, en cada endpoint."""
+
+
+def _medir_planta_y_levantar_acta(file, filename: str, capa: Optional[str],
+                                   factor_escala) -> dict:
+    """El DXF subido -> Skill real `superficies.medicion_de_planta` -> acta
+    de procedencia (`Acta.a_dict()`).
+
+    **Único sitio del backend que ejecuta esta Skill.** `/api/acta-legible`,
+    `/api/preguntar` y `/api/memoria-superficies` llaman aquí (vía
+    `_medir_planta_y_renderizar_acta` los dos primeros) -- ninguno reimplementa
+    el camino Ejecutor -> `agente.acta.levantar()` por su cuenta (mismo camino
+    que `scripts/medir_planta.py`).
+
+    Mismo patrón de subida que `/api/analizar`: el DXF no se persiste en
+    ningún sitio, sólo se procesa en un directorio temporal que se borra al
+    salir de esta función. Levanta `_FalloDeMedicion` con un mensaje ya listo
+    para el usuario si la Skill no puede completarse -- nunca deja pasar la
+    excepción original del ejecutor tal cual.
+    """
+    from agente import acta as _acta
+    from agente.efectos import ESCRIBE_FICHERO, Autorizaciones
+    from agente.ejecucion import Ejecutor, Paso, Plan
+    from agente.memoria import MemoriaDeProyecto, SustratoEnMemoria
+    from agente.registro import registro, registro_de_skills
+
+    with tempfile.TemporaryDirectory(prefix="archmuse_acta_") as tmp_dir:
+        ruta_dxf = os.path.join(tmp_dir, filename)
+        file.save(ruta_dxf)
+        ruta_informe = os.path.join(tmp_dir, "medicion.pdf")
+
+        argumentos = {"ruta_dxf": ruta_dxf, "ruta_informe": ruta_informe}
+        if capa:
+            argumentos["capa"] = capa
+        if factor_escala is not None:
+            argumentos["factor_escala"] = factor_escala
+
+        raiz = os.path.splitext(filename)[0] or "plano"
+        capacidades = registro(recargar=True)
+        skills = registro_de_skills(recargar=True)
+        memoria = MemoriaDeProyecto("acta-legible-%s" % raiz, SustratoEnMemoria())
+        plan = Plan(
+            objetivo="Medir %s y levantar su acta legible" % filename,
+            proyecto_id=memoria.proyecto_id,
+            pasos=(Paso(id="medir", skill="superficies.medicion_de_planta",
+                        argumentos=argumentos),),
+        )
+        autorizaciones = Autorizaciones.de((ESCRIBE_FICHERO,), por="api:acta-legible")
+
+        try:
+            resultado = Ejecutor(capacidades=capacidades, skills=skills).ejecutar(
+                plan, memoria, ejecucion_id="api-%s" % raiz, autorizaciones=autorizaciones)
+        except Exception as exc:  # noqa: BLE001 - límite del sistema: DXF arbitrario subido por el usuario
+            app.logger.exception("medicion: fallo al ejecutar la Skill")
+            raise _FalloDeMedicion("No se pudo medir el plano: %s" % exc) from exc
+
+        documento = _acta.levantar(resultado, capacidades=capacidades, skills=skills)
+        return documento.a_dict()
+
+
+def _medir_planta_y_renderizar_acta(file, filename: str, capa: Optional[str],
+                                     factor_escala) -> str:
+    """`_medir_planta_y_levantar_acta` -> página HTML legible
+    (`analyzer.acta_legible.render()`). Separada de ella (MJ-2/`/api/memoria-superficies`,
+    2026-08-19) para que un consumidor que quiera el acta y no HTML -- el PDF
+    del apartado de superficies -- no tenga que parsear la página de vuelta."""
+    from analyzer import acta_legible as _acta_legible
+    return _acta_legible.render(_medir_planta_y_levantar_acta(file, filename, capa, factor_escala))
+
+
+@app.route("/api/acta-legible", methods=["POST"])
+def acta_legible_endpoint():
+    """`DOC-1` (`docs/AGENTE_BACKLOG.md` §10) -- ejecuta de verdad la Skill
+    `superficies.medicion_de_planta` sobre el DXF subido y devuelve su acta de
+    procedencia como página HTML legible. Ver `_medir_planta_y_renderizar_acta`
+    -- este endpoint sólo valida la subida y le pasa el trabajo.
+    """
+    file = request.files.get("dxf")
+    if file is None or file.filename == "":
+        return jsonify(error="Selecciona un archivo DXF antes de continuar."), 400
+    if not file.filename.lower().endswith(".dxf"):
+        return jsonify(error="El archivo debe tener extensión .dxf."), 400
+
+    filename = secure_filename(file.filename) or "plano.dxf"
+    capa = (request.form.get("capa") or "").strip() or None
+    factor_escala = factor_de_unidad(request.form.get("escala") or "")
+
+    try:
+        pagina = _medir_planta_y_renderizar_acta(file, filename, capa, factor_escala)
+    except _FalloDeMedicion as exc:
+        return jsonify(error=str(exc)), 400
+
+    return Response(pagina, mimetype="text/html")
+
+
+@app.route("/api/memoria-superficies", methods=["POST"])
+def memoria_superficies_endpoint():
+    """MJ-3 (`docs/prd/2026-08-19-memoria-justificativa-automatica.md`) --
+    ejecuta la misma Skill real que `/api/acta-legible` sobre el DXF subido y
+    devuelve el apartado de superficies como PDF descargable
+    (`analyzer.memoria_justificativa.generar_memoria_pdf`), en vez de la
+    página HTML de verificación.
+
+    Mismo contrato de subida que `/api/acta-legible`: nada se persiste, el
+    DXF se procesa en un directorio temporal que se borra al salir de
+    `_medir_planta_y_levantar_acta`. Si esa ejecución no produjo ningún dato
+    (p. ej. el plano no tiene recintos legibles), no hay memoria que
+    generar: 422, no un PDF vacío."""
+    file = request.files.get("dxf")
+    if file is None or file.filename == "":
+        return jsonify(error="Selecciona un archivo DXF antes de continuar."), 400
+    if not file.filename.lower().endswith(".dxf"):
+        return jsonify(error="El archivo debe tener extensión .dxf."), 400
+
+    filename = secure_filename(file.filename) or "plano.dxf"
+    capa = (request.form.get("capa") or "").strip() or None
+    factor_escala = factor_de_unidad(request.form.get("escala") or "")
+
+    try:
+        acta = _medir_planta_y_levantar_acta(file, filename, capa, factor_escala)
+    except _FalloDeMedicion as exc:
+        return jsonify(error=str(exc)), 400
+
+    from analyzer.memoria_justificativa import ActaSinDatos, generar_memoria_pdf
+    try:
+        pdf_bytes = generar_memoria_pdf(acta)
+    except ActaSinDatos as exc:
+        return jsonify(error=str(exc)), 422
+
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=apartado_de_superficies.pdf"},
+    )
+
+
+#: La única capacidad que hoy puede ofrecer `/api/preguntar`. Un `dict` y no
+#: una constante suelta porque el día que haya una segunda, la lista crece
+#: en una línea y el prompt del clasificador se construye solo -- no hay que
+#: tocar la lógica del endpoint para añadir una Skill más.
+_SKILLS_DISPONIBLES_PARA_PREGUNTAR = {
+    "superficies.medicion_de_planta": (
+        "Medir las superficies útiles de una planta a partir de un DXF, "
+        "vivienda por vivienda, y mostrar el acta de procedencia de esa "
+        "medición (qué se ha establecido y qué no se ha podido comprobar)."
+    ),
+}
+
+_NOMBRE_HERRAMIENTA_CLASIFICADOR = "clasificar_pregunta"
+
+#: `tool_choice` fuerza al modelo a devolver exactamente este esquema -- no
+#: hay rama en la que "conteste con texto libre" en vez de clasificar. La
+#: única salida posible es `capacidad` (uno de los ids de arriba, o `null`).
+def _herramienta_clasificador() -> dict:
+    ids = list(_SKILLS_DISPONIBLES_PARA_PREGUNTAR)
+    return {
+        "name": _NOMBRE_HERRAMIENTA_CLASIFICADOR,
+        "description": "Decide si la pregunta del usuario coincide con una capacidad de ArchMuse ya registrada.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "capacidad": {
+                    "type": ["string", "null"],
+                    "enum": ids + [None],
+                    "description": (
+                        "El id de la capacidad que resuelve la pregunta, EXACTAMENTE "
+                        "uno de %s -- o `null` si ninguna la resuelve. Nunca inventes "
+                        "un id que no esté en esa lista." % ids
+                    ),
+                },
+            },
+            "required": ["capacidad"],
+        },
+    }
+
+
+def _capacidad_que_coincide(pregunta: str, api_key: str) -> Optional[str]:
+    """La ÚNICA decisión que toma el LLM en `/api/preguntar`: ¿qué capacidad
+    ya registrada resuelve esta pregunta, si es que hay alguna?
+
+    No es una conversación: es una llamada forzada a una herramienta con un
+    `enum` cerrado a las capacidades de `_SKILLS_DISPONIBLES_PARA_PREGUNTAR`
+    -- el modelo no puede devolver un id que no esté en esa lista, así que no
+    puede "inventar" que existe una capacidad que no existe. Nunca redacta
+    contenido: sólo elige un id, o `null`.
+    """
+    from ia.cliente import crear_cliente
+    from ia import modelos
+
+    catalogo = "\n".join(
+        "- `%s`: %s" % (id_, desc) for id_, desc in _SKILLS_DISPONIBLES_PARA_PREGUNTAR.items())
+    sistema = (
+        "Eres el clasificador de intención de ArchMuse. Estas son TODAS las "
+        "capacidades que existen hoy, registradas y ejecutables de verdad:\n\n"
+        + catalogo +
+        "\n\nTu único trabajo es decidir si la pregunta del usuario coincide "
+        "con alguna de ellas. Si coincide, aunque sea parcialmente, devuelve su "
+        "id. Si no coincide con ninguna -- incluida cualquier pregunta sobre "
+        "coste, normativa, plazos, estructura, instalaciones o cualquier otra "
+        "cosa que suene a arquitectura pero no esté en la lista -- devuelve "
+        "`null`. No expliques, no sugieras, no rellenes huecos: sólo clasifica."
+    )
+
+    cliente = crear_cliente(api_key)
+    respuesta = cliente.messages.create(
+        model=modelos.para("clasificacion"),
+        max_tokens=200,
+        system=sistema,
+        tools=[_herramienta_clasificador()],
+        tool_choice={"type": "tool", "name": _NOMBRE_HERRAMIENTA_CLASIFICADOR},
+        messages=[{"role": "user", "content": pregunta}],
+    )
+    bloque = next((b for b in respuesta.content if getattr(b, "type", "") == "tool_use"), None)
+    if bloque is None:
+        return None
+    capacidad = (bloque.input or {}).get("capacidad")
+    # Defensa en profundidad: aunque el `enum` ya lo impide del lado del
+    # modelo, nunca se confía en el string que vuelve sin comprobarlo contra
+    # el catálogo real -- así una respuesta rara del modelo nunca puede
+    # colarse como si fuera una capacidad registrada.
+    return capacidad if capacidad in _SKILLS_DISPONIBLES_PARA_PREGUNTAR else None
+
+
+_MENSAJE_SIN_CAPACIDAD = (
+    "ArchMuse no tiene todavía una capacidad registrada para esto. Hoy sólo "
+    "sabe medir las superficies útiles de una planta a partir de un DXF y "
+    "mostrar el acta de procedencia de esa medición -- nada más. No voy a "
+    "intentar responder con conocimiento general del modelo: eso es "
+    "exactamente lo que ArchMuse existe para no hacer."
+)
+
+
+@app.route("/api/preguntar", methods=["POST"])
+def preguntar():
+    """La primera puerta de conversación real: intención -> ¿hay una Skill
+    registrada que la resuelva? -> se ejecuta de verdad -> se responde con lo
+    que esa Skill produjo. Nada más.
+
+    El LLM interpreta la frase UNA sola vez y para UNA sola cosa: elegir,
+    de una lista cerrada, qué capacidad ya registrada (si alguna) resuelve la
+    pregunta (`_capacidad_que_coincide`). Si hay match, la ejecución pasa por
+    el mismo camino que `/api/acta-legible`
+    (`_medir_planta_y_renderizar_acta`) -- nada se reimplementa. Si no hay
+    match, la respuesta lo dice explícitamente: el modelo nunca contesta con
+    su conocimiento general, ni aquí ni en ninguna otra rama de esta función.
+    """
+    pregunta = (request.form.get("pregunta") or "").strip()
+    if not pregunta:
+        return jsonify(error="Escribe qué quieres saber."), 400
+
+    file = request.files.get("dxf")
+    if file is None or file.filename == "":
+        return jsonify(error="Selecciona un archivo DXF antes de continuar."), 400
+    if not file.filename.lower().endswith(".dxf"):
+        return jsonify(error="El archivo debe tener extensión .dxf."), 400
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        return jsonify(
+            error=("Esta puerta necesita ANTHROPIC_API_KEY para interpretar la "
+                   "pregunta. El resto de ArchMuse funciona sin ella."),
+            codigo="ia_no_disponible",
+        ), 503
+
+    try:
+        capacidad = _capacidad_que_coincide(pregunta, api_key)
+    except Exception as exc:  # noqa: BLE001 - límite del sistema: la API de Anthropic puede fallar
+        app.logger.exception("preguntar: fallo al clasificar la intención")
+        return jsonify(error="No he podido interpretar la pregunta: %s" % exc), 502
+
+    if capacidad is None:
+        return jsonify(coincide=False, mensaje=_MENSAJE_SIN_CAPACIDAD)
+
+    filename = secure_filename(file.filename) or "plano.dxf"
+    capa = (request.form.get("capa") or "").strip() or None
+    factor_escala = factor_de_unidad(request.form.get("escala") or "")
+
+    try:
+        pagina = _medir_planta_y_renderizar_acta(file, filename, capa, factor_escala)
+    except _FalloDeMedicion as exc:
+        return jsonify(error=str(exc)), 400
+
+    return jsonify(coincide=True, capacidad=capacidad, html=pagina)
 
 
 #: Puerto por defecto. `PORT` lo sobreescribe (es la convención que espera
