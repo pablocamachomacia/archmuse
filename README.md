@@ -183,6 +183,19 @@ It shows what it is about to do, then hands back a *copy* of the DXF with the sc
 and a PDF saying, cell by cell, where each figure came from — or why that cell is blank. Anything
 it could not work out comes back as an answerable question, never as a number.
 
+**Measure a whole floor, dwelling by dwelling:**
+
+```bash
+python scripts/medir_planta.py my_floor.dxf
+```
+
+Writes a PDF with one table per dwelling: every room, its area, whether it counts as internal or
+external floor area, and where each figure came from — which polyline, with which label, on which
+DXF layer. It needs no area-schedule table drawn in the plan, and it does not give up when the
+floor has several dwellings. A dwelling whose rooms overlap, whose assignment between dwellings is
+not firm, or that contains a room whose label says nothing about its kind comes back **with no
+total and with the reason written out**, magnitude included. The rooms are measured either way.
+
 **Review a plan before it leaves the studio:**
 
 ```bash
@@ -218,7 +231,8 @@ pytest -q
 
 Around 900 tests. No network and no API key required: anything that would hit a live service or
 spend tokens is skipped by default, and says so rather than failing. A few tests exercise real
-client plans and skip with a reason unless you point `ARCHMUSE_DXF_V2S` at one of your own.
+client plans and skip with a reason unless you point `ARCHMUSE_DXF_V2S` (a single dwelling) and
+`ARCHMUSE_DXF_PLANTA` (a floor with several) at ones of your own.
 
 ```bash
 pytest tests/test_coherencia.py -q          # a single module
@@ -232,8 +246,9 @@ pytest -q -p no:randomly                    # deterministic order
 **No client plans, no DXF or IFC from real projects, no PDFs of real dossiers, no personal data, no
 API keys.** This is a public repository.
 
-- Tests that need a real plan read its path from `ARCHMUSE_DXF_V2S`. The file itself stays outside
-  the repository, and those tests skip — with a reason — when it is absent.
+- Tests that need a real plan read its path from `ARCHMUSE_DXF_V2S` or `ARCHMUSE_DXF_PLANTA`. The
+  files themselves stay outside the repository, and those tests skip — with a reason — when they
+  are absent.
 - Secrets live in environment variables or in a local `.env`, which is git-ignored. `.env.example`
   documents every variable and **must never contain a real value**.
 - Generated deliverables — filled DXFs, PDF reports — are written next to their source, outside the

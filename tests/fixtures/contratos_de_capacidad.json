@@ -1,20 +1,5 @@
 {
   "_nota": "Contrato de cada capacidad (tarea CAD-2): lo que un invocador de fuera nota. La descripción NO está aquí a propósito. Generado por `python tests/test_agente_compatibilidad.py --congelar`. Si esto cambia, alguien ha cambiado un contrato: la versión tiene que reflejarlo.",
-  "bim.inventario_de_ifc": {
-    "efectos": [],
-    "id": "bim.inventario_de_ifc",
-    "limitaciones": 4,
-    "naturaleza": "determinista",
-    "obligatorios": [
-      "ruta"
-    ],
-    "parametros": {
-      "ruta": {
-        "type": "string"
-      }
-    },
-    "version": "1.0.0"
-  },
   "normativa.reglas_aplicables": {
     "efectos": [],
     "id": "normativa.reglas_aplicables",
@@ -225,6 +210,66 @@
     },
     "version": "1.0.0"
   },
+  "plano.medicion_de_la_planta": {
+    "efectos": [],
+    "id": "plano.medicion_de_la_planta",
+    "limitaciones": 6,
+    "naturaleza": "determinista",
+    "obligatorios": [
+      "ruta"
+    ],
+    "parametros": {
+      "capa": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "factor_escala": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "ruta": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "plano.medicion_en_pdf": {
+    "efectos": [
+      "escribe_fichero"
+    ],
+    "id": "plano.medicion_en_pdf",
+    "limitaciones": 2,
+    "naturaleza": "io",
+    "obligatorios": [
+      "ruta",
+      "ruta_destino"
+    ],
+    "parametros": {
+      "capa": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "factor_escala": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "ruta": {
+        "type": "string"
+      },
+      "ruta_destino": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
   "plano.superficie_util": {
     "efectos": [],
     "id": "plano.superficie_util",
@@ -242,6 +287,28 @@
       },
       "ruta": {
         "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "proyecto.ajustar_programa": {
+    "efectos": [],
+    "id": "proyecto.ajustar_programa",
+    "limitaciones": 5,
+    "naturaleza": "determinista",
+    "obligatorios": [
+      "operacion",
+      "parametros"
+    ],
+    "parametros": {
+      "argumentos": {
+        "type": "object"
+      },
+      "operacion": {
+        "type": "string"
+      },
+      "parametros": {
+        "type": "object"
       }
     },
     "version": "1.0.0"

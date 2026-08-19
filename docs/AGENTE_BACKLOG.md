@@ -131,10 +131,13 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **El veredicto de CTO, sin adornos:** un resumidor de correos genérico **no tiene foso ninguno** — lo hace mejor y gratis el cliente de correo del arquitecto. Lo que sí tiene valor es la **puerta de entrada a la memoria de proyecto** (OP-2): convertir prosa en requisitos trazables. Se implementa como eso y nada más. Integración con bandejas de correo: **no**.
 - **Tareas:** `SK-3`, `ME-3`.
 
-### OP-11 · «Ayúdame a decidir esto del diseño» — **NO SE HACE en este horizonte**
+### OP-11 · «Ayúdame a decidir esto del diseño» — **REVERTIDO el 2026-08-19 por el informe ejecutivo de Pablo**
 
 - **El veredicto:** `MOAT_ANALYSIS.md` y `DESTROY_ARCHMUSE.md` coinciden en que la generación de plantas y el asesoramiento de diseño demuestran bien y **no venden**; son también lo más caro por token y lo que más tensiona la frontera de autoría. El generador actual se **congela**: no recibe trabajo, no se amplía, no se borra.
-- **Tareas:** ninguna. Se registra aquí para que nadie lo redescubra como idea nueva dentro de seis meses.
+- **ACOTADA el 2026-08-19 por la correccion del §8 de `ARCHMUSE_SPEC.md`.** La reversion no es un cheque en blanco: la generacion de alternativas queda **permitida cuando la geometria se deriva de parametros comprobables** —envolvente y volumen edificable a partir de retranqueos, ocupacion, edificabilidad y alturas—, y cada alternativa lleva la procedencia de los parametros que la producen. **Sigue fuera la distribucion interior libre:** repartir estancias dentro de una planta segun criterio propio no se deriva de nada comprobable. Eso deja `analyzer/ai_generator.py` —donde el modelo coloca las estancias— **fuera de alcance**; no se ha borrado ni congelado, y que hacer con el es una decision de Pablo. Lo que si esta construido y dentro de la redaccion es `CP-5`: `analyzer/alternativas.py`, aritmetica pura sobre los parametros del arquitecto, sin una sola llamada al modelo.
+- **LA REVERSIÓN, y conviene que quede escrita entera.** El informe ejecutivo de Pablo del 2026-08-19 pone la **generación de alternativas en el centro del MVP**: «parcela → restricciones → programa → generación de alternativas → evaluación → comparación → modificación → exportación». Eso contradice de frente el veredicto de arriba, que congelaba el generador citando que «demuestra bien y no vende» y que es lo que más tensiona la frontera de autoría.
+- **Es una decisión de Pablo y se ejecuta**, pero con dos condiciones escritas para que la reversión no se pierda: (1) el veredicto anterior **no se borra** —sigue arriba, con sus motivos—, y (2) **la prueba del §7 del informe es el juez**: darle ArchMuse a un arquitecto sin explicarle nada y ver si dice «esto me ahorraría trabajo». Si a las 24 h dice «está muy chulo pero no lo usaría», el veredicto congelado era el correcto y se vuelve a él sin discutir. El propio informe lo dice: «no añadas tecnología; cambia el producto».
+- **Tareas:** `CP-1` a `CP-7` (`docs/prd/2026-08-19-copiloto-que-modifica-el-proyecto.md`).
 
 ### OP-12 · «Acuérdate de todo esto dentro de ocho meses» — **transversal, no es una funcionalidad**
 
@@ -150,6 +153,15 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Lo que lo mantiene fuera de `D-7`:** **no gradúa la gravedad de nada.** «Se solapan 4,00 m²» es un hecho comprobable; «esto es grave» es criterio profesional, y el de ArchMuse está sin firmar. La frontera es la verificación bloqueante `ningun_hallazgo_lleva_gravedad`, con su test de que **falla de verdad**.
 - **Entregable demostrable:** `python scripts/revisar_plano.py mi_plano.dxf` — enseña el procedimiento, revisa, escribe el informe en PDF, imprime el acta y no toca el DXF (sha256 verificado antes y después). Sin clave de API y sin red.
 - **Tareas:** `CO-1` a `CO-8` (todas hechas). PRD: `docs/prd/2026-08-19-revision-de-coherencia-del-plano.md`.
+
+### OP-16 · «Mídeme esta planta y dime lo que mide cada vivienda» — **HECHO (2026-08-19)**
+
+- **Devuelve:** la medición de superficies útiles de **todas** las viviendas de una planta, pieza a pieza, con la procedencia de cada cifra —qué recinto, con qué rótulo, en qué capa del DXF—, los subtotales interior y exterior, y el total de cada vivienda **sólo cuando se puede afirmar**.
+- **Por qué éste, y se eligió midiendo y no opinando:** `OP-1` promete un cuadro relleno y **se negaba a empezar en cuanto el DXF tenía más de una vivienda**. Ejecutado sobre el segundo plano real del cliente (`V5.dxf`), ArchMuse no entregaba nada: «esta función de momento solo admite un DXF con una única vivienda detectada; tiene 3». Y ese plano no tiene ningún defecto — es **una planta normal de un edificio residencial**, con tres viviendas (`VT1/3`, `VT2/2`, `VT3/3`, 22 recintos) y **cero `ACAD_TABLE`**. Es decir: el producto sólo funcionaba sobre el piso recortado, que es el caso raro.
+- **Lo que ya existía y no usaba nadie:** el reparto de recintos por vivienda estaba resuelto y probado en `evaluator.group_rooms_by_unit_label` desde antes, y lo consumía **una sola** capacidad (`plano.superficie_util`) para dar un número por vivienda que no llegaba a ningún entregable. Lo que faltaba era llevarlo hasta un documento, auditar el propio reparto y negarse a totalizar lo que no cuadra.
+- **Lo que lo mantiene fuera de `D-7`:** no gradúa nada. No dice si una vivienda es pequeña ni si un solape es un error del plano o una convención de su autor: dice qué piezas hay, cuánto miden y qué impide totalizar. Frontera comprobada por la verificación bloqueante `la_medicion_no_califica`, con su test de que **falla de verdad**.
+- **Entregable demostrable:** `python scripts/medir_planta.py mi_planta.dxf` — enseña el procedimiento, mide, escribe el PDF, imprime el acta y no toca el DXF (sha256 verificado antes y después). Sin clave de API y sin red.
+- **Tareas:** `TL-11`, `SK-10`. **No depende del corpus normativo ni de ninguna firma**, igual que `OP-15`.
 
 ### OP-13 · «Sácame el cuadro de carpintería de este plano» — **NO como estaba pensada** (medido, 2026-08-19)
 
@@ -323,6 +335,17 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Terminado cuando:** las tres Skills existentes tienen firma y versión firmada, y una Skill sin firmar sale marcada como tal en el catálogo.
 - **Bloqueada por:** D-7.
 
+### MVP-1 · El MVP de las 5 piezas (informe ejecutivo del 2026-08-19)
+`P0` · `PARCIAL (2026-08-19)` · PRD: **escrito** para la pieza 5 — `docs/prd/2026-08-19-copiloto-que-modifica-el-proyecto.md` · dep: — · ~1j
+
+- **Lo que pide el informe:** ① crear proyecto, ② análisis automático, ③ generador multi-alternativa, ④ evaluador, ⑤ copiloto que **modifica** el proyecto. Más la vista de tres zonas del §4.
+- **El hueco real, medido antes de construir nada:** ①②③④ **ya existían** como endpoints (`/api/analizar-sitio`, `/api/generar-opciones` con su comparador, `/api/analizar`, `/api/viabilidad-financiera`). Lo que no existía era ⑤ —ni en el backend (es `OP-8`, aplazado a V2) ni en el frontend: **cero líneas de chat en los 800 KB de la SPA**— y la vista de tres zonas.
+- **Lo que desbloqueó ⑤:** `OP-8` está aplazado porque escribir en el fichero de un cliente es el efecto más caro de equivocarse. Aquí **no hay ningún fichero de cliente**: se transforma el diccionario de parámetros con el que se generó una alternativa. Con esa distinción, ⑤ deja de ser V2 peligroso y pasa a ser una jornada.
+- **Hecho (`CP-1`, `CP-2`, `CP-3`):** `agente/herramientas/proyecto.py` (una capacidad, `proyecto.ajustar_programa`, aritmética y estrecha), el endpoint `/api/copiloto` con **registro estrecho** —el copiloto sólo ve una herramienta, así que no puede leer un DXF ni escribir un fichero aunque quiera—, y la vista `/mvp` de tres zonas con las cinco pestañas. 23 tests nuevos.
+- **La decisión de producto de Pablo (2026-08-19) sobre la pestaña Normativa:** se separa **comprobado** de **estimado**. Los parámetros urbanísticos (edificabilidad, ocupación, altura, retranqueos) se comprueban con aritmética exacta contra lo que el usuario introdujo y ahí sí se dice «cumple»; las 20+ reglas de `evaluator.py` llevan umbrales **que no salen de ninguna fuente citada** y se enseñan como «indicadores de diseño», con el aviso de que no son verificación normativa. Presentarlas como cumplimiento es el modo de fallo nº1 del producto, y la prueba del §7 es un arquitecto que va a preguntar de dónde sale un número.
+- **Pendiente:** `CP-4` (cablear ①② de parcela real por Catastro/Mapbox en esta vista), `CP-5` (los cuatro objetivos de optimización: hoy el generador da **2** opciones, no 4), `CP-6` hecho, `CP-7` parcial.
+- **El juez es la prueba del §7**, no esta lista. Ver `OP-11`.
+
 ### SK-9 · Skill de revisión de coherencia del plano
 `P0` · `HECHO (2026-08-19)` · PRD: **escrito e implementado** — `docs/prd/2026-08-19-revision-de-coherencia-del-plano.md` · dep: — · ~1j
 
@@ -342,6 +365,19 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
   - **Lo que sí quedó de `V5.dxf`:** tres contornos con el flag `closed` mal puesto, uno con **3 cm** de hueco. Y el handle `A61724` aparece **en los dos planos**, así que no es un descuido: es una costumbre de dibujo del estudio, y es justo lo que un informe recurrente sirve para ver.
   - **La limitación «sólo admite un DXF con una única vivienda detectada» era un desmentido, no una limitación:** estaba declarada y la herramienta no la hacía cumplir — emitía ocho hallazgos falsos tan campante. Ahora el número de viviendas va en la cabecera del informe, para que si ArchMuse agrupa mal se vea en la primera línea en vez de deducirse de unos hallazgos raros.
 - **Lo que este entregable NO hace, y va en su manifiesto:** no comprueba normativa, no ordena por importancia, no lee muros ni carpintería, y **no compara la cifra escrita en una celda del cuadro contra la medida** — porque hoy no hay ningún plano real con el cuadro relleno con el que comprobar que eso funciona. Ver §12 y `OP-13`.
+
+### SK-10 · Skill de medición de una planta con varias viviendas
+`P0` · `HECHO (2026-08-19)` · PRD: no (ver nota) · dep: `TL-11` · ~1j
+
+- **Objetivo:** el procedimiento que sigue un arquitecto al medir una planta: comprobar la unidad **primero**, separar las viviendas por los rótulos que puso él mismo en el plano, **auditar ese reparto**, medir cada recinto, cruzar la suma contra la geometría, totalizar sólo lo que se puede afirmar, y entregar el documento con la procedencia de cada cifra.
+- **Valor para el arquitecto:** la medición pieza a pieza de una planta entera, que hoy se hace con una calculadora y se rehace entera en cada revisión del plano. Y —su caso de más valor— sirve para un DXF que no dibujó él.
+- **Terminado cuando:** sobre la planta real de tres viviendas produce los tres cuadros con sus cifras exactas, sobre el plano con solapes se niega a totalizar con la cifra que lo explica, y ninguna vivienda con un impedimento lleva total. **Los tres comprobados por tests.**
+- **Cómo quedó (2026-08-19):** `analyzer/medicion.py` (el cálculo puro), `analyzer/medicion_pdf.py` (el documento), `agente/herramientas/medicion.py` (dos capacidades, separadas por el efecto), `agente/skills/medicion.py` (el procedimiento, cinco verificaciones) y `scripts/medir_planta.py`. **Cero modificaciones al runtime de `agente/` y cero a `analyzer/parser.py` o `analyzer/evaluator.py`:** el reparto en viviendas ya existía y se **usa**, no se reimplementa. Registro de capacidades: de 11 a **13**.
+- **La regla dura, que es la decisión de producto de esta Skill:** basta **un** impedimento para que una vivienda no lleve **ningún** total. Los tres son piezas solapadas, reparto dudoso entre viviendas, y una pieza cuyo rótulo no dice si es superficie interior o exterior. Un total que puede estar mal se copia a la memoria del proyecto y se firma; la ausencia de total se pregunta. Las piezas se miden igual —ahí está casi todo el valor— y el impedimento va escrito **con su magnitud**.
+- **La auditoría del reparto, que es lo que separa medir de adivinar.** El reparto por «etiqueta `VT` más cercana» ya existía y es correcto en un plano con las viviendas separadas; en dos viviendas medianeras deja de serlo y **no avisaba de nada**. Ahora se mide la holgura de cada pieza (`HOLGURA_MINIMA_DE_REPARTO = 2`, calibrado contra el plano real: su peor pieza tiene 2,67) y un reparto apretado se declara y bloquea el total de esa vivienda.
+- **El descuadre de redondeo, que habría sido el falso positivo de esta entrega.** La primera versión cruzaba la **suma de las cifras publicadas** contra la unión geométrica. Redondear ocho piezas a dos decimales y sumarlas produce hasta un céntimo de metro de diferencia que no es ningún solape: `VT3/3` daba 66,56 contra 66,55 y habría salido con un aviso de «metros dibujados dos veces» de 0,01 m². Se detectó ejecutando contra el plano real antes de escribir el test. Ahora se cruzan las magnitudes **crudas** —el aviso desaparece— y el total publicado sigue siendo la suma de las cifras publicadas, para que la tabla cuadre cuando el arquitecto la sume a mano. Son dos cifras distintas a propósito y está escrito por qué.
+- **Nota de proceso (`CLAUDE.md`):** no lleva PRD propio. Se implementó bajo la orden directa de Pablo del 2026-08-19 («elige el siguiente trabajo profesional de mayor valor, impleméntalo de principio a fin y pruébalo con un proyecto real»), y lo que hace es cerrar el hueco de un objetivo ya aprobado (`OP-1`) sobre el caso normal. Queda anotado aquí para que la excepción sea visible y no una costumbre.
+- **Lo que NO hace, y va en su manifiesto:** no mide superficie construida, no comprueba normativa ni ningún mínimo, no rellena el cuadro del DXF (para eso está `superficies.cuadro_de_vivienda`, que sí escribe en el plano) y no lee muros ni carpintería.
 
 ### SK-8 · Arquitectura común: escribir la Skill nº5 sin duplicar la nº1
 `P1` · `PARCIAL (2026-08-19)` · PRD: no (es refactor, no capacidad nueva) · dep: — · ~0,5j
@@ -409,6 +445,14 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Los dos mensajes que ya había se conservan**, porque son mejores que los del esquema: dicen qué se admite y qué falta. No se repiten con dos redacciones distintas.
 - **Un hueco que encontró su propio test:** al descartar los `required`/`additionalProperties` que ya decía `invocar`, se descartaban también los **anidados** — y ésos no los dice nadie más, porque las dos comprobaciones a mano sólo miran el primer nivel. Es justo donde un modelo se equivoca de verdad. Corregido antes de cerrar.
 - **Se comprueba en:** `tests/test_agente_argumentos.py`, 22 tests, incluido el de punta a punta que fija que el rechazo llega al bucle como `ok: false` con `is_error`, no como una excepción que tumbe la conversación.
+
+### TL-11 · Capacidades de medición de una planta
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-1` · ~0,5j
+
+- **Objetivo:** las dos capacidades que `SK-10` necesita, separadas por el efecto: `plano.medicion_de_la_planta` (mide, no escribe nada) y `plano.medicion_en_pdf` (el documento, único con efecto).
+- **Por qué dos capacidades nuevas y no quitar una limitación a las que ya había.** Las del cuadro (`plano.cuadro_de_superficies`, `plano.escribir_cuadro`) trabajan sobre **el cuadro que el plano ya trae dibujado**: sus filas son las que el arquitecto puso en su `ACAD_TABLE` y su trabajo es rellenarlas dentro del propio DXF. Eso exige que la tabla exista y que haya una sola vivienda para saber a cuál describe. Un plano con tres viviendas y sin tabla no cumple ninguna de las dos, y **ninguna de las dos condiciones es un defecto del plano**. Son dos trabajos distintos con dos entregables distintos, no uno con una limitación. Las del cuadro siguen siendo las buenas cuando el plano trae su tabla: devolverle al arquitecto su propio plano con su propia tabla rellena vale más que darle una lista.
+- **Terminado cuando:** las dos respetan el contrato de salida también al fallar, la que escribe se niega sin autorización, el destino no puede ser el DXF ni un fichero existente, y el original conserva su sha256. **Todo comprobado por tests.**
+- **Cómo quedó:** `_destino_seguro`, `_con_sello_intacto`, `_falta_el_fichero`, `_fallo_de_lectura` y `_sha256` se **importan** de `plano.py`, no se reimplementan — es el defecto nº1 que se le corrigió a `SK-9` y no se repite. La lista de «lo que no se comprueba» del PDF la deriva la propia capacidad de los manifiestos, y **no es un argumento**: si lo fuera, quien la invoca podría entregar un documento con la lista recortada. Contrato congelado y golden capturado en el mismo cambio (contra un fixture de **dos** viviendas: congelar la medición contra el piso de una sola dejaría sin vigilar el motivo por el que la capacidad existe).
 
 ### TL-4 · Golden obligatorio por capacidad determinista
 `P1` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-1` · ~0,5j
@@ -912,7 +956,46 @@ Siete de los nueve ya se sabían y se tiraban. El producto estaba desperdiciando
 
 ---
 
+### 13.8 Lo hecho el 2026-08-19 (la planta entera, y no un piso recortado)
+
+Encargo: «elige el siguiente trabajo profesional de mayor valor que ArchMuse pueda hacer con lo que ya existe, impleméntalo de principio a fin y pruébalo con un proyecto real; no construyas infraestructura nueva salvo que sea imprescindible».
+
+**Cómo se eligió, y otra vez no fue por parecer buena.** Se ejecutó el vertical existente contra los **dos** planos reales del cliente y se miró qué salía:
+
+| Plano | Qué es | Qué entregaba ArchMuse antes de hoy |
+|---|---|---|
+| `v2s.dxf` | Un piso recortado, con su `ACAD_TABLE` de cuadro | DXF relleno + PDF + acta. Funciona |
+| `V5.dxf` | **Una planta de tres viviendas** (`VT1/3`, `VT2/2`, `VT3/3`), 22 recintos, **sin ningún `ACAD_TABLE`** | **Nada.** «esta función de momento solo admite un DXF con una única vivienda detectada; tiene 3» |
+
+El caso que no funcionaba es **el normal**: una planta de un edificio residencial tiene tres, cuatro o seis viviendas, y el cuadro de superficies suele dibujarse *después* de medir, no antes. El producto sólo sabía trabajar sobre el piso recortado y con la tabla ya puesta.
+
+**Por qué esta candidata y no otra.** Cumple los cuatro criterios a la vez, igual que la revisión de coherencia en §13.7: ahorra horas de verdad (medir una planta a mano se rehace entera en cada revisión), entrega un documento, cada cifra se puede ir a comprobar al DXF, y **no necesita ni una línea de corpus normativo**. Las alternativas que se descartaron con datos: la superficie construida sigue sin ser medible con honestidad (§`DOC-2`: reconstrucción por casco convexo con error del −24 % al +49 %), la memoria justificativa sigue esperando a `NOR-2`, y `DOC-1` —que era el siguiente de la cola— es presentación de algo que ya se entrega, no un trabajo que hoy no se pueda hacer.
+
+**Cuánta infraestructura hizo falta: ninguna.** El reparto de recintos por vivienda ya existía, probado, en `evaluator.group_rooms_by_unit_label`, y lo usaba una sola capacidad para producir un número que no llegaba a ningún entregable. `agente/` no se tocó —capacidades y Skills se descubren dejando un fichero—, y `analyzer/parser.py` y `analyzer/evaluator.py` tampoco. Cinco ficheros nuevos y ninguno modificado, aparte de las tres listas que el propio sistema exige actualizar al añadir una capacidad (invocaciones, contrato congelado y golden).
+
+**Los dos defectos que encontró probar contra el plano real antes de escribir los tests**, que es el orden que ya funcionó en §13.7:
+
+1. **El descuadre de redondeo.** Cruzar la suma de las cifras **publicadas** contra la unión geométrica daba en `VT3/3` un descuadre de 0,01 m² —redondear ocho piezas a dos decimales y sumarlas— que habría salido como «metros dibujados dos veces». Un aviso falso en la primera vivienda medida de la primera planta real. Se cruzan las magnitudes crudas; el total publicado sigue siendo la suma de las publicadas para que la tabla cuadre a mano. Tiene su test.
+2. **`H.ay 7,08 m²`** en el PDF: una expresión de capitalización mal parentizada. Trivial, y sólo se ve leyendo el PDF generado — que es exactamente por lo que hay que leerlo.
+
+**Lo que la medición encuentra en cada plano, y son resultados distintos a propósito:**
+
+- `V5.dxf`: **tres viviendas medidas enteras** — `VT1/3` 66,32 m², `VT2/2` 58,44 m², `VT3/3` 66,56 m² de superficie útil, con sus 22 piezas, su ámbito y su procedencia. Cero avisos falsos.
+- `v2s.dxf`: **se niega a dar el total** y dice por qué: «hay 7,08 m² dibujados dos veces: la suma de las piezas da 74,95 m² y la superficie que ocupan realmente es 67,87 m²», con los dos pares que se pisan (`Tendedero`+`Tendedero` 4,00 m² y `Terraza`+`Tendedero` 3,08 m²). Las nueve piezas siguen medidas. **Son los mismos 7,08 m² que la revisión de coherencia encuentra por su cuenta y por otro camino**, y que dos caminos independientes den la misma cifra es lo que hace creíbles a los dos.
+
+**Lo que esta sesión NO hizo, a propósito:** no tocó el runtime de `agente/`, no dibujó ningún `ACAD_TABLE` nuevo en el DXF (escribir el cuadro cuando no existe es otra tarea y otro riesgo), no midió superficie construida y no transcribió normativa.
+
+**Anotado como deuda de proceso:** `SK-10` y `TL-11` no llevan PRD propio, contra la regla de `CLAUDE.md`. Ver la nota en `SK-10`.
+
+**Y un test que se ha dejado en rojo a propósito, que es el resultado más importante de la sesión.** Añadir dos capacidades puso el registro en **14** y disparó `test_el_registro_sigue_dentro_del_tamano_que_C4_permite`: `C4` fija el MVP en 8–12. El test hizo exactamente su trabajo, al primer intento. **No se ha tocado el número**, porque un guardián que se ensancha en cuanto salta no protege de nada y el tope es una de las cinco consecuencias vinculantes. Queda como `D-12` con las cifras, el argumento por ambos lados y una recomendación: separar el contador de capacidades **normativas** —donde el riesgo que `C4` nombra es real y el corpus sigue vacío— del de las geométricas, que no pueden alucinar una norma. Decide Pablo.
+
+**Estado de la suite al cerrar:** 951 pasados, 1 xfailed. Tres rojos, y ninguno es un cálculo: el de `C4` (arriba), el de descubrimiento de Skills (corregido en el mismo cambio) y `test_toda_capacidad_devuelve_un_dict_con_ok`, que estaba rojo por `proyecto.ajustar_programa` — capacidad de la sesión que corría en paralelo, sin su entrada en el test de invocación. No se ha tocado: es su trabajo en vuelo y el test rojo es el recordatorio que está diseñado para ser.
+
+---
+
 ### 13.3 Lo siguiente, en orden
+
+**Nota del 2026-08-19 (§13.8):** esta lista no contenía `OP-16` y aun así fue lo que se hizo, con motivo. Los tres primeros puestos siguen bloqueados por una contratación (`NOR-1`, `D-7`) o por una decisión (`D-9`), y el cuarto (`DOC-1`) presenta mejor algo que **ya se entrega**. Medir una planta con varias viviendas era trabajo que un arquitecto pide todas las semanas y que ArchMuse sencillamente **no podía hacer**. Cuando la cola y el plano real no coinciden, manda el plano real.
 
 | # | Tarea | Por qué va aquí |
 |---:|---|---|
@@ -945,6 +1028,7 @@ De `docs/design/decisiones-pendientes.md`. Una tarea bloqueada por una decisión
 | D-9 · Si una sesión autónoma puede empujar a una rama con prefijo | `INF-1` | **Alta**: es lo único que bloquea la red de seguridad de todo lo demás |
 | D-10 · Tipo de cambio para facturar en euros | nada hoy | Baja: se decide con `INF-9`, y entonces el cambio tiene que guardarse **con la factura** |
 | D-11 · Cuándo entra FastAPI y quién regenera el lock de dependencias | `INF-5` | Media: hoy serviría capacidades que no llama nadie; el valor llega con `INF-6` e `INF-7` |
+| D-12 · El techo de 12 capacidades de `C4`, superado por una (**13**, tras retirar `bim.inventario_de_ifc` el 2026-08-19) | **Dos tests en rojo a propósito**, protegidos por `tests/test_guardianes_de_decision.py`. Pasos 1 y 2 aprobados y ejecutados; paso 3 autorizado y escrito en `docs/design/2026-08-19-revision-formal-de-C4.md` | Alta: es una de las cinco consecuencias vinculantes y criterio de aceptación de todo PRD |
 
 ---
 

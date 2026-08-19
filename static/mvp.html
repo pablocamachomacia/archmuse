@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArchMuse</title>
+<!--
+  La vista de tres zonas del informe ejecutivo del 2026-08-19 (§4).
+
+  Es una pagina NUEVA y deliberadamente delgada: no toca `static/app.js` (275 KB
+  de SPA ya en produccion). Llama a los endpoints que ya existen
+  --`/api/generar-opciones`, `/api/copiloto`-- y no reimplementa ni un calculo.
+
+  La sensacion que busca, literal del informe: "estoy trabajando dentro de
+  ArchMuse", no "estoy hablando con ChatGPT sobre arquitectura". Por eso el
+  copiloto es una zona de la herramienta y no la herramienta.
+-->
+<style>
+  :root {
+    --fondo: #14161a; --panel: #1c1f26; --panel-alto: #22262f;
+    --borde: #2e333d; --texto: #e6e8ec; --tenue: #9aa2b1;
+    --acento: #d97757; --ok: #4ea172; --aviso: #d6a635; --malo: #d4674f;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; overflow: hidden;
+    font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--fondo); color: var(--texto);
+    display: grid; grid-template-rows: auto auto 1fr;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 14px;
+    padding: 10px 18px; border-bottom: 1px solid var(--borde); background: var(--panel);
+  }
+  header b { font-size: 15px; letter-spacing: .3px; }
+  header .estado { margin-left: auto; font-size: 12px; color: var(--tenue); }
+  nav { display: flex; gap: 2px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--borde); }
+  nav button {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--tenue); padding: 9px 16px; cursor: pointer; font-size: 13px;
+  }
+  nav button:hover { color: var(--texto); }
+  nav button[aria-selected="true"] { color: var(--texto); border-bottom-color: var(--acento); }
+  main { display: grid; grid-template-columns: 320px 1fr 380px; overflow: hidden; }
+  section { overflow-y: auto; padding: 16px; }
+  #izquierda { border-right: 1px solid var(--borde); background: var(--panel); }
+  #derecha { border-left: 1px solid var(--borde); background: var(--panel);
+             display: flex; flex-direction: column; padding: 0; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+       color: var(--tenue); margin: 20px 0 8px; font-weight: 600; }
+  h2:first-child { margin-top: 0; }
+  label { display: block; font-size: 12px; color: var(--tenue); margin: 9px 0 3px; }
+  input, select {
+    width: 100%; padding: 7px 9px; background: var(--fondo); color: var(--texto);
+    border: 1px solid var(--borde); border-radius: 5px; font: inherit; font-size: 13px;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--acento); }
+  .fila { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .fila-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button.principal {
+    width: 100%; margin-top: 18px; padding: 10px; border: none; border-radius: 6px;
+    background: var(--acento); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.principal:disabled { opacity: .5; cursor: default; }
+  .tarjeta { background: var(--panel-alto); border: 1px solid var(--borde);
+             border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .tarjeta.sel { border-color: var(--acento); }
+  .tarjeta h3 { margin: 0 0 6px; font-size: 14px; display: flex; gap: 8px; align-items: baseline; }
+  .tarjeta h3 span { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--tenue); }
+  .metricas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
+  .metrica .v { font-family: var(--mono); font-size: 17px; }
+  .metrica .e { font-size: 10.5px; color: var(--tenue); text-transform: uppercase; letter-spacing: .4px; }
+  .alternativas { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .planos { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px; }
+  .plano { background: #fff; border-radius: 8px; padding: 8px; }
+  .plano svg { width: 100%; height: auto; display: block; }
+  .plano .pie { color: #333; font-size: 11px; padding: 4px 2px 0; }
+  .lista { list-style: none; padding: 0; margin: 0; }
+  .lista li { padding: 7px 0; border-bottom: 1px solid var(--borde); font-size: 13px; }
+  .lista li:last-child { border: none; }
+  .pill { display: inline-block; font-size: 10.5px; padding: 1px 7px; border-radius: 10px;
+          border: 1px solid currentColor; margin-right: 7px; vertical-align: 1px; }
+  .ok { color: var(--ok); } .aviso { color: var(--aviso); } .malo { color: var(--malo); }
+  .nota { font-size: 12px; color: var(--tenue); background: var(--panel-alto);
+          border-left: 2px solid var(--borde); padding: 9px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; }
+  /* Lo que produce el modelo NO se pinta como lo que produce la aritmetica.
+     Decision de Pablo del 2026-08-19: los resultados de `ai_generator.py` --que
+     coloca estancias segun criterio propio, hoy fuera del alcance del §8-- no
+     pueden mezclarse visualmente con los de `analyzer/alternativas.py`, que se
+     derivan de parametros comprobables y llevan procedencia. De ahi que vivan
+     en pestanas distintas y que esta franja acompane siempre a la del modelo. */
+  .franja-sin-auditar {
+    background: rgba(214, 166, 53, .10); border: 1px solid var(--aviso);
+    border-radius: 8px; padding: 10px 13px; margin: 0 0 14px; font-size: 12.5px; color: var(--texto);
+  }
+  .franja-sin-auditar b { color: var(--aviso); }
+  #p-distribucion .tarjeta { border-left: 3px solid var(--aviso); }
+  nav button .marca { font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px;
+                      color: var(--aviso); border: 1px solid var(--aviso);
+                      border-radius: 8px; padding: 0 5px; margin-left: 6px; }
+  #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 92%; padding: 9px 12px; border-radius: 10px; font-size: 13px; white-space: pre-wrap; }
+  .msg.yo { align-self: flex-end; background: var(--acento); color: #fff; }
+  .msg.am { align-self: flex-start; background: var(--panel-alto); border: 1px solid var(--borde); }
+  .msg.sis { align-self: center; font-size: 11.5px; color: var(--tenue); font-family: var(--mono);
+             background: none; border: 1px dashed var(--borde); }
+  #entrada { border-top: 1px solid var(--borde); padding: 12px; display: flex; gap: 8px; }
+  #entrada input { flex: 1; }
+  #entrada button { padding: 7px 14px; border: none; border-radius: 5px;
+                    background: var(--acento); color: #fff; cursor: pointer; font: inherit; }
+  .vacio { color: var(--tenue); font-size: 13px; text-align: center; padding: 40px 20px; }
+  .oculto { display: none; }
+  code { font-family: var(--mono); font-size: 12px; color: var(--acento); }
+</style>
+</head>
+<body>
+
+<header>
+  <b>ArchMuse</b>
+  <span style="font-size:12px;color:var(--tenue)">copiloto de proyecto</span>
+  <span class="estado" id="estado">Sin proyecto</span>
+</header>
+
+<nav id="pestanas">
+  <button data-p="alternativas" aria-selected="true">Alternativas</button>
+  <button data-p="distribucion" aria-selected="false">Distribución<span class="marca">sin auditar</span></button>
+  <button data-p="analisis" aria-selected="false">Análisis</button>
+  <button data-p="normativa" aria-selected="false">Normativa</button>
+  <button data-p="costes" aria-selected="false">Costes</button>
+  <button data-p="exportar" aria-selected="false">Exportar</button>
+</nav>
+
+<main>
+  <!-- IZQUIERDA: proyecto / parcela -->
+  <section id="izquierda">
+    <h2>Parcela</h2>
+    <label>Ciudad</label>
+    <input id="ciudad" value="Madrid" placeholder="Madrid">
+    <label>Superficie del solar (m²)</label>
+    <input id="solar" type="number" value="600" min="1">
+    <div class="fila-2">
+      <div><label>Ancho (m)</label><input id="ancho" type="number" value="20"></div>
+      <div><label>Fondo (m)</label><input id="largo" type="number" value="30"></div>
+    </div>
+    <label>Norte (grados)</label>
+    <input id="norte" type="number" value="0">
+
+    <h2>Parámetros urbanísticos</h2>
+    <div class="fila-2">
+      <div><label>Ocupación máx. (%)</label><input id="ocupacion" type="number" value="70"></div>
+      <div><label>Retranqueos (m)</label><input id="retranqueos" type="number" value="3"></div>
+    </div>
+    <div class="fila-2">
+      <div><label>Edificabilidad máx.</label><input id="edificabilidad" type="number" step="0.1" value="2"></div>
+      <div><label>Plantas máx.</label><input id="plantasmax" type="number" value="5"></div>
+    </div>
+
+    <h2>Programa</h2>
+    <div class="fila">
+      <div><label>1 dorm.</label><input id="d1" type="number" value="2" min="0"></div>
+      <div><label>2 dorm.</label><input id="d2" type="number" value="6" min="0"></div>
+      <div><label>3 dorm.</label><input id="d3" type="number" value="2" min="0"></div>
+    </div>
+    <div class="fila-2">
+      <div><label>Plantas</label><input id="plantas" type="number" value="4" min="1"></div>
+      <div><label>Sup. mín. viv. (m²)</label><input id="supmin" type="number" value="45"></div>
+    </div>
+    <label>Superficie construida objetivo (m²)</label>
+    <input id="objetivo" type="number" value="900">
+
+    <h2>Objetivo de optimización</h2>
+    <select id="objetivoOpt">
+      <option value="equilibrio">Equilibrio</option>
+      <option value="superficie">Máxima superficie</option>
+      <option value="viviendas">Máximo nº de viviendas</option>
+      <option value="eficiencia">Máxima eficiencia</option>
+    </select>
+
+    <button class="principal" id="btnGenerar">Generar alternativas</button>
+    <div class="nota" id="avisoIzq">
+      Los parámetros urbanísticos los introduces tú: ArchMuse los comprueba con
+      aritmética exacta, no los busca en el planeamiento.
+    </div>
+  </section>
+
+  <!-- CENTRO: plano / 3D -->
+  <section id="centro">
+    <div id="p-alternativas">
+      <div class="vacio">Rellena la parcela y el programa, y pulsa <b>Generar alternativas</b>.</div>
+    </div>
+    <div id="p-distribucion" class="oculto">
+      <div class="vacio">La distribución interior la coloca un modelo de lenguaje.
+      Se pide aparte, desde el copiloto, y se enseña aquí y sólo aquí.</div>
+    </div>
+    <div id="p-analisis" class="oculto"></div>
+    <div id="p-normativa" class="oculto"></div>
+    <div id="p-costes" class="oculto"></div>
+    <div id="p-exportar" class="oculto"></div>
+  </section>
+
+  <!-- DERECHA: copiloto -->
+  <section id="derecha">
+    <div id="chat">
+      <div class="msg am">Genera las alternativas y dime qué quieres cambiar. Puedo ajustar el número de viviendas por tipo, las plantas y la superficie objetivo; el resto todavía no lo sé hacer y te lo diré.</div>
+    </div>
+    <form id="entrada">
+      <input id="peticion" placeholder="Elimina una vivienda de dos dormitorios…" autocomplete="off">
+      <button type="submit">Enviar</button>
+    </form>
+  </section>
+</main>
+
+<script src="/mvp.js"></script>
+</body>
+</html>

@@ -128,24 +128,47 @@ def construir_dxf_incoherente(destino: Path) -> str:
     return str(ruta)
 
 
-def construir_ifc(destino: Path) -> str:
-    """Un IFC escrito por el propio repositorio.
+def construir_dxf_de_planta(destino: Path) -> str:
+    """Dos viviendas en la misma planta, cada una con su rotulo `VT`.
 
-    Contra un fichero fabricado a mano el golden diría que el lector entiende
-    lo que yo creo que dice un IFC; contra lo que ArchMuse exporta, dice que
-    las dos mitades de la frontera se entienden entre sí.
+    El fixture limpio (`construir_dxf`) tiene UNA vivienda, y congelar la
+    medicion contra el no probaria lo unico que esta capacidad existe para
+    hacer: no rendirse ante la segunda. Las dos van separadas 20 m para que el
+    reparto sea holgado -- lo apretado tiene su propio test en
+    `tests/test_medicion_de_planta.py`, aqui interesa congelar el caso normal.
     """
-    from analyzer.ifc_export import exportar_espacios_ifc
+    import ezdxf
 
-    modelo = exportar_espacios_ifc(
-        [{"nombre": n, "poligono": [[x0, y0], [x1, y0], [x1, y1], [x0, y1]],
-          "area_m2": round((x1 - x0) * (y1 - y0), 2)}
-         for n, (x0, y0), (x1, y1) in PIEZAS],
-        nombre_planta="Planta baja",
-    )
-    ruta = destino / "piso.ifc"
-    modelo.write(str(ruta))
+    from analyzer import parser
+
+    doc = ezdxf.new("R2010")
+    doc.header["$INSUNITS"] = 6                    # metros
+    doc.layers.add(parser.AREA_LAYER)
+    msp = doc.modelspace()
+
+    def pieza(x0, y0, x1, y1, etiqueta):
+        msp.add_lwpolyline([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], close=True,
+                           dxfattribs={"layer": parser.AREA_LAYER})
+        msp.add_mtext(etiqueta, dxfattribs={"layer": parser.AREA_LAYER}).set_location(
+            ((x0 + x1) / 2.0, (y0 + y1) / 2.0))
+
+    for desplazamiento, nombre in ((0.0, "VT1/1"), (30.0, "VT2/1")):
+        pieza(desplazamiento, 0.0, desplazamiento + 5.0, 4.0, "Salon/cocina")   # 20
+        pieza(desplazamiento, 4.0, desplazamiento + 4.0, 7.0, "Dormitorio 1")   # 12
+        pieza(desplazamiento + 5.0, 0.0, desplazamiento + 7.0, 2.0, "Bano")     # 4
+        pieza(desplazamiento + 5.0, 3.0, desplazamiento + 8.0, 6.0, "Terraza")  # 9
+        msp.add_mtext(nombre, dxfattribs={"layer": parser.AREA_LAYER}).set_location(
+            (desplazamiento + 4.0, -3.0))
+
+    ruta = destino / "planta.dxf"
+    doc.saveas(str(ruta))
     return str(ruta)
+
+
+# `construir_ifc()` vivia aqui y se ha ido con el caso golden de
+# `bim.inventario_de_ifc`, retirada del registro el 2026-08-19 (D-12).
+# Cuando `OP-5` vuelva a registrar esa capacidad, el helper se recupera del
+# historial: `git log -p -- tests/test_agente_goldens.py`.
 
 
 #: id de capacidad -> cómo invocarla y qué no se compara.
@@ -163,12 +186,6 @@ CASOS = {
     "normativa.umbral_de_regla": {
         "argumentos": {"concept_id": CID_EVACUACION, "ambito_id": "es",
                        "ejes": {"numero_salidas": "una", "condicion": "general"}},
-    },
-    "bim.inventario_de_ifc": {
-        "argumentos": lambda d: {"ruta": construir_ifc(d)},
-        # El GUID de un IfcSpace se genera nuevo en cada exportación: es
-        # identidad de fichero, no contenido del modelo.
-        "volatiles": ("identificador",),
     },
     "plano.leer_dxf": {
         "argumentos": lambda d: {"ruta": construir_dxf(d)},
@@ -194,6 +211,30 @@ CASOS = {
         # ezdxf al guardar y no es contenido del hallazgo, asi que es volatil.
         "argumentos": lambda d: {"ruta": construir_dxf_incoherente(d)},
         "volatiles": ("ruta", "entidad", "handle", "descripcion"),
+    },
+    "plano.medicion_de_la_planta": {
+        # Contra el fixture de DOS viviendas: es lo unico que esta capacidad
+        # hace y las otras no, asi que congelarla contra el piso de una sola
+        # dejaria sin vigilar precisamente el motivo por el que existe.
+        "argumentos": lambda d: {"ruta": construir_dxf_de_planta(d)},
+        "volatiles": ("ruta",),
+    },
+    "proyecto.ajustar_programa": {
+        # Pura aritmetica sobre un diccionario: no toca ficheros ni red, asi
+        # que el caso congelado es el camino BUENO y no una negativa.
+        "argumentos": {
+            "parametros": {
+                "proyecto": {"ciudad": "Madrid", "tipologia": "plurifamiliar"},
+                "solar": {"superficie_m2": 600.0},
+                "edificio": {"plantas": 4, "altura_libre_m": 2.8},
+                "mix_viviendas": {"dorm_1": 2, "dorm_2": 6, "dorm_3": 2,
+                                  "superficie_minima_m2": 45.0},
+                "normativa": {"ocupacion_maxima_pct": 70.0, "retranqueos_m": 3.0},
+                "superficie_objetivo_m2": 900.0,
+            },
+            "operacion": "cambiar_mix",
+            "argumentos": {"dorm_2": "-1"},
+        },
     },
 }
 

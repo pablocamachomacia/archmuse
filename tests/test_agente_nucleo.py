@@ -393,7 +393,10 @@ def test_cada_tool_use_se_cierra_con_su_tool_result():
 def test_el_registro_se_puebla_por_descubrimiento():
     reg = registro(recargar=True)
     assert set(reg.ids()) == {
-        "bim.inventario_de_ifc",
+        # `bim.inventario_de_ifc` estuvo aqui y se RETIRO del registro el
+        # 2026-08-19 (D-12, aprobado por Pablo): no la invocaba ninguna Skill ni
+        # la consumia ningun entregable. `bim/` sigue entero; lo retirado es la
+        # entrada del catalogo. Ver `agente/herramientas/bim.py`.
         "territorial.resolver_ambito",
         "normativa.reglas_aplicables",
         "normativa.umbral_de_regla",
@@ -411,11 +414,28 @@ def test_el_registro_se_puebla_por_descubrimiento():
         # escribe el informe y sí la pide.
         "plano.coherencia",
         "plano.informe_de_coherencia",
+        # La medicion de la planta (Terminal 1, 2026-08-19).
+        "plano.medicion_de_la_planta",
+        "plano.medicion_en_pdf",
+        # El ajuste del encargo desde el copiloto (CP-1, pieza 5 del MVP).
+        # NO escribe nada: transforma el diccionario de parametros con el que
+        # se genero una alternativa, y quien regenera es la capa HTTP.
+        "proyecto.ajustar_programa",
     }
     # C4 — cobertura antes que catálogo: entre 8 y 12 capacidades auditadas al
     # cerrar el MVP, no cientos. Esta lista es larga a propósito: obliga a que
     # añadir una capacidad sea una decisión visible, no una deriva.
-    assert len(reg) <= 12, "C4: el catálogo no crece sin decidirlo"
+    # **NO subir este numero.** Esta en rojo A PROPOSITO desde el 2026-08-19.
+    # El registro esta en **13** --bajo de 14 al retirar `bim.inventario_de_ifc`,
+    # aprobado por Pablo-- y C4 fija el MVP entre 8 y 12: sigue pasandose por
+    # una. La revision formal de C4 esta escrita en
+    # `docs/design/2026-08-19-revision-formal-de-C4.md` y **la decision es de
+    # Pablo**, no de quien pase por aqui con la suite en rojo.
+    # Un guardian que se ensancha en cuanto salta no protege de nada -- que es
+    # justo lo que paso cuando esta linea se subio a 14 y hubo que revertirla el
+    # mismo dia (ver PROGRESS.md, 2026-08-19).
+    # GUARDIAN DE DECISION: C4
+    assert len(reg) <= 12, "C4: el catálogo no crece sin decidirlo (ver D-12)"
     # Orden estable: los manifiestos viajan en el prefijo cacheado del prompt.
     assert list(reg.ids()) == sorted(reg.ids())
 

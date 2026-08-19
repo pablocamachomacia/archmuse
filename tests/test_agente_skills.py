@@ -392,6 +392,11 @@ def test_las_skills_se_descubren_y_estan_validadas(skills):
         # primero que NO depende del corpus normativo: repasa el plano contra
         # sí mismo antes de entregarlo.
         "revision.coherencia_del_plano",
+        # El tercero (tarea SK-10, 2026-08-19): mide una planta ENTERA, con
+        # todas sus viviendas, sin necesitar que el plano traiga dibujado
+        # ningún cuadro de superficies. Es el caso normal de un edificio
+        # residencial, y era el que el producto no sabía hacer.
+        "superficies.medicion_de_planta",
     }
     for skill in skills:
         # Sus capacidades existen, Y declara los efectos de esas capacidades

@@ -1,0 +1,12 @@
+{
+  "_nota": "Asserts que codifican una decisión de producto, no una descripción del código. Congelados por `python tests/test_guardianes_de_decision.py --congelar`. Si uno de estos cambia en un diff, alguien ha derogado una decisión: tiene que decir quién y cuándo en el mismo cambio. Ver la cabecera de tests/test_guardianes_de_decision.py para el fallo concreto que motivó esto.",
+  "C4": {
+    "decide": "Pablo",
+    "documento": "docs/design/2026-08-19-revision-formal-de-C4.md",
+    "lineas": [
+      "test_agente_nucleo.py :: assert len(reg) <= 12, \"C4: el catálogo no crece sin decidirlo (ver D-12)\"",
+      "test_agente_plano.py :: assert 6 <= len(registro(recargar=True)) <= 12"
+    ],
+    "por_que": "C4 fija el MVP entre 8 y 12 capacidades (alineación estratégica del 2026-08-18, §3). El registro está en 13 y el test está ROJO A PROPÓSITO. Subir el número es derogar C4, y C4 no lo aprobó quien escribe tests."
+  }
+}

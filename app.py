@@ -166,6 +166,18 @@ def index():
     return app.send_static_file("index.html")
 
 
+@app.route("/mvp")
+def mvp():
+    """La vista de tres zonas del informe ejecutivo del 2026-08-19.
+
+    Ruta aparte y NO en `/`: la SPA de siempre sigue siendo la puerta de
+    entrada mientras esta vista se prueba con arquitectos. Cambiar `/` es una
+    decision de producto, y se toma cuando la prueba del §7 del informe diga
+    que merece la pena.
+    """
+    return app.send_static_file("mvp.html")
+
+
 @app.route("/api/config", methods=["GET"])
 def config():
     """Configuración pública que el navegador necesita y `index.html` no
@@ -2669,6 +2681,208 @@ def exportar_cuadro_superficies_completo_endpoint():
         mimetype="application/dxf",
         headers={"Content-Disposition": 'attachment; filename="%s"' % nombre_salida},
     )
+
+
+# --- Las cuatro alternativas parametricas (CP-5) ---------------------------
+#
+# `ARCHMUSE_SPEC.md` §8, redaccion del 2026-08-19: la generacion de alternativas
+# esta permitida cuando la geometria se deriva de parametros comprobables, y
+# cada alternativa lleva la procedencia de los parametros que la producen.
+#
+# **Por que este endpoint es distinto de `/api/generar-opciones`.** Aquel llama
+# al generador --el modelo coloca estancias dentro de cada planta-- y eso es
+# "distribucion interior libre", que el mismo §8 deja fuera. Este NO llama a
+# ningun modelo: multiplica y compara lo que el arquitecto declaro. Es
+# instantaneo, no cuesta un token, y cada cifra vuelve con su formula.
+#
+# Se deja el otro endpoint intacto: que hacer con la colocacion de estancias es
+# una decision de Pablo, no una que se tome borrando codigo.
+
+
+@app.route("/api/alternativas", methods=["POST"])
+def alternativas():
+    """Las cuatro alternativas del informe, derivadas de parametros comprobables.
+
+    Sin llamadas al modelo. Si falta un parametro urbanistico **no se devuelve
+    ninguna alternativa** y se dice cual falta: repartir un techo que no se ha
+    podido calcular seria inventar la cifra de la que cuelga todo lo demas.
+    """
+    from analyzer.alternativas import derivar_alternativas
+
+    body = request.get_json(silent=True) or {}
+    parametros = body.get("parametros") or body
+    envolvente, alts = derivar_alternativas(parametros)
+
+    return jsonify(
+        envolvente=envolvente.a_dict(),
+        alternativas=[a.a_dict() for a in alts.values()],
+        # Lo que falta para poder derivarlas, en cristiano y no como claves.
+        faltan=list(envolvente.faltan),
+    )
+
+
+# --- Copiloto: el chat que MODIFICA el proyecto (pieza 5 del MVP) ----------
+#
+# PRD: `docs/prd/2026-08-19-copiloto-que-modifica-el-proyecto.md`.
+#
+# **La regla fundamental del informe ejecutivo, cumplida por construccion.** El
+# modelo no calcula: elige que herramienta invocar y con que argumentos, y los
+# motores hacen el resto. Aqui eso se hace cumplir de dos formas:
+#
+# 1. **El registro que ve el copiloto es estrecho.** Solo
+#    `proyecto.ajustar_programa`. No puede leer un DXF, ni escribir un fichero,
+#    ni consultar normativa por su cuenta -- no porque se le pida que no, sino
+#    porque esas herramientas no estan en la lista que recibe.
+# 2. **Una pregunta no necesita ninguna herramienta.** El estado del proyecto
+#    viaja en la peticion, asi que "cual tiene mejor rentabilidad" se contesta
+#    leyendo, con cero invocaciones. Es lo que hace trivial garantizar que
+#    preguntar no modifica nada (criterio de aceptacion n2 del PRD).
+
+#: Lo que el copiloto puede tocar. Una sola capacidad, a proposito.
+_CAPACIDADES_DEL_COPILOTO = ("proyecto.ajustar_programa",)
+
+_SISTEMA_COPILOTO = (
+    "Eres el copiloto de ArchMuse, dentro de la aplicacion que un arquitecto esta usando.\n"
+    "\n"
+    "QUE ERES\n"
+    "Un arquitecto junior muy rapido que trabaja DENTRO de ArchMuse. No eres un chat sobre\n"
+    "arquitectura: cuando te piden un cambio, lo aplicas con la herramienta.\n"
+    "\n"
+    "LO QUE NO HACES, y es lo mas importante\n"
+    "- NO calculas. No sumas superficies, no estimas margenes, no deduces cuantas viviendas\n"
+    "  caben. Los motores de ArchMuse calculan; tu eliges que invocar.\n"
+    "- NO das ninguna cifra que no venga del estado del proyecto que se te ha pasado o del\n"
+    "  resultado de una herramienta. Ni una.\n"
+    "- NO afirmas nada sobre normativa: el corpus del CTE de ArchMuse esta practicamente\n"
+    "  vacio. Si te preguntan si algo cumple, di que ArchMuse hoy comprueba los parametros\n"
+    "  urbanisticos (edificabilidad, ocupacion, altura, retranqueos) con aritmetica exacta,\n"
+    "  y que el resto son indicadores de diseno, no verificacion normativa.\n"
+    "- NO decides que proyecto es mejor. Puedes decir que alternativa puntua mas alto en un\n"
+    "  indicador concreto, citando el indicador.\n"
+    "\n"
+    "DISTINGUE UNA PREGUNTA DE UNA ORDEN\n"
+    "- Cual tiene mejor rentabilidad? es una PREGUNTA: contesta leyendo el estado. NO\n"
+    "  invoques ninguna herramienta.\n"
+    "- Elimina una vivienda es una ORDEN: invoca proyecto.ajustar_programa.\n"
+    "- Si dudas, pregunta antes de modificar. Deshacer le cuesta tiempo al arquitecto.\n"
+    "\n"
+    "SI NO SABES HACER ALGO, DILO\n"
+    "Solo puedes ajustar: el numero de viviendas por tipo, el numero de plantas y la\n"
+    "superficie construida objetivo. Cualquier otra cosa --orientar una estancia, mover un\n"
+    "tabique, cambiar la forma del solar-- NO la sabes hacer. Dilo y ofrece lo que si puedes\n"
+    "hacer. No la aproximes con las herramientas que tienes.\n"
+    "\n"
+    "COMO HABLAS\n"
+    "Castellano de estudio de arquitectura, breve y concreto. Cuando cambies algo, di que\n"
+    "habia antes y que hay ahora. Sin emojis y sin entusiasmo comercial."
+)
+
+
+def _estado_para_el_copiloto(parametros: dict, alternativas: list) -> str:
+    """El proyecto actual, en texto, para que una PREGUNTA no necesite tocar nada.
+
+    Va dentro de la intencion --no del prompt de sistema-- a proposito:
+    `agente/respaldo.py` considera respaldado lo que venia en la peticion, asi
+    que una cifra que el copiloto repita de aqui se puede rastrear. Metido en el
+    sistema, el detector marcaria como inventada cualquier cifra del estado.
+    """
+    mix = (parametros or {}).get("mix_viviendas") or {}
+    edificio = (parametros or {}).get("edificio") or {}
+    solar = (parametros or {}).get("solar") or {}
+    proyecto = (parametros or {}).get("proyecto") or {}
+    lineas = [
+        "ESTADO ACTUAL DEL PROYECTO (las cifras de aqui son datos, no estimaciones tuyas):",
+        "- Ciudad: %s" % (proyecto.get("ciudad") or "sin declarar"),
+        "- Solar: %s m2" % (solar.get("superficie_m2") or "sin declarar"),
+        "- Plantas: %s" % (edificio.get("plantas") or "sin declarar"),
+        "- Viviendas: %s de 1 dormitorio, %s de 2, %s de 3"
+        % (mix.get("dorm_1", 0), mix.get("dorm_2", 0), mix.get("dorm_3", 0)),
+        "- Superficie construida objetivo: %s m2"
+        % ((parametros or {}).get("superficie_objetivo_m2") or "sin declarar"),
+    ]
+    for alt in (alternativas or []):
+        metricas = (alt or {}).get("metricas") or {}
+        margen = metricas.get("margen_estimado") or {}
+        lineas.append(
+            "- Alternativa %s: zonas comunes %s %%, fachada aprovechada %s %%, margen %s %%"
+            % (alt.get("etiqueta", "?"),
+               metricas.get("repercusion_zonas_comunes_pct", "sin dato"),
+               metricas.get("pct_fachada_aprovechada", "sin dato"),
+               margen.get("margen_pct", "sin dato")))
+    return "\n".join(lineas)
+
+
+@app.route("/api/copiloto", methods=["POST"])
+def copiloto():
+    """Atiende una peticion en lenguaje natural sobre el proyecto en pantalla.
+
+    Devuelve SIEMPRE el texto y la traza. Devuelve `parametros` nuevos solo si
+    de verdad se aplico un cambio -- una pregunta no los trae, y eso es lo que
+    el cliente usa para saber si tiene que regenerar.
+    """
+    body = request.get_json(silent=True) or {}
+    peticion = str(body.get("peticion") or "").strip()
+    if not peticion:
+        return jsonify(error="Escribe que quieres que haga."), 400
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        return jsonify(
+            error=("El copiloto necesita ANTHROPIC_API_KEY. El resto de ArchMuse "
+                   "--parcela, analisis, alternativas y comparador-- funciona sin ella."),
+            codigo="ia_no_disponible",
+        ), 503
+
+    parametros = body.get("parametros") or {}
+    alternativas = body.get("alternativas") or []
+
+    from agente import nucleo as _nucleo
+    from agente.registro import Registro
+    from agente.registro import registro as _registro_completo
+    from ia.cliente import crear_cliente
+
+    completo = _registro_completo()
+    try:
+        estrecho = Registro(tuple(completo.buscar(i) for i in _CAPACIDADES_DEL_COPILOTO))
+    except Exception as exc:  # noqa: BLE001
+        app.logger.exception("copiloto: registro incompleto")
+        return jsonify(error="El copiloto no esta disponible: %s" % exc), 500
+
+    intencion = _estado_para_el_copiloto(parametros, alternativas) + "\n\n" + peticion
+    try:
+        respuesta = _nucleo.ejecutar(
+            intencion, crear_cliente(api_key), reg=estrecho,
+            sistema=_SISTEMA_COPILOTO, max_iteraciones=4,
+        )
+    except Exception as exc:  # noqa: BLE001 - se traduce, no se traga
+        app.logger.exception("copiloto: fallo del bucle")
+        return jsonify(error="No he podido atender la peticion: %s" % exc), 502
+
+    # Lo que cambio, si cambio algo. Se lee de la TRAZA y no de lo que el modelo
+    # diga que ha hecho: lo unico que demuestra que un cambio ocurrio es que la
+    # herramienta se invoco y devolvio ok.
+    cambio = None
+    for paso in respuesta.pasos:
+        if paso.capacidad == "proyecto.ajustar_programa" and paso.ok:
+            cambio = paso.resultado
+
+    salida = {
+        "texto": respuesta.texto,
+        "parada": respuesta.parada,
+        "hubo_cambio": cambio is not None,
+        "cifras_sin_respaldo": list(respuesta.cifras_sin_respaldo),
+        "pasos": [
+            {"capacidad": p.capacidad, "argumentos": p.argumentos, "ok": p.ok}
+            for p in respuesta.pasos
+        ],
+        "limitaciones": list(respuesta.limitaciones),
+    }
+    if cambio is not None:
+        salida["parametros"] = cambio.get("parametros")
+        salida["antes"] = cambio.get("antes")
+        salida["despues"] = cambio.get("despues")
+        salida["hay_que_regenerar"] = bool(cambio.get("hay_que_regenerar"))
+    return jsonify(salida)
 
 
 #: Puerto por defecto. `PORT` lo sobreescribe (es la convención que espera

@@ -11,7 +11,7 @@ aquí importa transporte (Flask, FastAPI, HTTP), y nada de aquí importa
 desde la web, desde un `python -c`, desde un servidor MCP o desde un
 complemento de Revit sin cambiar una línea. Lo vigila un test, no la costumbre.
 
-**Lo que las tres Skills de hoy tienen en común, y es deliberado:** ninguna
+**Lo que las Skills de hoy tienen en común, y es deliberado:** ninguna
 emite criterio profesional. Calculan, citan la fuente oficial que les devolvió
 una capacidad, y declaran lo que no saben. Las que sí emitirán criterio —memoria
 justificativa, revisión de proyecto, detalles constructivos— están bloqueadas

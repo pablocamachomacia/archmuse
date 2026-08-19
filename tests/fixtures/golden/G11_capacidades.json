@@ -1,50 +1,5 @@
 {
   "_nota": "G11 — salida congelada de cada capacidad determinista (TL-4). Generado por `python tests/test_agente_goldens.py --recapturar`. Si cambia, alguien ha cambiado el criterio de un cálculo: hay que decir quién y por qué en el mismo cambio, no recapturar y seguir.",
-  "bim.inventario_de_ifc": {
-    "avisos": [],
-    "conteo_por_clase": {
-      "IfcBuildingStorey": 1,
-      "IfcSpace": 4
-    },
-    "espacios": [
-      {
-        "motivo_sin_superficie": "",
-        "nombre": "Salón",
-        "planta": "Planta baja",
-        "superficie_m2": 20.0,
-        "uso": null
-      },
-      {
-        "motivo_sin_superficie": "",
-        "nombre": "Cocina",
-        "planta": "Planta baja",
-        "superficie_m2": 9.0,
-        "uso": null
-      },
-      {
-        "motivo_sin_superficie": "",
-        "nombre": "Dormitorio 1",
-        "planta": "Planta baja",
-        "superficie_m2": 12.0,
-        "uso": null
-      },
-      {
-        "motivo_sin_superficie": "",
-        "nombre": "Baño",
-        "planta": "Planta baja",
-        "superficie_m2": 4.0,
-        "uso": null
-      }
-    ],
-    "espacios_sin_superficie": [],
-    "esquema": "IFC4",
-    "ok": true,
-    "plantas": [
-      "Planta baja"
-    ],
-    "proyecto": "Proyecto ArchMuse",
-    "superficie_declarada_m2": 45.0
-  },
   "normativa.reglas_aplicables": {
     "asunciones": [
       "El valor heredado \"plurifamiliar\" no declara tipo de intervención; se asume obra nueva.",
@@ -251,6 +206,101 @@
       "VT1/1"
     ]
   },
+  "plano.medicion_de_la_planta": {
+    "agrupacion": "rótulos de vivienda del plano",
+    "capa_de_recintos": "00 areas",
+    "escala": "metros",
+    "geometria_no_leida": [],
+    "ok": true,
+    "piezas": 8,
+    "rotulos_sin_piezas": [],
+    "viviendas": [
+      {
+        "exterior_m2": 9.0,
+        "impedimentos": [],
+        "interior_m2": 36.0,
+        "piezas": [
+          {
+            "ambito": "interior",
+            "area_m2": 20.0,
+            "capa": "00 areas",
+            "familia": "salón + cocina",
+            "rotulo": "Salon/cocina"
+          },
+          {
+            "ambito": "interior",
+            "area_m2": 12.0,
+            "capa": "00 areas",
+            "familia": "dormitorio",
+            "rotulo": "Dormitorio 1"
+          },
+          {
+            "ambito": "interior",
+            "area_m2": 4.0,
+            "capa": "00 areas",
+            "familia": "baño",
+            "rotulo": "Bano"
+          },
+          {
+            "ambito": "exterior",
+            "area_m2": 9.0,
+            "capa": "00 areas",
+            "familia": "terraza",
+            "rotulo": "Terraza"
+          }
+        ],
+        "repartos_dudosos": [],
+        "solapes": [],
+        "suma_de_piezas_m2": 45.0,
+        "superficie_por_union_m2": 45.0,
+        "total_util_m2": 45.0,
+        "vivienda": "VT1/1"
+      },
+      {
+        "exterior_m2": 9.0,
+        "impedimentos": [],
+        "interior_m2": 36.0,
+        "piezas": [
+          {
+            "ambito": "interior",
+            "area_m2": 20.0,
+            "capa": "00 areas",
+            "familia": "salón + cocina",
+            "rotulo": "Salon/cocina"
+          },
+          {
+            "ambito": "interior",
+            "area_m2": 12.0,
+            "capa": "00 areas",
+            "familia": "dormitorio",
+            "rotulo": "Dormitorio 1"
+          },
+          {
+            "ambito": "interior",
+            "area_m2": 4.0,
+            "capa": "00 areas",
+            "familia": "baño",
+            "rotulo": "Bano"
+          },
+          {
+            "ambito": "exterior",
+            "area_m2": 9.0,
+            "capa": "00 areas",
+            "familia": "terraza",
+            "rotulo": "Terraza"
+          }
+        ],
+        "repartos_dudosos": [],
+        "solapes": [],
+        "suma_de_piezas_m2": 45.0,
+        "superficie_por_union_m2": 45.0,
+        "total_util_m2": 45.0,
+        "vivienda": "VT2/1"
+      }
+    ],
+    "viviendas_con_total": 2,
+    "viviendas_medidas": 2
+  },
   "plano.superficie_util": {
     "ok": true,
     "viviendas": [
@@ -271,6 +321,47 @@
     ],
     "viviendas_medidas": 1,
     "viviendas_sin_medir": 0
+  },
+  "proyecto.ajustar_programa": {
+    "antes": {
+      "dorm_1": 2,
+      "dorm_2": 6,
+      "dorm_3": 2
+    },
+    "despues": {
+      "dorm_1": 2,
+      "dorm_2": 5,
+      "dorm_3": 2
+    },
+    "hay_que_regenerar": true,
+    "ok": true,
+    "operacion": "cambiar_mix",
+    "parametros": {
+      "edificio": {
+        "altura_libre_m": 2.8,
+        "plantas": 4
+      },
+      "mix_viviendas": {
+        "dorm_1": 2,
+        "dorm_2": 5,
+        "dorm_3": 2,
+        "superficie_minima_m2": 45.0
+      },
+      "normativa": {
+        "ocupacion_maxima_pct": 70.0,
+        "retranqueos_m": 3.0
+      },
+      "proyecto": {
+        "ciudad": "Madrid",
+        "tipologia": "plurifamiliar"
+      },
+      "solar": {
+        "superficie_m2": 600.0
+      },
+      "superficie_objetivo_m2": 900.0
+    },
+    "viviendas_antes": 10,
+    "viviendas_despues": 9
   },
   "territorial.resolver_ambito": {
     "aviso": "El registro geográfico es una semilla manual sin verificar contra el fichero oficial del INE: que un municipio no aparezca no implica que no exista.",

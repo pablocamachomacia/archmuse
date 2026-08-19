@@ -142,12 +142,30 @@ def test_la_capacidad_traduce_el_fallo_a_ok_false_sin_inventar_nada(tmp_path):
     assert "espacios" not in resultado, "un fallo no devuelve un inventario a medias"
 
 
-def test_la_capacidad_esta_en_el_registro():
+def test_la_capacidad_sigue_retirada_del_registro():
+    """Retirada el 2026-08-19 (D-12, aprobado por Pablo) y **no por estar rota**.
+
+    Este test es el que evita que la retirada se deshaga sin querer. El dia que
+    exista la Skill que la use (`OP-5`, contraste IFC-DXF), lo que hay que hacer
+    es restaurar la tupla `CAPACIDADES` de `agente/herramientas/bim.py` y
+    cambiar este test **en el mismo cambio que esa Skill** -- no antes.
+    """
     from agente.registro import registro
 
-    capacidad = registro(recargar=True).buscar("bim.inventario_de_ifc")
-    assert capacidad.naturaleza == "determinista"
-    assert any("no calcula superficies" in l for l in capacidad.limitaciones)
+    assert "bim.inventario_de_ifc" not in registro(recargar=True).ids(), (
+        "bim.inventario_de_ifc ha vuelto al registro. Si es a proposito, tiene "
+        "que venir con la Skill que la invoca y el entregable que la consume "
+        "(criterio de la auditoria del 2026-08-19); si no, es una regresion.")
+
+
+def test_la_funcion_sigue_viva_aunque_no_este_registrada(tmp_path):
+    """Lo retirado es la entrada del catalogo, no el codigo: `bim/` entero sigue
+    en pie y esta funcion se puede invocar desde Python. Si esto se rompiera, la
+    retirada habria sido un borrado disfrazado."""
+    ruta = tmp_path / "modelo.ifc"
+    exportar_espacios_ifc(HABITACIONES, nombre_planta="Planta baja").write(str(ruta))
+
+    assert inventario_de_ifc(str(ruta))["ok"] is True
 
 
 if __name__ == "__main__":  # pragma: no cover

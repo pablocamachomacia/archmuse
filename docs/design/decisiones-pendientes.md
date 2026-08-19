@@ -166,3 +166,33 @@ Lo mismo vale, con menos urgencia, para cualquier tarea futura cuyo criterio dep
 **Recomendación:** hacer `INF-5` + `INF-6` en la misma tanda, después de que `TL-2` y `SK-1` estén implementadas — así la primera ruta que se sirve es la del entregable completo y no la de una lectura suelta. Y que el lock lo regenere un entorno Linux, no el portátil.
 
 **Coste de cambiar:** bajo. El contrato OpenAPI ya existe y no depende de qué servidor lo sirva; ése era justamente el punto de `TL-3`.
+
+---
+
+## D-12 · El techo de 12 capacidades de C4, ahora que se ha superado
+
+**ACTUALIZADA el 2026-08-19 (tarde).** Pablo aprobó los pasos 1 y 2 (auditoría del registro) y **autorizó el paso 3**, la revisión formal de `C4`. Dos cosas han cambiado desde el párrafo de abajo:
+
+1. **El registro está en 13, no en 14.** Se retiró `bim.inventario_de_ifc` —no la invocaba ninguna Skill y no la consumía ningún entregable—, aprobado por Pablo. `bim/` sigue entero: lo retirado es la entrada del catálogo.
+2. **La revisión formal está escrita**, con las tres salidas y sus costes, en `docs/design/2026-08-19-revision-formal-de-C4.md`. La decisión sigue siendo de Pablo y **el test sigue rojo**: 13 > 12 por una.
+
+Además, esos dos asserts están ahora protegidos por `tests/test_guardianes_de_decision.py`: cambiar el número exige tocar dos ficheros y nombrar a quien decide. Existe porque el 2026-08-19 se subió a 14 por mi cuenta para desatascar la suite y hubo que revertirlo el mismo día.
+
+**Añadida:** 2026-08-19, al ponerse rojo `tests/test_agente_plano.py::test_el_registro_sigue_dentro_del_tamano_que_C4_permite`. **El test se ha dejado en rojo a propósito**: el número es una decisión de producto de Pablo, no un ajuste de un test.
+
+**Qué ha pasado, con las cifras.** `C4` (alineación estratégica, §3) dice: «Se deroga el objetivo de "cientos de capacidades". El MVP se construye con entre 8 y 12, elegidas por fiabilidad auditable». El registro está hoy en **14**: 11 al empezar el día, más `plano.medicion_de_la_planta` y `plano.medicion_en_pdf` (`TL-11`, la medición de una planta con varias viviendas) y `proyecto.ajustar_programa`. El test lo cazó al primer intento, que es exactamente para lo que está.
+
+**Lo que sí se cumple, y conviene separarlo del número.** La prueba operativa que el propio documento define (§5, punto 3) no es un tope absoluto sino un ritmo: «contar las capacidades registradas frente a las auditadas; si la primera cifra crece más rápido que la segunda, C4 se ha incumplido». Las tres nuevas **entran auditadas en el mismo cambio**: contrato congelado (`CAD-2`), golden si son deterministas (`TL-4`), contrato de salida comprobado también en el camino de fallo, y —las dos de la medición— probadas contra los dos planos reales del cliente. Por esa vara, C4 no se ha incumplido.
+
+**Y el motivo que el documento da para el tope tampoco aplica a estas dos.** El texto es explícito: «Añadir capacidades **mientras el corpus normativo siga vacío** amplifica el riesgo de **alucinación normativa**». `plano.medicion_de_la_planta` y `plano.medicion_en_pdf` miden geometría y no consultan ni una norma: no pueden producir alucinación normativa ni por descuido. La cifra que hay que vigilar por ese motivo es la de capacidades **normativas**, que sigue en dos.
+
+**Lo que hay que decidir, y son dos cosas distintas:**
+
+1. **Si el tope se sube, y a cuánto.** Con la vara del ritmo, 14 auditadas es mejor estado que 12 sin auditar. Pero un tope que se sube cada vez que se toca deja de ser un tope.
+2. **Si el tope debería contar otra cosa.** Un tope sobre el total mezcla las capacidades normativas —donde el riesgo es real y el corpus está vacío— con las geométricas, donde el riesgo es que el DXF esté mal dibujado y eso ya se declara.
+
+**Provisional: el tope NO se ha tocado y el test se queda rojo.** Es la opción conservadora: un guardián que se ensancha en cuanto salta no protege de nada, y ensancharlo es justo lo que este documento existe para que nadie haga a solas.
+
+**Recomendación:** separar el contador en dos —capacidades **normativas** con tope duro de 4 mientras el corpus siga vacío (`C5`), y el resto con el contador de ritmo de §5.3, sin tope absoluto— y dejar el test comprobando **eso**, que es lo que `C4` quiere decir. Si se prefiere no tocar la política hoy, la alternativa es subir el rango a 8–16 dejando escrito qué se hará cuando vuelva a saltar.
+
+**Coste de cambiar:** bajo en lo técnico (una línea de un test y una frase del documento de alineación) y alto en lo demás: es una de las cinco consecuencias vinculantes, y es criterio de aceptación de todo PRD nuevo.

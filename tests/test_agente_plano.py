@@ -252,6 +252,7 @@ def test_el_registro_sigue_dentro_del_tamano_que_C4_permite():
     """C4: cobertura antes que catálogo. Entre 8 y 12 capacidades auditadas al
     cerrar el MVP, no cientos. Este test es el que hace que ese número sea una
     decisión y no una deriva."""
+    # GUARDIAN DE DECISION: C4
     assert 6 <= len(registro(recargar=True)) <= 12
 
 

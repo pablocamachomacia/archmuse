@@ -52,10 +52,6 @@ def test_toda_capacidad_devuelve_un_dict_con_ok():
             "fecha_devengo": "2026-01-01",
         },
         "normativa.umbral_de_regla": {"concept_id": CID_EVACUACION, "ambito_id": "es"},
-        # Una ruta que no existe: lo que se comprueba aquí es el CONTRATO de
-        # salida (dict con `ok`), y una capacidad tiene que respetarlo también
-        # cuando falla. `tests/test_bim_lector.py` prueba el camino bueno.
-        "bim.inventario_de_ifc": {"ruta": "no_existe.ifc"},
         # Mismo criterio para las tres del vertical (TL-1): aquí se comprueba
         # que el fallo respeta el contrato; el camino bueno, con un DXF de
         # verdad, lo prueban `tests/test_agente_plano.py` y el golden G11.
@@ -73,6 +69,17 @@ def test_toda_capacidad_devuelve_un_dict_con_ok():
         "plano.coherencia": {"ruta": "no_existe.dxf"},
         "plano.informe_de_coherencia": {"ruta": "no_existe.dxf",
                                         "ruta_destino": "tampoco_existe.pdf"},
+        # El ajuste del encargo (CP-1): no toca ficheros, asi que su camino de
+        # fallo es otro -- unos parametros vacios. El contrato de salida es el
+        # mismo: dict con `ok`.
+        "proyecto.ajustar_programa": {"parametros": {}, "operacion": "cambiar_mix"},
+        # Y las dos de la medicion de una planta con varias viviendas: mismo
+        # criterio otra vez. El camino bueno lo prueba
+        # `tests/test_medicion_de_planta.py`, contra los DOS planos reales del
+        # cliente -- el de tres viviendas y el que tiene solapes.
+        "plano.medicion_de_la_planta": {"ruta": "no_existe.dxf"},
+        "plano.medicion_en_pdf": {"ruta": "no_existe.dxf",
+                                  "ruta_destino": "tampoco_existe.pdf"},
     }
     reg = registro()
     assert set(invocaciones) == set(reg.ids()), "hay una capacidad sin probar aquí"

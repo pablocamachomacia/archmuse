@@ -34,38 +34,21 @@ def inventario_de_ifc(ruta: str) -> Dict[str, Any]:
     return salida
 
 
-CAPACIDADES = (
-    Capacidad(
-        id="bim.inventario_de_ifc",
-        version="1.0.0",
-        dominio="bim",
-        naturaleza="determinista",
-        descripcion=(
-            "Lee un fichero IFC y devuelve qué contiene: esquema, proyecto, plantas, "
-            "espacios con su uso y su superficie DECLARADA, y el recuento por clase de "
-            "elemento. Las superficies que el modelo no declara vuelven como null con "
-            "motivo: no se calculan a partir de la geometría."
-        ),
-        parametros={
-            "type": "object",
-            "properties": {
-                "ruta": {
-                    "type": "string",
-                    "description": "Ruta del fichero .ifc en el sistema de ficheros.",
-                },
-            },
-            "required": ["ruta"],
-            "additionalProperties": False,
-        },
-        funcion=inventario_de_ifc,
-        efectos=(),
-        limitaciones=(
-            "no valida el modelo: no comprueba coherencia geométrica, duplicados ni "
-            "elementos que falten",
-            "no calcula superficies a partir de la geometría; solo lee las declaradas "
-            "en Qto_SpaceBaseQuantities",
-            "no interpreta la clasificación de usos del modelo ni la traduce al CTE",
-            "no comprueba normativa de ningún tipo",
-        ),
-    ),
-)
+# --- Retirada del registro (D-12, 2026-08-19) --------------------------------
+#
+# `CAPACIDADES` vacia A PROPOSITO. La funcion de arriba sigue viva, `bim/` sigue
+# entero y sus tests siguen pasando: lo unico que se ha retirado es la ENTRADA EN
+# EL REGISTRO.
+#
+# Motivo, medido en la auditoria de `docs/design/2026-08-19-auditoria-del-
+# registro-de-capacidades.md`: no la invocaba ninguna Skill y no la consumia
+# ningun entregable. Sus unicas menciones fuera de este modulo estaban en tests.
+# Una capacidad registrada que no lleva a ningun entregable no es gratis: ocupa
+# una plaza del catalogo que `C4` limita, viaja en el manifiesto que ve el
+# planificador y le ofrece al modelo una herramienta que no termina en nada.
+#
+# Como volver a registrarla, cuando exista la Skill que la use (`OP-5`, contraste
+# IFC-DXF): restaurar la tupla de abajo en el MISMO cambio que esa Skill. Son
+# cinco lineas y el `Capacidad(...)` completo esta en el historial de git
+# (`git log -p -- agente/herramientas/bim.py`). Aprobado por Pablo el 2026-08-19.
+CAPACIDADES = ()
