@@ -444,3 +444,98 @@ $("entrada").addEventListener("submit", async (ev) => {
     pensando.textContent = "Error: " + String(exc.message || exc);
   }
 });
+
+// --- Parcela real (CP-4, cableada 2026-08-19) -------------------------------
+//
+// Cero calculo, mismo criterio que el resto del fichero: /api/geocodificar
+// resuelve texto -> coordenadas reales (Mapbox), /api/analizar-sitio
+// resuelve coordenadas -> parcela real de Catastro (superficie_m2,
+// referencia catastral). Los 4 campos de "Parametros urbanisticos" y el
+// ancho/fondo del solar NO se autorellenan: son entrada del arquitecto, y
+// autorellenarlos con algo plausible sin una fuente verificada seria
+// exactamente el modo de fallo que este fichero existe para evitar (ver
+// cabecera). /api/normativa-urbanistica-punto es honesto por diseno (ver su
+// propio docstring en analyzer/normativa_madrid.py): sus 4 limites
+// numericos son siempre null hoy, asi que aqui solo se enseña como nota de
+// contexto, nunca como dato que rellena un campo.
+
+let _parcelaTimeout = null;
+
+$("buscarParcela").addEventListener("input", () => {
+  clearTimeout(_parcelaTimeout);
+  const texto = $("buscarParcela").value.trim();
+  $("resultadosParcela").classList.add("oculto");
+  $("resultadosParcela").innerHTML = "";
+  if (texto.length < 3) return;
+  _parcelaTimeout = setTimeout(() => buscarDireccion(texto), 350);
+});
+
+async function buscarDireccion(texto) {
+  let datos;
+  try {
+    const r = await fetch("/api/geocodificar?q=" + encodeURIComponent(texto));
+    datos = await r.json();
+  } catch (exc) {
+    return; // buscador roto no bloquea nada -- se sigue tecleando a mano
+  }
+  const resultados = datos.resultados || [];
+  const ul = $("resultadosParcela");
+  ul.innerHTML = "";
+  if (!resultados.length) { ul.classList.add("oculto"); return; }
+  for (const res of resultados) {
+    const li = document.createElement("li");
+    li.textContent = res.display_name || res.etiqueta || "(sin nombre)";
+    li.addEventListener("click", () => elegirParcela(res));
+    ul.appendChild(li);
+  }
+  ul.classList.remove("oculto");
+}
+
+async function elegirParcela(res) {
+  $("resultadosParcela").classList.add("oculto");
+  $("buscarParcela").value = res.display_name || res.etiqueta || "";
+  const lat = res.lat, lon = res.lon;
+  if (lat == null || lon == null) return;
+
+  const estadoEl = $("estadoParcela");
+  estadoEl.className = "estado-parcela";
+  estadoEl.textContent = "Consultando Catastro…";
+  $("notaNormativa").classList.add("oculto");
+
+  try {
+    const r = await fetch("/api/analizar-sitio", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat, lon }),
+    });
+    const datos = await r.json();
+    const geometria = datos.geometria || {};
+    if (r.ok && datos.referencia_catastral && geometria.superficie_m2) {
+      // Unica cifra que se autorellena en toda esta zona: sale de Catastro,
+      // no de una suposicion -- por eso solar (y solo solar) es seguro
+      // tocarlo aqui.
+      $("solar").value = Math.round(geometria.superficie_m2);
+      estadoEl.className = "estado-parcela ok";
+      estadoEl.textContent = "Catastro real: " + Math.round(geometria.superficie_m2) +
+        " m² · ref. " + datos.referencia_catastral;
+    } else {
+      estadoEl.className = "estado-parcela error";
+      estadoEl.textContent = "No se ha encontrado una parcela real de Catastro en ese punto " +
+        "-- sigue con la superficie manual.";
+    }
+  } catch (exc) {
+    estadoEl.className = "estado-parcela error";
+    estadoEl.textContent = "No se ha podido consultar Catastro ahora mismo -- sigue con la " +
+      "superficie manual.";
+  }
+
+  try {
+    const rn = await fetch("/api/normativa-urbanistica-punto?lat=" + lat + "&lon=" + lon);
+    const dn = await rn.json();
+    if (dn.dentro_de_piloto && dn.motivo) {
+      $("notaNormativa").textContent = dn.motivo;
+      $("notaNormativa").classList.remove("oculto");
+    }
+  } catch (exc) {
+    // Best-effort, igual que el propio endpoint -- sin nota si falla.
+  }
+}

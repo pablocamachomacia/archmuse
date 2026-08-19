@@ -112,6 +112,30 @@
   .vacio { color: var(--tenue); font-size: 13px; text-align: center; padding: 40px 20px; }
   .oculto { display: none; }
   code { font-family: var(--mono); font-size: 12px; color: var(--acento); }
+
+  /* Parcela real (CP-4, cableada 2026-08-19): buscador + resultados de
+     /api/geocodificar, estado de la consulta a Catastro. Nunca una cifra
+     nueva aquí -- solo texto de estado y una lista de opciones reales. */
+  .resultados-parcela {
+    list-style: none; margin: 4px 0 0; padding: 0; border: 1px solid var(--borde);
+    border-radius: 5px; overflow: hidden; max-height: 160px; overflow-y: auto;
+  }
+  .resultados-parcela li {
+    padding: 7px 9px; font-size: 12.5px; cursor: pointer; border-bottom: 1px solid var(--borde);
+  }
+  .resultados-parcela li:last-child { border-bottom: none; }
+  .resultados-parcela li:hover { background: var(--panel-alto); }
+  .estado-parcela { font-size: 11.5px; color: var(--tenue); margin-top: 4px; min-height: 14px; }
+  .estado-parcela.ok { color: var(--ok); }
+  .estado-parcela.error { color: var(--malo); }
+  /* Deja claro que una cifra la escribió el arquitecto, no una tool: mismo
+     motivo que el comentario de cabecera de mvp.js sobre "comprobado" vs
+     "estimado" -- aquí aplicado a "real" vs "introducido a mano". */
+  .nota-manual { font-weight: 400; text-transform: none; color: var(--tenue); font-size: 10.5px; }
+  .nota-catastro {
+    font-size: 11.5px; color: var(--tenue); background: var(--panel-alto);
+    border: 1px solid var(--borde); border-radius: 5px; padding: 7px 9px; margin-bottom: 8px;
+  }
 </style>
 </head>
 <body>
@@ -135,18 +159,24 @@
   <!-- IZQUIERDA: proyecto / parcela -->
   <section id="izquierda">
     <h2>Parcela</h2>
+    <label>Buscar una parcela real</label>
+    <input id="buscarParcela" type="text" placeholder="Calle, número, ciudad…" autocomplete="off">
+    <ul id="resultadosParcela" class="resultados-parcela oculto"></ul>
+    <div id="estadoParcela" class="estado-parcela"></div>
+
     <label>Ciudad</label>
     <input id="ciudad" value="Madrid" placeholder="Madrid">
     <label>Superficie del solar (m²)</label>
     <input id="solar" type="number" value="600" min="1">
     <div class="fila-2">
-      <div><label>Ancho (m)</label><input id="ancho" type="number" value="20"></div>
-      <div><label>Fondo (m)</label><input id="largo" type="number" value="30"></div>
+      <div><label>Ancho (m) <span class="nota-manual">— lo ajustas tú</span></label><input id="ancho" type="number" value="20"></div>
+      <div><label>Fondo (m) <span class="nota-manual">— lo ajustas tú</span></label><input id="largo" type="number" value="30"></div>
     </div>
     <label>Norte (grados)</label>
     <input id="norte" type="number" value="0">
 
-    <h2>Parámetros urbanísticos</h2>
+    <h2>Parámetros urbanísticos <span class="nota-manual">(introducidos por ti)</span></h2>
+    <div id="notaNormativa" class="nota-catastro oculto"></div>
     <div class="fila-2">
       <div><label>Ocupación máx. (%)</label><input id="ocupacion" type="number" value="70"></div>
       <div><label>Retranqueos (m)</label><input id="retranqueos" type="number" value="3"></div>
