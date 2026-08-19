@@ -110,16 +110,14 @@ collect_ignore = [str(ruta) for ruta in SCRIPTS_LEGACY]
 #: mientras la marca esté puesta. Ese coste ya lo pagaba el fichero estando en
 #: rojo permanente (un fallo nuevo tampoco se habría visto); la marca al menos
 #: añade el aviso de cuándo se puede retirar.
-ROJOS_CONOCIDOS = {
-    "test_golden_modelo.py":
-        "H1 sin corregir: el round-trip de `modelo/serializacion.py` colapsa el vértice de "
-        "cierre duplicado de los recintos recuperados por `_esta_cerrada()`, así que el grafo "
-        "recargado no es idéntico byte a byte y `verificar_sellado()` lo rechaza. Documentado y "
-        "dejado sin arreglar a propósito en docs/audits/2026-08-13-hallazgos-cierre-geometrico.md §2.",
-    "test_e2_persistencia.py":
-        "El mismo H1 (3 de 35 comprobaciones). El propio documento dice que estos tests se "
-        "dejaron 'en rojo a propósito'. Ver docs/audits/2026-08-13-hallazgos-cierre-geometrico.md §2.",
-}
+#: **Vacío desde el 2026-08-18, y el mecanismo funcionó exactamente como se
+#: diseñó.** Tenía dos entradas, `test_golden_modelo.py` y
+#: `test_e2_persistencia.py`, las dos por el defecto H1. Al corregirlo (tarea
+#: F0-1 del plan de migración: `modelo/geometria.py::_canonica`), pytest las
+#: rompió con `XPASS(strict)` y obligó a retirarlas — que es justo el aviso
+#: para el que existe esta tabla. Sus 35 y sus 9 comprobaciones vuelven a
+#: avisar.
+ROJOS_CONOCIDOS = {}
 
 
 def pytest_generate_tests(metafunc):

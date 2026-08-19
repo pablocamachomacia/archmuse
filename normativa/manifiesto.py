@@ -33,7 +33,22 @@ MANIFIESTO = Path(__file__).resolve().parent / "cobertura" / "manifiesto.yaml"
 # de "aquí no hay nada que tener porque la materia es de otro nivel". Sin él,
 # todo municipio aparecería eternamente incompleto en materias que nunca le
 # corresponden.
-ESTADOS = ("completo", "parcial", "ausente", "no_competente")
+#
+# `transcrito_sin_firmar` es el quinto, y es el estado en el que vive TODA regla
+# entre que el curador la transcribe y un colegiado la firma — o sea, el estado
+# normal durante todo el trabajo que queda por delante. Existe porque los cuatro
+# anteriores obligaban a mentir en uno de los dos sentidos: `ausente` niega un
+# trabajo que está hecho y en disco, y `parcial` es **afirmable**, de modo que
+# ArchMuse pasaría a evaluar seguridad contra incendios con una regla que nadie
+# ha revisado. Ninguna de las dos es la verdad, y la verdad aquí es barata de
+# decir. No es afirmable a propósito: el trabajo transcrito cuenta como
+# progreso, no como respaldo.
+ESTADOS = ("completo", "parcial", "transcrito_sin_firmar", "ausente", "no_competente")
+
+#: Los estados que afirman que hay reglas de esa materia EN DISCO. La
+#: validación 17 los exige respaldados por ficheros reales; los otros dos
+#: (`ausente`, `no_competente`) declaran justo lo contrario.
+ESTADOS_CON_REGLAS = ("completo", "parcial", "transcrito_sin_firmar")
 
 
 @dataclass
@@ -46,8 +61,18 @@ class EntradaCobertura:
 
     @property
     def afirmable(self) -> bool:
-        """Si se puede afirmar algo sobre esta materia en este ámbito."""
+        """Si se puede afirmar algo sobre esta materia en este ámbito.
+
+        `transcrito_sin_firmar` **no** lo es, y esa es toda la utilidad del
+        estado: una regla transcrita y sin revisar es trabajo adelantado, no
+        respaldo. Afirmar sobre ella sería exactamente lo que el producto
+        entero existe para no hacer.
+        """
         return self.estado in ("completo", "parcial")
+
+    @property
+    def transcrito_sin_firmar(self) -> bool:
+        return self.estado == "transcrito_sin_firmar"
 
 
 @dataclass
@@ -63,13 +88,24 @@ class InformeCobertura:
     def afirmables(self) -> List[EntradaCobertura]:
         return [e for e in self.entradas if e.afirmable]
 
+    def transcritas_sin_firmar(self) -> List[EntradaCobertura]:
+        """Materias con reglas en disco que ningún colegiado ha firmado."""
+        return [e for e in self.entradas if e.transcrito_sin_firmar]
+
     def resumen(self) -> str:
         """Frase que el producto debe mostrar. Nunca "cumple" a secas."""
         ok = self.afirmables()
         falta = self.sin_cobertura()
+        sin_firma = self.transcritas_sin_firmar()
         partes = []
         if ok:
             partes.append("Cobertura: " + " · ".join(f"{e.materia} ({e.estado})" for e in ok))
+        if sin_firma:
+            # Va en su propia frase y no junto a la cobertura: leerlo como
+            # cobertura es el error que este estado existe para impedir.
+            partes.append(
+                "Transcrito pero sin firma de colegiado, no se afirma sobre ello: "
+                + ", ".join(e.materia for e in sin_firma))
         if falta:
             partes.append("Sin cobertura de " + ", ".join(e.materia for e in falta))
         if self.rotas:

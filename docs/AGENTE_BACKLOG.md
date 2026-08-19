@@ -142,7 +142,32 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **El veredicto:** esto no es un objetivo que se implemente; es una **propiedad** que las tareas `ME-2`, `SEG-5` y `NOR-4` o bien conservan o bien destruyen. Está aquí para que se pueda comprobar que ninguna tarea la rompe.
 - **Tareas:** `ME-2`, `SEG-5`, `NOR-4`. *(La retención y la purga son criterio de `ME-2`, no tarea aparte.)*
 
-**Resumen: 12 objetivos. 3 en el MVP (OP-1, OP-2, OP-3), 4 en V2, 2 aplazados, 1 rechazado, 1 transversal, 1 recortado.**
+### OP-15 · «Repásame este plano antes de que lo entregue» — **HECHO (2026-08-19)**
+
+- **Devuelve:** el informe de qué no cuadra en el plano, con la entidad concreta de cada hallazgo —rótulo, superficie, `handle` del DXF— y su magnitud.
+- **Por qué es el primero que se ha podido hacer entero:** es **el único objetivo del catálogo que no depende del corpus normativo**. Todo lo que comprueba es geometría y texto del propio fichero contrastados entre sí, así que su valor no espera a ninguna firma colegiada. Y ahorra un trabajo real: el repaso previo a la entrega se hace hoy a ojo y se rehace entero en cada revisión del plano, porque mover un tabique invalida el anterior.
+- **El hallazgo que lo motivó:** casi todo esto ya se calculaba **y se tiraba**. Los solapes servían para negarse a medir —el arquitecto veía el efecto, nunca la causa—; los avisos de polilínea mal cerrada iban a `_log.warning`, o sea a un terminal que nadie lee, pese a que el propio parser documenta que «tiene que quedar visible para quien audite»; y la etiqueta repetida acababa en una celda `BLOQUEADO`. Sobre `v2s.dxf` eso son **nueve hallazgos reales** que el producto ya sabía y no decía.
+- **Lo que lo mantiene fuera de `D-7`:** **no gradúa la gravedad de nada.** «Se solapan 4,00 m²» es un hecho comprobable; «esto es grave» es criterio profesional, y el de ArchMuse está sin firmar. La frontera es la verificación bloqueante `ningun_hallazgo_lleva_gravedad`, con su test de que **falla de verdad**.
+- **Entregable demostrable:** `python scripts/revisar_plano.py mi_plano.dxf` — enseña el procedimiento, revisa, escribe el informe en PDF, imprime el acta y no toca el DXF (sha256 verificado antes y después). Sin clave de API y sin red.
+- **Tareas:** `CO-1` a `CO-8` (todas hechas). PRD: `docs/prd/2026-08-19-revision-de-coherencia-del-plano.md`.
+
+### OP-13 · «Sácame el cuadro de carpintería de este plano» — **NO como estaba pensada** (medido, 2026-08-19)
+
+- **Devuelve:** la tabla de puertas y ventanas por vivienda tipo, con dimensiones, tipo y acabado, y su procedencia pieza a pieza.
+- **Por qué entra en la lista:** es la candidata que **más reutiliza el procedimiento ya probado de `SK-1`** —leer geometría, producir tabla, negarse a adivinar, escribir copia del DXF, PDF con procedencia, acta— y es la única de alto valor que **no necesita ni una regla del corpus**. Sobre el papel, la mejor.
+- **Por qué NO se decide todavía, medido sobre `v2s.dxf` el 2026-08-19:** las **puertas** están, con el dato dentro del nombre del bloque tal como lo exportó Revit (`K_Puerta de entrada - 825 x 2150 mm-…-VT25`), 3 a 9 piezas por vivienda tipo y la dimensión legible en ~3 de cada 4. **Las ventanas no.** Todo lo que suena a ventana son cuatro bloques genéricos (`ven01`, `ven2`, `ven3`, `00 SEC VENTANA`), sin dimensiones y sin asociación a ninguna vivienda tipo: están dibujadas como geometría, no como objetos. Y en un cuadro de carpintería español **las ventanas son la mitad cara** — las del vidrio, las del DB-HE, las que se presupuestan pieza a pieza. Un cuadro que trae las puertas y deja las ventanas en blanco no ahorra la tarde.
+- **Siguiente paso, y es barato:** medir **un segundo plano real** (media jornada, mismo sondeo, sin código de producción). Una muestra de uno no distingue una convención del sector de la costumbre de este estudio. Si las ventanas vienen como bloques con atributos, esto pasa a ser la mejor candidata del catálogo por bastante margen; si vienen otra vez sueltas, el problema real es **reconocer huecos en muros**, que es visión por computador sobre DXF y merece su propia decisión.
+- **Segundo plano medido el 2026-08-19 (`V5.dxf`, 606 definiciones de bloque): confirma, no rescata.** Misma estructura exacta que el primero — puertas con la dimensión en el nombre del bloque, ventanas otra vez como los mismos cuatro genéricos (`ven01`, `ven2`, `ven3`, `00 SEC VENTANA`) sin dimensiones ni vivienda tipo, y 0 `INSERT` en modelspace. Dos ficheros distintos y la misma conclusión: ya no es una muestra de uno, es **cómo dibuja este estudio**.
+- **Veredicto, con datos y no con impresión:** el cuadro de carpintería **no se hace como estaba pensado**. Quedan dos caminos y ninguno es ése: (1) un **cuadro de puertas**, llamándolo así — un día, honesto, y bastante menos valor del que prometía la idea; (2) **reconocer huecos en muros**, que es lo que haría falta para las ventanas, y que no es esta Skill sino visión por computador sobre DXF: semanas, PRD propio, y la pieza que desbloquearía varias cosas a la vez (carpintería, superficies construidas, DB-HE).
+- **Lo que costó y lo que evitó:** media jornada de sondeo, tres días de Skill escrita contra un fichero que no tiene el dato. Es el mejor argumento del repositorio a favor de medir antes de escribir.
+- **Análisis completo:** `docs/design/2026-08-19-valor-comercial-de-las-skills.md` §3.
+
+### OP-14 · «Genérame los detalles constructivos» — **NO SE HACE**, y queda escrito
+
+- **El veredicto:** un detalle constructivo no se deriva del proyecto, se **elige** con criterio, según clima, sistema constructivo, presupuesto y con qué industrial trabaja el estudio. ArchMuse no tiene ninguno de esos cuatro datos, y pedirlos todos es un formulario, no una Skill. Foso nulo: todo estudio con dos años tiene su biblioteca afinada a base de obras y no la cambia por una generada, y las de los fabricantes son gratis y con garantía detrás. Es además **lo más cercano a la autoría de todo el catálogo** — un detalle mal resuelto no es un aviso en un PDF, es una humedad o un desprendimiento —, así que rompe C3 justo donde `NORTH_STAR_2031.md` §5 la declara innegociable. Mismo patrón que `OP-11`: demuestra muy bien y no vende.
+- **Se registra aquí para que nadie lo redescubra como idea nueva dentro de seis meses.**
+
+**Resumen: 15 objetivos. 4 en el MVP (OP-1, OP-2, OP-3, OP-15), 4 en V2, 2 aplazados, 2 rechazados, 1 transversal, 1 recortado, 1 medido y reorientado.**
 
 ---
 
@@ -175,6 +200,7 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Cómo quedó (2026-08-19):** `agente/planificador.py`. **Una** llamada con `tool_choice` forzado sobre una herramienta de esquema fijo; el `Plan` que sale lo ejecuta `Ejecutor` **sin adaptación**. Rechaza sin ejecutar nada —Skill inexistente, ciclo, dependencia rota, techo de pasos, paso sin skill— y el plan **vacío es una respuesta, no un fallo**: sale con motivo y queda anotado como carencia, que es cómo se mide lo que falta por uso real. `a_texto()` lo enseña **con los efectos que habrá que autorizar**: enterarse de que algo escribe un fichero después no sirve de nada. Prefijo de manifiestos delante y marcado para caché, estado detrás, y los valores del proyecto **no viajan**.
 - **La condición de la aprobación tiene su propio test:** `test_el_planificador_no_ejecuta_nada` comprueba por AST que no se importe ningún framework y que este módulo no ejecute, no observe ni invoque — un planificador que empieza a hacer eso *es* un framework de agentes escrito a plazos. Y `test_solo_hay_un_punto_de_llamada_al_modelo` fija que la llamada sea una.
 - **Se ve funcionando:** `python scripts/demo_agente.py`, secciones 4 y 5 — con el modelo guionizado, así que no cuesta nada.
+- **Alcanzable desde la fachada (2026-08-19, cuarta sesión):** `copiloto.atender(via=VIA_PLAN)`, o partido en dos con `copiloto.proponer()` / `copiloto.ejecutar_propuesta()`. Hasta entonces el planificador sólo lo llamaban los tests y la demostración. **El defecto sigue siendo `VIA_BUCLE`** y hay un test que lo fija: cambiarlo cambia el comportamiento de todo llamador existente y se decide con datos de uso (`AG-3`), no de golpe.
 
 ### AG-2 · Validador determinista del plan, con la pregunta como salida
 `P0` · `HECHO (2026-08-19)` · PRD: no · dep: `AG-1` · ~1,5j
@@ -183,6 +209,7 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Valor para el arquitecto:** convierte el peor momento del producto —«no puedo hacer esto»— en el mejor: **una pregunta concreta que él sabe responder**.
 - **Terminado cuando:** cuatro planes inválidos (capacidad inexistente, ciclo, requisito sin cumplir, fuera de presupuesto) se rechazan con motivos distintos y **cero tokens**; el tercero produce la pregunta que lo desbloquea.
 - **Cómo quedó (2026-08-19):** `planificador.revisar()`. Distingue tres cosas que se confunden con facilidad: **motivos** (el plan está mal y no se arregla contestando nada), **preguntas** (el plan está bien y le faltan datos del proyecto — la salida es la pregunta concreta, no un «faltan datos» que nadie sabe contestar) y **efectos a autorizar** (lo que va a pasarle al ordenador del arquitecto, enseñado antes). Los cuatro rechazos dan **motivos distintos**, con un test que lo exige: «no se puede ejecutar» sin decir cuál de las cuatro cosas falla obliga a depurar a ojo. Vive aparte del planificador porque un plan puede llegar de tres sitios —del modelo, de un fichero guardado hace meses, o de una pantalla— y los tres tienen que pasar por el mismo portero sin pagar una llamada.
+- **Alcanzable desde la fachada (2026-08-19, cuarta sesión):** lo llama `copiloto.proponer()`, y su salida es lo que se le enseña al arquitecto antes de ejecutar nada — con los efectos separados entre los que faltan por autorizar y los ya concedidos, que allí no se sabía.
 - **Lo que falta y es de `AG-3`:** el presupuesto. Sumar el coste estimado del plan exige la tabla medida por perfil de `SEG-4`, y ésa es la siguiente tarea de esta rama.
 
 ### AG-3 · Presupuesto por ejecución y escalonado de modelo medido
@@ -193,11 +220,18 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Terminado cuando:** un plan que excede el presupuesto se rechaza antes de la primera llamada, y existe una tabla medida de coste por perfil.
 
 ### AG-4 · Un ciclo de replanificación, y el segundo fallo es una pregunta
-`P1` · `PENDIENTE` · PRD: no · dep: `AG-2` · ~1j
+`P1` · `HECHO (2026-08-19)` · PRD: no · dep: `AG-2` · ~1j
 
 - **Objetivo:** si tras ejecutar falta un dato, se replanifica **una vez**. Si tras replanificar sigue faltando, se para y se pregunta. Nunca un tercer intento.
 - **Valor para el arquitecto:** el sistema no se come su presupuesto dando vueltas, y no le entrega media respuesta como si fuera entera.
 - **Terminado cuando:** un escenario con un dato ausente replanifica una vez y termina en pregunta, con el coste acotado y registrado.
+- **Cómo quedó (2026-08-19):** `copiloto._atender_con_plan`, detrás de `atender(via=VIA_PLAN)`. `planificar()` acepta `observacion`, que va **con lo que cambia y nunca en el prefijo cacheado**; el planificador sigue haciendo exactamente una llamada y sigue sin decidir cuándo replanificar — eso es de la fachada.
+- **La observación se deriva de los pasos, no la redacta un modelo.** Si la escribiera una llamada intermedia, el segundo plan se construiría sobre un resumen y no sobre lo que pasó, que es el hueco por el que entra un dato que nadie midió. Dice qué salió (con su id, para que el segundo plan lo conserve), qué no salió y por qué, y qué haría falta saber.
+- **Cuándo NO se replanifica, que es la mitad del diseño:** si salió todo; si el plan ni llegó a ejecutarse (vacío, rechazado, **no confirmado** — proponerle otro a quien acaba de decir que no es lo contrario de lo que significó su «no»); si el segundo plan es **idéntico** al que acaba de fallar (no hay nada nuevo que pueda salir de él, y sí una factura); y —la regla dura— **nunca para esquivar una autorización**. Si un paso quedó `PENDIENTE_DE_AUTORIZACION`, se para y se pide el permiso. Buscar otra ruta que no necesite el permiso que acaban de no darte es la única cosa que este sistema no puede hacer nunca.
+- **El techo es duro:** `MAX_REPLANIFICACIONES = 1`, y `atender` recorta a ese valor aunque le pidan cinco. Un parámetro que admitiera cinco es cómo se consigue el agente que da vueltas.
+- **Lo ya hecho no se repite:** la segunda ejecución reutiliza el mismo `ejecucion_id`, así que la reanudación del `Ejecutor` salta los pasos completados — ni recalcula, ni vuelve a cobrar, ni vuelve a escribir un fichero.
+- **El defecto que esto destapó, y que ya existía:** la reanudación buscaba el paso anterior **por `paso_id` a secas**. Con un plan interrumpido y relanzado tal cual daba igual, porque el plan era el mismo; en cuanto entra la replanificación, no: un segundo plan que reutilizara el id «ficha» para otra Skill, o para los mismos argumentos cambiados, se habría llevado el resultado viejo **con su sello y su acta, sin que nada fallara**. Ahora `ResultadoDePaso` lleva `sello_de_entrada` (Skill + argumentos) y `_es_el_mismo_paso` lo compara. Un apunte antiguo sin ese sello se acepta —rechazarlo repetiría el trabajo de las ejecuciones ya en curso, incluidas las que escribieron un fichero— pero la Skill sí se compara, que es lo que se podía comparar antes.
+- **Se comprueba en:** `tests/test_agente_replanificacion.py`, 17 tests. Los dos que más importan: `test_un_permiso_que_falta_no_se_rodea_replanificando` y `test_nunca_hay_un_tercer_intento`.
 
 ### AG-5 · Progreso por paso, en directo
 `P1` · `PENDIENTE` · PRD: **sí** · dep: `INF-4`, `INF-5` · ~1,5j
@@ -222,11 +256,27 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Bloqueada por:** D-8 en `decisiones-pendientes.md`.
 
 ### AG-8 · Ejecución en paralelo de pasos independientes
-`P2` · `PENDIENTE` · PRD: no · dep: `AG-1` · ~1j
+`P2` · `HECHO (2026-08-19)` · PRD: no · dep: `AG-1` · ~1j
 
 - **Objetivo:** ejecutar en paralelo los nodos del DAG que no dependen entre sí, manteniendo el determinismo del resultado y el orden de la bitácora.
 - **Valor para el arquitecto:** un análisis de una planta baja de diez minutos pasa a tres.
 - **Terminado cuando:** un plan con cuatro ramas independientes tarda menos que en serie y produce **el mismo sello** que en serie.
+- **El defecto que cierra, y era una mentira escrita:** el prompt del planificador le pide al modelo que declare qué pasos son independientes «porque es lo que permite ejecutarlos a la vez». No lo permitía: `Plan.orden()` calculaba los niveles topológicos y **los aplanaba**, y el ejecutor recorría la lista. La independencia se calculaba para tirarla.
+- **Cómo quedó (2026-08-19):** `Plan.niveles()` devuelve los niveles y `orden()` pasa a ser su aplanado —el orden de referencia de la bitácora, que no se mueve—. `Ejecutor` acepta `max_paralelo` (4 por defecto, `1` lo desactiva del todo) y ejecuta un nivel en hilos **con dos condiciones a la vez**: nivel entero seguro y más de un paso.
+- **Qué es «seguro», y por qué lista blanca:** `efectos.SEGUROS_EN_PARALELO = {llama_api_externa, gasta_tokens}` — los dos que esperan por la red y no tocan nada compartido, que es donde está todo el tiempo de un análisis. Los otros cuatro **no** están, cada uno con su motivo escrito: dos pasos podrían escribir la misma ruta; una marca `INTENTADO` tiene que quedar apuntada antes de ejecutar; dos escrituras a la vez en la memoria dejan los conflictos del proyecto en el orden de quien ganó la carrera, y ese orden se le enseña al arquitecto. Cerrada a propósito: un efecto nuevo del catálogo **nace secuencial**.
+- **Todo o nada por nivel, y cuesta velocidad a propósito:** basta con que un paso del nivel no sea seguro para que el nivel entero vaya en serie. A cambio, nadie tiene que razonar sobre interleavings para saber si un plan es seguro.
+- **La bitácora se apunta siempre en el orden de `orden()`**, no en el de llegada: los apuntes de un nivel paralelo se difieren y se escriben al final, en orden. Diferir es seguro sólo ahí —esos pasos no tienen efectos que deshacer—, y es lo que permite que dos ejecuciones del mismo plan se comparen línea a línea, que es de lo que depende la reanudación.
+- **Se comprueba en:** `tests/test_agente_paralelo.py`, 18 tests. Los dos que llevan el criterio de la tarea: `test_mismos_sellos_y_misma_bitacora_que_en_serie` (mismos estados, mismos sellos y bitácora idéntica) y `test_cuatro_ramas_independientes_tardan_menos_que_en_serie`.
+
+### AG-9 · Contexto largo: recortar lo que ve el modelo sin abrir un hueco
+`P1` · `HECHO (2026-08-19)` · PRD: no · dep: — · ~0,5j
+
+- **El defecto que cierra:** `nucleo.ejecutar` añadía cada resultado de herramienta al historial **entero y literal**, y no quitaba nada nunca. Con un DXF de cuarenta recintos leído de punta a punta, un solo resultado se come el contexto y las herramientas siguientes fallan por una razón que no tiene nada que ver con lo que se pidió — o sea, justo con el plano del cliente. No se ve venir y no da un error legible.
+- **Cómo quedó (2026-08-19):** `agente/recorte.py`. Tres reglas, y las tres son de no-invención antes que de eficiencia: se recorta **con la estructura y no con la cadena** (ninguna clave desaparece y lo que sale sigue siendo JSON válido: un modelo que recibe un JSON roto improvisa); el recorte **se declara donde el modelo lo lee** (clave `__recorte__` con aviso, más regla nueva en el prompt del sistema) y viaja hasta `Respuesta.recortes`; y **no se resume nunca** — resumir un resultado de herramienta es inventar en pequeño.
+- **El original no se pierde:** queda íntegro en `PasoEjecutado.resultado`, y es contra el original —no contra el recorte— contra lo que `respaldo.py` comprueba las cifras del texto final. Un modelo que ve menos puede citar menos, nunca más.
+- **Y si ya no cabe la conversación entera**, el bucle **para antes de llamar** (`parada == "contexto_agotado"`) conservando lo hecho, en vez de pagar una llamada para recibir un error del proveedor.
+- **Topes:** 20.000 caracteres por resultado (~5k tokens) y 300.000 de historial. Que no salten nunca en uso normal es el diseño.
+- **Se comprueba en:** `tests/test_agente_recorte.py`, 12 tests.
 
 ---
 
@@ -241,6 +291,7 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Valor para el arquitecto:** el trabajo que hoy le lleva media tarde de contar polilíneas, con la traza de cada número.
 - **Terminado cuando:** ejecutada sobre el DXF real de `ARCHMUSE_DXF_V2S` produce el cuadro relleno; ejecutada sin escala definida **pregunta** en vez de suponer.
 - **Cómo quedó (2026-08-19):** `agente/skills/superficies.py`, `superficies.cuadro_de_vivienda@1.0.0`. El orden del procedimiento es lo que aporta: **primero** se comprueba la unidad del plano (un DXF en milímetros leído como metros cumple todos los mínimos y sale impecable), luego se mide la superficie útil **por su propio camino** para poder cruzarla contra la suma, y sólo entonces se calcula y se escribe. La verificación de la suma es **informativa y no bloqueante**, condición textual de Pablo, con su propio test para que cambiarla sea deliberado. `ruta_destino` es obligatoria: mirar sin tocar ya lo hace la capacidad `plano.cuadro_de_superficies`, y pedir autorización para no escribir enseñaría al arquitecto a concederlas sin leerlas. Cortarse a mitad **no se presenta como fallo del sistema**: es una respuesta con su pregunta.
+- **Consolidada el 2026-08-19 (segunda pasada).** La Skill declaraba «no resuelve las ambiguedades del plano: las pregunta» y devolvia solo el `titulo` de cada solicitud. La capacidad las da completas —que hueco resuelven, que opciones hay, con que superficie cada una y con que forma se contesta— y todo eso se perdia: para contestar habia que saltarse la Skill e ir a la capacidad, o sea leer el codigo. **Una pregunta que no se puede contestar no es preguntar**, es el mismo hueco mudo con signos de interrogacion. Corregido, con un test de punta a punta sobre `v2s.dxf` — hace falta el plano real porque las solicitudes de asignacion nacen de una ambiguedad de verdad (dos «Tendedero», una «Terraza» solapada) y un `ACAD_TABLE` no se sintetiza. La pieza vive ahora en `agente/skills/_comun.py`: es cierta para toda Skill, no solo para esta.
 - **Entregable demostrable:** `python scripts/cuadro_de_superficies.py mi_plano.dxf` — enseña qué va a hacer, lo hace, imprime el acta y dice qué no ha podido calcular. Sin clave de API y sin red.
 
 ### SK-2 · Skill de comprobación de una planta
@@ -272,6 +323,35 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Terminado cuando:** las tres Skills existentes tienen firma y versión firmada, y una Skill sin firmar sale marcada como tal en el catálogo.
 - **Bloqueada por:** D-7.
 
+### SK-9 · Skill de revisión de coherencia del plano
+`P0` · `HECHO (2026-08-19)` · PRD: **escrito e implementado** — `docs/prd/2026-08-19-revision-de-coherencia-del-plano.md` · dep: — · ~1j
+
+- **Objetivo:** el procedimiento que sigue un arquitecto al repasar un plano antes de entregarlo, declarado como Skill: comprobar la unidad **primero**, buscar solapes, recoger los contornos cerrados por suposición y la geometría descartada, mirar los rótulos, contrastar el cuadro contra el dibujo, y entregar el informe diciendo también **qué se ha comprobado**.
+- **Valor para el arquitecto:** la media hora larga de repaso a ojo que se rehace en cada revisión del plano, y —su caso de más valor— saber qué le están dando cuando recibe un DXF que no dibujó él.
+- **Terminado cuando:** sobre `v2s.dxf` produce los nueve hallazgos con su entidad y su magnitud, el original conserva su sha256, y ningún hallazgo califica su gravedad. **Los tres comprobados por tests.**
+- **Cómo quedó (2026-08-19):** `analyzer/coherencia.py` (la auditoría), `analyzer/coherencia_pdf.py` (el informe), `agente/herramientas/coherencia.py` (dos capacidades, separadas por el efecto), `agente/skills/coherencia.py` (el procedimiento, cuatro verificaciones bloqueantes) y `scripts/revisar_plano.py`. **Cero modificaciones al runtime de `agente/`:** el registro de capacidades y el de Skills funcionan por descubrimiento, así que basta dejar el fichero. El registro pasa de 9 a **11** capacidades, dentro del techo de C4.
+- **El falso positivo que se encontró probando contra el plano real, y que conviene no repetir:** el cuadro numera los *huecos* (`dormitorio_1`) y el arquitecto numera los *rótulos* («Dormitorio 1»). Comparando sin normalizar los dos lados, un piso de tres dormitorios perfectamente correcto producía **seis hallazgos falsos**. Seis avisos falsos en el primer plano real habrían bastado para que nadie volviera a abrir el informe (`DESTROY_ARCHMUSE.md` §5.1). Tiene su test.
+- **Corregido el 2026-08-19 (tres contratos de `agente/` que no cumplía, detectados por Terminal 1).** Los tres eran reales y los tres los cazó un test de política, que es exactamente para lo que están:
+  1. **La protección de escritura estaba reimplementada, no reutilizada.** `agente/herramientas/coherencia.py` tenía su propia comprobación de destino y su propio sellado, «parecidos» a `_destino_seguro` y `_con_sello_intacto` de `plano.py`. Funcionaban, y ése es el problema: el día que se endurezca la protección —porque se pierda el plano de un cliente— se endurece en un sitio y la copia se queda como estaba sin que nadie lo note. Ahora se **importan**. Efecto secundario que además mejora el producto: un informe anterior ya no se sobrescribe, porque podría estar revisado y anotado.
+  2. **Los contratos de las dos capacidades no estaban congelados** (`tests/test_agente_compatibilidad.py`). Congelados con `--congelar`: 11 contratos, **60 líneas añadidas y ninguna borrada** — ningún contrato existente cambió.
+  3. **Las dos capacidades no estaban en el test de invocación** que recorre el registro entero comprobando que toda salida es un `dict` con `ok`, también al fallar. Añadidas, con su caso de fallo.
+- **Y un cuarto, encontrado al verificar de extremo a extremo, que no había detectado ningún test:** pidiendo el informe **encima del propio plano**, la capacidad se negaba correctamente y el DXF no se tocaba —el sha256 lo confirma—, pero `scripts/revisar_plano.py` decidía si había entregable mirando si el fichero de destino existía. Como el destino *era* el plano del arquitecto, existía, y el guion anunciaba «LO QUE TE LLEVAS: PDF tu_plano.dxf». La protección aguantó; lo que falló fue lo que se le contaba al arquitecto, y en un entregable eso es igual de grave. Ahora lo que decide es que **la Skill declare el entregable**. Tiene su test.
+- **Medido contra un SEGUNDO plano real el 2026-08-19 (`V5.dxf`), y ahí estaba el falso positivo que importaba.** Era exactamente la tarea que este backlog tenía como siguiente, y sirvió para lo que se esperaba: `V5.dxf` tiene **tres viviendas completas y correctas** en un solo fichero (VT1/3, VT2/2, VT3/3, 22 recintos), y la primera versión contaba los rótulos repetidos **sobre el plano entero**. Resultado: **11 hallazgos, 8 de ellos falsos** —«el rótulo Salón/cocina aparece 3 veces», «Baño 3 veces», «Dormitorio 1 3 veces»— sobre un plano bien dibujado. Ocho avisos falsos en el segundo plano real habrían bastado para que nadie volviera a abrir el informe.
+  - **Corregido:** los rótulos se cuentan **dentro de cada vivienda**, con la misma agrupación que usa el resto del motor (`VT<n>` cuando lo hay, proximidad si no). Un rótulo sólo se repite —en el sentido que importa— cuando se repite dentro de la misma vivienda, porque es ahí donde el cuadro tiene un único hueco para él. `V5.dxf` pasa de 11 hallazgos a **3, los tres reales**; `v2s.dxf` no cambia.
+  - **Y la segunda consecuencia:** con más de una vivienda, el contraste cuadro↔dibujo **no se hace** y se declara no comprobado con su motivo. Un cuadro describe una vivienda; cruzarlo contra los rótulos de tres daría discrepancias en todas las familias y ninguna sería cierta.
+  - **Lo que sí quedó de `V5.dxf`:** tres contornos con el flag `closed` mal puesto, uno con **3 cm** de hueco. Y el handle `A61724` aparece **en los dos planos**, así que no es un descuido: es una costumbre de dibujo del estudio, y es justo lo que un informe recurrente sirve para ver.
+  - **La limitación «sólo admite un DXF con una única vivienda detectada» era un desmentido, no una limitación:** estaba declarada y la herramienta no la hacía cumplir — emitía ocho hallazgos falsos tan campante. Ahora el número de viviendas va en la cabecera del informe, para que si ArchMuse agrupa mal se vea en la primera línea en vez de deducirse de unos hallazgos raros.
+- **Lo que este entregable NO hace, y va en su manifiesto:** no comprueba normativa, no ordena por importancia, no lee muros ni carpintería, y **no compara la cifra escrita en una celda del cuadro contra la medida** — porque hoy no hay ningún plano real con el cuadro relleno con el que comprobar que eso funciona. Ver §12 y `OP-13`.
+
+### SK-8 · Arquitectura común: escribir la Skill nº5 sin duplicar la nº1
+`P1` · `PARCIAL (2026-08-19)` · PRD: no (es refactor, no capacidad nueva) · dep: — · ~0,5j
+
+- **El hallazgo que la motiva, contado con las cifras:** al ir a escribir la segunda Skill de verdad se conto lo que ya habia, y el invariante mas caro del producto —*todo lo que una Skill prometio y no produjo sale `UNKNOWN` con motivo, nunca ausente*— estaba escrito **tres veces y de tres formas distintas**: `_sin_hacer` en `superficies.py`, `_desconocidas` en `evacuacion.py`, y dos bucles a pelo dentro de `territorial.py`. No es redundancia defensiva: son cuatro sitios donde arreglar el bug de uno deja los otros tres rotos. Y el invariante no es cosmetico — un hueco mudo se lee como «no aplica», que es la lectura contraria a la verdadera.
+- **Hecho:** `agente/skills/_comun.py` con `sin_producir()`, `valor()` y `pregunta_legible()`. Las tres Skills migradas, `tests/test_agente_skills_comun.py` con 13 tests, y **una guardia estructural** que lee el fuente de `agente/skills/` y falla si alguna Skill vuelve a construir una afirmacion `UNKNOWN` a mano. Se mira el fuente y no el comportamiento a proposito: el comportamiento de la copia seria correcto, y ese es justo el problema.
+- **Donde vive y por que ahi:** en `agente/skills/`, no en `agente/skill.py`. Esto no es el contrato de una Skill —ese lo hace cumplir `skill.py` con sus cinco garantias— sino la caja de herramientas de quien escribe una. Una Skill que prefiera no usar nada de aqui sigue siendo valida.
+- **Pendiente:** `MJ-3` (`apartados_por_cobertura`), que sale del PRD de `SK-7` y espera su aprobacion.
+- **Lo que NO va aqui, y es la mitad del criterio:** el procedimiento profesional. El dia que dos Skills compartan procedimiento es que son la misma Skill.
+
 ### SK-6 · Composición: una Skill que invoca otra
 `P2` · `PENDIENTE` · PRD: no · dep: `SK-1`, `SK-2` · ~1j
 
@@ -280,12 +360,14 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Terminado cuando:** una Skill compuesta acumula los efectos y las limitaciones de las que invoca, y un test demuestra que no puede saltarse las verificaciones de la interna.
 
 ### SK-7 · Skill de redacción de memoria justificativa
-`P3` · `PENDIENTE` · PRD: **sí** · dep: `NOR-2`, `DOC-4` · ~3j
+`P3` · `PENDIENTE` · PRD: **ESCRITO el 2026-08-19, pendiente de aprobación** — `docs/prd/2026-08-19-skill-de-memoria-justificativa.md` · dep: `NOR-2`, `DOC-4` · ~3j
 
 - **Objetivo:** el procedimiento de redacción, con la regla dura de que **toda cifra viene de un atributo ya calculado** y toda cita del corpus.
 - **Valor para el arquitecto:** el documento más tedioso del proyecto, con su acta.
 - **Terminado cuando:** ninguna cifra del texto puede rastrearse a algo que no esté en el grafo, verificado por el detector de cifras sin respaldo, y el documento sale marcado como borrador.
 - **No empieza antes de `NOR-2`.** Ver OP-6.
+- **La postura del PRD del 2026-08-19, y conviene leerla antes de aprobarlo:** el PRD **no propone redactar la memoria**. Redactarla hoy, con una regla en el corpus y sin firmar, produciria un documento cuyas justificaciones vendrian al 100 % de un modelo sin fuente — el `OP-6` que este backlog aplaza y el ataque nº1 de `DESTROY_ARCHMUSE.md` construido a proposito. Lo que propone es la mitad defendible: **el indice de apartados con su estado** (`JUSTIFICADO`, `SIN_DATO`, `SIN_CORPUS`, `NO_APLICA`), los datos de partida con su procedencia, y las preguntas que faltan. Con el corpus de hoy sale con **cero apartados justificados, y ese es el resultado correcto**. Efecto secundario que puede que valga mas que la Skill: convierte el valor del corpus en una cifra («justificamos N de M»), que es el argumento que hoy falta para contratar `NOR-1`. **No añade ninguna capacidad al registro** (C4): compone `territorial.resolver_ambito` y `normativa.reglas_aplicables`, que ya existen.
+- **Sus tareas `MJ-1` a `MJ-3` valen aunque el PRD se rechace:** son la arquitectura comun de Skills (`SK-8`), no la memoria.
 
 ---
 
@@ -316,6 +398,17 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Valor para el arquitecto:** indirecto pero decisivo — es lo que hace que ArchMuse pueda vivir dentro de su Revit algún día sin reescribirse.
 - **Terminado cuando:** los tres artefactos de una capacidad son coherentes en nombres de parámetro, y añadir una capacidad no obliga a escribir su forma tres veces. **Es la verificación mecánica de C1.**
 - **Cómo quedó (2026-08-19):** `agente/manifiesto.py` genera los tres del mismo `dataclass`; `comprobar_registro()` los compara entre sí **y contra la función Python real**, y `tests/test_agente_manifiesto.py::test_TODAS_las_capacidades_del_registro_son_coherentes` recorre el registro, de modo que la garantía cubre también las capacidades que aún no existen. El defecto que cierra: declarar `municipio` en el esquema sobre una función que espera `nombre_municipio` — hoy eso reventaba con `TypeError` delante de un cliente y nada lo detectaba antes.
+
+### TL-10 · Validación estructural de los argumentos de una capacidad
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-3` · ~0,5j
+
+- **El defecto que cierra:** `Capacidad.invocar` comprobaba **dos cosas** —que no sobrara ninguna clave y que no faltara ninguna obligatoria— y nada más. Ni tipos, ni `enum`, ni rangos, ni nada anidado. Un `"25 m"` donde el manifiesto dice `number`, o un `"nave industrial"` donde dice `enum: [vivienda, local]`, entraba en la función y salía por el otro lado convertido en un resultado con pinta de bueno.
+- **Por qué aquí importa más que en otro sitio:** los argumentos no los escribe un programador, los rellena un modelo leyendo un esquema. Que se equivoque es lo normal, no lo excepcional. Rechazarlo aquí cuesta **cero tokens** y produce un mensaje que el modelo sabe corregir en la iteración siguiente; dejarlo pasar produce un número que nadie midió y que ya no se distingue de uno medido.
+- **No añade ninguna dependencia:** `jsonschema==4.26.0` ya era directa (`normativa/validacion.py`). La validación somera era una **omisión**, no una decisión de no depender de nada.
+- **Cómo quedó (2026-08-19):** `Draft202012Validator` compilado en `__post_init__`, así que un esquema mal escrito revienta **al declarar la capacidad** y no seis meses después cuando el modelo por fin use esa herramienta. Se devuelven **todos** los problemas y no el primero, ordenados por la ruta del argumento para que dos llamadas iguales den el mismo mensaje. Los mensajes van en castellano y nombran el argumento como lo escribiría quien llama (`plantas[1].altura_m`, no un `deque`), porque los lee un modelo que tiene que corregir la llamada y, en el CLI de `CAD-1`, una persona.
+- **Los dos mensajes que ya había se conservan**, porque son mejores que los del esquema: dicen qué se admite y qué falta. No se repiten con dos redacciones distintas.
+- **Un hueco que encontró su propio test:** al descartar los `required`/`additionalProperties` que ya decía `invocar`, se descartaban también los **anidados** — y ésos no los dice nadie más, porque las dos comprobaciones a mano sólo miran el primer nivel. Es justo donde un modelo se equivoca de verdad. Corregido antes de cerrar.
+- **Se comprueba en:** `tests/test_agente_argumentos.py`, 22 tests, incluido el de punta a punta que fija que el rechazo llega al bucle como `ok: false` con `is_error`, no como una excepción que tumbe la conversación.
 
 ### TL-4 · Golden obligatorio por capacidad determinista
 `P1` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-1` · ~0,5j
@@ -754,6 +847,69 @@ Tres defectos reales que **sólo el plano real podía destapar**, porque los fix
 
 **Sobre el corpus (`NOR-1`, ahora `PARCIAL`).** Ver la tarea para el detalle. Lo importante: la validación 17 no veía el error que comete quien **empieza** a transcribir, el manifiesto obligaba a mentir sobre una regla sin firmar, y el curador no tenía forma de comprobar su trabajo sin un programador. Las tres cosas están cerradas. Lo que queda es contratar a un colegiado, y no lo sustituye ninguna tarea.
 
+### 13.5 Lo hecho el 2026-08-19 (tercera sesión: consolidar Skills y decidir la siguiente)
+
+Encargo: consolidar `SK-1`, diseñar la Skill de memoria justificativa, hacer que el agente **pregunte en vez de inventar**, montar la arquitectura común de Skills, y evaluar qué Skill vale más comercialmente.
+
+**1. `SK-1` consolidada, con un defecto real que sólo el plano de un cliente enseña.** La Skill declaraba «no resuelve las ambigüedades del plano: las pregunta», y devolvía únicamente el `titulo` de cada solicitud. La capacidad las da completas —qué hueco resuelven, qué opciones hay con qué superficie cada una, y con qué forma se contesta— y todo eso se tiraba por el camino. El arquitecto leía la pregunta y no podía contestarla sin ir a leer el código. **Una pregunta que no se puede contestar no es preguntar:** es el mismo hueco mudo que el producto entero existe para evitar, con signos de interrogación. Test de punta a punta sobre `v2s.dxf`, porque las solicitudes de asignación nacen de una ambigüedad de verdad y un `ACAD_TABLE` no se sintetiza.
+
+**2. `SK-8`: la arquitectura común, motivada por un recuento y no por gusto.** Al ir a escribir la segunda Skill se contó lo que ya había: el invariante más caro del producto —*lo prometido y no producido sale `UNKNOWN` con motivo, nunca ausente*— estaba escrito **cuatro veces y de tres formas distintas**. Ahora vive una vez en `agente/skills/_comun.py`, con una guardia estructural que lee el fuente y falla si vuelve a aparecer.
+
+**3. El PRD de la memoria justificativa, escrito diciendo que no.** Ver `SK-7`. Resumen honesto: lo que se pidió no debe construirse hoy, y el PRD no lo construye. Propone la mitad defendible —el índice de apartados con su estado y las preguntas que faltan— que con el corpus de hoy sale con cero apartados justificados, **y ese es el resultado correcto**. De regalo, convierte el valor del corpus en la cifra que hoy falta para justificar `NOR-1`.
+
+**4. La evaluación comercial, con una medición que cambió mi propia recomendación.** Iba a proponer la Skill de carpintería: reutiliza el procedimiento entero de `SK-1` y no necesita corpus. Medí `v2s.dxf` antes de escribir el PRD y las **ventanas no están** — sólo cuatro bloques genéricos sin dimensiones ni asociación a vivienda tipo, mientras las puertas vienen con todo el dato en el nombre. En un cuadro de carpintería español las ventanas son la mitad cara. Conclusión: **medir un segundo plano antes de decidir**, media jornada. Es el hallazgo más rentable de la sesión, porque lo que evita es escribir tres días de Skill contra un fichero y descubrir en el segundo cliente que el 60 % sale en blanco. Documento completo: `docs/design/2026-08-19-valor-comercial-de-las-skills.md`, que además rechaza los detalles constructivos (`OP-14`) y confirma BIM en V2 con un argumento que faltaba: **un IFC llega de Revit, donde el arquitecto ya tiene sus tablas**.
+
+**Lo que esta sesión NO hizo, a propósito:** no tocó el núcleo de `agente/` (Terminal 1 trabajaba en él en paralelo), no transcribió normativa, y no implementó `MJ-4` a `MJ-8` — esperan la aprobación del PRD.
+
+---
+
+### 13.6 Lo hecho el 2026-08-19 (cuarta sesión: el núcleo agéntico, en paralelo con la tercera)
+
+Encargo: enchufar el planificador a la fachada, poder enseñar el plan antes de ejecutar efectos, arreglar la gestión de contexto largo, y corregir los defectos reales del bucle. Sin cambiar de framework y sin construir interfaz.
+
+**1. El planificador, alcanzable.** `AG-1` y `AG-2` estaban `HECHO` y **no los alcanzaba nadie**: `planificar()` sólo lo llamaban los tests y `scripts/demo_agente.py`. Ahora `copiloto.atender(via=VIA_PLAN)`, o partido en dos —`proponer()` planifica y audita sin ejecutar; `ejecutar_propuesta(confirmar=…)` ejecuta ese plan y sólo ése—, que es lo que pone un sitio donde decir que no. **Decir que no no ejecuta ni el primer paso**, ni siquiera el que no tenía efectos. Y por esa vía hay **una sola llamada al modelo en total**: la de planificar. No hay redacción final, y no haberla es lo que hace estructuralmente imposible que aparezca una cifra que ninguna herramienta produjo.
+
+**2. `AG-8`, que era una mentira escrita.** El prompt del planificador le pedía al modelo declarar qué pasos son independientes «porque es lo que permite ejecutarlos a la vez». No lo permitía. Ver la tarea: ahora sí, con lista blanca cerrada de efectos, regla de nivel entero, y la bitácora siempre en el orden de `Plan.orden()`.
+
+**3. `AG-9` y `TL-10`, los dos defectos que se descubren con el plano del cliente y no con un fixture.** El historial crecía sin límite hasta reventar el contexto, y los argumentos de una capacidad no se validaban más allá de «esta clave existe». Ver las dos tareas.
+
+**4. Dos defectos más, corregidos de paso:**
+
+| Defecto | Por qué importaba |
+|---|---|
+| `ResultadoDeEjecucion.completa` era `all(...)` sobre cero pasos | `all()` de nada es cierto, así que **una ejecución sin un solo paso se declaraba completa**, y esa bandera viaja al acta. Ya pasaba por la vía del bucle: una respuesta en prosa sin ninguna Skill ejecutada emitía un acta que decía `completa: true`. Un acta que afirma eso sobre un trabajo que nadie hizo es la clase de afirmación que este sistema existe para no emitir |
+| La lista de efectos salía dos veces en el plan, con dos criterios | `planificador.a_texto` los listaba todos y la fachada los listaba otra vez separando lo pendiente de lo concedido. Imprimir la misma lista dos veces con dos criterios distintos es cómo se consigue que el arquitecto deje de leerla |
+
+**Lo que esta sesión NO hizo, a propósito:** no cambió el defecto a `VIA_PLAN`, no tocó `app.py` (la pantalla es `INF-7`), no migró a ningún framework, y no tocó `agente/skills/` — la tercera sesión trabajaba ahí en paralelo. Documento de decisión: `docs/design/2026-08-19-el-planificador-en-la-fachada.md`.
+
+**5. `AG-4`, y un defecto que sólo aparece cuando existe la replanificación.** Se replanifica **una vez** y nunca dos, nunca para esquivar una autorización, y nunca con un plan idéntico al que acaba de fallar. Al montarlo salió que la reanudación buscaba el paso anterior **por `paso_id` a secas**: un segundo plan que reutilizara el id «ficha» para otra Skill se habría llevado el resultado del primero, con su sello y su acta, sin que nada fallara. Ver `AG-4` para el detalle y para por qué un apunte antiguo sin `sello_de_entrada` se sigue aceptando.
+
+**Lo que queda anotado y sin hacer:** el planificador no suma coste (`AG-3`), y los niveles mixtos —uno que escribe un fichero junto a tres que consultan la red— van enteros en serie por la regla de todo-o-nada. Lo último es deliberado y se puede afinar el día que se mida que duele.
+
+### 13.7 Lo hecho el 2026-08-19 (el entregable que no espera al corpus)
+
+Encargo: buscar dentro del repositorio qué entregable profesional se puede construir **con los datos que ArchMuse ya extrae de un DXF real**, que ahorre horas, sea verificable y **no dependa del corpus normativo**; y si la candidata es clara, implementarla.
+
+**La candidata, y cómo se eligió.** No se eligió por parecer buena: se eligió **midiendo**. `analyzer/evaluator.py` tiene 3.521 líneas y decenas de comprobaciones, pero casi todas llevan un umbral —superficie mínima de dormitorio, ancho de pasillo— que no sale de ninguna fuente citada; construir sobre ellas sería alucinación normativa por la puerta de atrás. Lo que queda al filtrar eso es lo puramente geométrico y de coherencia interna, y ejecutado sobre `v2s.dxf` da **nueve hallazgos reales**:
+
+| Hallazgo, medido | Qué se hacía antes con él |
+|---|---|
+| Dos solapes: `Tendedero`+`Tendedero` **4,00 m²** (95 % de la pieza menor) y `Terraza`+`Tendedero` **3,08 m²** | Servían para negarse a medir. El arquitecto veía el efecto, nunca la causa |
+| Dos contornos con el flag `closed` mal puesto, uno con **2,95 cm** de hueco | Una línea de `_log.warning`, o sea un terminal que nadie lee — pese a que el parser documenta que «tiene que quedar visible para quien audite» |
+| El rótulo `Tendedero` **dos veces** (4,22 y 8,63 m²) | Una celda `BLOQUEADO`, sin decir que la causa era el rótulo repetido |
+| El cuadro reserva 1 tendedero y el plano dibuja 2; reserva 2 terrazas y dibuja 1 | **Nadie lo calculaba** |
+| El cuadro pide `pasillo` y `vestibulo`: ninguna pieza rotulada así | **Nadie lo calculaba** |
+
+Siete de los nueve ya se sabían y se tiraban. El producto estaba desperdiciando su mejor entregable disponible porque lo usaba como insumo interno.
+
+**Por qué esta y no otra.** Es la única del catálogo que cumple los cuatro criterios a la vez: ahorra horas de verdad (el repaso previo a la entrega, que se rehace en cada revisión del plano), entrega un documento, cada hallazgo se puede ir a comprobar, y **no necesita ni una línea de corpus**. La carpintería sigue esperando un segundo plano (`OP-13`) y la memoria justificativa sigue esperando a `NOR-2` (`SK-7`).
+
+**El falso positivo, que es la parte que más enseña.** La primera versión producía **seis hallazgos falsos** sobre el plano real: el cuadro numera los huecos (`dormitorio_1`) y el arquitecto numera los rótulos («Dormitorio 1»), y sin normalizar los dos lados un piso de tres dormitorios correcto salía lleno de avisos. Se detectó ejecutándolo contra el fichero del cliente antes de escribir ningún test, y tiene el suyo. Seis avisos falsos en el primer plano real habrían bastado para que nadie volviera a abrir el informe.
+
+**La frontera con `D-7`, que es lo que permite entregar esto sin firma colegiada.** La Skill **no gradúa la gravedad de nada**: dice qué es y cuánto mide. No es una convención de estilo — es la verificación bloqueante `ningun_hallazgo_lleva_gravedad`, con un test que comprueba que **falla de verdad** cuando un hallazgo califica. Mientras pase, ArchMuse mide; el día que alguien la haga fallar, ha empezado a opinar sobre el trabajo de un colegiado.
+
+**Lo que esta sesión NO hizo, a propósito:** no tocó el runtime de `agente/` —el descubrimiento hace que añadir capacidades y Skills sea dejar un fichero—, no implementó memoria justificativa ni carpintería, y no transcribió normativa.
+
 ---
 
 ### 13.3 Lo siguiente, en orden
@@ -762,11 +918,11 @@ Tres defectos reales que **sólo el plano real podía destapar**, porque los fix
 |---:|---|---|
 | 1 | **`NOR-1` (contratar)** | Lo técnico está hecho el 2026-08-19: el curador ya puede trabajar solo. Queda **contratar**, y sigue siendo lo único que ArchMuse promete y no puede cumplir: una regla en el corpus, sin firmar, cero normas verificables |
 | 2 | `D-7` | Ya no es preventivo. `SK-1` **tiene** criterio profesional aplicado sobre un plano real y sin firmar: el orden del procedimiento, qué hacer ante una ambigüedad de reparto, y si un solape es error del plano o convención del autor. Los tres van enumerados en la decisión. Bloquea cobrar por el cuadro de superficies |
-| 3 | `INF-1` (cerrar) | Necesita un push. Ver `D-9` |
-| 4 | `DOC-1` | El acta legible. El PDF ya lleva el acta **a nivel de celda**; falta juntarla con la de ejecución en un solo documento |
+| 3 | `DOC-1` (el acta legible) | **Hecho el sondeo del segundo plano** (`V5.dxf`), que era lo que ocupaba este puesto: cerró `OP-13` con datos —la carpintería no se hace como estaba pensada— y encontró 8 falsos positivos en la revisión de coherencia, ya corregidos. Lo siguiente que acerca un entregable es juntar el acta de celda con la de ejecución en un solo documento |
+| 4 | `INF-1` (cerrar) | Necesita un push. Ver `D-9` |
 | 5 | `INF-2` → `ME-2` | Postgres y el registro append-only sellado. Es el foso, y hasta aquí todo vive en ficheros |
 | 6 | `SEG-1` | La pantalla de autorización. El portero ya existe en las dos capas; falta enseñar el efecto **antes** en una interfaz que no sea una línea de órdenes |
-| 7 | `AG-3` | Presupuesto por ejecución, con las cifras medidas de `SEG-4` |
+| 7 | `AG-3` | Presupuesto por ejecución, con las cifras medidas de `SEG-4`. **Sube de prioridad:** con `AG-1` ya alcanzable desde la fachada, un plan se puede lanzar sin que nadie sepa lo que va a costar |
 
 Después, vestir el vertical: `SEG-3` → `SEG-2` → `INF-4` → `INF-5` → `INF-6` → `INF-7` → `INF-8`.
 

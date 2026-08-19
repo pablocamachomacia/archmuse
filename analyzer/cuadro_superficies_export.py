@@ -44,6 +44,7 @@ from typing import List, Optional, Sequence
 
 import ezdxf
 
+from .marca_borrador import estampar_dxf
 from .cuadro_superficies import (
     BLOQUEADO,
     CALCULADO,
@@ -224,6 +225,13 @@ def exportar_cuadro_relleno(
             "insert": (r.celda.x, r.celda.y, 0.0),
         })
         celdas_escritas.append(CeldaEscrita(r.campo, texto, r.celda.x, r.celda.y))
+
+    # C3 (tarea DOC-3): todo entregable sale marcado como borrador para la
+    # revisión de un colegiado. Va en su propia capa, así que no cambia nada de
+    # lo que el arquitecto dibujó ni de lo que este módulo escribe en
+    # `00 CUADROS`. Se estampa aquí, en el único sitio que guarda un DXF, para
+    # que no exista ningún camino que produzca una copia sin ella.
+    estampar_dxf(doc)
 
     doc.saveas(ruta_destino)
 

@@ -406,6 +406,11 @@ def test_el_registro_se_puebla_por_descubrimiento():
         # exigen autorización explícita del efecto.
         "plano.escribir_cuadro",
         "plano.cuadro_en_pdf",
+        # La revisión de coherencia del plano (tarea CO-4, 2026-08-19), con la
+        # misma separación por efecto: una lee y no pide autorización, la otra
+        # escribe el informe y sí la pide.
+        "plano.coherencia",
+        "plano.informe_de_coherencia",
     }
     # C4 — cobertura antes que catálogo: entre 8 y 12 capacidades auditadas al
     # cerrar el MVP, no cientos. Esta lista es larga a propósito: obliga a que

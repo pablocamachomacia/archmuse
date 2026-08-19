@@ -21,9 +21,10 @@ primera está en la conversación cuando el modelo pide la segunda.
 
 **Qué NO es todavía**, para que nadie lo confunda con el orquestador del ADR:
 
-- No hay plan tipado por adelantado. El del ADR pide un DAG de
-  `(capacidad, versión, argumentos)` con `tool_choice` forzado, validado antes
-  de ejecutar nada (V1-10 y V1-11). Aquí el modelo decide paso a paso.
+- No hay plan tipado por adelantado. **Aquí** el modelo decide paso a paso; el
+  DAG validado antes de ejecutar nada existe, pero vive en
+  `agente/planificador.py` y se elige desde la fachada con
+  `copiloto.atender(via=VIA_PLAN)`. Las dos vías conviven a propósito.
 - No hay grafo portante, así que no hay `requiere` que comprobar contra
   `KNOWN`, ni `Atributo` con procedencia escrito por cada capacidad, ni sellado
   al final (V1-7 y V1-12).
@@ -34,6 +35,15 @@ primera está en la conversación cuando el modelo pide la segunda.
 
 Las tres ausencias son de alcance, no de diseño: este núcleo es la base sobre
 la que esas piezas se montan.
+
+**Sobre el contexto largo.** El historial crece con cada resultado y aquí no se
+tira nada nunca: lo que sí se hace es recortar **lo que ve el modelo** cuando un
+resultado no cabe (`agente/recorte.py`), con la marca puesta y el original
+intacto en `PasoEjecutado.resultado`. Y si la conversación entera deja de caber,
+el bucle **para antes de llamar** con `parada == "contexto_agotado"` en vez de
+pagar una llamada para recibir un error. No hay resumen automático del
+historial, y es deliberado: resumir un resultado de herramienta es inventar en
+pequeño, y por ahí es por donde entra una cifra que nadie midió.
 """
 from __future__ import annotations
 
@@ -53,6 +63,7 @@ from .registro import (
     registro as _registro,
     registro_de_skills as _registro_de_skills,
 )
+from . import recorte as _recorte
 from .respaldo import sin_respaldo
 from ia import modelos
 
@@ -94,6 +105,9 @@ Reglas, y no son negociables:
 6. Di explícitamente qué NO se ha comprobado cuando el resultado lo declare
    (materias sin cobertura, reglas pendientes de firma colegiada). El arquitecto
    firma el proyecto; ArchMuse solo asesora.
+7. Un resultado que traiga `__recorte__` viene incompleto **por tamaño**. Lo
+   omitido existe y no lo estás viendo: no lo supongas, no lo cuentes, y dilo.
+   Si hace falta lo que falta, pídelo con una herramienta más concreta.
 
 Responde en castellano, breve y sin adornos."""
 
@@ -138,9 +152,18 @@ class Respuesta:
     texto: str
     pasos: Tuple[PasoEjecutado, ...] = ()
     iteraciones: int = 0
-    parada: str = "fin"          # "fin" | "limite_de_iteraciones"
+    #: "fin" | "limite_de_iteraciones" | "contexto_agotado", y por la vía del
+    #: plan también "plan_vacio" | "plan_invalido" | "no_confirmado". Quien
+    #: consuma la respuesta tiene que mirarlo: sólo "fin" significa que el
+    #: agente terminó de decir lo que tenía que decir.
+    parada: str = "fin"
     cifras_sin_respaldo: Tuple[str, ...] = ()
     limitaciones: Tuple[str, ...] = ()
+    #: Lo que se recortó de los resultados antes de enseñárselos al modelo, por
+    #: tamaño. Vacío en el caso normal. No es telemetría: es la lista de lo que
+    #: el modelo NO llegó a ver, y por tanto lo que no puede haber tenido en
+    #: cuenta al responder.
+    recortes: Tuple[str, ...] = ()
     #: Skills ejecutadas, con su estado. Es lo que alimenta el acta.
     pasos_de_skill: Tuple[ResultadoDePaso, ...] = ()
     #: Lo que hace falta preguntar para poder terminar, sin repetir.
@@ -284,6 +307,8 @@ def ejecutar(
     max_iteraciones: int = MAX_ITERACIONES,
     max_tokens: int = MAX_TOKENS,
     sistema: str = SISTEMA,
+    max_caracteres_por_resultado: int = _recorte.MAX_CARACTERES,
+    max_contexto: int = _recorte.MAX_CONTEXTO,
 ) -> Respuesta:
     """Atiende una petición encadenando las capacidades que hagan falta.
 
@@ -309,12 +334,25 @@ def ejecutar(
     pasos_de_skill: List[ResultadoDePaso] = []
     mensajes: List[Dict[str, Any]] = [{"role": "user", "content": intencion}]
     pasos: List[PasoEjecutado] = []
+    recortes: List[str] = []
     parada = "limite_de_iteraciones"
     texto = ""
     iteraciones = 0
     respuesta: Any = None
 
     for iteraciones in range(1, max_iteraciones + 1):
+        # Se mira **antes** de llamar. Descubrir que la conversación no cabía
+        # por el error del proveedor cuesta la llamada, no da un motivo legible
+        # y tira lo que ya se había hecho: aquí se conserva.
+        if not _recorte.cabe_el_historial(mensajes, limite=max_contexto):
+            parada = "contexto_agotado"
+            texto = _texto_de(respuesta) if respuesta is not None else ""
+            recortes.append(
+                "la conversación superó los %d caracteres y se paró antes de la "
+                "iteración %d: lo hecho hasta aquí se conserva, lo que faltaba no "
+                "se hizo" % (max_contexto, iteraciones)
+            )
+            break
         respuesta = cliente.messages.create(
             model=modelo,
             max_tokens=max_tokens,
@@ -342,16 +380,26 @@ def ejecutar(
                     ejecucion_id, len(pasos_de_skill),
                 )
                 pasos_de_skill.append(paso_skill)
+                visible, cortes = _recorte.recortar(
+                    cuerpo, limite=max_caracteres_por_resultado)
+                recortes.extend("%s: %s" % (nombre, c) for c in cortes)
                 resultados.append({
                     "type": "tool_result",
                     "tool_use_id": getattr(peticion, "id", ""),
-                    "content": json.dumps(cuerpo, ensure_ascii=False, sort_keys=True,
+                    "content": json.dumps(visible, ensure_ascii=False, sort_keys=True,
                                           default=str),
                     "is_error": not cuerpo["ok"],
                 })
                 continue
             paso = _ejecutar_capacidad(reg, nombre, argumentos)
             pasos.append(paso)
+            # Lo que vuelve al modelo puede venir recortado por tamaño, pero
+            # nunca resumido ni reinterpretado: `paso.resultado` conserva el
+            # original íntegro, y es contra el original contra lo que se
+            # comprueban después las cifras del texto final.
+            visible, cortes = _recorte.recortar(
+                paso.resultado, limite=max_caracteres_por_resultado)
+            recortes.extend("%s: %s" % (nombre, c) for c in cortes)
             resultados.append(
                 {
                     "type": "tool_result",
@@ -360,7 +408,7 @@ def ejecutar(
                     # función. No hay ninguna rama por la que el texto del
                     # modelo se convierta en el resultado de su herramienta.
                     "content": json.dumps(
-                        paso.resultado, ensure_ascii=False, sort_keys=True, default=str
+                        visible, ensure_ascii=False, sort_keys=True, default=str
                     ),
                     # `is_error` también para un `ok: false` legítimo (municipio
                     # desconocido, umbral sin valor): no es un fallo técnico,
@@ -413,6 +461,7 @@ def ejecutar(
         pasos_de_skill=tuple(pasos_de_skill),
         preguntas=tuple(dict.fromkeys(preguntas)),
         efectos_pendientes=tuple(dict.fromkeys(efectos_pendientes)),
+        recortes=tuple(dict.fromkeys(recortes)),
     )
 
 

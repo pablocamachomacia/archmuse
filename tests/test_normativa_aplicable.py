@@ -518,13 +518,59 @@ def test_manifiesto_del_fixture_cuadra_con_el_disco():
     assert not fallos, fallos
 
 
-def test_el_corpus_de_produccion_sigue_vacio():
-    """Ninguna regla ficticia se ha colado en `normativa/`. Si este test falla,
-    alguien ha copiado el fixture al corpus real."""
+#: Lo único que hay hoy en el corpus de producción: la regla piloto de la
+#: tarea V0-5, transcrita del PDF oficial de DB-SI. Ampliar esta lista es un
+#: acto consciente y va acompañado de la entrega del curador que la justifica.
+CORPUS_PRODUCCION_ESPERADO = {"estatal/seguridad_incendio.yaml"}
+
+#: Etiqueta que toda regla del corpus de producción lleva mientras no la haya
+#: firmado un colegiado. Ver `docs/design/2026-08-18-ficha-de-transcripcion-
+#: normativa.md` §4, criterios humanos 5-7.
+TAG_SIN_FIRMAR = "pendiente_firma_colegiado"
+
+
+def test_en_el_corpus_de_produccion_solo_esta_lo_que_se_espera():
+    """Antes este test exigía que `normativa/es/` estuviera **vacío**, y era lo
+    correcto mientras no hubiera nada transcrito: protegía contra que alguien
+    copiara el fixture ficticio al corpus real.
+
+    Desde la tarea V0-5 hay una regla real, así que el test cambia de forma
+    pero no de propósito: sigue siendo la guardia contra el corpus que crece
+    sin que nadie lo mire. Lo que se comprueba ahora es que el contenido es
+    exactamente el declarado, y en particular **que no se ha colado nada
+    ficticio** — que era el riesgo original.
+    """
     from normativa.loader import RAIZ as RAIZ_CORPUS
 
-    reales = [p for p in (RAIZ_CORPUS / "es").rglob("*.yaml")] if (RAIZ_CORPUS / "es").exists() else []
-    assert not reales, f"hay corpus sin verificar en normativa/es: {reales}"
+    raiz_es = RAIZ_CORPUS / "es"
+    reales = sorted(p.relative_to(raiz_es).as_posix()
+                    for p in raiz_es.rglob("*.yaml")) if raiz_es.exists() else []
+    assert set(reales) == CORPUS_PRODUCCION_ESPERADO, (
+        f"el corpus de produccion no es el declarado: {reales}")
+
+    texto = "\n".join((raiz_es / r).read_text(encoding="utf-8") for r in reales)
+    assert "ficticio" not in texto.lower(), (
+        "hay contenido del fixture ficticio en el corpus real")
+
+
+def test_ninguna_regla_de_produccion_se_da_por_validada_sin_firma_humana():
+    """**Este es el test que importa.** El corpus tiene contenido, pero ese
+    contenido todavía no es normativa productiva: pasa las cuatro validaciones
+    automáticas de la ficha y ninguna de las tres humanas.
+
+    Mientras eso sea así, cada regla lo declara en sus `tags`. El día que un
+    colegiado firme, se retira la etiqueta de esa regla y este test deja de
+    exigírsela — retirarla sin firma es falsificar el estado del corpus, que es
+    exactamente lo que el producto entero existe para no hacer.
+    """
+    from normativa.loader import cargar as cargar_produccion
+
+    resultado = cargar_produccion(["es"])
+    assert resultado.reglas, "el corpus de produccion esta vacio; revisa V0-5"
+    sin_marca = [r["concept_id"] for r in resultado.reglas
+                 if TAG_SIN_FIRMAR not in (r.get("tags") or [])]
+    assert not sin_marca, (
+        f"estas reglas se presentan como validadas sin firma de colegiado: {sin_marca}")
 
 
 if __name__ == "__main__":

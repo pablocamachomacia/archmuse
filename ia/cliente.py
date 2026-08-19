@@ -47,8 +47,12 @@ aquí: una variable mal escrita no puede dejar el producto sin límite.
 """
 from __future__ import annotations
 
+import inspect
 import os
+import time
 from typing import Any, Optional
+
+from . import uso
 
 try:
     import anthropic
@@ -96,7 +100,69 @@ def crear_cliente(api_key: str, *, timeout_s: Optional[float] = None) -> Any:
         raise RuntimeError(
             "El SDK de Anthropic no está instalado. `pip install -r requirements.txt`."
         )
-    return anthropic.Anthropic(
+    crudo = anthropic.Anthropic(
         api_key=api_key,
         timeout=timeout_s if timeout_s and timeout_s > 0 else timeout_estandar(),
     )
+    return _ClienteMedido(crudo, llamante=_llamante())
+
+
+def _llamante() -> str:
+    """Módulo que pidió el cliente, para atribuirle el gasto.
+
+    Se resuelve **una vez por cliente**, no por llamada: recorrer la pila en
+    cada `messages.create` sería pagar por una etiqueta.
+    """
+    try:
+        marco = inspect.stack()[2]
+        carpeta = os.path.basename(os.path.dirname(marco.filename))
+        return "%s/%s" % (carpeta, os.path.basename(marco.filename))
+    except Exception:  # pragma: no cover - una etiqueta no puede romper una llamada
+        return "desconocido"
+
+
+class _MensajesMedidos:
+    """`client.messages` con el contador puesto alrededor de `create`."""
+
+    def __init__(self, mensajes: Any, llamante: str) -> None:
+        self._mensajes = mensajes
+        self._llamante = llamante
+
+    def __getattr__(self, nombre: str) -> Any:
+        return getattr(self._mensajes, nombre)
+
+    def create(self, *args: Any, **kwargs: Any) -> Any:
+        uso.comprobar_tope()
+        comienzo = time.monotonic()
+        respuesta = self._mensajes.create(*args, **kwargs)
+        if getattr(respuesta, "usage", None) is not None:
+            uso.registrar(
+                modelo=str(kwargs.get("model") or getattr(respuesta, "model", "?")),
+                llamante=self._llamante,
+                uso=respuesta.usage,
+                duracion_s=time.monotonic() - comienzo,
+            )
+        return respuesta
+
+
+class _ClienteMedido:
+    """El cliente del SDK, intacto, con `messages.create` contabilizado.
+
+    **Por qué un envoltorio y no tocar los seis llamantes** (tarea V0-3 del
+    plan de migración v2). Son seis puntos de llamada y ya costó descubrirlos:
+    la ficha hablaba de dos, el apéndice contó cinco y el test de guardia
+    encontró un sexto. Medir en cada uno garantiza que el séptimo nazca sin
+    medir — el mismo razonamiento que hizo de esto un módulo en vez de seis
+    literales repetidos.
+
+    `__getattr__` delega todo lo demás, así que sigue siendo el cliente para
+    cualquier uso: `tests/test_anthropic_timeout.py` lee `.timeout` y lo ve sin
+    cambios.
+    """
+
+    def __init__(self, crudo: Any, llamante: str) -> None:
+        object.__setattr__(self, "_crudo", crudo)
+        object.__setattr__(self, "messages", _MensajesMedidos(crudo.messages, llamante))
+
+    def __getattr__(self, nombre: str) -> Any:
+        return getattr(self._crudo, nombre)

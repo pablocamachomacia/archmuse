@@ -308,3 +308,36 @@ def test_un_aviso_de_suma_no_impide_la_entrega(tmp_path):
     assert destino.exists()
     bloqueantes = [r for r in salida.dictamen.resultados if r.bloqueante]
     assert all(r.ok for r in bloqueantes), [r.detalle for r in bloqueantes if not r.ok]
+
+
+# --- 6. Una pregunta que no se puede contestar no es preguntar ------------
+#
+# Encontrado sobre `v2s.dxf`. La Skill declara «no resuelve las ambiguedades del
+# plano: las pregunta», y devolvia solo el `titulo` de cada solicitud. Como
+# redactar la pregunta es cierto para toda Skill y no solo para esta, la pieza
+# vive en `agente/skills/_comun.py` y se prueba en `test_agente_skills_comun.py`.
+# Lo que se fija AQUI es lo otro: que esta Skill la use de verdad.
+
+@pytest.mark.skipif(not DXF_V2S, reason="define ARCHMUSE_DXF_V2S: un ACAD_TABLE no se sintetiza")
+def test_la_pregunta_sale_entera_del_procedimiento_y_no_solo_su_titulo(tmp_path):
+    """De punta a punta sobre el plano real: lo que la Skill entrega es lo que
+    se puede contestar.
+
+    Sin esto, `pregunta_legible` podria estar perfecta y no llamarse desde
+    ningun sitio, que es como quedan la mitad de las correcciones. Hace falta
+    el plano real porque las solicitudes de asignacion nacen de una ambiguedad
+    de verdad —dos piezas rotuladas igual, un recinto solapado— y un
+    `ACAD_TABLE` no se sintetiza de forma realista.
+    """
+    destino = tmp_path / "v2s_preguntas.dxf"
+    salida = skill().ejecutar(
+        contexto({"ruta_dxf": DXF_V2S, "ruta_destino": str(destino)}))
+
+    assert salida.resultado.preguntas, (
+        "el plano real tiene ambiguedades: si no pregunta nada, o se han "
+        "resuelto solas o se han repartido en silencio")
+    for pregunta in salida.resultado.preguntas:
+        assert "Para contestar:" in pregunta, (
+            "la pregunta «%s» no dice como se contesta" % pregunta)
+        assert "Resuelve:" in pregunta, (
+            "la pregunta «%s» no dice que hueco del cuadro desbloquea" % pregunta)

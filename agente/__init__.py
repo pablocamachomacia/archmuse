@@ -36,25 +36,46 @@ el acta de dónde salió cada número**.
    inferencia o propuesta (`afirmacion.py`): es la frontera entre asesorar y
    firmar.
 
-**Lo que todavía no es.** El planificador que produce el `Plan` tipado de una
-sola llamada con `tool_choice` forzado es V1-10 del plan de migración; hoy el
-modelo encadena paso a paso y el ejecutor ya sabe recibir el plan cuando llegue.
-El grafo de `modelo/` no es portante todavía, así que `requiere` se comprueba
-contra la memoria de proyecto y no contra el grafo. Las dos ausencias son de
-alcance, no de diseño.
+**Hay dos vías y se eligen desde la fachada** (`copiloto.atender(via=...)`):
+`VIA_BUCLE`, donde el modelo encadena herramientas paso a paso, y `VIA_PLAN`,
+donde `planificador.py` produce un DAG de **una** llamada, se audita sin gastar
+un token y lo ejecuta el ejecutor. La segunda es la única que **se puede
+enseñar antes de tocar nada** —`proponer()` devuelve el plan, las preguntas y
+los efectos; `ejecutar_propuesta()` ejecuta ese plan y sólo ése—. El defecto
+sigue siendo el bucle: cambiarlo es una decisión con datos (`AG-3`), no de golpe.
+
+Por esa vía, los pasos independientes **se ejecutan a la vez** cuando es seguro
+(`AG-8`: lista blanca de efectos, nivel entero, y la bitácora siempre en el
+orden del plan), y si algo no sale se replanifica **una vez** —nunca dos, nunca
+para esquivar una autorización— antes de parar y preguntar (`AG-4`).
+
+**Lo que todavía no es.** El grafo de `modelo/` no es portante, así que
+`requiere` se comprueba contra la memoria de proyecto y no contra el grafo; y
+no hay presupuesto por ejecución (`AG-3`). Las ausencias son de alcance, no de
+diseño.
 """
 from .afirmacion import Afirmacion
 from .capacidad import Capacidad
-from .copiloto import Entrega, atender
+from .copiloto import (
+    VIA_BUCLE,
+    VIA_PLAN,
+    Entrega,
+    Propuesta,
+    atender,
+    ejecutar_propuesta,
+    proponer,
+)
 from .memoria import MemoriaDeProyecto
 from .nucleo import PasoEjecutado, Respuesta, cliente_por_defecto, ejecutar
 from .registro import Registro, RegistroDeSkills, registro, registro_de_skills
 from .skill import Skill
 
 __all__ = [
-    "Afirmacion", "Capacidad", "Entrega", "MemoriaDeProyecto", "PasoEjecutado",
-    "Registro", "RegistroDeSkills", "Respuesta", "Skill", "atender",
-    "cliente_por_defecto", "ejecutar", "registro", "registro_de_skills",
+    "VIA_BUCLE", "VIA_PLAN", "Afirmacion", "Capacidad", "Entrega",
+    "MemoriaDeProyecto", "PasoEjecutado", "Propuesta", "Registro",
+    "RegistroDeSkills", "Respuesta", "Skill", "atender", "cliente_por_defecto",
+    "ejecutar", "ejecutar_propuesta", "proponer", "registro",
+    "registro_de_skills",
 ]
 
 # Uso, de punta a punta:

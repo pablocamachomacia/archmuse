@@ -102,8 +102,13 @@ recuperado1 = storage.obtener_modelo(pid1)
 check("obtener_modelo devuelve un grafo", recuperado1 is not None)
 check("mismo sellado que el original (round-trip sin perdida)",
       recuperado1 is not None and recuperado1.sellado == grafo1.sellado)
+# 40 y no 34 desde la correccion de cierre geometrico del 2026-08-13: seis
+# polilineas de `ejemplo.dxf` traian el flag `closed` mal puesto y se
+# descartaban enteras (ver `docs/audits/2026-08-13-hallazgos-cierre-
+# geometrico.md` §0). El resto de la suite ya cuenta 40 -- este fichero se
+# quedo con la cifra vieja porque se dejo en rojo a proposito.
 check("mismo numero de espacios", recuperado1 is not None and
-      len(recuperado1.get_spaces()) == len(grafo1.get_spaces()) == 34)
+      len(recuperado1.get_spaces()) == len(grafo1.get_spaces()) == 40)
 check("mismo numero de aristas", recuperado1 is not None and
       len(recuperado1.aristas()) == len(grafo1.aristas()))
 check("mismo numero de unidades", recuperado1 is not None and

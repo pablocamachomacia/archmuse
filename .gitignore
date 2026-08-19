@@ -1,7 +1,6 @@
 # --- Secretos y configuración local ---
-# ANTHROPIC_API_KEY, MAPBOX_TOKEN, GEMINI_API_KEY y cualquier otra clave
-# viven SOLO en variables de entorno (ver app.py/JarvisApp.py) o en un
-# .env local -- nunca en el repo.
+# ANTHROPIC_API_KEY, MAPBOX_TOKEN y cualquier otra clave viven SOLO en
+# variables de entorno (ver app.py) o en un .env local -- nunca en el repo.
 .env
 .env.*
 !.env.example
@@ -42,3 +41,16 @@ Thumbs.db
 # El napkin es un runbook que la skill `napkin` reescribe en cada sesión;
 # es contexto de trabajo local, no documentación del proyecto.
 .claude/napkin.md
+
+# --- Analisis estrategico que no se publica ---
+# Los dos documentos que un competidor agradeceria: el analisis de foso
+# (que es defendible y que no) y el de los ataques mas plausibles contra el
+# producto. Se mantienen en local porque el trabajo se apoya en ellos --
+# `CLAUDE.md` los cita como brujula-- pero no se versionan.
+#
+# AVISO: los dos estuvieron publicados entre el 2026-08-18 y el 2026-08-19 y
+# siguen en el historial de git. Sacarlos de aqui evita nuevos lectores, no
+# borra los anteriores; limpiarlos del historial exige reescribirlo y eso es
+# una decision aparte.
+MOAT_ANALYSIS.md
+DESTROY_ARCHMUSE.md

@@ -123,6 +123,91 @@
       ]
     }
   },
+  "plano.coherencia": {
+    "capa_de_recintos": "00 areas",
+    "comprobado": [
+      {
+        "para": "que la capa de recintos dé alguna pieza",
+        "que": "Recintos leídos"
+      },
+      {
+        "para": "que dos piezas de la misma vivienda no se pisen",
+        "que": "Solapes entre recintos"
+      },
+      {
+        "para": "que ningún contorno se haya cerrado por suposición",
+        "que": "Polilíneas mal cerradas"
+      },
+      {
+        "para": "qué entidades no han entrado en el análisis, y por qué",
+        "que": "Geometría descartada"
+      },
+      {
+        "para": "que ninguna pieza esté sin rotular y que ningún rótulo se repita",
+        "que": "Rótulos"
+      },
+      {
+        "para": "que el cuadro y el plano nombren las mismas piezas",
+        "que": "Cuadro contra dibujo"
+      }
+    ],
+    "hallazgos": [
+      {
+        "detalle": {
+          "pct_de_la_pieza_menor": 33.3,
+          "vivienda": "VT1/1"
+        },
+        "magnitud": 2.0,
+        "tipo": "solape_entre_recintos",
+        "unidad": "m2"
+      },
+      {
+        "detalle": {
+          "capa": "00 areas"
+        },
+        "magnitud": 0.0,
+        "tipo": "polilinea_mal_cerrada",
+        "unidad": "unidades de dibujo"
+      },
+      {
+        "detalle": {
+          "capa": "00 areas",
+          "detalle": "",
+          "motivo": "POLILINEA_ABIERTA",
+          "tipo": "LWPOLYLINE"
+        },
+        "magnitud": null,
+        "tipo": "geometria_descartada",
+        "unidad": ""
+      },
+      {
+        "detalle": {
+          "areas_m2": [
+            4.0,
+            4.0
+          ],
+          "vivienda": "VT1/1"
+        },
+        "magnitud": 2.0,
+        "tipo": "etiqueta_duplicada",
+        "unidad": "piezas"
+      }
+    ],
+    "limpio": false,
+    "no_comprobado": [
+      "el contraste entre el cuadro y el dibujo: este DXF no trae cuadro de superficies, así que no hay con qué comparar los rótulos del plano"
+    ],
+    "ok": true,
+    "recintos": 5,
+    "recuento_por_tipo": {
+      "etiqueta_duplicada": 1,
+      "geometria_descartada": 1,
+      "polilinea_mal_cerrada": 1,
+      "solape_entre_recintos": 1
+    },
+    "unidad_del_dibujo": "metros",
+    "viviendas": 1
+  },
   "plano.cuadro_de_superficies": {
     "error": "cuadro_no_calculable",
     "ok": false

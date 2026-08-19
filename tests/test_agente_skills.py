@@ -388,6 +388,10 @@ def test_las_skills_se_descubren_y_estan_validadas(skills):
         # El procedimiento del primer vertical (tarea SK-1, 2026-08-19). Es la
         # primera Skill con efectos: la que entrega un fichero.
         "superficies.cuadro_de_vivienda",
+        # El segundo entregable profesional (tarea CO-5, 2026-08-19), y el
+        # primero que NO depende del corpus normativo: repasa el plano contra
+        # sí mismo antes de entregarlo.
+        "revision.coherencia_del_plano",
     }
     for skill in skills:
         # Sus capacidades existen, Y declara los efectos de esas capacidades

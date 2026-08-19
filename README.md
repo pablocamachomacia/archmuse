@@ -1,296 +1,262 @@
 # ArchMuse
 
-**Urban feasibility, financial viability and AI-assisted spatial generation for residential architecture.**
+**An agentic copilot for architectural practice — one that refuses to guess.**
 
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
-[![Three.js](https://img.shields.io/badge/Three.js-r1xx-black?logo=three.js&logoColor=white)](https://threejs.org/)
 [![Claude API](https://img.shields.io/badge/Claude-API-D97757?logo=anthropic&logoColor=white)](https://www.anthropic.com/api)
 [![IFC / BIM](https://img.shields.io/badge/IFC4-BIM%20export-orange)](https://technical.buildingsmart.org/standards/ifc/)
 [![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)](https://pytest.org/)
+[![Status](https://img.shields.io/badge/status-experimental-yellow)](#status)
+
+> **Status: experimental. V1 under construction.** Parts of this work end to end on real
+> architectural files; other parts are scaffolding waiting for content. This README tries to be
+> exact about which is which — see [Status](#status).
+>
+> **Language:** the code, comments and design documents are in **Spanish**, because that is the
+> language of the building code it reasons about and of the architects it is built for. This README
+> is in English.
 
 ---
 
-## Executive Summary
+## What ArchMuse is
 
-**EN —** ArchMuse is a full-stack platform for early-stage residential architecture: it turns a plot
-of land (via Mapbox GIS) into a *sólido capaz* (buildable envelope), evaluates a design — either
-uploaded as a DXF plan or generated from scratch by an AI layout engine — against Spanish building
-code (CTE) and habitability regulation, models financial viability (developer margin, static cash
-flow, surface efficiency ratio), and exports the result as technical deliverables: IFC4 BIM spaces
-and a PDF investment dossier. A rule engine (~3,500 lines, 20+ CTE/DB-SI/DB-SUA checks) does the
-compliance scoring; Claude (Anthropic API) is layered on top to generate spatial proposals and
-narrative diagnosis — and is explicitly never allowed to invent a cost, price or compliance number
-that the user hasn't provided.
+ArchMuse takes the files an architect already has — a DXF floor plan, an IFC model — and does
+pieces of the tedious work that surrounds a project: measuring rooms, filling in the area schedule,
+checking a drawing against itself, and (eventually) justifying compliance with the Spanish building
+code, the *Código Técnico de la Edificación*.
 
-**ES —** ArchMuse es una plataforma full-stack para las fases tempranas del proyecto residencial:
-convierte una parcela (vía Mapbox GIS) en su **sólido capaz** (envolvente edificable), evalúa un
-diseño — subido como plano DXF o generado desde cero por un motor de IA — contra el **CTE** y la
-normativa de habitabilidad, modela la **viabilidad financiera** (margen del promotor, cash flow
-estático, ratio de eficiencia de superficie) y exporta el resultado como entregables técnicos:
-espacios **IFC4/BIM** y un **dossier de inversión en PDF**. Un motor de reglas (~3.500 líneas, 20+
-comprobaciones CTE/DB-SI/DB-SUA) hace el scoring normativo; **Claude** (API de Anthropic) se apoya
-encima para generar propuestas espaciales y diagnóstico narrativo — y tiene explícitamente prohibido
-inventar un coste, precio o dato de cumplimiento que el usuario no haya introducido.
+The distinguishing constraint is a negative one, and it is the whole point:
 
----
+**ArchMuse is not allowed to produce a number it cannot trace.** Every figure it emits carries its
+provenance — measured from this polygon, declared by the architect, or read from this cell of the
+drawing — and anything it could not determine comes back as a **question with a reason**, never as
+a silent blank and never as a plausible guess. A plan drawn in millimetres and read as metres
+passes every minimum-area check and produces a beautiful, confident, wrong report; avoiding that
+class of failure is the design centre of this repository.
 
-## Architecture & Key Features
+### Vision
 
-### 🗺️ 3D viewer & Sólido Capaz analysis
-Interactive **Three.js** viewer (building + unit level, shared rendering core) over real terrain and
-context fetched from the **Mapbox GIS API**. Given a plot's geocoded boundary and local zoning
-parameters (occupancy, buildability, max height, setbacks), computes the *sólido capaz* — the
-maximum legally buildable volume — and lets the architect sandbox massing options directly on it.
+An **agentic copilot for architecture**: not a chatbot bolted onto a CAD viewer, but a set of
+*versioned professional procedures* an architect can ask for by name and take away finished, each
+with a record of what was checked, with what data, and what was deliberately left unanswered.
 
-### 📐 CTE rule engine & compliance checklist
-`analyzer/evaluator.py` runs 20+ independent checks (room proportions, bedroom/bathroom hierarchy,
-useful/built area efficiency, solar orientation, cross-ventilation, corridor width, accessible
-itineraries, natural lighting, fire evacuation distance, acoustic adjacency...) against thresholds
-that vary by housing typology and by **CTE climate zone**, keyed off the project's city. Findings
-are aggregated into a single CTE/DB-SI/DB-SUA **compliance checklist** so the architect sees one
-verdict per rule, not raw output from three different modules.
-
-### 💰 Financial viability module
-Developer margin (%), static cash flow (investment vs. revenue totals) and surface efficiency ratio
-— computed from figures the *user* enters, never a fabricated market default. No IRR is computed on
-purpose: an IRR requires a real construction/sales timeline ArchMuse doesn't model, and a plausible
--looking-but-invented number was judged worse than no number.
-
-### 🤖 LLM integration (Claude API)
-Two AI-assisted flows on top of the deterministic rule engine:
-- **Diagnosis** — Claude reads the evaluator's structured findings on an uploaded DXF plan and
-  produces an expert narrative assessment per dwelling unit.
-- **Generation** — given a plot, program of needs and zoning constraints, Claude lays out a full
-  residential floor plan (rooms + units) from scratch, which then runs through the *same* CTE
-  evaluator as any uploaded plan.
-
-Six modules call Claude in total (the two above plus style proposal, interview interpretation,
-brief extraction and normative-text interpretation). All six build their client through
-`ia/cliente.py`, which is the only place in the repo allowed to construct an
-`anthropic.Anthropic` — a test enforces that. It sets an explicit timeout, because the SDK's
-default is 600s of read with 2 retries, and a hung call would otherwise hold a `waitress` worker
-thread for half an hour.
-
-### 📤 Technical export
-- **IFC4/BIM** (`ifcopenshell`) — exports each analyzed space as a real `IfcSpace` (area, name),
-  deliberately scoped to what the pipeline actually knows (no invented wall thickness or slab
-  geometry) so it never overstates itself as a full BIM model.
-- **PDF investment dossier** (`ReportLab`) — cover page, urban-planning fact sheet, per-floor 2D
-  plans and the financial viability summary, composed only from data the app already computed or the
-  user already captured (map image via Mapbox Static API, 3D render only if the client supplied it).
+Every deliverable is marked as a **draft for review by a chartered architect**, with no option to
+turn that off. ArchMuse advises; it does not sign.
 
 ---
 
-## Tech Stack
+## What actually works today
 
-| Layer | Technology |
+| Capability | State |
 |---|---|
-| **Backend** | Python 3.12+, Flask (JSON REST API) |
-| **Geometry / CAD** | `ezdxf`, `shapely`, `trimesh` + `mapbox_earcut` (mesh triangulation) |
-| **BIM export** | `ifcopenshell` (IFC4) |
-| **PDF generation** | `ReportLab` |
-| **AI** | Anthropic Claude API (`anthropic`) — diagnosis & generative layout |
-| **Frontend** | Vanilla JS SPA, **Three.js** (3D building/unit viewer), Mapbox GL / Static Images API |
-| **Rules corpus** | YAML + `jsonschema` (curator-editable normative corpus), `pypdf` (official CTE PDF ingestion) |
-| **Testing** | `pytest` — ~100 test modules covering the rule engine, exports, endpoints and golden-file regressions |
+| **Read a DXF without assuming** — deduce the drawing unit and the layer holding the rooms; refuse and ask when either is uncertain | Working, on real client files |
+| **Area schedule** (*cuadro de superficies*) — measure the rooms and fill in the drawing's own table, writing a **copy** and never the original | Working end to end; the input file's SHA-256 is verified before and after |
+| **Plan coherence review** — overlapping rooms, outlines the file declares open that were closed on an assumption, repeated or missing labels, discarded geometry, and whether the schedule and the drawing name and count the same rooms | Working; found 9 real issues on the first real plan it was pointed at |
+| **IFC reading and space export** | Working (`bim/`, `analyzer/ifc_export.py`) |
+| **Provenance record** (*acta*) and draft marking on every deliverable | Working |
+| **Building-code verification** | **Not yet.** The engine is built; the corpus holds **one rule, unsigned**, so ArchMuse asserts nothing about building code and says so — see [The normative corpus](#the-normative-corpus) |
+| 3D viewer, financial viability, AI layout generation | Present in the repository but frozen: earlier exploration, not the current direction |
 
 ---
 
-## Getting Started
+## Architecture
 
-### Prerequisites
-- Python 3.12+
-- API keys (never committed — see `.gitignore`):
-  - `ANTHROPIC_API_KEY` — required for AI diagnosis/generation
-  - `MAPBOX_TOKEN` — required for the GIS plot picker, terrain and static map images
-  - `GEMINI_API_KEY` — optional, used only by the separate `JarvisApp.py` assistant
-
-Copy `.env.example` to `.env` and fill it in. That file is the canonical list of
-every variable the project reads — what each one does, which module reads it,
-and its default. `app.py`, `main.py` and the test suite all load `.env` (via
-`analyzer/entorno.py`); anything already exported in your shell wins over the
-file, so a stray `.env` can never override a deployment's real secrets.
-`.env` is gitignored, `.env.example` is not — never put a real key in it.
-
-### Installation
-
-```bash
-git clone <repo-url>
-cd arquitecto-ai
-python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
+```
+  agente/            The agentic core: capabilities, Skills, effects, verification, provenance
+    herramientas/    Capabilities — one tool that does one thing, with a manifest
+    skills/          Skills — versioned professional procedures
+  analyzer/          Geometry and documents: DXF parsing, areas, schedules, PDF reports
+  normativa/         The building-code engine and corpus (territorial resolution, rules, coverage)
+  bim/               IFC reading
+  modelo/            The shared architectural model
+  scripts/           Runnable, offline entry points — the deliverables you can actually try
+  tests/             ~900 tests, including golden files and policy tests
 ```
 
-Three requirements files, and they are not interchangeable:
+Three ideas hold it together.
 
-| File | What it is | When to use it |
-|---|---|---|
-| `requirements.txt` | The 13 things the product depends on, each with a comment saying why | Reading, or installing the product without the test suite |
-| `requirements-dev.txt` | The above plus `pytest` | Working on ArchMuse — this is the one above |
-| `requirements.lock.txt` | All 58 distributions, transitive ones included, exactly as installed | Deploying, or reproducing a green suite |
+**1. Capabilities and Skills are different things.** A *capability* knows how to do one thing: read
+a DXF, resolve a municipality, measure the useful area. A *Skill* knows how a job is done — what is
+looked at, in what order, with what checks, what is delivered, and what is declared as not checked.
+The capability belongs to the engineer; the Skill belongs to the architect. Confusing the two is
+what produces 400-line functions with professional judgement buried inside. Both are registered by
+discovery: adding one is dropping a file in a directory, with no central list to edit.
 
-Every version is pinned with `==`. To upgrade one: change the number in
-`requirements.txt`, install, run the **whole** suite, and only then regenerate
-the lock with `pip freeze > requirements.lock.txt`. Pinning transitive
-dependencies is not paranoia — `werkzeug`, `httpx` and `numpy` have each broken
-applications on a major bump without the direct dependency changing at all.
+**2. Nothing that touches the outside world happens without a declared, authorised effect.** A Skill
+declares its effects and a capability declares its own, and the manifest cannot lie by omission —
+a Skill that uses a capability with an undeclared effect fails to load. Writing a file requires an
+explicit authorisation recording who granted it and for how long.
 
-### Running the app
+**3. Verification is part of the result, not a test suite.** Every Skill runs its own checks and
+returns a verdict. Checks have three outcomes, and the third one is the one that matters: passed,
+failed, or **could not be checked** — with the reason. Reporting "could not check" as "failed"
+accuses the architect's drawing of a defect nobody looked at, and that is how a tool spends the
+credibility it will need the day it is right.
 
-```bash
-# With a .env in place, just:
-python app.py
+### Skills
 
-# Or export them yourself (these win over .env):
-# PowerShell
-$env:ANTHROPIC_API_KEY = "sk-ant-..."
-$env:MAPBOX_TOKEN = "pk...."
-python app.py
-```
+Currently in the registry (`agente/skills/`):
 
-The API/SPA serves at **http://127.0.0.1:5000**, behind `waitress` (a real WSGI
-server, multi-threaded). `PORT` overrides the port. It binds to loopback only.
-
-For development with auto-reload and the interactive debugger:
-
-```bash
-$env:FLASK_DEBUG = "1"
-python app.py
-```
-
-That mode runs Flask's development server, whose Werkzeug debugger executes
-arbitrary Python from the browser — it is opt-in on purpose, and local only.
-
-#### `app.py` is the product. `main.py` is not.
-
-`app.py` + the SPA in `static/` **are** ArchMuse: the REST API, the rule
-engine, the 3D viewer, the exports. That is what a user runs.
-
-`main.py` is an internal debugging tool — it analyzes one DXF from the command
-line and dumps an HTML report next to it, so you can see the rule engine's
-output without starting a server. It reaches a narrower slice of the code
-(`analyzer/reporter.py`, which nothing else imports) and it does **not** receive
-new capabilities: circulation, spatial quality, chain effects, the surface
-schedule and every export added since are reachable only through `app.py`.
-
-```bash
-python main.py                      # uses ejemplo.dxf next to the repo
-python main.py path/to/plan.dxf     # or an explicit path
-python main.py path/to/plan.dxf 45  # plus the north azimuth in degrees
-```
-
-If you are unsure which of the two to modify, it is `app.py`.
-
-### What the DXF parser expects
-
-ArchMuse reads rooms from closed polylines. It never guesses: when it cannot
-resolve which layer holds the rooms, or what unit the drawing is in, it raises
-`CapaIndeterminada` / `EscalaIndeterminada` with the information needed to ask,
-rather than analyzing something it does not understand. Two layer conventions
-are supported, and the newer one wins whenever it is present.
-
-**1. The `AM_*` classification contract (preferred).** Explicit layers, each
-with one meaning — no inference required:
-
-| Layer | Holds |
+| Skill | What it does |
 |---|---|
-| `AM_UTIL_INT` | Interior usable floor area. **If this layer has any valid polygon, it is the source of rooms** and the legacy mode below is skipped entirely. |
-| `AM_CONS_CER` | Enclosed built area |
-| `AM_UTIL_EXT` | Exterior usable area (balconies, terraces) |
-| `AM_CONS_EXT` | Exterior built area |
-| `AM_DESCUENTO` | Reserved, not operative yet |
+| `superficies.cuadro_de_vivienda` | Fills in a dwelling's area schedule; delivers the filled DXF plus a PDF explaining every cell |
+| `revision.coherencia_del_plano` | Reviews a plan against itself before delivery — the one deliverable that does not depend on the corpus |
+| `territorial.ficha_normativa_de_parcela` | Which building code applies to a plot, and what coverage exists for it |
+| `revision.recorridos_de_evacuacion` | Evacuation route length against the DB-SI threshold, with the citation |
+| `programa.registrar_requisitos_del_cliente` | Records client requirements with their source |
 
-`analyzer/validacion_capas.py` audits how these are used and reports
-inconsistencies without blocking. A drawing with no `AM_*` layer at all
-produces zero diagnostics — legacy plans do not start getting warnings for a
-contract they never used.
+Each declares what it needs — and the **question** that unblocks each requirement — which
+capabilities it may invoke, what it produces, what effects it has, what it verifies, and, in its own
+manifest, **what it does not check**.
 
-**2. Legacy mode.** Rooms are the closed polylines of a single layer. The
-parser tries `"00 areas"` first; if that layer is absent or empty it picks the
-closest match by similarity; if nothing is convincing it raises
-`CapaIndeterminada` rather than choosing.
+### DXF and IFC
 
-Whichever mode applies, four details decide whether a real drawing reads
-correctly:
+DXF is the working format, because it is what Spanish practice actually exchanges. The parser
+traverses block references, resolves layer inheritance through them, deduces the drawing unit from
+`$INSUNITS` and from geometric plausibility, and **refuses rather than assumes** when it cannot
+tell. Everything it discards is inventoried with a reason: a silent discard is floor area missing
+without anyone knowing.
 
-- **Entity types.** Only `LWPOLYLINE` and `POLYLINE` become rooms. Text,
-  dimensions and other annotations are never room outlines.
-- **Closure is tolerant.** A polyline whose endpoints sit within 1% of its
-  bounding-box diagonal counts as closed even if the DXF flag says otherwise —
-  calibrated against real drawings where the largest genuine gap was 0.70%.
-  Recovery is always logged, never silent.
-- **Colour marks grouping outlines, and the default is what you want.** Draw
-  rooms with the layer's colour (`BYLAYER`). An *explicit* colour on a polygon
-  — typically ACI 10 or ACI 150 in these drawings — flags it as a possible
-  grouping outline: the polygon around an open kitchen-living room, or around a
-  whole row of drying areas. Such a polygon is discarded **only** when it also
-  contains a smaller `BYLAYER` polygon carrying the same label, i.e. when that
-  room is already represented on its own. So `BYLAYER` is not a style
-  preference: it is how you say "this is a real room".
-- **Dwelling labels.** `MTEXT`/`TEXT` matching `VT` followed by a number
-  (`VT1`, `VT01 /3`) groups rooms into dwellings. Rooms are assigned to the
-  nearest label, so labels must sit inside or beside the dwelling they name.
+IFC is read through `ifcopenshell`, and spaces can be exported. Reading an IFC to tell an architect
+what is in their own Revit model has little value; the value is cross-checking it against another
+source, and that is future work.
 
-Scale is resolved from the DXF `$INSUNITS` header cross-checked against room
-sizes (`analyzer/escala.py`). When the two disagree irreconcilably you get
-`EscalaIndeterminada`, with the detected suggestion, instead of a plan analyzed
-in the wrong unit.
+### Verification and traceability
 
-### Running the test suite
+- **Claims, not values.** Every figure is an `Afirmacion` carrying its epistemic nature — fact,
+  calculation, inference or proposal — plus its source, its unit and, where relevant, its citation.
+  That distinction is the line between advising and signing.
+- **Provenance record.** Every run produces an *acta*: which capabilities ran, with what arguments,
+  what each produced, and **what was not checked** — derived from the manifests of what actually
+  ran, not written by hand.
+- **The original is never touched.** Any capability that writes verifies the input file's SHA-256
+  before and after, refuses to write over its source, and refuses to overwrite an existing
+  deliverable that may already have been reviewed and annotated.
+- **Unsupported figures are detectable.** `agente/respaldo.py` checks every number in a generated
+  text against the tool results that were actually available to produce it.
 
-```bash
-pytest
-```
+### The normative corpus
 
-378 tests, roughly 10-15 minutes depending on which optional DXF files you have.
-Two shapes coexist under `tests/`:
+`normativa/` holds a working rule engine: territorial resolution from state down to municipality,
+temporal validity, applicability, and coverage declared per subject area. It holds **one
+transcribed rule**, and that rule is **unsigned by a chartered architect**, so it is declared
+`transcrito_sin_firmar` — a state that is explicitly *not* assertable. ArchMuse therefore blocks on
+missing coverage instead of answering.
 
-- **Native pytest tests** (28 files) — collected and reported per test function.
-- **Standalone check scripts** (72 files) — the original style: they run their
-  assertions at module level and report via the exit code. `conftest.py` keeps
-  them out of normal collection (importing one runs it) and
-  `tests/test_scripts_legacy.py` executes each in a subprocess, so each script
-  shows up as **one** pytest result. Its captured output carries the per-check
-  detail. Any one of them still runs on its own the way its docstring says:
-
-```bash
-python tests/test_acoustic_adjacency.py
-python tests/golden.py          # the 9 golden fixtures, G1..G9
-```
-
-Raise `ARCHMUSE_TEST_TIMEOUT` (seconds, default 900) if a script needs longer.
-
-Some tests need real DXF drawings, which are not in the repository (they are
-actual client files). Without them those tests skip with an explicit reason
-rather than failing:
-
-- `ejemplo.dxf` — expected **next to** the repository directory. Same location
-  is the default for `python main.py` and the `experimentos/` scripts.
-- `v2s.dxf` — set `ARCHMUSE_DXF_V2S` to its full path to enable the
-  surface-schedule tests (about 4 minutes of extra coverage).
-
-`conftest.py` loads `.env` too, so those variables can live there instead of in
-your shell — and the 72 subprocess scripts inherit them. Two entries in
-`.env.example` change what the suite *does* rather than what it can reach:
-`ARCHMUSE_TEST_RED=1` makes it hit boe.es and the Spanish cadastre live, and
-`ARCHMUSE_TEST_IA=1` makes it spend real Anthropic tokens. Both are off by
-default and flagged in place.
-
-Two scripts are marked `xfail(strict=True)` in `conftest.py` (`ROJOS_CONOCIDOS`)
-because they fail on one known, written-up defect — see
-`docs/audits/2026-08-13-hallazgos-cierre-geometrico.md` §2. Strict is the point:
-the day that defect is fixed, pytest reports XPASS and forces the marker to be
-removed. Nothing else is marked, so any red is a real regression.
+That is the honest answer, and it stays that way until an architect signs. The bottleneck is
+contractual, not technical.
 
 ---
 
-## Project Philosophy
+## Running it locally
 
-Every module that touches a number the user will act on — cost, price, CTE compliance, a percentile
-comparison — is held to one rule: **never fabricate a default**. Where the pipeline lacks a real
-input (construction timeline, wall thickness, market comparables), the feature is scoped down or
-left out rather than filled in with a plausible-looking placeholder. This constraint shapes several
-deliberate design choices documented above (no IRR, IFC spaces only, dossier composed only from
-already-captured data).
+Requires **Python 3.12+**.
+
+```bash
+git clone https://github.com/pablocamachomacia/archmuse.git
+cd archmuse
+
+python -m venv venv
+# Windows PowerShell:  .\venv\Scripts\Activate.ps1
+# bash/zsh:            source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+None of the commands below need an API key or a network connection — the whole procedure is
+deterministic.
+
+**See the agent work, without any files of your own:**
+
+```bash
+python scripts/demo_agente.py
+```
+
+**Fill in the area schedule of a DXF:**
+
+```bash
+python scripts/cuadro_de_superficies.py my_plan.dxf
+```
+
+It shows what it is about to do, then hands back a *copy* of the DXF with the schedule filled in
+and a PDF saying, cell by cell, where each figure came from — or why that cell is blank. Anything
+it could not work out comes back as an answerable question, never as a number.
+
+**Review a plan before it leaves the studio:**
+
+```bash
+python scripts/revisar_plano.py my_plan.dxf
+```
+
+Checks whether the drawing is coherent *with itself* and writes a PDF report naming the entity
+behind every finding — a label, an area, a DXF handle — so anyone can go and look at it. It does
+**not** grade severity: it says what something is and how much it measures, and the judgement
+belongs to the architect.
+
+**Check the normative corpus**, for whoever transcribes building code into it:
+
+```bash
+python scripts/validar_corpus.py
+```
+
+**The web application** — the earlier, frozen exploration. Needs `ANTHROPIC_API_KEY` and
+`MAPBOX_TOKEN`:
+
+```bash
+cp .env.example .env    # then fill in what you need
+python app.py
+```
+
+`.env.example` documents every variable, which module reads it, and what happens without it.
+
+## Running the tests
+
+```bash
+pytest -q
+```
+
+Around 900 tests. No network and no API key required: anything that would hit a live service or
+spend tokens is skipped by default, and says so rather than failing. A few tests exercise real
+client plans and skip with a reason unless you point `ARCHMUSE_DXF_V2S` at one of your own.
+
+```bash
+pytest tests/test_coherencia.py -q          # a single module
+pytest -q -p no:randomly                    # deterministic order
+```
+
+---
+
+## Do not put real project data in this repository
+
+**No client plans, no DXF or IFC from real projects, no PDFs of real dossiers, no personal data, no
+API keys.** This is a public repository.
+
+- Tests that need a real plan read its path from `ARCHMUSE_DXF_V2S`. The file itself stays outside
+  the repository, and those tests skip — with a reason — when it is absent.
+- Secrets live in environment variables or in a local `.env`, which is git-ignored. `.env.example`
+  documents every variable and **must never contain a real value**.
+- Generated deliverables — filled DXFs, PDF reports — are written next to their source, outside the
+  repository. Do not commit them.
+
+If you contribute, check `git status` before staging. `.gitignore` covers the known cases; it
+cannot cover a client's plan you copied into the working directory.
+
+## Status
+
+**Experimental. V1 under construction.**
+
+Solid: the DXF pipeline, the agentic core (capabilities, Skills, effects, verification, provenance),
+the area-schedule and plan-review deliverables, and the test suite around them.
+
+Not solid: the normative corpus, which is one unsigned rule. Until it grows, ArchMuse cannot verify
+building code — and is built to say so rather than to improvise.
+
+Product decisions and design records live in `docs/` — `docs/prd/` for product requirements,
+`docs/design/` for architecture decisions — along with the planning documents at the repository
+root. They are candid about what does not work, which is why they are worth keeping.
+
+## Licence
+
+**No licence has been chosen yet.** Until one is added, default copyright applies: all rights
+reserved by the author. The code is public so it can be read; it is not yet licensed for reuse.

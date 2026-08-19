@@ -78,6 +78,56 @@ def construir_dxf(destino: Path) -> str:
     return str(ruta)
 
 
+def construir_dxf_incoherente(destino: Path) -> str:
+    """Un piso con defectos DE VERDAD, para congelar la revision de coherencia.
+
+    El fixture limpio (`construir_dxf`) no sirve aqui: congelaria «cero
+    hallazgos», que es la salida menos informativa posible y la que seguiria
+    pasando aunque alguien rompiera las cuatro comprobaciones. Este trae, a
+    proposito, los tres defectos que el plano real del cliente tambien tiene:
+
+    - dos piezas que se solapan de verdad (no que compartan borde);
+    - el mismo rotulo repetido, que es lo que impide el reparto automatico;
+    - una polilinea con el flag `closed` mal puesto.
+    """
+    import ezdxf
+
+    from analyzer import parser
+
+    doc = ezdxf.new("R2010")
+    doc.header["$INSUNITS"] = 6                    # metros
+    doc.layers.add(parser.AREA_LAYER)
+    msp = doc.modelspace()
+
+    def rect(x0, y0, x1, y1, etiqueta, cerrada=True):
+        msp.add_lwpolyline([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], close=cerrada,
+                           dxfattribs={"layer": parser.AREA_LAYER})
+        msp.add_mtext(etiqueta, dxfattribs={"layer": parser.AREA_LAYER}).set_location(
+            ((x0 + x1) / 2.0, (y0 + y1) / 2.0))
+
+    rect(0.0, 0.0, 4.0, 3.0, "Salon")
+    # Se solapa 2 m2 con el salon: no comparten borde, se pisan.
+    rect(3.0, 0.0, 6.0, 2.0, "Terraza")
+    # Mismo rotulo dos veces: el cuadro tiene un hueco por familia.
+    rect(0.0, 5.0, 2.0, 7.0, "Tendedero")
+    rect(3.0, 5.0, 5.0, 7.0, "Tendedero")
+    # `close=False` y los extremos NO coinciden: el parser la descarta con su
+    # motivo, y ese descarte tiene que llegar al informe en vez de perderse.
+    rect(7.0, 0.0, 9.0, 2.0, "Aseo", cerrada=False)
+    # `close=False` pero con el primer vertice repetido al final: el parser la
+    # trata como cerrada y lo avisa. Es una correccion de datos, no un hecho
+    # neutro, y hoy ese aviso sale por `logging` y no lo lee nadie.
+    msp.add_lwpolyline(
+        [(7.0, 5.0), (9.0, 5.0), (9.0, 7.0), (7.0, 7.0), (7.0, 5.0)],
+        close=False, dxfattribs={"layer": parser.AREA_LAYER})
+    msp.add_mtext("Bano", dxfattribs={"layer": parser.AREA_LAYER}).set_location((8.0, 6.0))
+
+    msp.add_mtext("VT1/1", dxfattribs={"layer": parser.AREA_LAYER}).set_location((-3.0, 2.0))
+    ruta = destino / "piso_incoherente.dxf"
+    doc.saveas(str(ruta))
+    return str(ruta)
+
+
 def construir_ifc(destino: Path) -> str:
     """Un IFC escrito por el propio repositorio.
 
@@ -136,6 +186,14 @@ CASOS = {
         # es la única forma honesta de decir hasta dónde llega este golden.
         "argumentos": lambda d: {"ruta": construir_dxf(d)},
         "volatiles": ("ruta", "detalle", "pregunta"),
+    },
+    "plano.coherencia": {
+        # Contra el fixture CON defectos, no contra el limpio: congelar «cero
+        # hallazgos» seguiria pasando aunque alguien rompiera las cuatro
+        # comprobaciones. El `handle` de la polilinea mal cerrada lo asigna
+        # ezdxf al guardar y no es contenido del hallazgo, asi que es volatil.
+        "argumentos": lambda d: {"ruta": construir_dxf_incoherente(d)},
+        "volatiles": ("ruta", "entidad", "handle", "descripcion"),
     },
 }
 

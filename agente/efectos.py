@@ -71,6 +71,29 @@ EXIGEN_AUTORIZACION_PUNTUAL: FrozenSet[str] = frozenset(
     {MODIFICA_FICHERO_DEL_CLIENTE, ENVIA_AL_EXTERIOR}
 )
 
+#: Efectos que **sí** se pueden ejecutar a la vez que otro paso del mismo plan
+#: (tarea `AG-8`). Lista blanca cerrada, y el sentido de que sea blanca es que
+#: un efecto nuevo del catálogo nace secuencial: para paralelizarlo hay que
+#: venir aquí a decirlo, y entonces alguien ha pensado en la carrera.
+#:
+#: Los dos que están son los dos que esperan por la red y no tocan nada
+#: compartido: consultar Catastro o el BOE y llamar al modelo. Ahí es donde
+#: está todo el tiempo de un análisis, y por eso esta lista tiene valor aunque
+#: sea corta.
+#:
+#: Los cuatro que NO están, y por qué:
+#: - `escribe_fichero` — dos pasos podrían escribir la misma ruta, y el
+#:   manifiesto no dice cuál.
+#: - `modifica_fichero_del_cliente` — irreversible, y su marca `INTENTADO`
+#:   tiene que quedar apuntada **antes** de ejecutar.
+#: - `escribe_memoria` — dos escrituras a la vez dejan los conflictos del
+#:   proyecto en un orden que depende de quién ganó la carrera, y ese orden se
+#:   le enseña al arquitecto.
+#: - `envia_al_exterior` — irreversible de hecho.
+SEGUROS_EN_PARALELO: FrozenSet[str] = frozenset(
+    {LLAMA_API_EXTERNA, GASTA_TOKENS}
+)
+
 
 class EfectoDesconocido(ValueError):
     """Una Skill declara un efecto que no está en el catálogo."""

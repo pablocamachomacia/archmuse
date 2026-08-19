@@ -115,9 +115,17 @@ def test_municipio_nuevo_se_descubre_valida_e_indexa():
         # central: el directorio lleva código y slug, y manda el código.
         assert resultado.ficheros[0].ambito == "es.13.28.28079"
 
-        # Indexado.
-        n = indice.reconstruir()
-        assert n == 1
+        # Indexado. `reconstruir()` sin ámbitos recorre el corpus ENTERO, así
+        # que cuenta también la regla piloto de `es/estatal/` que la tarea V0-5
+        # incorporó (antes de ella el corpus estaba vacío y este número era 1).
+        # Se comprueba el incremento y no el total, para que la cifra no vuelva
+        # a caducar con cada entrega del curador.
+        n_con_municipio = indice.reconstruir()
+        _borrar_municipio()
+        n_sin_municipio = indice.reconstruir()
+        assert n_con_municipio - n_sin_municipio == 1, (
+            f"el municipio nuevo debe aportar exactamente 1 regla al indice "
+            f"(con={n_con_municipio}, sin={n_sin_municipio})")
     finally:
         _borrar_municipio()
         indice.reconstruir()

@@ -39,6 +39,7 @@ from analyzer.sitio import (  # noqa: E402
     _parsear_poligono_gml,
     _post_overpass,
     _referencia_desde_coordenadas,
+    GeocodificacionNoConfigurada,
     geocodificar_direccion,
     obtener_datos_parcela,
 )
@@ -283,26 +284,63 @@ check("Overpass se sigue consultando con las coordenadas crudas (nunca bloquea e
       r13["colindantes"] == [{"nombre": "x"}])
 check("colindantes_overpass se llamó con las coordenadas originales (0.0, 0.0)", colind_mock.call_args[0][:2] == (0.0, 0.0))
 
-print("\n14. geocodificar_direccion: texto -> coords (fixture real capturado en vivo para esta tarea)")
-CUERPO_NOMINATIM_EXITO = json.dumps([{
-    "place_id": 291403879, "lat": "40.4200034", "lon": "-3.7037596",
-    "display_name": "31, Gran Vía, Universidad, Centro, Madrid, Comunidad de Madrid, 28013, España",
-}]).encode("utf-8")
+print("\n14. geocodificar_direccion: texto -> coords, ahora contra Mapbox (tarea TL-8)")
+# Nominatim salió del producto: la política de uso de su instancia pública prohíbe
+# el uso comercial, así que seguir llamándola en cuanto ArchMuse cobre es un
+# incumplimiento con bloqueo por IP y sin aviso. Se sustituye ANTES de cobrar.
+#: El token real del entorno, si lo hay. Se guarda para devolverlo al terminar:
+#: la sección de red real de más abajo lo necesita DE VERDAD, y dejarle puesto
+#: el token de mentira haría que fallara con un 401 que no dice nada.
+_MAPBOX_REAL = os.environ.get("MAPBOX_TOKEN")
+os.environ["MAPBOX_TOKEN"] = "pk.token-de-prueba"
 
-with mock.patch("analyzer.sitio._get", return_value=CUERPO_NOMINATIM_EXITO) as get_mock:
+# Forma v6 de la API (la que se pide hoy): coordenadas dentro de `properties`.
+CUERPO_MAPBOX_V6 = json.dumps({
+    "type": "FeatureCollection",
+    "features": [{
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [-3.7037596, 40.4200034]},
+        "properties": {
+            "full_address": "Gran Vía 31, 28013 Madrid, España",
+            "coordinates": {"longitude": -3.7037596, "latitude": 40.4200034},
+        },
+    }],
+}).encode("utf-8")
+
+with mock.patch("analyzer.sitio._get", return_value=CUERPO_MAPBOX_V6) as get_mock:
     resultados = geocodificar_direccion("Gran Vía 31 Madrid")
 check("1 resultado", len(resultados) == 1, resultados)
 check("lat/lon parseados como float", isinstance(resultados[0]["lat"], float) and resultados[0]["lat"] == 40.4200034)
 check("display_name preservado literal", "Gran Vía" in resultados[0]["display_name"])
+check("la llamada va a Mapbox y NO a Nominatim",
+      "api.mapbox.com" in get_mock.call_args[0][0] and "nominatim" not in get_mock.call_args[0][0])
+check("el token viaja en la petición y la búsqueda se acota a España",
+      "access_token=pk.token-de-prueba" in get_mock.call_args[0][0] and "country=es" in get_mock.call_args[0][0])
 check(
     "cae en el mismo punto real que la RC de la sección 11/12 (0347501VK4704G, Gran Vía 31): "
     "las dos mitades del flujo (buscar dirección / clic en el mapa) encajan",
     abs(resultados[0]["lat"] - 40.420000) < 0.001 and abs(resultados[0]["lon"] - (-3.703790)) < 0.001,
 )
 
+# Forma v5 clásica (`center` + `place_name`): qué versión responde lo decide la
+# clave del despliegue, y una diferencia de versión no puede dejar el buscador mudo.
+CUERPO_MAPBOX_V5 = json.dumps({
+    "features": [{"center": [-3.7037596, 40.4200034],
+                  "place_name": "Gran Vía 31, Madrid, España"}],
+}).encode("utf-8")
+with mock.patch("analyzer.sitio._get", return_value=CUERPO_MAPBOX_V5):
+    r14b = geocodificar_direccion("Gran Vía 31 Madrid")
+check("también se entiende la forma v5 (center + place_name)",
+      len(r14b) == 1 and r14b[0]["lat"] == 40.4200034 and "Gran Vía" in r14b[0]["display_name"])
+
+CUERPO_SIN_COORDS = json.dumps({"features": [{"properties": {"full_address": "algo"}}]}).encode("utf-8")
+with mock.patch("analyzer.sitio._get", return_value=CUERPO_SIN_COORDS):
+    check("una entrada sin coordenadas se descarta, NUNCA se inventan",
+          geocodificar_direccion("algo") == [])
+
 check("texto vacío -> [] sin llamar a la red", geocodificar_direccion("") == [] and geocodificar_direccion("   ") == [])
 
-with mock.patch("analyzer.sitio._get", return_value=b"[]"):
+with mock.patch("analyzer.sitio._get", return_value=b'{"features": []}'):
     check("sin resultados -> lista vacía, NO es un ErrorDeSitio", geocodificar_direccion("xyzzy-no-existe") == [])
 
 with mock.patch("analyzer.sitio._get", return_value=b"no es json"):
@@ -312,18 +350,29 @@ with mock.patch("analyzer.sitio._get", return_value=b"no es json"):
     except ErrorDeSitio:
         check("JSON roto -> ErrorDeSitio", True)
 
-with mock.patch("analyzer.sitio._get", return_value=b'{"no_es_una_lista": true}'):
+with mock.patch("analyzer.sitio._get", return_value=b'{"no_es_geojson": true}'):
     try:
         geocodificar_direccion("algo")
-        check("respuesta con forma inesperada (no es lista) -> ErrorDeSitio", False)
+        check("respuesta con forma inesperada -> ErrorDeSitio", False)
     except ErrorDeSitio:
-        check("respuesta con forma inesperada (no es lista) -> ErrorDeSitio", True)
+        check("respuesta con forma inesperada -> ErrorDeSitio", True)
+
+# Sin token: NO hay repliegue a Nominatim. Un repliegue "temporal" a un servicio
+# que no se puede usar comercialmente es la clase de atajo que dura tres años.
+_token_guardado = os.environ.pop("MAPBOX_TOKEN")
+with mock.patch("analyzer.sitio._get", side_effect=AssertionError("no debería llamarse a la red")):
+    try:
+        geocodificar_direccion("Gran Vía 31 Madrid")
+        check("sin MAPBOX_TOKEN -> GeocodificacionNoConfigurada, y NO se llama a nadie", False)
+    except GeocodificacionNoConfigurada:
+        check("sin MAPBOX_TOKEN -> GeocodificacionNoConfigurada, y NO se llama a nadie", True)
+os.environ["MAPBOX_TOKEN"] = _token_guardado
 
 print("\n15. /api/geocodificar (HTTP, app.py) -- proxy fino, mockeando la capa de red")
 import app as app_module  # noqa: E402  (después de los tests de sitio.py a propósito, mismo criterio que test_intervencion_existente.py)
 cliente_http = app_module.app.test_client()
 
-with mock.patch("analyzer.sitio._get", return_value=CUERPO_NOMINATIM_EXITO):
+with mock.patch("analyzer.sitio._get", return_value=CUERPO_MAPBOX_V6):
     r15 = cliente_http.get("/api/geocodificar?q=Gran+Via+31+Madrid")
 check("200 OK", r15.status_code == 200, r15.get_json())
 check("devuelve 'resultados' con la misma forma que la función", r15.get_json()["resultados"][0]["lat"] == 40.4200034)
@@ -331,9 +380,20 @@ check("devuelve 'resultados' con la misma forma que la función", r15.get_json()
 r15b = cliente_http.get("/api/geocodificar")  # sin ?q=
 check("sin 'q' -> 200 con resultados=[] (no un error, no bloquea el MapPicker en blanco)", r15b.status_code == 200 and r15b.get_json()["resultados"] == [])
 
-with mock.patch("analyzer.sitio._get", side_effect=ErrorDeSitio("Nominatim: boom")):
+with mock.patch("analyzer.sitio._get", side_effect=ErrorDeSitio("Mapbox: boom")):
     r15c = cliente_http.get("/api/geocodificar?q=algo")
-check("fallo real de Nominatim -> 502 con mensaje explícito, no un 500 genérico", r15c.status_code == 502 and "boom" in r15c.get_json()["error"])
+check("fallo real del geocodificador -> 502 con mensaje explícito, no un 500 genérico", r15c.status_code == 502 and "boom" in r15c.get_json()["error"])
+
+_token_guardado = os.environ.pop("MAPBOX_TOKEN")
+r15d = cliente_http.get("/api/geocodificar?q=algo")
+check("sin MAPBOX_TOKEN -> 501 (no configurado), NUNCA 502: reintentar no lo arreglaría",
+      r15d.status_code == 501 and r15d.get_json()["configurado"] is False)
+# Se devuelve el entorno a como estaba: con el token real si lo había, y sin
+# ninguno si no. La sección de red real de más abajo depende de esto.
+if _MAPBOX_REAL is None:
+    os.environ.pop("MAPBOX_TOKEN", None)
+else:
+    os.environ["MAPBOX_TOKEN"] = _MAPBOX_REAL
 
 print("\n" + "=" * 55)
 if fallos:
@@ -364,12 +424,19 @@ if os.environ.get("ARCHMUSE_TEST_RED") == "1":
         print("FALLO: no se resolvió una RC real ni su geometría a partir de coordenadas")
         sys.exit(1)
 
-    print("\n10. [RED REAL] geocodificar_direccion con texto real")
-    real_geo = geocodificar_direccion("Gran Vía 31 Madrid")
-    print("  resultados:", real_geo)
-    if not real_geo:
-        print("FALLO: Nominatim no devolvió ningún resultado real")
-        sys.exit(1)
+    if not os.environ.get("MAPBOX_TOKEN"):
+        print("\n10. [SALTADO] geocodificar_direccion real: define MAPBOX_TOKEN.")
+        print("    Es la verificación que le falta a la tarea TL-8: el parser está probado")
+        print("    contra las dos formas documentadas de respuesta, pero nadie ha hecho")
+        print("    todavía una llamada real a Mapbox desde que se retiró Nominatim.")
+    else:
+        print("\n10. [RED REAL] geocodificar_direccion con texto real (Mapbox)")
+        real_geo = geocodificar_direccion("Gran Vía 31 Madrid")
+        print("  resultados:", real_geo)
+        if not real_geo:
+            print("FALLO: el geocodificador (Mapbox) no devolvió ningún resultado real")
+            sys.exit(1)
+
     print("Test de red real OK")
 else:
     print("\n  [SALTADO] test de red real: define ARCHMUSE_TEST_RED=1 para ejecutarlo")

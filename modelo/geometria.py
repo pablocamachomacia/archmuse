@@ -46,10 +46,14 @@ puros y sostienen los mismos usos sin fingir una semántica que no está.
 """
 from __future__ import annotations
 
+import logging
 from typing import Dict, List, Optional, Tuple
 
 from shapely.geometry import Polygon
 from shapely.geometry.base import BaseGeometry
+from shapely.validation import explain_validity
+
+_log = logging.getLogger(__name__)
 
 # --- Vocabulario de representaciones ---------------------------------------
 # Cerrado. E1 sólo produce la primera; las otras tres están declaradas para
@@ -110,7 +114,7 @@ class AlmacenGeometria:
             raise ValueError("no se guarda una geometria vacia")
         self._contador += 1
         geom_id = "g-%04d" % self._contador
-        self._geometrias[geom_id] = geometria
+        self._geometrias[geom_id] = _canonica(geometria)
         self._representaciones[geom_id] = representacion
         return geom_id
 
@@ -229,6 +233,100 @@ class AlmacenGeometria:
             almacen._representaciones[geom_id] = entrada["representacion"]
             almacen._contador = max(almacen._contador, int(geom_id.split("-")[1]))
         return almacen
+
+
+def _canonica(geom: BaseGeometry) -> BaseGeometry:
+    """La misma geometría, sin los vértices que se repiten al milímetro.
+
+    **Por qué existe** (defecto H1 de
+    `docs/audits/2026-08-13-hallazgos-cierre-geometrico.md` §2). Este módulo
+    declaraba el milímetro como su precisión (`DECIMALES`) y `a_dict()` la
+    aplicaba al salir, pero `insertar()` guardaba el polígono tal cual llegaba
+    del DXF. Resultado: un grafo recién construido y el mismo grafo recargado
+    desde JSON tenían el **mismo sellado** —porque el sellado se calcula sobre
+    la forma ya normalizada— y sin embargo **polígonos distintos en memoria**,
+    con distinto número de vértices en `exterior.coords`. El round-trip de C7.4
+    era exacto en el JSON y no lo era en el modelo.
+
+    Medido sobre `ejemplo.dxf`: 9 de 40 geometrías traen un vértice de más
+    (`g-0029` y `g-0034`, dos). Son los recintos que `_esta_cerrada()` recupera
+    por coincidencia geométrica pese al flag `closed=False`: su vértice de
+    cierre está repetido a menos de un milímetro del primero, no exactamente
+    encima. Por eso **no vale deduplicar a precisión completa** — 8 de las 9 no
+    tienen ni un par de vértices exactamente iguales; los duplicados sólo
+    aparecen al redondear.
+
+    La corrección es imponer al entrar la precisión que el módulo ya prometía,
+    con la misma función que usa la serialización (`_puntos_de`), de forma que
+    construir y recargar produzcan el mismo objeto por construcción. **No se
+    toca `verificar_sellado()`:** el sello sigue siendo tan estricto como era;
+    lo que cambia es que la geometría guardada ya es canónica.
+
+    **Lo que esta función NO hace, y por qué.** No redondea las coordenadas que
+    sobreviven. El primer intento sí lo hacía —guardar directamente
+    `_puntos_de(geom)`, la forma ya redondeada— y G9 lo rechazó: mover cada
+    vértice hasta medio milímetro basta para que `tramo_enfrentado_m` deje de
+    ver 21 de las adyacencias que el analizador sí encuentra
+    (`equivalencia_G3.coinciden` pasaba a `False`). La topología se mide sobre
+    la geometría de origen; lo único que sobra es el vértice redundante.
+
+    Así que se decide **qué** vértice sobra mirando la coordenada redondeada, y
+    se conserva la coordenada **sin redondear** del superviviente. El recuento
+    de vértices pasa a coincidir con el del grafo recargado —que es lo que
+    rompía el round-trip— sin desplazar ni un contorno.
+
+    Sólo se canoniza un `Polygon`. Cualquier otra geometría se guarda tal cual:
+    hoy no se inserta ninguna (las 40 de `ejemplo.dxf` son polígonos) y reducir
+    aquí un `MultiPolygon` a su mayor parte, como hace `a_dict()`, sería un
+    cambio de semántica que este defecto no pide.
+    """
+    if geom.geom_type != "Polygon":
+        return geom
+    crudos = list(geom.exterior.coords)
+    conservados: List[Tuple[float, float]] = []
+    vistos: List[Tuple[float, float]] = []
+    for x, y in crudos:
+        clave = (round(x, DECIMALES), round(y, DECIMALES))
+        if vistos and vistos[-1] == clave:
+            continue  # redundante por debajo del milímetro: sobra
+        conservados.append((x, y))
+        vistos.append(clave)
+    # El vértice de cierre explícito: shapely lo repone solo al construir.
+    if len(vistos) > 1 and vistos[0] == vistos[-1]:
+        conservados = conservados[:-1]
+        vistos = vistos[:-1]
+    if len(conservados) < 3:
+        raise ValueError(
+            "geometria degenerada al milimetro: quedan %d vertices distintos "
+            "tras redondear a %d decimales. Una huella asi no describe un "
+            "recinto; revisa la escala de entrada." % (len(conservados), DECIMALES)
+        )
+    limpia = Polygon(conservados)
+    # `crudos` trae el vértice de cierre que shapely repone, así que los
+    # vértices reales del contorno de origen son uno menos.
+    originales = len(crudos) - 1
+    descartados = originales - len(conservados)
+    if descartados > 0:
+        # Nunca en silencio, por el mismo motivo que
+        # `parser._recuperar_cierre_por_geometria`: descartar un vertice es una
+        # correccion de datos, no un hecho neutro, y tiene que quedar visible
+        # para quien audite despues por que una superficie salio como salio.
+        # El caso de `reparado` es el que mas importa: un contorno que pasa de
+        # invalido a valido deja de emitir `GEOMETRY_INVALID` aguas abajo
+        # (`analyzer/superficie_util.py::_revisar`), asi que este aviso es el
+        # unico rastro de que el defecto existia en el dibujo de origen.
+        if not geom.is_valid and limpia.is_valid:
+            nota = ("El contorno de origen era INVALIDO (%s) y al descartarlos "
+                    "pasa a ser valido: es un defecto del dibujo, no del "
+                    "modelo." % explain_validity(geom))
+        else:
+            nota = "La validez del contorno no cambia."
+        _log.warning(
+            "Contorno canonizado: %d vertice(s) descartado(s) por repetirse al "
+            "redondear a %d decimales (de %d a %d). %s",
+            descartados, DECIMALES, originales, len(conservados), nota,
+        )
+    return limpia
 
 
 def _puntos_de(geom: BaseGeometry) -> List[List[float]]:

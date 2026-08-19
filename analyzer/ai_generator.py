@@ -41,7 +41,11 @@ try:
 except ImportError:  # pragma: no cover - se avisa en tiempo de ejecución
     anthropic = None  # type: ignore[assignment]
 
-MODEL = "claude-sonnet-5"
+from ia import modelos
+
+# El modelo se resuelve en `ia/modelos.py` por perfil de tarea, y no se
+# escribe aquí: era la misma constante repetida en seis módulos.
+MODEL = modelos.para("generacion")
 
 logger = logging.getLogger(__name__)
 

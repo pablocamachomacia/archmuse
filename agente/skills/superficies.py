@@ -31,12 +31,13 @@ mínimo, y no resuelve las ambigüedades del plano — las pregunta.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from ..afirmacion import Afirmacion, calculo, desconocido
 from ..efectos import ESCRIBE_FICHERO
 from ..skill import Entregable, ResultadoDeSkill, Skill
 from ..verificacion import NoSeHaPodidoComprobar, Verificacion
+from ._comun import pregunta_legible, sin_producir, valor
 
 #: Diferencia relativa admitida entre la suma de las celdas del cuadro y la
 #: superficie útil medida sobre la geometría, antes de avisar.
@@ -69,14 +70,9 @@ def _sin_hacer(ctx, motivo_codigo: str, detalle: str, pregunta: str,
     `UNKNOWN` **con motivo**, nunca ausente: un hueco mudo se lee como «no
     aplica», que es la lectura contraria a la verdadera.
     """
-    ya_hecho = ya_hecho or {}
-    afirmaciones: List[Afirmacion] = list(ya_hecho.values())
-    for clave in PRODUCE:
-        if clave in ya_hecho:
-            continue
-        afirmaciones.append(desconocido(clave, motivo_codigo, detalle, fuente=ctx.firma))
     return ResultadoDeSkill(
-        afirmaciones=tuple(afirmaciones),
+        afirmaciones=sin_producir(PRODUCE, codigo=motivo_codigo, detalle=detalle,
+                                  fuente=ctx.firma, ya_hecho=ya_hecho),
         preguntas=(pregunta,) if pregunta else (),
         no_hecho=(detalle,),
     )
@@ -170,7 +166,8 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
             pdf.get("detalle", "no se ha podido escribir el PDF del cuadro"),
             fuente=ctx.firma)
 
-    preguntas = tuple(p["titulo"] for p in borrador.get("preguntas_pendientes") or ())
+    preguntas = tuple(pregunta_legible(p)
+                      for p in borrador.get("preguntas_pendientes") or ())
     no_hecho = tuple(
         "«%s»: %s" % (c["campo"], c["motivo"] or "sin motivo declarado")
         for c in escritura.get("celdas_sin_resolver") or ()
@@ -205,13 +202,6 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
 
 # --- Las verificaciones -----------------------------------------------------
 
-def _valor(resultado, nombre):
-    for a in resultado.afirmaciones:
-        if a.nombre == nombre:
-            return a.valor
-    return None
-
-
 def _suma_cuadra(resultado) -> Any:
     """La comprobación que hace un arquitecto y que ninguna capacidad hace.
 
@@ -225,8 +215,8 @@ def _suma_cuadra(resultado) -> Any:
     destruye la confianza en los verdaderos. Dice la diferencia; no impide
     entregar.
     """
-    celdas = _valor(resultado, "cuadro.celdas")
-    medida = _valor(resultado, "plano.superficie_util_total_m2")
+    celdas = valor(resultado, "cuadro.celdas")
+    medida = valor(resultado, "plano.superficie_util_total_m2")
     if not resultado.entregables and not celdas:
         return True          # el procedimiento se cortó antes: no hay qué cruzar
     # El primer plano real cayó aquí: su geometría tiene recintos solapados, así
@@ -280,7 +270,7 @@ def _nada_sin_resolver_lleva_un_numero(resultado) -> Any:
     invariante en capas distintas no es redundancia: es lo que hace que quitar
     una no lo desactive.
     """
-    for celda in _valor(resultado, "cuadro.celdas") or ():
+    for celda in valor(resultado, "cuadro.celdas") or ():
         if celda.get("estado") in ("NO_DISPONIBLE", "BLOQUEADO"):
             texto = (celda.get("texto") or "").replace("m²", "").replace(",", ".").strip()
             try:

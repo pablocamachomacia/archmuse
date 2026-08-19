@@ -60,6 +60,7 @@ import concurrent.futures
 import json
 import logging
 import math
+import os
 import re
 import ssl
 import time
@@ -90,7 +91,18 @@ _URLS_OVERPASS = (
     "https://overpass.kumi.systems/api/interpreter",
     "https://lz4.overpass-api.de/api/interpreter",
 )
-_URL_NOMINATIM = "https://nominatim.openstreetmap.org/search"
+#: Geocodificador. **Mapbox, no Nominatim** (tarea `TL-8` del backlog).
+#:
+#: La política de uso de la instancia pública de Nominatim prohíbe el uso
+#: comercial (`operations.osmfoundation.org/policies/nominatim/`). Mientras
+#: ArchMuse fue una demostración, llamarla era discutible; en cuanto se cobra
+#: por el producto es un incumplimiento, y no de los que se arreglan pidiendo
+#: perdón: el bloqueo llega por IP y sin aviso. Se sustituye ANTES de cobrar,
+#: no después, porque lo segundo significa descubrirlo con clientes dentro.
+#:
+#: Mapbox ya está en el producto (el visor, el terreno y el mapa del dossier
+#: PDF), así que esto no añade un proveedor: usa el que ya se paga.
+_URL_MAPBOX_GEOCODING = "https://api.mapbox.com/search/geocode/v6/forward"
 
 _NS_GML = "{http://www.opengis.net/gml/3.2}"
 _NS_CP = "{http://inspire.ec.europa.eu/schemas/cp/4.0}"
@@ -206,10 +218,10 @@ def _post_overpass(query: str, *, timeout: float = _OVERPASS_TIMEOUT_S) -> dict:
     raise ErrorDeSitio(mensaje)
 
 
-# --- Nominatim: buscar una dirección/municipio por texto libre -------------
+# --- Geocodificación: buscar una dirección/municipio por texto libre -------
 
 # Normalización del número de portal (2026-08-17, "Rediseño buscador estilo Apple
-# Maps"): Nominatim indexa "Gran Vía 31", no "Gran Vía número 31" -- escribir la
+# Maps"): un geocodificador indexa "Gran Vía 31", no "Gran Vía número 31" -- escribir la
 # palabra completa ("numero"/"número"), la abreviatura con ordinal ("nº"/"n°") o
 # "num"/"nro" delante del número deja el texto peor puntuado (o sin resultados) que
 # omitirla directamente. `\b` + lookahead de dígito evita comerse palabras que
@@ -222,60 +234,115 @@ _RE_NUMERO_PORTAL = re.compile(
 
 def _normalizar_texto_busqueda(texto: str) -> str:
     """Limpia variantes de "número de portal" ("numero 1", "nº 1", "num. 1") antes
-    de mandar el texto a Nominatim -- ver `_RE_NUMERO_PORTAL` arriba."""
+    de mandar el texto al geocodificador -- ver `_RE_NUMERO_PORTAL` arriba.
+
+    Se conserva tal cual de la etapa de Nominatim: la normalización es del
+    castellano escrito por un humano, no del proveedor, y Mapbox puntúa peor
+    exactamente igual cuando le llega "n.º" delante del portal."""
     texto = _RE_NUMERO_PORTAL.sub("", texto)
     return re.sub(r"\s+", " ", texto).strip()
 
 
+class GeocodificacionNoConfigurada(ErrorDeSitio):
+    """No hay `MAPBOX_TOKEN` y por tanto no hay buscador de direcciones.
+
+    Es un tipo propio, y no un `ErrorDeSitio` cualquiera, porque la respuesta
+    correcta es distinta: no es «el servicio ha fallado, vuelve a intentarlo»
+    sino «esto no está configurado en este despliegue». Confundirlas haría que
+    el arquitecto reintentara para siempre una búsqueda que nunca va a
+    funcionar.
+    """
+
+
+def _token_mapbox() -> str:
+    """El token, leído del entorno en cada llamada.
+
+    En cada llamada y no en el import: cambiar `.env` no puede exigir
+    reiniciar el proceso para probarlo — mismo criterio que `ia/cliente.py`
+    con sus timeouts.
+    """
+    return (os.environ.get("MAPBOX_TOKEN") or "").strip()
+
+
+def _resultados_de_mapbox(datos: Any) -> List[dict]:
+    """Traduce la respuesta de Mapbox a la forma que ya consume el frontend.
+
+    Acepta las dos formas documentadas —v6 (`properties.coordinates` +
+    `properties.full_address`) y la v5 clásica (`center` + `place_name`)—
+    porque la clave de despliegue decide cuál contesta y una diferencia de
+    versión no puede dejar el buscador mudo. Lo que **no** se hace es
+    inventar coordenadas: una entrada sin ellas se descarta.
+    """
+    if not isinstance(datos, dict) or not isinstance(datos.get("features"), list):
+        raise ErrorDeSitio(
+            "Mapbox: respuesta con forma inesperada (se esperaba un GeoJSON con «features»)")
+
+    resultados: List[dict] = []
+    for item in datos["features"]:
+        if not isinstance(item, dict):
+            continue
+        propiedades = item.get("properties") or {}
+        geometria = item.get("geometry") or {}
+        coordenadas = (
+            propiedades.get("coordinates")
+            or geometria.get("coordinates")
+            or item.get("center")
+        )
+        lon = lat = None
+        if isinstance(coordenadas, dict):
+            lon, lat = coordenadas.get("longitude"), coordenadas.get("latitude")
+        elif isinstance(coordenadas, (list, tuple)) and len(coordenadas) >= 2:
+            lon, lat = coordenadas[0], coordenadas[1]     # GeoJSON: (lon, lat)
+        try:
+            lat, lon = float(lat), float(lon)
+        except (TypeError, ValueError):
+            continue        # sin coordenadas utilizables: se descarta, no se inventa
+        nombre = (propiedades.get("full_address") or propiedades.get("place_formatted")
+                  or propiedades.get("name") or item.get("place_name"))
+        resultados.append({"lat": lat, "lon": lon, "display_name": nombre})
+    return resultados
+
+
 def geocodificar_direccion(texto: str, *, limite: int = 5) -> List[dict]:
-    """Busca una dirección o municipio escrito en texto libre, vía
-    Nominatim (el geocodificador público de OpenStreetMap) -- "Mapa/Parcela
-    Primero" ("Editar / Intervenir edificación existente" ya cubrió coords
-    -> RC; esto cubre el otro sentido, texto -> coords, para el buscador del
-    MapPicker).
+    """Busca una dirección o municipio escrito en texto libre, vía **Mapbox**.
 
-    Validado en vivo para esta tarea: "Gran Vía 31 Madrid" resuelve a
-    (40.4200034, -3.7037596) -- la misma parcela real que ya usan los
-    fixtures de `_referencia_desde_coordenadas` (RC 0347501VK4704G),
-    confirmando que las dos mitades del flujo (buscar dirección -> clic en
-    el mapa) encajan en el mismo punto real, no solo por separado.
+    Cubre el sentido texto -> coordenadas del buscador del MapPicker (el otro
+    sentido, coordenadas -> referencia catastral, ya lo cubre Catastro).
 
-    **Por qué esta función vive en el servidor y no se llama directo desde
-    el navegador**: comprobado en vivo (`curl -D -` contra el endpoint real)
-    que Nominatim NO manda cabecera `Access-Control-Allow-Origin` -- un
-    `fetch()` desde el frontend de ArchMuse fallaría por CORS. Mismo motivo
-    por el que Overpass/Catastro ya se llaman desde aquí, no desde el
-    navegador: `app.py` expone `/api/geocodificar`, que el frontend sí
-    puede llamar (mismo origen).
+    **Por qué esta función vive en el servidor y no se llama desde el
+    navegador.** Por el mismo motivo que Catastro y Overpass, más uno propio:
+    el token de Mapbox que sirve el backend es público, pero acotar la
+    búsqueda a España y limitar el número de resultados aquí evita que el
+    frontend pueda pedir cualquier cosa contra la cuota que paga ArchMuse.
 
-    Nunca lanza por "sin resultados" (lista vacía es una respuesta válida,
-    no un error) -- solo por fallo real de red o una respuesta con forma
-    inesperada (mismo criterio `ErrorDeSitio` que el resto del módulo)."""
+    Nunca lanza por «sin resultados» (una lista vacía es una respuesta válida).
+    Sin `MAPBOX_TOKEN` lanza `GeocodificacionNoConfigurada`: **no hay repliegue
+    a Nominatim**, cuya instancia pública prohíbe el uso comercial. Un repliegue
+    «temporal» a un servicio que no se puede usar es la clase de atajo que
+    sobrevive tres años.
+    """
     texto = _normalizar_texto_busqueda(texto or "")
     if not texto:
         return []
+    token = _token_mapbox()
+    if not token:
+        raise GeocodificacionNoConfigurada(
+            "El buscador de direcciones necesita MAPBOX_TOKEN y este despliegue no lo "
+            "tiene configurado. Se puede seguir señalando la parcela en el mapa."
+        )
     params = urllib.parse.urlencode({
-        "format": "json", "q": texto, "limit": max(1, min(limite, 10)), "addressdetails": 0,
+        "q": texto,
+        "limit": max(1, min(limite, 10)),
+        "country": "es",
+        "language": "es",
+        "access_token": token,
     })
-    cuerpo = _get("%s?%s" % (_URL_NOMINATIM, params))
+    cuerpo = _get("%s?%s" % (_URL_MAPBOX_GEOCODING, params))
     try:
         datos = json.loads(cuerpo)
     except (ValueError, TypeError) as exc:
-        raise ErrorDeSitio("Nominatim: respuesta no es JSON válido: %s" % exc) from exc
-    if not isinstance(datos, list):
-        raise ErrorDeSitio("Nominatim: respuesta con forma inesperada (se esperaba una lista)")
-
-    resultados = []
-    for item in datos:
-        if not isinstance(item, dict):
-            continue
-        try:
-            lat = float(item.get("lat"))
-            lon = float(item.get("lon"))
-        except (TypeError, ValueError):
-            continue  # entrada sin coordenadas válidas: se descarta, no se inventa
-        resultados.append({"lat": lat, "lon": lon, "display_name": item.get("display_name")})
-    return resultados
+        raise ErrorDeSitio("Mapbox: respuesta no es JSON válido: %s" % exc) from exc
+    return _resultados_de_mapbox(datos)
 
 
 # --- Catastro: geometría real de la parcela --------------------------------

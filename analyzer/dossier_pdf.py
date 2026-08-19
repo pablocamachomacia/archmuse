@@ -44,6 +44,8 @@ from reportlab.platypus import (
 )
 from reportlab.graphics.shapes import Drawing, Polygon as ShapePolygon, String
 
+from .marca_borrador import estampar
+
 logger = logging.getLogger(__name__)
 
 _ESTILOS = getSampleStyleSheet()
@@ -313,5 +315,7 @@ def generar_dossier_pdf(datos: dict) -> bytes:
             _PIE_FICHA,
         ))
 
-    doc.build(story, onFirstPage=_cabecero, onLaterPages=_cabecero)
+    # C3: la marca de borrador se compone CON el cabecero propio del
+    # dossier, no lo sustituye -- y se pinta aunque el cabecero falle.
+    doc.build(story, onFirstPage=estampar(_cabecero), onLaterPages=estampar(_cabecero))
     return buffer.getvalue()

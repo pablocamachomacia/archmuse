@@ -194,7 +194,8 @@ def _uso_de(respuesta: Any) -> Dict[str, Any]:
     }
 
 
-def _mensaje(prefijo: str, estado: str, intencion: str) -> List[Dict[str, Any]]:
+def _mensaje(prefijo: str, estado: str, intencion: str,
+             observacion: str = "") -> List[Dict[str, Any]]:
     """El prompt, en dos bloques y en este orden.
 
     El prefijo —los manifiestos— es idéntico entre ejecuciones del mismo
@@ -202,15 +203,22 @@ def _mensaje(prefijo: str, estado: str, intencion: str) -> List[Dict[str, Any]]:
     detrás porque cambian. Invertir el orden haría que la caché no acertara
     nunca y el planificador se encarecería **en silencio**, que es la peor
     forma de encarecerse.
+
+    `observacion` es lo que pasó al ejecutar un plan anterior (`AG-4`). Va con
+    lo que cambia y **nunca** en el prefijo cacheado, por lo mismo. Que sea un
+    parámetro y no otra función es lo que mantiene una sola forma de componer
+    este prompt: dos formas es cómo acaban divergiendo.
     """
+    cola = estado + "\n\nLO QUE PIDE EL ARQUITECTO:\n" + intencion
+    if observacion:
+        cola += "\n\n" + observacion
     return [{
         "role": "user",
         "content": [
             {"type": "text",
              "text": "CATÁLOGO DE LO QUE ARCHMUSE SABE HACER\n\n" + prefijo,
              "cache_control": {"type": "ephemeral"}},
-            {"type": "text",
-             "text": estado + "\n\nLO QUE PIDE EL ARQUITECTO:\n" + intencion},
+            {"type": "text", "text": cola},
         ],
     }]
 
@@ -242,6 +250,7 @@ def planificar(intencion: str, cliente: Any, *,
                max_pasos: int = MAX_PASOS,
                max_tokens: int = MAX_TOKENS,
                sistema: str = SISTEMA,
+               observacion: str = "",
                carencias: Any = None) -> Planificacion:
     """De una intención en castellano a un `Plan` validado. **Una llamada.**
 
@@ -252,6 +261,11 @@ def planificar(intencion: str, cliente: Any, *,
 
     `carencias`, si se pasa, recibe los objetivos que ninguna Skill cubre. Es
     cómo se entera ArchMuse de lo que le falta: por uso real, no por intuición.
+
+    `observacion` es lo que pasó al ejecutar un plan anterior, para replanificar
+    **una vez** (`AG-4`). Este módulo no decide cuándo replanificar ni cuántas
+    veces —eso es de la fachada— y sigue haciendo exactamente una llamada: aquí
+    sólo entra el texto de lo observado.
     """
     from .registro import registro as _reg, registro_de_skills as _reg_skills
 
@@ -261,7 +275,7 @@ def planificar(intencion: str, cliente: Any, *,
 
     prefijo = _contexto.prefijo_cacheable(capacidades, skills)
     resumen = _contexto.resumen_del_proyecto(memoria, skills)
-    mensajes = _mensaje(prefijo, _contexto.a_texto(resumen), intencion)
+    mensajes = _mensaje(prefijo, _contexto.a_texto(resumen), intencion, observacion)
     herramienta = esquema_de_la_herramienta(max_pasos)
 
     propuesta = None
@@ -405,13 +419,19 @@ def revisar(plan: Plan, *, skills: RegistroDeSkills,
                     efectos_a_autorizar=tuple(efectos))
 
 
-def a_texto(planificacion: Planificacion, skills: Optional[RegistroDeSkills] = None) -> str:
+def a_texto(planificacion: Planificacion, skills: Optional[RegistroDeSkills] = None,
+            *, con_efectos: bool = True) -> str:
     """El plan como se le enseña al arquitecto **antes** de ejecutarlo.
 
     Es la razón de ser de esta tarea: lo que no se puede enseñar no se puede
     parar. Se dice qué se va a hacer, con qué procedimiento y **qué efectos
     habrá que autorizar** — porque enterarse de que algo escribe un fichero
     después de que lo haya escrito no sirve de nada.
+
+    `con_efectos=False` sólo lo usa quien va a escribir esa lista mejor: la
+    fachada sabe además **cuáles ya están autorizados**, y aquí no se sabe.
+    Imprimirla dos veces con dos criterios distintos es cómo se consigue que
+    el arquitecto deje de leerla.
     """
     if planificacion.motivos:
         return "NO SE PUEDE EJECUTAR ESTE PLAN:\n" + "\n".join(
@@ -438,7 +458,7 @@ def a_texto(planificacion: Planificacion, skills: Optional[RegistroDeSkills] = N
         lineas.append("  %d. [%s] %s%s" % (i, paso.id, paso.skill, detalle))
         if paso.depende_de:
             lineas.append("       después de: %s" % ", ".join(paso.depende_de))
-    if efectos:
+    if efectos and con_efectos:
         lineas.append("")
         lineas.append("Habrá que autorizar: %s" % ", ".join(efectos))
     return "\n".join(lineas)

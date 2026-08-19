@@ -26,6 +26,7 @@ from typing import Dict, List, Optional, Set
 from jsonschema import Draft202012Validator
 
 from . import catalogos
+from .manifiesto import ESTADOS_CON_REGLAS
 from .registro import registro
 
 # ---------------------------------------------------------------------------
@@ -109,22 +110,87 @@ def validar_vigencia(doc: dict) -> List[str]:
     return fallos
 
 
+#: Los dos únicos niveles de repliegue que no son un eje de la tabla.
+#: `todos` exige que coincidan todos los ejes de la fila; `ninguno` cierra la
+#: cadena declarando que, si se llega ahí, no hay valor.
+NIVELES_UNIVERSALES = ("todos", "ninguno")
+
+
 def validar_parametros(doc: dict) -> List[str]:
-    """7. Ningún parámetro es un escalar desnudo: siempre tabla con cadena de
-    repliegue declarada.
+    """7. Ningún parámetro es un escalar desnudo, y su cadena de repliegue está
+    formada por niveles que el motor sabe recorrer.
 
     Un repliegue sin declarar es el Bug #1 esperando a repetirse en la capa
-    normativa.
+    normativa. Pero declararlo no basta: `modelo.Parametro.resolver` compara
+    cada nivel contra un eje suelto o contra `todos`, de modo que un nivel que
+    no es ninguna de esas dos cosas **no casa nunca**. Aceptar cualquier cadena
+    como nivel es lo que dejó pasar la primera transcripción de
+    `es/estatal/seguridad_incendio.yaml`, cuyo repliegue
+    `[numero_salidas_y_condicion, numero_salidas, ninguno]` no resolvía jamás:
+    la regla se cargaba sin protestar y luego se quedaba muda, que desde fuera
+    es indistinguible de «no aplica». Un fallo de transcripción tiene que
+    romper la carga, no volver silenciosa a la regla.
+
+    Se comprueban cuatro cosas sobre la tabla, todas decidibles sin contexto:
+
+    1. Hay cadena de repliegue y hay valores.
+    2. Todo nivel de la cadena es un eje declarado, `todos` o `ninguno`.
+    3. Ningún nivel es inalcanzable: replegarse a un eje solo coge las filas
+       indexadas **exactamente** por ese eje, así que un nivel sin ninguna fila
+       propia es cadena muerta aunque el nombre exista.
+    4. `ninguno` cierra la cadena: lo que se escriba detrás no se ejecuta nunca.
     """
     fallos = []
     for r in doc.get("reglas") or []:
         p = r.get("parametro")
         if p is None:
             continue
-        if not p.get("repliegue"):
-            fallos.append(f"[7] {r.get('concept_id')}: parámetro sin cadena de repliegue declarada")
-        if not p.get("valores"):
-            fallos.append(f"[7] {r.get('concept_id')}: parámetro sin valores")
+        cid = r.get("concept_id")
+        repliegue = list(p.get("repliegue") or ())
+        valores = list(p.get("valores") or ())
+        ejes = list(p.get("ejes") or ())
+
+        if not repliegue:
+            fallos.append(f"[7] {cid}: parámetro sin cadena de repliegue declarada")
+        if not valores:
+            fallos.append(f"[7] {cid}: parámetro sin valores")
+
+        # Las claves de cada fila tienen que ser ejes: una clave que no lo es
+        # no la busca nadie, así que la fila entera es inalcanzable.
+        for i, fila in enumerate(valores):
+            for clave in fila:
+                if clave != "valor" and clave not in ejes:
+                    fallos.append(
+                        f"[7] {cid}: la fila {i} de la tabla se indexa por «{clave}», "
+                        f"que no es un eje declarado {ejes}: esa fila no se busca nunca"
+                    )
+
+        # Filas indexadas exactamente por un solo eje: son las únicas que puede
+        # coger un repliegue a ese eje (ver `Parametro.resolver`).
+        ejes_con_fila_propia = {
+            next(iter(claves))
+            for claves in ({k for k in f if k != "valor"} for f in valores)
+            if len(claves) == 1
+        }
+
+        for pos, nivel in enumerate(repliegue):
+            if nivel not in NIVELES_UNIVERSALES and nivel not in ejes:
+                fallos.append(
+                    f"[7] {cid}: nivel de repliegue «{nivel}» no existe — no es ninguno de "
+                    f"los ejes declarados {ejes} ni «todos» ni «ninguno». El motor no lo "
+                    f"casa nunca, así que la regla quedaría muda en vez de fallar"
+                )
+            elif nivel in ejes and nivel not in ejes_con_fila_propia:
+                fallos.append(
+                    f"[7] {cid}: nivel de repliegue «{nivel}» es inalcanzable — ninguna fila "
+                    f"de la tabla está indexada solo por «{nivel}», y replegarse a un eje solo "
+                    f"coge las filas indexadas exactamente por él"
+                )
+            if nivel == "ninguno" and pos != len(repliegue) - 1:
+                fallos.append(
+                    f"[7] {cid}: «ninguno» cierra la cadena de repliegue, pero detrás hay "
+                    f"{repliegue[pos + 1:]}: eso no se ejecuta nunca"
+                )
     return fallos
 
 
@@ -375,30 +441,89 @@ def validar_nivel_conocimiento(doc: dict) -> List[str]:
     ]
 
 
+#: La etiqueta con la que toda regla transcrita se marca hasta que un
+#: arquitecto colegiado firma sus tres criterios humanos (fidelidad al literal,
+#: localización exacta, utilidad del mensaje). Ver
+#: `docs/design/2026-08-18-ficha-de-transcripcion-normativa.md` §4.
+TAG_SIN_FIRMAR = "pendiente_firma_colegiado"
+
+
 def validar_cobertura(manifiesto: dict, ambitos_en_disco: Dict[str, Set[str]]) -> List[str]:
     """17. El manifiesto de cobertura coincide con lo que hay en disco.
 
     Corta los dos errores opuestos: declarar cobertura que no existe (peligroso
     — el informe afirma más de lo que sabe) y tener cobertura sin declararla
     (desperdicia trabajo hecho y deja al usuario creyendo que no la hay).
+
+    **El recorrido va sobre la unión de los dos lados, y ese detalle es la
+    validación entera.** Recorrer solo lo declarado dejaba mudo justo el
+    segundo error: un ámbito con reglas en disco y sin ninguna entrada en el
+    manifiesto no entraba en el bucle, así que nadie lo miraba. El corpus de
+    producción estaba en ese caso el 2026-08-19 —una regla de
+    `seguridad_incendio` en disco, `cobertura: []` en el manifiesto— y esta
+    función respondía que todo cuadraba. Es el guardarraíl que tiene que
+    mantener honesta la cobertura declarada según el curador transcriba, y por
+    eso el fallo importaba: el que se equivoca es el que empieza a añadir
+    reglas, no el que ya tiene el manifiesto escrito.
     """
     fallos = []
-    for entrada in manifiesto.get("cobertura") or []:
-        ambito = entrada["ambito"]
-        declaradas = entrada.get("materias") or {}
+    por_ambito = {e["ambito"]: (e.get("materias") or {})
+                  for e in (manifiesto.get("cobertura") or [])}
+    for ambito in sorted(set(por_ambito) | set(ambitos_en_disco)):
+        declaradas = por_ambito.get(ambito, {})
         reales = ambitos_en_disco.get(ambito, set())
         for materia, estado in declaradas.items():
             e = estado.get("estado") if isinstance(estado, dict) else estado
-            if e in ("completo", "parcial") and materia not in reales:
+            if e in ESTADOS_CON_REGLAS and materia not in reales:
                 fallos.append(
                     f"[17] {ambito}: declara «{materia}» como {e} pero no hay ninguna "
                     f"regla de esa materia en disco"
                 )
-        for materia in reales:
+        for materia in sorted(reales):
             if materia not in declaradas:
                 fallos.append(
                     f"[17] {ambito}: hay reglas de «{materia}» en disco pero el manifiesto "
                     f"no declara su cobertura"
+                )
+    return fallos
+
+
+def validar_firma_de_lo_declarado(manifiesto: dict,
+                                  reglas_por_ambito_y_materia) -> List[str]:
+    """18. Nada se declara afirmable mientras sus reglas sigan sin firmar.
+
+    El estado `transcrito_sin_firmar` dice la verdad, pero por sí solo no
+    protege de nada: es una cadena en un YAML, y basta cambiarla por `parcial`
+    para que `EntradaCobertura.afirmable` pase a `True` y ArchMuse empiece a
+    evaluar contra reglas que nadie ha revisado. Esta validación es lo que
+    convierte esa promesa en algo que no se puede saltar por descuido: promover
+    una materia a `completo` o `parcial` **falla al cargar** mientras alguna de
+    sus reglas conserve `pendiente_firma_colegiado`.
+
+    Es el orden correcto de trabajo escrito como código: transcribir, declarar
+    `transcrito_sin_firmar`, conseguir la firma, retirar la etiqueta de la
+    regla, y sólo entonces promover el manifiesto. Cada paso deja rastro y
+    ninguno se puede adelantar en silencio.
+
+    `reglas_por_ambito_y_materia` es un mapa `{(ambito, materia): [reglas]}`.
+    """
+    fallos = []
+    for entrada in manifiesto.get("cobertura") or []:
+        ambito = entrada["ambito"]
+        for materia, estado in (entrada.get("materias") or {}).items():
+            e = estado.get("estado") if isinstance(estado, dict) else estado
+            if e not in ("completo", "parcial"):
+                continue
+            reglas = reglas_por_ambito_y_materia.get((ambito, materia)) or []
+            sin_firmar = [r.get("concept_id", "?") for r in reglas
+                          if TAG_SIN_FIRMAR in (r.get("tags") or [])]
+            if sin_firmar:
+                fallos.append(
+                    f"[18] {ambito}: declara «{materia}» como {e} —lo que permite "
+                    f"afirmar sobre ella— pero {len(sin_firmar)} de sus reglas siguen "
+                    f"sin firma de colegiado: {', '.join(sorted(sin_firmar))}. Usa "
+                    f"«transcrito_sin_firmar» hasta que un colegiado las firme y se "
+                    f"retire la etiqueta «{TAG_SIN_FIRMAR}»."
                 )
     return fallos
 

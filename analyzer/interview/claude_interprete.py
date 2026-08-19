@@ -37,7 +37,11 @@ try:
 except ImportError:  # pragma: no cover - mismo patrón que ai_analyst.py
     anthropic = None  # type: ignore[assignment]
 
-MODEL = "claude-sonnet-5"
+from ia import modelos
+
+# El modelo se resuelve en `ia/modelos.py` por perfil de tarea, y no se
+# escribe aquí: era la misma constante repetida en seis módulos.
+MODEL = modelos.para("interpretacion")
 
 #: Nunca se promete a Claude que puede inventar un hecho normativo. Este
 #: párrafo es fijo, no depende del proyecto — regla explícita del encargo de

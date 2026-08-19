@@ -99,11 +99,11 @@
       "sha256": "e6452dd8dba5f0ecc845b670a4b942ffe4318f92a6b6b92107af4333b3c9f945"
     },
     {
-      "bytes": 114476,
+      "bytes": 113728,
       "crlf": false,
-      "lineas": 5454,
+      "lineas": 5410,
       "nombre": "G9_modelo",
-      "sha256": "6d49117534590ad39094b2bd3c5accddbf7ccd6fbb5faba3f054538feafbcc75"
+      "sha256": "03469d75ba96c4968929229888b4557c28501c37abc43f829d250f6defe348b6"
     }
   ],
   "modelo_sin_deuda_de_formato": true,

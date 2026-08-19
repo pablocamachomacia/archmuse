@@ -66,6 +66,13 @@ def test_toda_capacidad_devuelve_un_dict_con_ok():
                                   "ruta_destino": "tampoco_existe.dxf"},
         "plano.cuadro_en_pdf": {"ruta": "no_existe.dxf",
                                 "ruta_destino": "tampoco_existe.pdf"},
+        # Y las dos de la revisión de coherencia (CO-4), con el mismo criterio:
+        # el contrato de salida se comprueba en el camino de fallo, que es el
+        # que más fácilmente se olvida. El camino bueno lo prueban
+        # `tests/test_agente_skill_coherencia.py` y el golden G11.
+        "plano.coherencia": {"ruta": "no_existe.dxf"},
+        "plano.informe_de_coherencia": {"ruta": "no_existe.dxf",
+                                        "ruta_destino": "tampoco_existe.pdf"},
     }
     reg = registro()
     assert set(invocaciones) == set(reg.ids()), "hay una capacidad sin probar aquí"

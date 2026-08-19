@@ -136,6 +136,67 @@ def test_07_ningun_umbral_es_un_escalar_desnudo():
     assert any("[7]" in f for f in validacion.validar_fichero(doc))
 
 
+def test_07_un_nivel_de_repliegue_inexistente_se_rechaza_con_su_nombre():
+    """EL DEFECTO REAL DEL 2026-08-18, reproducido.
+
+    La primera transcripción de `es/estatal/seguridad_incendio.yaml` declaró
+    `repliegue: [numero_salidas_y_condicion, numero_salidas, ninguno]`. Ninguno
+    de esos dos primeros niveles existe para `Parametro.resolver`, que compara
+    cada nivel contra un eje suelto o contra `todos`. La regla se cargó sin
+    protestar y luego no resolvía nunca — que desde fuera se lee como «esta
+    norma no aplica», la peor respuesta posible.
+
+    El validador tiene que nombrar el nivel culpable: un fallo que no dice cuál
+    de los tres niveles sobra obliga a depurar a ojo un YAML de 200 líneas.
+    """
+    doc = regla_valida()
+    doc["reglas"][0]["parametro"]["repliegue"] = ["tipologia_y_uso", "tipologia", "ninguno"]
+    fallos = validacion.validar_fichero(doc)
+    assert any("[7]" in f and "tipologia_y_uso" in f for f in fallos), fallos
+
+
+def test_07_un_nivel_valido_pero_sin_fila_propia_tambien_se_rechaza():
+    """Que el nombre exista no basta: tiene que haber a dónde replegarse.
+
+    Replegarse a un eje solo recoge las filas indexadas **exactamente** por ese
+    eje. Una tabla cuyas filas cruzan siempre dos ejes no admite un repliegue a
+    uno solo de ellos: ese nivel es cadena muerta, y la regla vuelve a quedar
+    muda sin que nada falle.
+    """
+    doc = regla_valida()
+    doc["reglas"][0]["parametro"].update(
+        ejes=["tipologia", "uso"],
+        valores=[{"tipologia": "plurifamiliar", "uso": "residencial", "valor": 30.0}],
+        repliegue=["tipologia", "ninguno"],
+    )
+    fallos = validacion.validar_fichero(doc)
+    assert any("[7]" in f and "inalcanzable" in f and "tipologia" in f for f in fallos), fallos
+
+
+def test_07_una_fila_indexada_por_algo_que_no_es_eje_no_la_busca_nadie():
+    doc = regla_valida()
+    doc["reglas"][0]["parametro"]["valores"] = [
+        {"tipologia": "plurifamiliar", "valor": 30.0},
+        {"tipologa": "unifamiliar", "valor": 25.0},   # errata de transcripción
+    ]
+    fallos = validacion.validar_fichero(doc)
+    assert any("[7]" in f and "tipologa" in f for f in fallos), fallos
+
+
+def test_07_detras_de_ninguno_no_hay_nada_que_ejecutar():
+    doc = regla_valida()
+    doc["reglas"][0]["parametro"]["repliegue"] = ["ninguno", "tipologia"]
+    fallos = validacion.validar_fichero(doc)
+    assert any("[7]" in f and "cierra la cadena" in f for f in fallos), fallos
+
+
+def test_07_todos_y_ninguno_siguen_siendo_niveles_validos():
+    """La regla real del corpus usa `[todos, ninguno]`: no puede romperse."""
+    doc = regla_valida()
+    doc["reglas"][0]["parametro"]["repliegue"] = ["todos", "ninguno"]
+    assert [f for f in validacion.validar_fichero(doc) if "[7]" in f] == []
+
+
 def test_08_hash_detecta_deriva_del_literal():
     import hashlib
 
@@ -328,19 +389,50 @@ def test_17_cobertura_en_disco_sin_declarar():
 # --- Loader -----------------------------------------------------------------
 
 def test_loader_es_fail_closed(tmp_path=None):
-    """Un corpus vacío carga sin reglas y sin rechazos. Lo que NO puede pasar
-    es que un fichero inválido entre a medias."""
+    """Lo que este test protege es el *fail-closed*: un fichero inválido no
+    entra a medias, y lo que entra ha pasado las validaciones enteras.
+
+    Se escribió cuando el corpus estaba vacío, y por eso comprobaba
+    `reglas == []`. Desde la tarea V0-5 hay una regla real transcrita, así que
+    el corpus vacío ya no es la condición — pero el invariante sí: cero
+    rechazos, y todo lo cargado con su `concept_id` y su vigencia.
+    """
     resultado = cargar(["es"])
-    assert resultado.reglas == []
-    assert not resultado.hay_rechazos
+    assert not resultado.hay_rechazos, resultado.rechazados
+    for regla in resultado.reglas:
+        assert regla.get("concept_id"), regla
+        assert (regla.get("vigencia") or {}).get("vigencia_desde"), regla
 
 
-def test_el_corpus_actual_esta_vacio_y_eso_se_declara():
-    """La Fase 0 entrega infraestructura, no contenido. Que el corpus esté
-    vacío es correcto; declararlo lleno sería el fallo."""
+def test_lo_declarado_y_lo_que_hay_en_disco_coinciden():
+    """El invariante que sustituye a «el corpus está vacío».
+
+    Se escribió cuando lo estaba, y comprobaba `cobertura == []`. Desde el
+    2026-08-19 el manifiesto declara la única materia transcrita, así que lo
+    que hay que sostener ya no es la lista vacía sino la correspondencia: ni
+    declarar cobertura que no existe —el informe afirmaría más de lo que sabe—
+    ni tener reglas sin declararlas. Este test corre sobre el corpus **de
+    producción**, no sobre el fixture: la versión que solo miraba el fixture es
+    la razón de que el desajuste real pasara desapercibido.
+    """
     from normativa.manifiesto import _manifiesto
 
-    assert (_manifiesto().get("cobertura") or []) == []
+    resultado = cargar(["es"])
+    fallos = validacion.validar_cobertura(_manifiesto(), resultado.materias_por_ambito)
+    assert not fallos, fallos
+
+
+def test_ninguna_materia_del_corpus_se_declara_completa_todavia():
+    """`completo` es una frase de venta —«este Documento Básico lo cubrimos»—
+    y hoy ninguna materia se la ha ganado. La cierra `NOR-2`, con la entrega
+    del curador que la justifique; hasta entonces esto tiene que fallar si
+    alguien la escribe."""
+    from normativa.manifiesto import _manifiesto
+
+    for entrada in _manifiesto().get("cobertura") or []:
+        for materia, estado in (entrada.get("materias") or {}).items():
+            e = estado.get("estado") if isinstance(estado, dict) else estado
+            assert e != "completo", (entrada["ambito"], materia)
 
 
 if __name__ == "__main__":
@@ -355,3 +447,43 @@ if __name__ == "__main__":
                 print(f"FALLO {nombre}: {str(exc)[:200]}")
     print(f"\n{'TODO OK' if not fallos else str(fallos) + ' FALLOS'}")
     sys.exit(1 if fallos else 0)
+
+
+# --- 17 · El recorrido va sobre la unión, no sobre lo declarado ------------
+#
+# Encontrado el 2026-08-19 sobre el corpus de producción: tenía una regla de
+# `seguridad_incendio` en disco y `cobertura: []` en el manifiesto, y la
+# validación respondía que todo cuadraba. El segundo recorrido —«hay reglas sin
+# declarar»— vivía dentro del bucle sobre lo declarado, así que un ámbito sin
+# entrada en el manifiesto no se miraba nunca. Es justo el error que comete
+# quien EMPIEZA a transcribir, que es todo el trabajo que queda por delante.
+
+def test_un_ambito_con_reglas_y_sin_entrada_en_el_manifiesto_se_detecta():
+    fallos = validacion.validar_cobertura(
+        {"cobertura": []}, ambitos_en_disco={"es": {"seguridad_incendio"}})
+    assert len(fallos) == 1
+    assert "seguridad_incendio" in fallos[0]
+    assert "no declara su cobertura" in fallos[0]
+
+
+def test_el_manifiesto_vacio_con_el_disco_vacio_sigue_estando_bien():
+    """El estado inicial legítimo: nada transcrito, nada declarado."""
+    assert validacion.validar_cobertura({"cobertura": []}, ambitos_en_disco={}) == []
+
+
+def test_se_detectan_varios_ambitos_sin_declarar_a_la_vez():
+    fallos = validacion.validar_cobertura({"cobertura": []}, ambitos_en_disco={
+        "es": {"seguridad_incendio"},
+        "es.13": {"habitabilidad", "accesibilidad"},
+    })
+    assert len(fallos) == 3
+
+
+def test_declarar_de_mas_sigue_detectandose_donde_ya_lo_hacia():
+    """El otro sentido no se ha perdido al cambiar el recorrido: es el
+    peligroso, porque hace que el informe afirme más de lo que sabe."""
+    fallos = validacion.validar_cobertura(
+        {"cobertura": [{"ambito": "es", "materias": {"accesibilidad": "completo"}}]},
+        ambitos_en_disco={})
+    assert len(fallos) == 1 and "no hay ninguna regla" in fallos[0]
+

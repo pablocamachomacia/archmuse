@@ -63,6 +63,33 @@
     },
     "version": "1.0.0"
   },
+  "plano.coherencia": {
+    "efectos": [],
+    "id": "plano.coherencia",
+    "limitaciones": 5,
+    "naturaleza": "determinista",
+    "obligatorios": [
+      "ruta"
+    ],
+    "parametros": {
+      "capa": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "factor_escala": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "ruta": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
   "plano.cuadro_de_superficies": {
     "efectos": [],
     "id": "plano.cuadro_de_superficies",
@@ -133,6 +160,39 @@
         "type": "string"
       },
       "ruta_origen": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "plano.informe_de_coherencia": {
+    "efectos": [
+      "escribe_fichero"
+    ],
+    "id": "plano.informe_de_coherencia",
+    "limitaciones": 4,
+    "naturaleza": "io",
+    "obligatorios": [
+      "ruta",
+      "ruta_destino"
+    ],
+    "parametros": {
+      "capa": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "factor_escala": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "ruta": {
+        "type": "string"
+      },
+      "ruta_destino": {
         "type": "string"
       }
     },

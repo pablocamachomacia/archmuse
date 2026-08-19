@@ -31,6 +31,7 @@ from analyzer.hechos import Motivo
 from ..afirmacion import Afirmacion, calculo
 from ..skill import Requisito, ResultadoDeSkill, Skill
 from ..verificacion import Verificacion, valor_dentro_de
+from ._comun import sin_producir
 
 CID = "es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion"
 
@@ -39,14 +40,6 @@ CLAVE_SALIDAS = "evacuacion.numero_salidas"
 CLAVE_CONDICION = "evacuacion.condicion"
 
 PRODUCE = ("evacuacion.umbral_m", "evacuacion.holgura_m", "evacuacion.cumple")
-
-
-def _desconocidas(claves, motivo: Motivo, fuente: str) -> List[Afirmacion]:
-    return [
-        Afirmacion(nombre=c, naturaleza="hecho", valor=None, estado="UNKNOWN",
-                   origen="observado", fuente=fuente, motivo=motivo)
-        for c in claves
-    ]
 
 
 def _ejecutar(ctx) -> ResultadoDeSkill:
@@ -62,7 +55,8 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
         if ambito.get("pregunta"):
             preguntas.append(ambito["pregunta"])
         return ResultadoDeSkill(
-            afirmaciones=tuple(_desconocidas(PRODUCE, motivo, ctx.firma)),
+            afirmaciones=sin_producir(PRODUCE, codigo=motivo.codigo,
+                                      detalle=motivo.detalle, fuente=ctx.firma),
             preguntas=tuple(preguntas),
             no_hecho=("no se ha podido situar el proyecto territorialmente",),
         )
@@ -87,13 +81,15 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
                      "aplicable a este proyecto en el corpus cargado"),
         )
         return ResultadoDeSkill(
-            afirmaciones=tuple(_desconocidas(PRODUCE, motivo, ctx.firma)),
+            afirmaciones=sin_producir(PRODUCE, codigo=motivo.codigo,
+                                      detalle=motivo.detalle, fuente=ctx.firma),
             no_hecho=("no se ha comprobado la evacuación: la regla no consta aplicable",),
         )
     if regla["estado"] == "no_aplica":
         motivo = Motivo(codigo="no_aplica", detalle=regla["motivo"])
         return ResultadoDeSkill(
-            afirmaciones=tuple(_desconocidas(PRODUCE, motivo, ctx.firma)),
+            afirmaciones=sin_producir(PRODUCE, codigo=motivo.codigo,
+                                      detalle=motivo.detalle, fuente=ctx.firma),
             no_hecho=("la regla no aplica a este proyecto: %s" % regla["motivo"],),
         )
 
@@ -114,7 +110,8 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
         if umbral.get("pregunta"):
             preguntas.append(umbral["pregunta"])
         return ResultadoDeSkill(
-            afirmaciones=tuple(_desconocidas(PRODUCE, motivo, ctx.firma)),
+            afirmaciones=sin_producir(PRODUCE, codigo=motivo.codigo,
+                                      detalle=motivo.detalle, fuente=ctx.firma),
             preguntas=tuple(preguntas),
             no_hecho=("no hay umbral aplicable para los ejes declarados; sin umbral no "
                       "hay comprobación posible y NO se coge un valor parecido",),

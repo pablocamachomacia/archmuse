@@ -844,13 +844,14 @@
     var cont = document.getElementById("parcela-resultados-busqueda");
     var presetsEl = document.querySelector(".parcela-presets");
 
-    //: Separa un `display_name` de Nominatim ("31, Gran Vía, Universidad, Centro, Madrid, Comunidad de
-    //: Madrid, 28013, España") en una línea PRINCIPAL (la calle/dirección) y una de CONTEXTO (municipio/
-    //: provincia) -- el encargo pide distinguir claramente "Calle de los Ciruelos, Boadilla del Monte,
-    //: Madrid" de "Calle de los Ciruelos, Alcobendas, Madrid": mismo texto principal, contexto distinto.
-    //: Nominatim suele poner el número de portal como su propio primer segmento ("31"); si el primer
-    //: segmento es solo dígitos, se une con el siguiente para que la línea principal sea "31 Gran Vía", no
-    //: solo "31".
+    //: Separa el `display_name` que devuelve `/api/geocodificar` ("Gran Vía 31, 28013 Madrid, España")
+    //: en una línea PRINCIPAL (la calle/dirección) y una de CONTEXTO (municipio/provincia) -- el encargo
+    //: pide distinguir claramente "Calle de los Ciruelos, Boadilla del Monte, Madrid" de "Calle de los
+    //: Ciruelos, Alcobendas, Madrid": mismo texto principal, contexto distinto.
+    //: La rama del primer segmento numérico viene de la etapa de Nominatim, que ponía el número de
+    //: portal como su propio segmento ("31, Gran Vía, ..."). Mapbox (tarea TL-8) ya lo trae unido, así
+    //: que hoy no se dispara -- se conserva porque cuesta una línea y protege de que un proveedor
+    //: futuro vuelva a partirlo, no porque haga falta ahora.
     function partirDireccion(displayName) {
       var partes = (displayName || "").split(",").map(function (p) { return p.trim(); }).filter(Boolean);
       if (!partes.length) return { principal: displayName || "(sin nombre)", contexto: "" };

@@ -19,6 +19,8 @@ Enseña cuatro cosas, y las cuatro son el producto:
 3. Lo que **no** se ha comprobado se dice por su nombre, derivado de los
    manifiestos y no redactado a mano.
 4. Cuando falta un dato, la respuesta es la pregunta concreta.
+5. El plan se **enseña antes** de ejecutarse, con los efectos que habrá que
+   autorizar, y decir que no no ejecuta ni el primer paso.
 """
 from __future__ import annotations
 
@@ -30,6 +32,7 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 from agente import acta as _acta  # noqa: E402
+from agente import copiloto as _copiloto  # noqa: E402
 from agente import planificador as _plani  # noqa: E402
 from agente.ejecucion import BitacoraEnMemoria, Ejecutor, Paso, Plan  # noqa: E402
 from agente.memoria import MemoriaDeProyecto, SustratoEnMemoria  # noqa: E402
@@ -185,8 +188,47 @@ def main() -> int:
     print("Un plan aproximado con las Skills que sí hay sería peor que ninguno:")
     print("produce trabajo que nadie pidió y respuestas que parecen ciertas.")
 
+    # --- 5b. La fachada: enseñar el plan y esperar el sí -------------------
+    _titulo("6. EL PLAN SE ENSEÑA, Y HASTA QUE NO SE DICE QUE SÍ NO PASA NADA")
+    print("Esto es la fachada entera (`agente.copiloto`), no una pieza suelta:")
+    print("`proponer()` planifica y audita SIN ejecutar; `ejecutar_propuesta()`")
+    print("ejecuta ese plan y sólo ése. Entre las dos hay un sitio para decir")
+    print("que no — y decir que no no ejecuta ni el primer paso.")
+    print()
+
+    bitacora = BitacoraEnMemoria()
+    propuesta = _copiloto.proponer(
+        "Rellena el cuadro de superficies de este plano",
+        _ClienteDeGuion({"pasos": [{
+            "id": "cuadro",
+            "skill": "superficies.cuadro_de_vivienda",
+            "argumentos": {"ruta_dxf": "plano.dxf", "ruta_destino": "plano_relleno.dxf"},
+        }]}),
+        memoria, capacidades=capacidades, skills=skills,
+        ejecucion_id="demo-propuesta",
+    )
+    print(propuesta.texto())
+    print()
+    print("Efectos que nadie ha autorizado todavía: %s"
+          % list(propuesta.falta_autorizar()))
+
+    dijo_que_no = _copiloto.ejecutar_propuesta(
+        propuesta, memoria, bitacora=bitacora, confirmar=lambda _p: False)
+    print()
+    print("El arquitecto dice que no ->")
+    print("  parada: %s" % dijo_que_no.respuesta.parada)
+    print("  pasos ejecutados: %d" % len(dijo_que_no.respuesta.pasos_de_skill))
+    print("  apuntes en la bitácora: %d"
+          % len(bitacora.leer(propuesta.ejecucion_id)))
+    print("  el acta se emite igual, y dice completa: %s"
+          % dijo_que_no.acta.completa)
+    print()
+    print("Ninguna de esas cuatro líneas depende de que la Skill se porte bien:")
+    print("no se llegó a construir su contexto. Es la diferencia entre pedir")
+    print("perdón y pedir permiso, puesta en el sitio donde se puede comprobar.")
+
     # --- 4. Reanudación ----------------------------------------------------
-    _titulo("6. LA MISMA EJECUCIÓN, RELANZADA, NO REPITE LO HECHO")
+    _titulo("7. LA MISMA EJECUCIÓN, RELANZADA, NO REPITE LO HECHO")
     otra_vez = ejecutor.ejecutar(plan, memoria, ejecucion_id="demo-completa")
     print("Pasos reanudados sin volver a ejecutarse: %s" % list(otra_vez.reanudados))
     print("Es lo que permite matar el proceso a mitad de un trabajo de diez")

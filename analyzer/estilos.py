@@ -37,7 +37,11 @@ try:
 except ImportError:  # pragma: no cover - mismo patrón que ai_analyst.py
     anthropic = None
 
-MODEL = "claude-sonnet-5"
+from ia import modelos
+
+# El modelo se resuelve en `ia/modelos.py` por perfil de tarea, y no se
+# escribe aquí: era la misma constante repetida en seis módulos.
+MODEL = modelos.para("clasificacion")
 
 NOMBRE_HERRAMIENTA = "registrar_estilo_arquitectonico"
 

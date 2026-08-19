@@ -17,11 +17,10 @@ from __future__ import annotations
 
 from typing import List
 
-from analyzer.hechos import Motivo
-
 from ..afirmacion import Afirmacion, calculo
 from ..skill import Requisito, ResultadoDeSkill, Skill
 from ..verificacion import Verificacion
+from ._comun import sin_producir
 
 CLAVE_MUNICIPIO = "territorial.municipio"
 CLAVE_USO = "proyecto.uso"
@@ -46,19 +45,14 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
     if not ambito.get("ok"):
         # El municipio no se resuelve: no hay nada que preguntarle al motor
         # normativo, y fingir una cadena territorial sería inventar el trabajo.
-        motivo = Motivo(codigo=ambito.get("error", "ambito_irresoluble"),
-                        detalle=ambito.get("detalle", ""))
-        for clave in PRODUCE:
-            afirmaciones.append(
-                Afirmacion(nombre=clave, naturaleza="hecho", valor=None,
-                           estado="UNKNOWN", origen="observado", fuente=ctx.firma,
-                           motivo=motivo)
-            )
         if ambito.get("pregunta"):
             preguntas.append(ambito["pregunta"])
         no_hecho.append("no se ha podido resolver el ámbito territorial de «%s»" % municipio)
-        return ResultadoDeSkill(afirmaciones=tuple(afirmaciones), preguntas=tuple(preguntas),
-                                no_hecho=tuple(no_hecho))
+        return ResultadoDeSkill(
+            afirmaciones=sin_producir(
+                PRODUCE, codigo=ambito.get("error", "ambito_irresoluble"),
+                detalle=ambito.get("detalle", ""), fuente=ctx.firma),
+            preguntas=tuple(preguntas), no_hecho=tuple(no_hecho))
 
     codigo = ambito["codigo_municipio"]
     afirmaciones.append(calculo("territorial.codigo_ine", codigo, fuente=ctx.firma))
@@ -77,15 +71,16 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
     )
 
     if not aplicables.get("ok"):
-        motivo = Motivo(codigo=aplicables.get("error", "normativa_irresoluble"),
-                        detalle=aplicables.get("detalle", ""))
-        for clave in ("normativa.reglas_que_aplican", "normativa.materias_sin_cobertura"):
-            afirmaciones.append(
-                Afirmacion(nombre=clave, naturaleza="hecho", valor=None, estado="UNKNOWN",
-                           origen="observado", fuente=ctx.firma, motivo=motivo)
-            )
+        # Lo territorial ya resuelto se conserva; lo normativo, que es lo que ha
+        # fallado, sale UNKNOWN con el motivo del motor. La pieza comun hace las
+        # dos cosas a la vez y en el orden de `PRODUCE`.
         no_hecho.append("el motor normativo ha rechazado el perfil del proyecto")
-        return ResultadoDeSkill(afirmaciones=tuple(afirmaciones), no_hecho=tuple(no_hecho))
+        return ResultadoDeSkill(
+            afirmaciones=sin_producir(
+                PRODUCE, codigo=aplicables.get("error", "normativa_irresoluble"),
+                detalle=aplicables.get("detalle", ""), fuente=ctx.firma,
+                ya_hecho={a.nombre: a for a in afirmaciones}),
+            no_hecho=tuple(no_hecho))
 
     reglas = [
         {

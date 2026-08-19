@@ -325,17 +325,25 @@ def _destino_seguro(ruta_origen: str, ruta_destino: str) -> Optional[Dict[str, A
       anotado. Que cada ejecución produzca su propio fichero es lo que hace que
       la segunda pasada (CU-3 del PRD) no pise a la primera.
     """
+    # El texto es deliberadamente neutro —«el fichero», no «la copia rellena»—
+    # desde que este guardián lo comparte una tercera capacidad
+    # (`plano.informe_de_coherencia`, CO-4), que no escribe ninguna copia de
+    # nada: escribe un informe. Una pregunta que nombra un entregable distinto
+    # del que el arquitecto ha pedido le hace dudar de si el programa ha
+    # entendido la orden, que es lo contrario de lo que una pregunta debe
+    # conseguir.
     if not ruta_destino:
         return {"ok": False, "error": "destino_no_indicado",
-                "detalle": "Hay que decir dónde se escribe la copia.",
-                "pregunta": "¿En qué ruta quieres el DXF relleno?"}
+                "detalle": "Hay que decir dónde se escribe el fichero.",
+                "pregunta": "¿En qué ruta quieres el fichero que voy a escribir?"}
     if _mismo_fichero(ruta_origen, ruta_destino):
         return {
             "ok": False,
             "error": "destino_es_el_origen",
             "detalle": ("«%s» y «%s» son el mismo fichero. El DXF original NUNCA se "
-                        "sobrescribe: la copia va aparte." % (ruta_origen, ruta_destino)),
-            "pregunta": "¿A qué ruta nueva quieres que escriba la copia rellena?",
+                        "sobrescribe: lo que se escribe va aparte."
+                        % (ruta_origen, ruta_destino)),
+            "pregunta": "¿A qué ruta NUEVA quieres que escriba? El original no se toca.",
         }
     if os.path.exists(ruta_destino):
         return {
@@ -343,7 +351,7 @@ def _destino_seguro(ruta_origen: str, ruta_destino: str) -> Optional[Dict[str, A
             "error": "destino_ya_existe",
             "detalle": ("Ya hay un fichero en «%s». No se sobrescribe: podría ser un "
                         "entregable anterior ya revisado." % ruta_destino),
-            "pregunta": "¿Con qué nombre quieres esta copia?",
+            "pregunta": "¿Con qué nombre quieres este fichero?",
         }
     return None
 

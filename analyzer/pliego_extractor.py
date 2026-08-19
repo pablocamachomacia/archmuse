@@ -47,7 +47,11 @@ from ia.cliente import crear_cliente
 
 from .hechos import ALTA, BAJA, CONFIANZAS, KNOWN, MEDIA, UNKNOWN, Hecho, Motivo
 
-MODEL = "claude-sonnet-5"
+from ia import modelos
+
+# El modelo se resuelve en `ia/modelos.py` por perfil de tarea, y no se
+# escribe aquí: era la misma constante repetida en seis módulos.
+MODEL = modelos.para("interpretacion")
 
 NOMBRE_HERRAMIENTA = "registrar_parametros_pliego"
 

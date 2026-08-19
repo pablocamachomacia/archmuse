@@ -17,6 +17,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from .marca_borrador import estampar
+
 from .evaluator import SCORE_GREEN_THRESHOLD, SCORE_YELLOW_THRESHOLD
 
 _SEVERITY_ORDER = ["CRITICO", "IMPORTANTE", "RECOMENDACION"]
@@ -249,5 +251,7 @@ def generate_pdf(data: dict) -> bytes:
         story.append(Paragraph("Conclusión ejecutiva", h2))
         story.append(Paragraph(xml_escape(conclusion), body))
 
-    doc.build(story)
+    # C3: todo entregable sale marcado como borrador para revisión de un
+    # colegiado, en todas las páginas y sin forma de desactivarlo.
+    doc.build(story, onFirstPage=estampar(), onLaterPages=estampar())
     return buffer.getvalue()

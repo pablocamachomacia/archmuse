@@ -30,8 +30,11 @@ grafo, no antes.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, Mapping, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError
 
 from . import efectos as _efectos
 
@@ -65,6 +68,112 @@ class ResultadoInvalido(ErrorDeCapacidad):
     """
 
 
+#: Cómo se dice cada incumplimiento del esquema en el idioma del proyecto.
+#: `jsonschema` los explica en inglés y con el vocabulario de JSON Schema; esto
+#: viaja hasta un modelo que tiene que corregir la llamada y, en el CLI de
+#: `CAD-1`, hasta una persona. Se traducen los que un modelo comete de verdad;
+#: para el resto se deja el mensaje original, que es peor pero nunca falso.
+_QUE_FALLA = {
+    "type": "«%(ruta)s» tiene que ser de tipo %(espera)s y ha llegado %(tipo)s (%(valor)s)",
+    "enum": "«%(ruta)s» sólo admite %(espera)s, y ha llegado %(valor)s",
+    "const": "«%(ruta)s» sólo admite %(espera)s, y ha llegado %(valor)s",
+    "minimum": "«%(ruta)s» no puede ser menor que %(espera)s, y ha llegado %(valor)s",
+    "maximum": "«%(ruta)s» no puede ser mayor que %(espera)s, y ha llegado %(valor)s",
+    "exclusiveMinimum": "«%(ruta)s» tiene que ser mayor que %(espera)s, y ha llegado %(valor)s",
+    "exclusiveMaximum": "«%(ruta)s» tiene que ser menor que %(espera)s, y ha llegado %(valor)s",
+    "minLength": "«%(ruta)s» necesita al menos %(espera)s carácter(es), y ha llegado %(valor)s",
+    "maxLength": "«%(ruta)s» admite como mucho %(espera)s carácter(es), y ha llegado %(valor)s",
+    "minItems": "«%(ruta)s» necesita al menos %(espera)s elemento(s), y ha llegado %(valor)s",
+    "maxItems": "«%(ruta)s» admite como mucho %(espera)s elemento(s), y ha llegado %(valor)s",
+    "pattern": "«%(ruta)s» tiene que seguir el patrón %(espera)s, y ha llegado %(valor)s",
+}
+
+#: Cómo se llama en castellano cada tipo de JSON Schema.
+_TIPOS = {
+    "string": "texto", "number": "número", "integer": "número entero",
+    "boolean": "sí/no", "array": "lista", "object": "objeto", "null": "nulo",
+}
+
+#: Longitud a la que se corta un valor al citarlo en un mensaje de error. Un
+#: argumento de treinta mil caracteres no se explica mejor por enseñarlo entero.
+_MAX_VALOR_EN_MENSAJE = 120
+
+
+def _tipo_de(valor: Any) -> str:
+    if isinstance(valor, bool):
+        return _TIPOS["boolean"]
+    if isinstance(valor, int):
+        return _TIPOS["integer"]
+    if isinstance(valor, float):
+        return _TIPOS["number"]
+    if isinstance(valor, str):
+        return _TIPOS["string"]
+    if isinstance(valor, list):
+        return _TIPOS["array"]
+    if isinstance(valor, dict):
+        return _TIPOS["object"]
+    if valor is None:
+        return _TIPOS["null"]
+    return type(valor).__name__
+
+
+def _citar(valor: Any) -> str:
+    texto = repr(valor)
+    if len(texto) > _MAX_VALOR_EN_MENSAJE:
+        return texto[:_MAX_VALOR_EN_MENSAJE] + "…"
+    return texto
+
+
+def _ruta_de(error: "ValidationError") -> str:
+    """El argumento que falla, nombrado como lo escribiría quien llama.
+
+    `plantas[0].uso` y no `deque(['plantas', 0, 'uso'])`: el mensaje lo lee un
+    modelo que tiene que corregir la llamada siguiente.
+    """
+    partes: List[str] = []
+    for tramo in error.absolute_path:
+        if isinstance(tramo, int):
+            partes.append("[%d]" % tramo)
+        elif partes:
+            partes.append(".%s" % tramo)
+        else:
+            partes.append(str(tramo))
+    return "".join(partes) or "(los argumentos)"
+
+
+def _esperado_de(error: "ValidationError") -> str:
+    validador = error.validator
+    valor = error.validator_value
+    if validador == "type":
+        tipos = valor if isinstance(valor, list) else [valor]
+        return " o ".join(_TIPOS.get(t, str(t)) for t in tipos)
+    if validador in ("enum", "const"):
+        opciones = valor if isinstance(valor, list) else [valor]
+        return ", ".join(_citar(o) for o in opciones)
+    return _citar(valor)
+
+
+def _en_castellano(error: "ValidationError") -> str:
+    """Un incumplimiento del esquema, dicho para que se pueda corregir."""
+    plantilla = _QUE_FALLA.get(str(error.validator))
+    if plantilla is None:
+        return "«%s»: %s" % (_ruta_de(error), error.message)
+
+    if str(error.validator) in ("minLength", "maxLength"):
+        visto: Any = len(error.instance) if isinstance(error.instance, str) else error.instance
+    elif str(error.validator) in ("minItems", "maxItems"):
+        visto = len(error.instance) if isinstance(error.instance, list) else error.instance
+    else:
+        visto = _citar(error.instance)
+
+    return plantilla % {
+        "ruta": _ruta_de(error),
+        "espera": _esperado_de(error),
+        "tipo": _tipo_de(error.instance),
+        "valor": visto,
+    }
+
+
 @dataclass(frozen=True)
 class Capacidad:
     """Una herramienta declarada. Inmutable: el registro no se edita en caliente."""
@@ -80,6 +189,12 @@ class Capacidad:
     limitaciones: Tuple[str, ...] = ()        # lo que esta capacidad NO comprueba
     referencia_normativa: Optional[str] = None
 
+    #: El validador compilado del esquema. No es un campo del dataclass a
+    #: propósito: no forma parte del contrato, no viaja al manifiesto y no
+    #: entra en la huella de compatibilidad. Lo pone `__post_init__`.
+    _validador: "Draft202012Validator" = field(init=False, repr=False,
+                                               compare=False, default=None)  # type: ignore[assignment]
+
     def __post_init__(self) -> None:
         if self.naturaleza not in NATURALEZAS:
             raise ValueError(
@@ -90,6 +205,12 @@ class Capacidad:
             raise ValueError(f"{self.id}: la versión «{self.version}» no es semver")
         if self.parametros.get("type") != "object":
             raise ValueError(f"{self.id}: `parametros` tiene que ser un esquema de objeto")
+        # El esquema se compila **al declarar la capacidad**, no en la primera
+        # llamada. Un manifiesto con un esquema mal escrito tiene que reventar
+        # cuando se escribe, no seis meses después cuando el modelo por fin usa
+        # esa herramienta con el argumento raro.
+        Draft202012Validator.check_schema(self.parametros)
+        object.__setattr__(self, "_validador", Draft202012Validator(self.parametros))
 
     # --- Nombre para la API ------------------------------------------------
 
@@ -127,12 +248,25 @@ class Capacidad:
 
     def invocar(self, argumentos: Mapping[str, Any],
                 autorizaciones: Optional["_efectos.Autorizaciones"] = None) -> Dict[str, Any]:
-        """Valida los argumentos contra el esquema declarado y ejecuta.
+        """Valida los argumentos contra el esquema declarado **entero** y ejecuta.
 
-        La validación es deliberadamente pequeña —claves admitidas y
-        obligatorias presentes— y no pretende ser un validador de JSON Schema:
-        lo que tiene que impedir es que un argumento que el manifiesto no
-        declara llegue a la función como si lo hubiera declarado.
+        La validación es estructural y completa: tipos, `enum`, rangos,
+        longitudes, patrones y objetos anidados, contra el mismo JSON Schema
+        que se le enseñó al modelo. No es una comprobación de estilo, es la
+        frontera del sistema: los argumentos los rellena un modelo de lenguaje,
+        y un `"25 m"` donde el manifiesto dice `number`, o un `"nave"` donde
+        dice `enum: [vivienda, local]`, entra en la función y sale por el otro
+        lado convertido en un resultado con pinta de bueno. Rechazarlo aquí
+        cuesta cero tokens y produce un mensaje que el modelo sabe corregir en
+        la iteración siguiente; dejarlo pasar produce un número que nadie midió.
+
+        **Se devuelven todos los problemas, no el primero.** Quien corrige una
+        llamada —modelo o persona— prefiere ver los tres a la vez, y el modelo
+        además reintenta una sola vez.
+
+        `jsonschema` ya era dependencia directa de `normativa/validacion.py`, así
+        que esto no añade ninguna: la validación somera anterior era una
+        omisión, no una decisión de no depender de nada.
 
         **El portero de efectos vive aquí, y no sólo en el ejecutor de Skills**
         (tarea `TL-2`). Hasta ahora la autorización se exigía al ejecutar una
@@ -165,6 +299,17 @@ class Capacidad:
                 f"{self.id}: falta(n) el/los argumento(s) obligatorio(s) {faltan}"
             )
 
+        # Las dos comprobaciones de arriba las hace también el esquema, y se
+        # quedan: su mensaje dice qué se admite y qué falta, que es lo que se
+        # puede corregir. Lo que sigue es todo lo demás — tipos, enums, rangos,
+        # longitudes, patrones y lo anidado.
+        problemas = self._problemas_de_esquema(argumentos)
+        if problemas:
+            raise ArgumentosInvalidos(
+                "%s: %d problema(s) con los argumentos: %s"
+                % (self.id, len(problemas), "; ".join(problemas))
+            )
+
         resultado = self.funcion(**dict(argumentos))
 
         if not isinstance(resultado, dict) or "ok" not in resultado:
@@ -173,3 +318,33 @@ class Capacidad:
                 f"no {type(resultado).__name__}"
             )
         return resultado
+
+    # --- Validación estructural --------------------------------------------
+
+    def _problemas_de_esquema(self, argumentos: Mapping[str, Any]) -> List[str]:
+        """Todos los incumplimientos del esquema, en castellano y ordenados.
+
+        Ordenados por la ruta del argumento y no por el orden en que
+        `jsonschema` los encuentre: dos llamadas con los mismos argumentos malos
+        tienen que producir el mismo mensaje, o un test de esto no se puede
+        escribir.
+        """
+        errores = sorted(
+            self._validador.iter_errors(dict(argumentos)),
+            key=lambda e: (list(e.absolute_path), e.validator or ""),
+        )
+        problemas: List[str] = []
+        for error in errores:
+            # `required` y `additionalProperties` **de la raíz** ya los ha dicho
+            # `invocar` con un mensaje mejor: repetirlos aquí sería decir dos
+            # veces lo mismo con dos redacciones distintas. Los de dentro de un
+            # objeto anidado no los dice nadie más —las dos comprobaciones a
+            # mano sólo miran el primer nivel— así que ésos sí van, y son justo
+            # donde un modelo se equivoca de verdad.
+            de_la_raiz = not list(error.absolute_path)
+            if de_la_raiz and error.validator in ("required", "additionalProperties"):
+                continue
+            texto = _en_castellano(error)
+            if texto not in problemas:
+                problemas.append(texto)
+        return problemas

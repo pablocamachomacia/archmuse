@@ -6,17 +6,49 @@
 # validación 17 comprueba que declaración y disco coincidan en ambos sentidos.
 #
 # Estados:
-#   completo       la materia está transcrita y verificada para este ámbito
-#   parcial        hay reglas, pero no todas las de la materia
-#   ausente        no la tenemos (NO significa que no exista)
-#   no_competente  este nivel no regula esta materia (ver competencias.yaml)
+#   completo               la materia está transcrita y firmada para este ámbito
+#   parcial                hay reglas firmadas, pero no todas las de la materia
+#   transcrito_sin_firmar  hay reglas en disco que ningún colegiado ha firmado.
+#                          NO es cobertura: no se afirma nada sobre esa materia
+#   ausente                no la tenemos (NO significa que no exista)
+#   no_competente          este nivel no regula esta materia (ver competencias.yaml)
 #
-# ESTADO ACTUAL: el corpus está VACÍO. La Fase 0 entrega el esquema, el
-# registro geográfico, el cargador y los validadores; la transcripción de
-# reglas es la Fase 1 y está bloqueada por la tarea 18 del PRD (un arquitecto
-# colegiado tiene que validar cada cifra contra boletín). Declarar aquí una
-# cobertura que no existe sería exactamente el error que este fichero existe
-# para impedir.
+# Los dos primeros son AFIRMABLES: con ellos ArchMuse evalúa el proyecto contra
+# esas reglas. Promover una materia a `completo` o `parcial` con reglas que
+# conservan `pendiente_firma_colegiado` falla al cargar (validación 18): el
+# orden es transcribir, firmar, retirar la etiqueta de la regla, y sólo
+# entonces promover aquí.
+#
+# ESTADO ACTUAL (2026-08-19): el corpus tiene UNA regla, y sigue sin firmar.
+# Por eso `seguridad_incendio` figura como `transcrito_sin_firmar` y no como
+# `parcial`: el trabajo está hecho y en disco —negarlo con `ausente` sería
+# falso— pero nadie lo ha revisado, así que ArchMuse no afirma nada sobre
+# seguridad contra incendios y sigue bloqueando por esa materia. Es lo que la
+# cabecera de la propia regla ya decía: «hasta esa firma es un ejemplo
+# trabajado, no corpus de producción».
+#
+# Ninguna otra materia se declara. Que no aparezcan aquí NO significa que esas
+# normas no existan — significa que no las hemos transcrito, y esa distinción
+# es la razón de ser de este fichero.
+#
+# Hasta el 2026-08-19 esto decía `cobertura: []` con una regla ya en disco, y
+# la validación 17 no lo veía: su segundo recorrido vivía dentro del bucle
+# sobre lo declarado, así que un ámbito sin entrada no se miraba nunca. Con eso
+# arreglado, este fichero vuelve a ser lo que dice ser, y el curador que añada
+# la segunda regla obtendrá un fallo de carga si olvida declararla.
 
 version: 1
-cobertura: []
+cobertura:
+  - ambito: es
+    materias:
+      seguridad_incendio:
+        estado: transcrito_sin_firmar
+        # Se dice qué hay, no cuánto falta: «1 de N» exigiría saber N, y nadie
+        # ha contado las reglas del DB-SI todavía. NOR-2 es quien cierra esto.
+        detalle: >-
+          Sólo DB-SI 3, apartado 3, tabla 3.1 (longitud de los recorridos de
+          evacuación), transcrita del PDF oficial. El resto del DB-SI no está
+          transcrito. Pasa las cuatro validaciones automáticas de la ficha y
+          ninguna de las tres humanas. Cuando un colegiado la firme: retirar
+          «pendiente_firma_colegiado» de la regla y promover esto a `parcial`
+          — en ese orden, o la validación 18 lo rechaza.

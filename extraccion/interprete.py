@@ -38,7 +38,12 @@ from normativa.modelo import PATRONES, PRIORIDADES, TIPOS_REGLA
 from .errores import ErrorDeInterpretacion
 from .modelo import Segmento
 
-MODEL = "claude-sonnet-5"  # mismo modelo que analyzer/ai_analyst.py, por consistencia
+from ia import modelos
+
+# Mismo perfil que `analyzer/ai_analyst.py`, por consistencia: las dos leen un
+# documento y sacan datos estructurados de él. El modelo concreto lo decide
+# `ia/modelos.py`, para que la elección se tome en un sitio y no en seis.
+MODEL = modelos.para("interpretacion")
 
 NOMBRE_HERRAMIENTA = "registrar_interpretacion"
 

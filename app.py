@@ -111,7 +111,8 @@ from analyzer.pliego_extractor import ErrorDeExtraccionPliego, extraer_parametro
 from analyzer.pliego_verificador import verificar_cumplimiento
 from analyzer.pliego_conector import pliego_a_params
 from analyzer.sitio import (
-    ErrorDeSitio, edificios_colindantes_geometria, entorno_overpass_por_coordenadas, geocodificar_direccion,
+    ErrorDeSitio, GeocodificacionNoConfigurada, edificios_colindantes_geometria,
+    entorno_overpass_por_coordenadas, geocodificar_direccion,
     geometria_parcela_por_coordenadas, obtener_datos_parcela,
 )
 from analyzer.normativa_madrid import normativa_urbanistica_por_coordenadas
@@ -319,18 +320,29 @@ def proyecto_verificar_pliego(proyecto_id: str, pliego_id: str):
 def geocodificar():
     """"Mapa/Parcela Primero": buscador de dirección/municipio del
     MapPicker (`static/map-picker.js`). Proxy fino sobre `analyzer.sitio.
-    geocodificar_direccion` -- existe porque Nominatim no manda cabeceras
-    CORS (comprobado en vivo, ver docstring de esa función); el frontend no
-    puede llamarlo directamente. Sin caché propia: a diferencia de
-    `/api/analizar-sitio` (Catastro/Overpass, más lento y con rate limiting
-    observado en vivo), Nominatim responde rápido y cachear "cada texto que
-    alguien tecleó mientras buscaba" no aporta lo mismo que cachear por
-    parcela."""
+    geocodificar_direccion`, que desde la tarea `TL-8` llama a Mapbox y no a
+    Nominatim (cuya instancia pública prohíbe el uso comercial).
+
+    Sigue pasando por el servidor y no por el navegador para que el filtro por
+    país y el tope de resultados los ponga ArchMuse, no el frontend: es la
+    cuota de Mapbox que paga ArchMuse la que se está gastando.
+
+    Sin caché propia: a diferencia de `/api/analizar-sitio` (Catastro/Overpass,
+    mucho más lento y con rate limiting observado en vivo), el geocodificador
+    responde rápido y cachear "cada texto que alguien tecleó mientras buscaba"
+    no aporta lo mismo que cachear por parcela.
+
+    Sin `MAPBOX_TOKEN` responde **501, no 502**: no es que el servicio haya
+    fallado, es que este despliegue no tiene buscador — y el arquitecto puede
+    seguir señalando la parcela en el mapa. Un 502 le haría reintentar para
+    siempre algo que nunca va a funcionar."""
     q = (request.args.get("q") or "").strip()
     if not q:
         return jsonify(resultados=[])
     try:
         resultados = geocodificar_direccion(q)
+    except GeocodificacionNoConfigurada as exc:
+        return jsonify(error=str(exc), configurado=False), 501
     except ErrorDeSitio as exc:
         return jsonify(error=str(exc)), 502
     return jsonify(resultados=resultados)
