@@ -686,3 +686,30 @@ es el guardián de `C4` **ya en rojo a propósito** desde antes de esta sesión,
 sin tocar).
 
 Sin commit.
+
+## noche 13: `ME-2` separada de `DOC-1` (decisión de Pablo)
+
+`DOC-1` declaraba `ME-2` (persistencia sellada en Postgres, `graph_versions`
+append-only) como dependencia. Investigado a petición de Pablo antes de que
+él decidiera: verificado en el código que ni `agente/acta.py` ni
+`analyzer/acta_legible.py` ni los endpoints que devuelven un acta llaman a
+`analyzer/storage.py` -- el acta se calcula al vuelo por petición y no se
+persiste en ningún sitio hoy. Lo único ya fiable es que `Acta.sello`
+(sha256) es determinista (`F0-1`, cerrada).
+
+**Decisión de Pablo:** `DOC-1` se cierra con el criterio ya construible --
+traza correcta y legible en el momento de la respuesta, sin persistencia.
+`ME-2` sigue en el backlog como pieza propia, `P0`, sin tocar: depende de
+decidir el stack de persistencia (Postgres/FastAPI, "propuesta, no
+aprobada" en `docs/design/2026-08-18-plan-de-migracion.md`), que es una
+decisión de arquitectura aparte.
+
+`docs/AGENTE_BACKLOG.md` actualizado: `DOC-1` sin dependencia de `ME-2`,
+con nota de por qué y del estado real verificado; `ME-2` con nota de por
+qué se separó y por qué sigue sin construirse. Ningún código de `ME-2`
+tocado, como se pidió.
+
+**Pendiente:** la validación humana de `DOC-1` (voz del arquitecto
+veterano) -- la hace Pablo, no el agente.
+
+Sin commit adicional más allá del backlog.

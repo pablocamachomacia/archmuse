@@ -521,6 +521,8 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Objetivo:** cada versión sellada se escribe como fila nueva —nunca `UPDATE`— con `sello_sha256`, versión del motor y versión del corpus. **`UPDATE` y `DELETE` revocados a nivel de base de datos**, no por convención. Incluye decidir la política de retención antes de que la tabla crezca.
 - **Valor para el arquitecto:** es lo que enseña a su aseguradora dos años después. Sin esto, ArchMuse es una app que rellena tablas.
 - **Terminado cuando:** un `UPDATE` con el usuario de la aplicación falla por permisos; guardar dos veces crea dos filas y la primera queda intacta.
+- **Separada de `DOC-1` el 2026-08-19 (decisión de Pablo).** Vivía como dependencia de `DOC-1`, pero son dos promesas distintas: `DOC-1` es que la traza sea correcta y legible *en el momento de la respuesta* (eso ya funciona, sin `ME-2`, y ahí se cierra); `ME-2` es que ArchMuse **conserve** esa traza por su cuenta, sellada, para poder volver a consultarla años después sin depender de que el arquitecto la guardara él mismo. Resolverla "de rebote" dentro de DOC-1 habría colado una decisión de arquitectura grande (persistencia en Postgres) dentro del cierre de una tarea que no la necesitaba.
+- **Por qué sigue sin tocarse:** depende de qué stack de persistencia use ArchMuse — hoy `analyzer/storage.py` es SQLite; `docs/design/2026-08-18-plan-de-migracion.md` describe la misma tarea como `V1-2`, sobre Postgres, dentro de un plan marcado **"propuesta, no aprobada"** (salvo su primera pieza, `F0-1`, que sí está cerrada). Construir `ME-2` sin esa decisión de stack tomada es construir sobre una base que puede cambiar entera debajo. Se queda en el backlog, `P0`, a la espera de esa decisión — no de más trabajo de DOC-1.
 
 ### ME-3 · Conflictos de requisitos, visibles y resolubles
 `P1` · `PARCIAL` · PRD: no · dep: `ME-1` · ~1j
@@ -678,12 +680,15 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 ## 10. Generación de trabajo profesional
 
 ### DOC-1 · Acta de procedencia legible por un arquitecto
-`P0` · `PARCIAL` · PRD: **sí** · dep: `ME-2` · ~3j
+`P0` · `PARCIAL` · PRD: **sí** · dep: — · ~3j
 
 - **Objetivo:** `agente/acta.py` ya la levanta y deriva las limitaciones de los manifiestos. Lo que falta es **que se entienda**: una página, con el porqué a un clic, en el lenguaje de un arquitecto y no de un ingeniero.
 - **Valor para el arquitecto:** es el diferencial entero. Sin el acta, ArchMuse es una app que rellena una tabla, y eso lo hace cualquiera.
 - **Terminado cuando:** para tres celdas al azar de un cuadro relleno se puede seguir el acta hasta la entidad concreta del DXF, y para una celda `N/D` se lee el motivo. **El criterio de aceptación es de arquitecto, no de ingeniero:** lo valida la voz del arquitecto veterano antes de darse por buena.
 - **Riesgo A4:** es la tarea más fácil de recortar bajo presión de tiempo y la única que hace este producto distinto de una app cualquiera. No se recorta.
+- **`ME-2` retirada de aquí como dependencia (decisión de Pablo, 2026-08-19).** DOC-1 se cierra con **traza correcta y legible en el momento de la respuesta** (celda → línea del acta → entidad del DXF): eso ya funciona hoy y no necesita persistencia para pasar la validación de un arquitecto veterano. La promesa que sí necesitaría `ME-2` — que ArchMuse conserve esa traza por su cuenta y se pueda volver a consultar dos años después, sin que el arquitecto tuviera que guardarla él mismo — queda **fuera del criterio de aceptación de DOC-1**, no resuelta ni descartada: es la ficha `ME-2` la que la lleva ahora, sola. Ver su nota.
+- **Estado real hoy (verificado 2026-08-19):** ni `agente/acta.py` ni `analyzer/acta_legible.py` ni los endpoints que devuelven un acta (`/api/acta-legible`, `/api/copiloto`, `/api/memoria-superficies`) llaman a `analyzer/storage.py` — el acta se calcula al vuelo en cada petición y no se guarda en ningún sitio. `Acta.sello` (sha256) es determinista, y eso es lo único que `F0-1` ya cerró; la persistencia sigue sin construir.
+- **Pendiente para cerrar formalmente:** la validación humana del criterio de aceptación (la voz del arquitecto veterano) — la hace Pablo, no el agente.
 
 ### DOC-2 · Los entregables del vertical: DXF relleno y cuadro en PDF
 `P0` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-2`, `DOC-3` · ~1j
