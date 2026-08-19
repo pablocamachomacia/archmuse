@@ -164,6 +164,50 @@ que hoy sí se pueden comprobar mecánicamente:
 
 ---
 
+## 4 bis. ¿Se sostiene separar el contador de geométricas y normativas?
+
+Es la propuesta que quedó escrita en `D-12` como recomendación —tope duro sólo
+para las capacidades que consultan normativa, contador de ritmo para el resto— y
+la §3 de este documento da los datos que la apoyan sin llegar a decir si se
+sostiene. Aquí el veredicto, que faltaba.
+
+**Se sostiene en el diagnóstico y falla como mecanismo. No la recomiendo.**
+
+Lo que acierta: el motivo escrito de `C4` es la alucinación normativa con el
+corpus vacío, y ese riesgo vive entero en dos capacidades de trece. Un tope que
+cuenta las once restantes está midiendo algo que no es lo que dice medir.
+
+Por qué falla igualmente:
+
+1. **La clasificación la haría quien quiere añadir la capacidad.** «Ésta es
+   geométrica» es una frase que se puede decir de casi todo lo que no lea el
+   corpus, y el día que alguien tenga prisa la dirá. Un tope cuyo denominador lo
+   elige el interesado no es un tope: es un formulario. Y no es hipotético —
+   *«son capacidades geométricas, no tocan normativa»* es exactamente el
+   argumento con el que subí el techo a 14 el 2026-08-19.
+2. **Deja sin vigilar lo que sí ha crecido.** Las once geométricas quedarían con
+   un contador de ritmo que hoy da 13 de 13 y no frena nada. Lo que ha subido de
+   verdad es la superficie que mantener y el número de herramientas entre las que
+   el planificador tiene que acertar, y esa presión es igual de real venga de una
+   capacidad normativa o de una que mide un polígono.
+3. **La frontera no es tan limpia como parece.** `plano.coherencia` no consulta
+   el corpus, pero sus hallazgos se leen como si dijeran algo sobre si el plano
+   está bien. La distancia entre «esto no cuadra» y «esto no cumple» la pone hoy
+   la redacción, no la arquitectura.
+
+**Lo que sí conviene salvar de la idea:** el tope específico para las
+capacidades **normativas** es defendible, y por un motivo que el general no
+tiene — **se puede atar a algo comprobable en vez de a una etiqueta**: cuántas
+reglas hay cargadas en el corpus. Una capacidad normativa más con el corpus en
+una regla es una promesa más que ArchMuse no puede cumplir, y eso se cuenta solo.
+Es una condición que se añade, no un tope que se sustituye.
+
+Por eso la opción C de la §4 recoge el criterio del **entregable** —que se aplica
+igual a las trece y no lo elige quien añade— en lugar de la separación por
+dominio.
+
+---
+
 ## 5. Recomendación
 
 **Opción C**, y con la condición de que el punto 2 entre como test **en el mismo
