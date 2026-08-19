@@ -1,0 +1,218 @@
+{
+  "_nota": "G11 — salida congelada de cada capacidad determinista (TL-4). Generado por `python tests/test_agente_goldens.py --recapturar`. Si cambia, alguien ha cambiado el criterio de un cálculo: hay que decir quién y por qué en el mismo cambio, no recapturar y seguir.",
+  "bim.inventario_de_ifc": {
+    "avisos": [],
+    "conteo_por_clase": {
+      "IfcBuildingStorey": 1,
+      "IfcSpace": 4
+    },
+    "espacios": [
+      {
+        "motivo_sin_superficie": "",
+        "nombre": "Salón",
+        "planta": "Planta baja",
+        "superficie_m2": 20.0,
+        "uso": null
+      },
+      {
+        "motivo_sin_superficie": "",
+        "nombre": "Cocina",
+        "planta": "Planta baja",
+        "superficie_m2": 9.0,
+        "uso": null
+      },
+      {
+        "motivo_sin_superficie": "",
+        "nombre": "Dormitorio 1",
+        "planta": "Planta baja",
+        "superficie_m2": 12.0,
+        "uso": null
+      },
+      {
+        "motivo_sin_superficie": "",
+        "nombre": "Baño",
+        "planta": "Planta baja",
+        "superficie_m2": 4.0,
+        "uso": null
+      }
+    ],
+    "espacios_sin_superficie": [],
+    "esquema": "IFC4",
+    "ok": true,
+    "plantas": [
+      "Planta baja"
+    ],
+    "proyecto": "Proyecto ArchMuse",
+    "superficie_declarada_m2": 45.0
+  },
+  "normativa.reglas_aplicables": {
+    "asunciones": [
+      "El valor heredado \"plurifamiliar\" no declara tipo de intervención; se asume obra nueva.",
+      "El registro geográfico es una semilla manual sin verificar contra el fichero oficial del INE (ver normativa/geografia/es/_registro.yaml)."
+    ],
+    "aviso_de_corpus": "El corpus normativo de ArchMuse está en transcripción. Las materias listadas en `materias_sin_cobertura` NO se han comprobado: sobre ellas no se puede afirmar ni cumplimiento ni incumplimiento.",
+    "completo": false,
+    "fecha_devengo": "2026-01-01",
+    "materias_sin_cobertura": [
+      "accesibilidad",
+      "ahorro_energia",
+      "habitabilidad_dimensional",
+      "habitabilidad_programa",
+      "habitabilidad_superficies",
+      "proteccion_ruido",
+      "salubridad",
+      "seguridad_estructural",
+      "seguridad_incendio",
+      "seguridad_utilizacion",
+      "urbanismo_estetica",
+      "urbanismo_parametros"
+    ],
+    "normas": [
+      {
+        "ambito_id": "es",
+        "cita": "Real Decreto RD 314/2006, DB-SI SI 3 3 (BOE-A-2006-5515)",
+        "concept_id": "es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion",
+        "estado": "aplica_no_evaluable",
+        "materia": "seguridad_incendio",
+        "motivo": "no hay valor de parámetro para el contexto de este proyecto y la cadena de repliegue se agotó sin coger un valor por defecto",
+        "nombre": "Longitud máxima de los recorridos de evacuación hasta una salida de planta",
+        "preguntas_pendientes": [
+          "Falta el umbral de es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion para los ejes ['numero_salidas', 'condicion']"
+        ],
+        "unidad": "m",
+        "valor_parametro": null
+      }
+    ],
+    "ok": true,
+    "preguntas_pendientes": [
+      "Falta el umbral de es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion para los ejes ['numero_salidas', 'condicion']",
+      "No se puede saber si «medio_ambiente» es exigible: el proyecto no declara si le afectan ['inundabilidad', 'aeroportuario', 'costas']. Sin declararlo, ni se exige ni se descarta.",
+      "No se puede saber si «patrimonio» es exigible: el proyecto no declara si le afectan ['patrimonio']. Sin declararlo, ni se exige ni se descarta."
+    ]
+  },
+  "normativa.umbral_de_regla": {
+    "cita": "RD 314/2006, DB-SI, SI 3, apartado 3, tabla 3.1 (BOE-A-2006-5515)",
+    "concept_id": "es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion",
+    "ejes_de_la_regla": [
+      "numero_salidas",
+      "condicion"
+    ],
+    "ejes_declarados": {
+      "condicion": "general",
+      "numero_salidas": "una"
+    },
+    "nombre": "Longitud máxima de los recorridos de evacuación hasta una salida de planta",
+    "ok": true,
+    "pendiente_de_firma_colegiada": true,
+    "traza": [
+      "coincidencia exacta por ['condicion', 'numero_salidas']"
+    ],
+    "unidad": "m",
+    "valor": 25,
+    "valores_admitidos_por_eje": {
+      "condicion": [
+        "espacio_al_aire_libre_riesgo_irrelevante",
+        "general",
+        "ocupantes_que_duermen_u_hospitalario_o_escuela",
+        "salida_directa_exterior_seguro_ocupacion_max_25",
+        "uso_aparcamiento"
+      ],
+      "numero_salidas": [
+        "una",
+        "varias"
+      ]
+    }
+  },
+  "plano.cuadro_de_superficies": {
+    "error": "cuadro_no_calculable",
+    "ok": false
+  },
+  "plano.leer_dxf": {
+    "capa_de_recintos": "00 areas",
+    "escala": {
+      "decidida": true,
+      "factor": 1.0,
+      "mensaje": "El archivo declara metros y el tamaño de las estancias lo confirma.",
+      "origen": "acuerdo",
+      "unidad": "metros"
+    },
+    "geometria_no_leida": [],
+    "ok": true,
+    "recintos": [
+      {
+        "area_m2": 20.0,
+        "capa": "00 areas",
+        "etiqueta": "Salón"
+      },
+      {
+        "area_m2": 9.0,
+        "capa": "00 areas",
+        "etiqueta": "Cocina"
+      },
+      {
+        "area_m2": 12.0,
+        "capa": "00 areas",
+        "etiqueta": "Dormitorio 1"
+      },
+      {
+        "area_m2": 4.0,
+        "capa": "00 areas",
+        "etiqueta": "Baño"
+      }
+    ],
+    "recintos_sin_etiqueta": 0,
+    "superficie_util_total_m2": 45.0,
+    "viviendas_rotuladas": [
+      "VT1/1"
+    ]
+  },
+  "plano.superficie_util": {
+    "ok": true,
+    "viviendas": [
+      {
+        "estado": "KNOWN",
+        "explicacion": "Union geometrica de 4 recintos clasificados como superficie ocupable segun DB-SI Anejo SI A.",
+        "motivos": [],
+        "procedencia": [
+          "Salón -> ocupable",
+          "Cocina -> ocupable",
+          "Dormitorio 1 -> ocupable",
+          "Baño -> ocupable"
+        ],
+        "unidad": "m2",
+        "valor_m2": 45.0,
+        "vivienda": "VT1/1"
+      }
+    ],
+    "viviendas_medidas": 1,
+    "viviendas_sin_medir": 0
+  },
+  "territorial.resolver_ambito": {
+    "aviso": "El registro geográfico es una semilla manual sin verificar contra el fichero oficial del INE: que un municipio no aparezca no implica que no exista.",
+    "cadena": [
+      {
+        "id": "es",
+        "nivel": "estatal",
+        "nombre": "España"
+      },
+      {
+        "id": "es.13",
+        "nivel": "autonomico",
+        "nombre": "Comunidad de Madrid"
+      },
+      {
+        "id": "es.13.28",
+        "nivel": "provincial",
+        "nombre": "Madrid"
+      },
+      {
+        "id": "es.13.28.28079",
+        "nivel": "municipal",
+        "nombre": "Madrid"
+      }
+    ],
+    "codigo_municipio": "28079",
+    "nombre_municipio": "Madrid",
+    "ok": true
+  }
+}

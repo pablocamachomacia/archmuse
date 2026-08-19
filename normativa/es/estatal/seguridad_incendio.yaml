@@ -1,0 +1,154 @@
+# Primera entrada real del corpus normativo de ArchMuse.
+#
+# Transcrita el 2026-08-18 como piloto de la tarea V0-5 del plan de migración
+# v2, siguiendo `docs/design/2026-08-18-ficha-de-transcripcion-normativa.md`.
+# Existe para demostrar que la cadena entera funciona con contenido de verdad:
+# ficha -> YAML -> esquema -> validación -> resolución territorial.
+#
+# PROCEDENCIA DEL LITERAL: copiado del PDF oficial del Documento Básico SI que
+# el repositorio guarda en `tests/fixtures/codigotecnico/DB-SI.pdf`, no de
+# memoria ni de una fuente secundaria. Es lo que la propia ficha exige.
+#
+# PENDIENTE DE REVISIÓN POR COLEGIADO. Cumple los cuatro criterios automáticos
+# de la ficha §4; los tres humanos (fidelidad al literal, localización exacta,
+# utilidad del mensaje) están sin firmar. Hasta esa firma es un ejemplo
+# trabajado, no corpus de producción.
+version: 1
+
+norma:
+  concept_id: es.rd_314_2006.dbsi.norma
+  instance_id: es.rd_314_2006.dbsi.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 314/2006
+    titulo: >-
+      Real Decreto 314/2006, de 17 de marzo, por el que se aprueba el Código
+      Técnico de la Edificación
+    boletin: BOE-A-2006-5515
+    url_oficial: https://www.boe.es/eli/es/rd/2006/03/17/314/con
+  articulo:
+    documento_basico: DB-SI
+    seccion: SI 3
+    apartado: "3"
+    tabla: "3.1"
+  # Copiado tal cual del PDF oficial, sin resumir ni reordenar. Es lo que
+  # sostiene que la cita sea una cita: cada número del `parametro` de abajo
+  # tiene que poder encontrarse aquí.
+  literal: |-
+    3 Número de salidas y longitud de los recorridos de evacuación
+
+    1 En la tabla 3.1 se indica el número de salidas que debe haber en cada
+    caso, como mínimo, así como la longitud de los recorridos de evacuación
+    hasta ellas.
+
+    Tabla 3.1. Número de salidas de planta y longitud de los recorridos de
+    evacuación
+
+    Plantas o recintos que disponen de una única salida de planta o salida de
+    recinto respectivamente:
+      La longitud de los recorridos de evacuación hasta una salida de planta no
+      excede de 25 m, excepto en los casos que se indican a continuación:
+      - 35 m en uso Aparcamiento;
+      - 50 m si se trata de una planta, incluso de uso Aparcamiento, que tiene
+        una salida directa al espacio exterior seguro y la ocupación no excede
+        de 25 personas, o bien de un espacio al aire libre en el que el riesgo
+        de incendio sea irrelevante, por ejemplo, una cubierta de edificio, una
+        terraza, etc.
+
+    Plantas o recintos que disponen de más de una salida de planta o salida de
+    recinto respectivamente:
+      La longitud de los recorridos de evacuación hasta alguna salida de planta
+      no excede de 50 m, excepto en los casos que se indican a continuación:
+      - 35 m en zonas en las que se prevea la presencia de ocupantes que
+        duermen, o en plantas de hospitalización o de tratamiento intensivo en
+        uso Hospitalario y en plantas de escuela infantil o de enseñanza
+        primaria.
+      - 75 m en espacios al aire libre en los que el riesgo de declaración de
+        un incendio sea irrelevante, por ejemplo, una cubierta de edificio, una
+        terraza, etc.
+  vigencia:
+    vigencia_desde: 2006-03-29
+
+reglas:
+  - concept_id: es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion
+    instance_id: es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion@1
+    nombre: Longitud máxima de los recorridos de evacuación hasta una salida de planta
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    # UMBRAL_CON_EXCEPCION y no UMBRAL_SIMPLE: el valor general (25 m con una
+    # salida, 50 m con varias) tiene excepciones declaradas por uso y por
+    # características de la planta. Meterlo como umbral simple obligaría a
+    # elegir un número y perder las excepciones, que es justo donde se pierde
+    # la confianza.
+    patron: UMBRAL_CON_EXCEPCION
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    parametro:
+      # Dos ejes, porque la tabla cruza dos cosas distintas: cuántas salidas
+      # tiene la planta, y qué uso o condición particular concurre.
+      ejes: [numero_salidas, condicion]
+      unidad: m
+      # Orden de búsqueda, de más específico a más general. `ninguno` cierra la
+      # cadena: si se llega ahí no hay valor aplicable y el motor lo declara
+      # UNKNOWN con motivo, en vez de coger el número de una fila parecida.
+      #
+      # CORREGIDO el 2026-08-18. La primera transcripción escribió
+      # `[numero_salidas_y_condicion, numero_salidas, ninguno]`, y esos dos
+      # primeros niveles NO existen para el motor:
+      # `normativa/modelo.py::Parametro.resolver` compara cada nivel contra un
+      # eje suelto o contra `todos`, de modo que un nivel compuesto no casa
+      # nunca y la regla quedaba permanentemente sin valor. `todos` exige que
+      # coincidan TODOS los ejes de la fila, que es justo lo que esta tabla
+      # necesita: sus seis filas cruzan siempre los dos ejes, y ninguna está
+      # indexada solo por `numero_salidas`. El repliegue graduado que se
+      # escribió era, por tanto, ficción: no había a dónde replegarse.
+      repliegue: [todos, ninguno]
+      valores:
+        # --- Plantas o recintos con UNA ÚNICA salida ---
+        - valor: 25
+          numero_salidas: una
+          condicion: general
+        - valor: 35
+          numero_salidas: una
+          condicion: uso_aparcamiento
+        - valor: 50
+          numero_salidas: una
+          condicion: salida_directa_exterior_seguro_ocupacion_max_25
+        # --- Plantas o recintos con MÁS DE UNA salida ---
+        - valor: 50
+          numero_salidas: varias
+          condicion: general
+        - valor: 35
+          numero_salidas: varias
+          condicion: ocupantes_que_duermen_u_hospitalario_o_escuela
+        - valor: 75
+          numero_salidas: varias
+          condicion: espacio_al_aire_libre_riesgo_irrelevante
+    mensaje: >-
+      El recorrido de evacuación supera la longitud máxima admisible hasta una
+      salida de planta. Revisa el trazado o añade una salida.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 3, tabla 3.1. Con una única salida de planta el
+      recorrido no puede exceder de 25 m (35 m en uso Aparcamiento; 50 m si la
+      planta tiene salida directa a espacio exterior seguro y la ocupación no
+      excede de 25 personas). Con más de una salida el límite general es 50 m
+      (35 m donde se prevean ocupantes que duermen, en hospitalización o
+      tratamiento intensivo y en escuela infantil o enseñanza primaria; 75 m en
+      espacios al aire libre con riesgo de incendio irrelevante).
+    explicacion_cliente: >-
+      La distancia que hay que recorrer desde cualquier punto hasta la salida
+      está limitada por normativa contra incendios. Superarla obliga a
+      rediseñar el recorrido o a añadir otra salida, y es motivo de reparo en
+      visado.
+    # `pendiente_firma_colegiado` no es decorativo: es la marca que
+    # `tests/test_normativa_aplicable.py` exige a toda regla del corpus de
+    # producción mientras no la haya firmado un arquitecto colegiado. Se retira
+    # cuando se cumplan los tres criterios humanos de la ficha (fidelidad al
+    # literal, localización exacta, utilidad del mensaje), y no antes.
+    tags: [evacuacion, dbsi3, tabla_3_1, pendiente_firma_colegiado]
+    vigencia:
+      vigencia_desde: 2006-03-29

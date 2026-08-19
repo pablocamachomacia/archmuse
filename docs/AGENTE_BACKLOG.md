@@ -1,0 +1,802 @@
+# AGENTE_BACKLOG — fuente de verdad del desarrollo de ArchMuse
+
+**Fecha:** 2026-08-19 · **Estado:** propuesta, pendiente de aprobación de Pablo · **Sustituye a:** nada; *coordina* `docs/design/2026-08-18-plan-de-migracion.md` (que fija el orden del vertical) y `docs/design/2026-08-18-auditoria-arquitectura-tecnologica.md` (que fija el stack).
+
+Este documento existe para responder una sola pregunta, siempre igual: **¿cuál es la siguiente tarea que hay que hacer?** No es un catálogo de ideas ni un inventario de deseos. Está ordenado por **valor de producto y dependencia**, no por comodidad técnica ni por lo que resulta agradable programar.
+
+Dos advertencias antes de entrar, y las dos son incómodas:
+
+1. **El corpus normativo sigue vacío.** `normativa/es/` tiene una regla piloto y el motor tiene 3.777 líneas esperando contenido. Ninguna tarea de este backlog lo arregla salvo `NOR-1` y `NOR-2`, y ninguna otra lo sustituye. Un producto impecable con el corpus vacío sigue siendo un producto que **no puede verificar normativa**.
+2. **La mitad de este documento es lo que NO se hace.** Las secciones §2 y §12 son tan importantes como las tareas. Un backlog sin rechazos explícitos se convierte en una lista de deseos en tres semanas.
+
+---
+
+## 0. Cómo se usa este documento
+
+### 0.1 El bucle de trabajo autónomo
+
+```
+1. Buscar la primera tarea PENDIENTE cuyas dependencias estén todas HECHO.
+2. ¿Su cabecera dice «PRD: sí»?
+     sí  → ¿existe el PRD aprobado en docs/prd/?
+             no  → escribir SOLO el PRD y parar. No se toca código de producto.
+             sí  → seguir.
+     no  → seguir.
+3. Implementar la tarea completa. Nada de «ya que estamos».
+4. Ejecutar los tests afectados, y la suite completa si toca fichero compartido.
+5. Verificar el criterio de «Terminado cuando» literalmente, no por aproximación.
+6. Marcar HECHO con la fecha en la cabecera de la tarea. No hacer commit salvo orden expresa.
+7. Volver al paso 1.
+```
+
+**Si una tarea resulta estar bloqueada por una decisión de producto:** marcarla `BLOQUEADO`, anotar en `docs/design/decisiones-pendientes.md` cuál, y **seguir con la siguiente desbloqueada**. Nunca esperar.
+
+**Si una tarea resulta ser más grande de una jornada:** partirla aquí antes de empezarla, no durante.
+
+### 0.2 Estados y prioridades
+
+| Marca | Significado |
+|---|---|
+| `PENDIENTE` | Nadie la ha empezado |
+| `EN CURSO` | Alguien la tiene abierta |
+| `HECHO (AAAA-MM-DD)` | Su criterio de terminado se ha verificado |
+| `BLOQUEADO (motivo)` | No se puede avanzar sin una decisión o un tercero |
+| `PARCIAL` | Existe el código, falta el criterio de terminado |
+
+| Prioridad | Significado |
+|---|---|
+| `P0` | Está en el camino crítico del primer vertical vendible. Nada la adelanta |
+| `P1` | Hace falta para cobrar, o cierra un riesgo legal/de seguridad |
+| `P2` | Ensancha el producto una vez el vertical esté en pie |
+| `P3` | Real, justificado, y deliberadamente tarde |
+| `APLAZADO` | Decidido que no ahora, con motivo escrito |
+
+### 0.3 Lo que ya existe (base de partida, medida el 2026-08-19)
+
+| Pieza | Estado real |
+|---|---|
+| `agente/` (2.900 líneas + 2.000 de test) | Bucle propio, 4 capacidades, 3 Skills, memoria, ejecutor con reanudación, acta, verificación. **Funciona, y no está enchufado a ningún producto** |
+| `modelo/` (2.199) | Grafo con procedencia epistémica. Portante solo dentro de `agente/` |
+| `normativa/` (3.777) | Motor completo · **una** regla real transcrita |
+| `analyzer/` (22.031) | El producto de hoy: DXF → análisis → 38 reglas. Camino viejo, intacto |
+| `bim/` (264) | Lectura de IFC, con ida y vuelta probada |
+| `tests/` (24.584 + agente) | 494 verdes. Mayor que el producto. El activo principal |
+| Autenticación, Postgres, cola, despliegue | **No existen** |
+
+---
+
+## 1. Objetivos de producto
+
+Un objetivo de producto es **una frase que un arquitecto puede escribir y un resultado que puede usar en su trabajo**. Si no se puede formular así, no es un objetivo: es una funcionalidad buscando justificación.
+
+Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la mitad del trabajo de este documento.**
+
+### OP-1 · «Rellena el cuadro de superficies de este DXF y dime qué no has podido calcular» — **MVP**
+
+- **Devuelve:** el DXF del arquitecto relleno (su original intacto, byte a byte), el cuadro en PDF, y el acta que dice celda a celda de qué entidad salió cada número y por qué las demás quedaron `N/D`.
+- **Por qué éste primero:** es el único entregable grande que **no depende del corpus vacío**, se apoya en código ya probado contra un plano real de cliente, devuelve un fichero de trabajo en vez de una pantalla, y ejercita el ciclo agéntico completo. La elección viene del plan de migración §2 y no se reabre.
+- **Tareas:** `TL-1`, `TL-9`, `TL-2`, `SK-1`, `AG-1`, `AG-2`, `AG-4`, `AG-5`, `AG-6`, `DOC-1`, `DOC-2`, `DOC-3`, `ME-2`, `SK-4`, `INF-2`, `INF-3`, `INF-5`, `INF-7`.
+
+### OP-2 · «Guarda lo que ha pedido el cliente, y avísame cuando algo lo contradiga» — **MVP (barato y diferencial)**
+
+- **Devuelve:** los requisitos del proyecto declarados con quién los dijo y cuándo, los conflictos entre versiones sin resolver en silencio, y la advertencia cuando una decisión posterior los contradice.
+- **Por qué está en el MVP pese a ser pequeño:** el sustrato ya existe (`agente/memoria.py`, `agente/skills/programa.py`), no necesita corpus, no necesita LLM para ser correcto, y es lo que convierte «cancelar la suscripción» en «desmontar un proceso». Es retención, que es lo que `MOAT_ANALYSIS.md` dice que falta.
+- **Tareas:** `ME-1`, `ME-3`, `ME-4`, `SK-3`.
+
+### OP-3 · «¿Qué normativa se le aplica a esta parcela y qué exige?» — **MVP degradado, honesto**
+
+- **Devuelve:** el ámbito territorial resuelto (estatal + autonómico + municipal), las reglas aplicables con su cita literal al BOE, y **la lista explícita de lo que no hay en el corpus**.
+- **El veredicto incómodo:** hoy esto responde con una regla. Entra en el MVP **solo** si la respuesta declara su propia cobertura; si no la declara, es peor que no tenerlo, porque un arquitecto asume que el silencio significa «cumple».
+- **Tareas:** `NOR-1`, `NOR-2`, `NOR-3`, `NOR-5`, `NOR-6`, `SK-2`, `TL-8`.
+
+### OP-4 · «Revisa esta planta contra el CTE y dame los hallazgos» — **V2**
+
+- **Devuelve:** los incumplimientos con su regla, su umbral, su cita y su acta; y los que no ha podido evaluar, con el motivo.
+- **Por qué no en el MVP:** exige desatar `evaluator.classify_problems` (382 líneas de `if/elif`) y envolver 38 reglas, y exige corpus. Son ~7 jornadas de refactor que no acercan ni un día el primer entregable. Es el **segundo** vertical, y su primera tarea (`TL-5`) es la que más riesgo tiene de no hacerse nunca.
+- **Tareas:** `TL-5`, `TL-6`, `SK-2`, `SK-6`, `NOR-2`, `NOR-4`, `NOR-7`, `AG-8`.
+
+### OP-5 · «Analiza este modelo BIM y contrástalo con lo que me han dicho» — **V2**
+
+- **Devuelve:** el inventario de espacios, superficies y plantas del IFC, y las discrepancias contra lo declarado por el cliente y contra el DXF.
+- **El veredicto:** la lectura ya funciona (`bim/lector_ifc.py`). Lo que falta no es leer IFC: es **tener con qué contrastarlo**, y eso es el grafo portante y el corpus. Adelantarlo produce un visor de propiedades, que ya tienen todos.
+- **Tareas:** `BIM-1`, `BIM-2`, `BIM-3`, `BIM-4`.
+
+### OP-6 · «Genera la memoria justificativa del cumplimiento del CTE» — **APLAZADO, y es el que más se va a pedir**
+
+- **Devuelve:** el documento redactado con las cifras del proyecto y los artículos aplicables.
+- **Por qué se aplaza pese a la demanda:** es el entregable con **peor relación valor/riesgo del catálogo** mientras el corpus esté vacío. Una memoria justificativa mal citada no es un bug: es responsabilidad civil del arquitecto que la firma. Y es el artefacto más cercano a la autoría, o sea el que más tensiona C3. Se hace **después** del corpus, no antes, y con el acta pegada.
+- **Tareas:** `DOC-5`, y no empieza sin `NOR-2` cerrada.
+
+### OP-7 · «Prepara la documentación de entrega» — **V2**
+
+- **Devuelve:** el paquete de planos, cuadros y fichas coherentes entre sí y sellados juntos.
+- **El veredicto:** los exportadores ya existen (`dossier_pdf`, `pdf_report`, `dxf_export`, `ifc_export`). Lo que no existe es la **coherencia sellada** entre ellos, que es lo único que aporta valor sobre exportar a mano. Sin `ME-2` esto es un botón de «descargar todo».
+- **Tareas:** `DOC-2`, `DOC-5`, `ME-2`, `INF-3`.
+
+### OP-8 · «Modifica el proyecto: cambia esto y recalcula lo que dependa» — **V2**
+
+- **Devuelve:** el fichero modificado, la lista de lo que cambió como consecuencia, y el original intacto.
+- **Por qué no en el MVP:** escribir en el fichero de un cliente es el efecto más caro de equivocarse del producto. El patrón `io` (`TL-2`) tiene que llevar meses funcionando en un solo tipo de escritura antes de generalizarlo.
+- **Tareas:** `TL-2`, `SEG-1`, `CAD-2`.
+
+### OP-9 · «Trabaja desde mi Revit / mi AutoCAD, sin salir» — **APLAZADO (V3), pero se prepara desde hoy**
+
+- **Devuelve:** las mismas capacidades invocadas desde el entorno donde el arquitecto ya está.
+- **El veredicto:** es donde el producto se gana la distribución, y por eso **la arquitectura no puede impedirlo** — pero construir un plugin antes de tener capacidades que merezcan invocarse es hacer el envoltorio de un regalo vacío. Lo que sí se hace ahora es la **prueba** de que se podrá (`CAD-1`), que cuesta media jornada.
+- **Tareas:** `CAD-1` (HECHO el 2026-08-19: `python -m agente.invocar`), `CAD-2`, `CAD-3` (aplazadas), y `TL-7` (servidor MCP), que es la misma idea por otra puerta: ArchMuse dentro de Claude Desktop o del editor del arquitecto, con el mismo manifiesto y sin exponer capacidades `io` sin confirmación.
+
+### OP-10 · «Resume estos correos y saca de ahí los requisitos» — **RECORTADO, no rechazado**
+
+- **Devuelve:** *solo* requisitos de proyecto extraídos de un texto pegado, cada uno como una declaración con su fuente, para que el arquitecto los apruebe uno a uno.
+- **El veredicto de CTO, sin adornos:** un resumidor de correos genérico **no tiene foso ninguno** — lo hace mejor y gratis el cliente de correo del arquitecto. Lo que sí tiene valor es la **puerta de entrada a la memoria de proyecto** (OP-2): convertir prosa en requisitos trazables. Se implementa como eso y nada más. Integración con bandejas de correo: **no**.
+- **Tareas:** `SK-3`, `ME-3`.
+
+### OP-11 · «Ayúdame a decidir esto del diseño» — **NO SE HACE en este horizonte**
+
+- **El veredicto:** `MOAT_ANALYSIS.md` y `DESTROY_ARCHMUSE.md` coinciden en que la generación de plantas y el asesoramiento de diseño demuestran bien y **no venden**; son también lo más caro por token y lo que más tensiona la frontera de autoría. El generador actual se **congela**: no recibe trabajo, no se amplía, no se borra.
+- **Tareas:** ninguna. Se registra aquí para que nadie lo redescubra como idea nueva dentro de seis meses.
+
+### OP-12 · «Acuérdate de todo esto dentro de ocho meses» — **transversal, no es una funcionalidad**
+
+- **Devuelve:** el proyecto entero reconstruible dos años después: qué se dijo, con qué dato, con qué regla en qué versión, y quién lo decidió.
+- **El veredicto:** esto no es un objetivo que se implemente; es una **propiedad** que las tareas `ME-2`, `SEG-5` y `NOR-4` o bien conservan o bien destruyen. Está aquí para que se pueda comprobar que ninguna tarea la rompe.
+- **Tareas:** `ME-2`, `SEG-5`, `NOR-4`. *(La retención y la purga son criterio de `ME-2`, no tarea aparte.)*
+
+**Resumen: 12 objetivos. 3 en el MVP (OP-1, OP-2, OP-3), 4 en V2, 2 aplazados, 1 rechazado, 1 transversal, 1 recortado.**
+
+---
+
+## 2. Lo que este backlog decide NO hacer
+
+| Idea | Veredicto | Motivo |
+|---|---|---|
+| Framework de agentes (LangChain, LangGraph, OpenAI Agents SDK) | **No** | Auditoría §5. El orquestador propio ya existe, funciona y su modelo de estado *es* el de `modelo/` |
+| RAG sobre los PDF del CTE | **No** | Auditoría §9. El modo de fallo es una cita plausible y equivocada, y eso termina la relación comercial |
+| Memoria conversacional inyectada al LLM | **No** | Alucinación con apariencia de historia, y fuga entre proyectos de clientes distintos |
+| Multi-agente, críticos enfrentados, debate | **No** | Multiplica coste y latencia y no mejora lo único que importa: que las cifras sean correctas |
+| Edición colaborativa en tiempo real | **No** | Un trimestre, nadie la ha pedido, y es casi lo contrario del registro auditable que se vende |
+| Reescribir el visor 3D en React Three Fiber | **No** | La reescritura de mayor riesgo y menor valor disponible en el repositorio |
+| Cientos de capacidades | **No** | C4: 8-12 auditadas, no un catálogo. El registro tiene 4; al cerrar el MVP debe tener entre 8 y 12, **no más** |
+| Ingesta de imágenes / planos escaneados | **Aplazado** | El mercado objetivo entrega DXF |
+| Que el agente se instale Skills solo | **Prohibido por diseño** | Un sistema que se amplía a sí mismo pierde la propiedad de que alguien pueda decir qué sabe hacer |
+
+---
+
+## 3. Experiencia y cerebro del agente
+
+### AG-1 · Planificador tipado: una llamada, un DAG validado
+`P0` · `HECHO (2026-08-19)` · PRD: **APROBADO por Pablo el 2026-08-19** — `docs/prd/2026-08-19-planificador-tipado.md` · dep: `TL-3` (HECHO), `ME-5` (HECHO) · ~2j
+
+> **Condición de la aprobación:** mantenerlo **deliberadamente pequeño**. Ni framework de agentes, ni LangGraph, ni otro orquestador. Produce un DAG y nada más.
+
+- **Objetivo:** una sola llamada a Claude con `tool_choice` forzado contra un JSON Schema cuya salida es un DAG de `(capacidad_id, versión, argumentos)`. El ejecutor (`agente/ejecucion.py`) **ya espera un `Plan` validado**; hoy lo construye el bucle paso a paso. Esta tarea es quien lo produce de una vez.
+- **Valor para el arquitecto:** puede **ver lo que ArchMuse va a hacer antes de que lo haga**, y pararlo. Un bucle no se puede enseñar; un plan sí.
+- **Terminado cuando:** la misma intención sobre el mismo grafo produce un plan equivalente dos veces seguidas, y `cache_read_input_tokens > 0` en la segunda.
+- **Cómo quedó (2026-08-19):** `agente/planificador.py`. **Una** llamada con `tool_choice` forzado sobre una herramienta de esquema fijo; el `Plan` que sale lo ejecuta `Ejecutor` **sin adaptación**. Rechaza sin ejecutar nada —Skill inexistente, ciclo, dependencia rota, techo de pasos, paso sin skill— y el plan **vacío es una respuesta, no un fallo**: sale con motivo y queda anotado como carencia, que es cómo se mide lo que falta por uso real. `a_texto()` lo enseña **con los efectos que habrá que autorizar**: enterarse de que algo escribe un fichero después no sirve de nada. Prefijo de manifiestos delante y marcado para caché, estado detrás, y los valores del proyecto **no viajan**.
+- **La condición de la aprobación tiene su propio test:** `test_el_planificador_no_ejecuta_nada` comprueba por AST que no se importe ningún framework y que este módulo no ejecute, no observe ni invoque — un planificador que empieza a hacer eso *es* un framework de agentes escrito a plazos. Y `test_solo_hay_un_punto_de_llamada_al_modelo` fija que la llamada sea una.
+- **Se ve funcionando:** `python scripts/demo_agente.py`, secciones 4 y 5 — con el modelo guionizado, así que no cuesta nada.
+
+### AG-2 · Validador determinista del plan, con la pregunta como salida
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: `AG-1` · ~1,5j
+
+- **Objetivo:** validar el plan **sin gastar un token ni tocar un fichero**: ¿existe la capacidad?, ¿la versión?, ¿requisitos satisfechos y `KNOWN`?, ¿DAG acíclico?, ¿cabe en presupuesto? Ya existe a nivel de Skill (`agente/skill.py` devuelve la pregunta concreta); falta a nivel de plan.
+- **Valor para el arquitecto:** convierte el peor momento del producto —«no puedo hacer esto»— en el mejor: **una pregunta concreta que él sabe responder**.
+- **Terminado cuando:** cuatro planes inválidos (capacidad inexistente, ciclo, requisito sin cumplir, fuera de presupuesto) se rechazan con motivos distintos y **cero tokens**; el tercero produce la pregunta que lo desbloquea.
+- **Cómo quedó (2026-08-19):** `planificador.revisar()`. Distingue tres cosas que se confunden con facilidad: **motivos** (el plan está mal y no se arregla contestando nada), **preguntas** (el plan está bien y le faltan datos del proyecto — la salida es la pregunta concreta, no un «faltan datos» que nadie sabe contestar) y **efectos a autorizar** (lo que va a pasarle al ordenador del arquitecto, enseñado antes). Los cuatro rechazos dan **motivos distintos**, con un test que lo exige: «no se puede ejecutar» sin decir cuál de las cuatro cosas falla obliga a depurar a ojo. Vive aparte del planificador porque un plan puede llegar de tres sitios —del modelo, de un fichero guardado hace meses, o de una pantalla— y los tres tienen que pasar por el mismo portero sin pagar una llamada.
+- **Lo que falta y es de `AG-3`:** el presupuesto. Sumar el coste estimado del plan exige la tabla medida por perfil de `SEG-4`, y ésa es la siguiente tarea de esta rama.
+
+### AG-3 · Presupuesto por ejecución y escalonado de modelo medido
+`P1` · `PENDIENTE` · PRD: no · dep: `AG-2`, `SEG-4` · ~1j
+
+- **Objetivo:** el validador suma el coste estimado del plan y rechaza lo que supera el techo del plan del cliente. Y con las cifras de `SEG-4` en la mano, decidir el modelo de cada perfil de `ia/modelos.py` **midiendo**, no por intuición (D-5).
+- **Valor para el arquitecto:** no descubre el coste en la factura, y no paga Opus por una clasificación.
+- **Terminado cuando:** un plan que excede el presupuesto se rechaza antes de la primera llamada, y existe una tabla medida de coste por perfil.
+
+### AG-4 · Un ciclo de replanificación, y el segundo fallo es una pregunta
+`P1` · `PENDIENTE` · PRD: no · dep: `AG-2` · ~1j
+
+- **Objetivo:** si tras ejecutar falta un dato, se replanifica **una vez**. Si tras replanificar sigue faltando, se para y se pregunta. Nunca un tercer intento.
+- **Valor para el arquitecto:** el sistema no se come su presupuesto dando vueltas, y no le entrega media respuesta como si fuera entera.
+- **Terminado cuando:** un escenario con un dato ausente replanifica una vez y termina en pregunta, con el coste acotado y registrado.
+
+### AG-5 · Progreso por paso, en directo
+`P1` · `PENDIENTE` · PRD: **sí** · dep: `INF-4`, `INF-5` · ~1,5j
+
+- **Objetivo:** exponer el avance de una ejecución (paso, capacidad, estado, duración) como flujo de eventos, leyendo la bitácora que ya se escribe.
+- **Valor para el arquitecto:** un trabajo de diez minutos deja de ser una rueda girando. Ve qué se está comprobando ahora mismo.
+- **Terminado cuando:** una ejecución de cinco pasos emite un evento por paso y la pantalla los muestra sin recargar.
+
+### AG-6 · Conversación sobre un trabajo ya hecho
+`P1` · `PENDIENTE` · PRD: **sí** · dep: `DOC-1` · ~1,5j
+
+- **Objetivo:** que el arquitecto pueda preguntar «¿por qué esta celda quedó vacía?» sobre una ejecución terminada, y la respuesta salga de la bitácora y del acta — **nunca** de una nueva inferencia del modelo.
+- **Valor para el arquitecto:** es C2 hecho producto: el trabajo hecho, con el porqué a un clic.
+- **Terminado cuando:** una pregunta sobre una celda `N/D` se responde citando el paso concreto, y una pregunta cuya respuesta no está en la bitácora se contesta «no lo sé», no se infiere.
+
+### AG-7 · Propuesta de Skill que falta, con umbral
+`P2` · `PARCIAL` · PRD: no · dep: D-8 decidida · ~1j
+
+- **Objetivo:** `agente/carencias.py` ya registra cuándo un objetivo no encuentra Skill. Falta el umbral: cuántas veces tiene que repetirse antes de proponérselo a Pablo, y con qué forma.
+- **Valor para el arquitecto:** el producto aprende **qué le falta** por uso real, no por intuición del que lo programa.
+- **Terminado cuando:** una carencia repetida N veces genera una propuesta con su borrador de manifiesto, y **ArchMuse sigue sin poder instalarla solo** (el test que lo vigila no se toca).
+- **Bloqueada por:** D-8 en `decisiones-pendientes.md`.
+
+### AG-8 · Ejecución en paralelo de pasos independientes
+`P2` · `PENDIENTE` · PRD: no · dep: `AG-1` · ~1j
+
+- **Objetivo:** ejecutar en paralelo los nodos del DAG que no dependen entre sí, manteniendo el determinismo del resultado y el orden de la bitácora.
+- **Valor para el arquitecto:** un análisis de una planta baja de diez minutos pasa a tres.
+- **Terminado cuando:** un plan con cuatro ramas independientes tarda menos que en serie y produce **el mismo sello** que en serie.
+
+---
+
+## 4. Skills
+
+### SK-1 · Skill del cuadro de superficies
+`P0` · `HECHO (2026-08-19)` · PRD: **APROBADO por Pablo el 2026-08-19** — `docs/prd/2026-08-19-skill-del-cuadro-de-superficies.md` · dep: `TL-1` (HECHO), `TL-9` (HECHO), `TL-2` · ~2j
+
+> **Condición de la aprobación:** la verificación de la suma es **informativa, no bloqueante**, hasta tener al menos **10 proyectos reales**.
+
+- **Objetivo:** el procedimiento profesional completo del vertical, declarado como Skill: qué necesita, qué capacidades usa, qué produce, qué efectos tiene y **qué verificaciones deterministas debe pasar** antes de darse por buena.
+- **Valor para el arquitecto:** el trabajo que hoy le lleva media tarde de contar polilíneas, con la traza de cada número.
+- **Terminado cuando:** ejecutada sobre el DXF real de `ARCHMUSE_DXF_V2S` produce el cuadro relleno; ejecutada sin escala definida **pregunta** en vez de suponer.
+- **Cómo quedó (2026-08-19):** `agente/skills/superficies.py`, `superficies.cuadro_de_vivienda@1.0.0`. El orden del procedimiento es lo que aporta: **primero** se comprueba la unidad del plano (un DXF en milímetros leído como metros cumple todos los mínimos y sale impecable), luego se mide la superficie útil **por su propio camino** para poder cruzarla contra la suma, y sólo entonces se calcula y se escribe. La verificación de la suma es **informativa y no bloqueante**, condición textual de Pablo, con su propio test para que cambiarla sea deliberado. `ruta_destino` es obligatoria: mirar sin tocar ya lo hace la capacidad `plano.cuadro_de_superficies`, y pedir autorización para no escribir enseñaría al arquitecto a concederlas sin leerlas. Cortarse a mitad **no se presenta como fallo del sistema**: es una respuesta con su pregunta.
+- **Entregable demostrable:** `python scripts/cuadro_de_superficies.py mi_plano.dxf` — enseña qué va a hacer, lo hace, imprime el acta y dice qué no ha podido calcular. Sin clave de API y sin red.
+
+### SK-2 · Skill de comprobación de una planta
+`P2` · `PENDIENTE` · PRD: **sí** · dep: `TL-5`, `NOR-2` · ~2j
+
+- **Objetivo:** el procedimiento que un arquitecto sigue al revisar una planta, con las reglas agrupadas por Documento Básico y la cobertura declarada por adelantado.
+- **Valor para el arquitecto:** una revisión con criterio de arquitecto, no una lista de 38 comprobaciones sueltas.
+- **Terminado cuando:** produce hallazgos agrupados por DB, cada uno con cita, y una sección de «no evaluado» derivada de las limitaciones, no redactada.
+
+### SK-3 · Requisitos del cliente desde texto libre
+`P1` · `PARCIAL` · PRD: no · dep: `ME-1` · ~1j
+
+- **Objetivo:** `agente/skills/programa.py` ya registra requisitos declarados. Falta la entrada real: pegar un correo o un acta de reunión y obtener **requisitos candidatos con su fragmento literal de origen**, que el arquitecto aprueba uno a uno.
+- **Valor para el arquitecto:** deja de perder en un hilo de correo lo que el cliente pidió en marzo.
+- **Terminado cuando:** un texto de reunión produce candidatos con su cita textual, ninguno entra en la memoria sin aprobación explícita, y lo aprobado queda con su origen.
+
+### SK-4 · Catálogo de Skills visible y versionado
+`P1` · `PENDIENTE` · PRD: no · dep: `INF-7` · ~1j
+
+- **Objetivo:** que el arquitecto pueda ver qué sabe hacer ArchMuse, con la versión de cada procedimiento, qué necesita para ejecutarlo y qué **no** comprueba.
+- **Valor para el arquitecto:** sabe qué está comprando y qué no. Es lo contrario de la caja negra que sobrevende.
+- **Terminado cuando:** el catálogo se genera del registro (no de una lista escrita a mano) y una Skill nueva aparece sin tocar la pantalla.
+
+### SK-5 · Validación colegiada del procedimiento de cada Skill
+`P1` · `PENDIENTE` · PRD: no · dep: D-7 decidida · ~0,5j por Skill
+
+- **Objetivo:** el proceso —no el código— por el que un arquitecto colegiado revisa y firma que el procedimiento de una Skill es el que se sigue en un estudio de verdad. Con registro de quién firmó qué versión.
+- **Valor para el arquitecto:** la diferencia entre «un programador creyó que se hace así» y «un colegiado dice que se hace así».
+- **Terminado cuando:** las tres Skills existentes tienen firma y versión firmada, y una Skill sin firmar sale marcada como tal en el catálogo.
+- **Bloqueada por:** D-7.
+
+### SK-6 · Composición: una Skill que invoca otra
+`P2` · `PENDIENTE` · PRD: no · dep: `SK-1`, `SK-2` · ~1j
+
+- **Objetivo:** que una Skill pueda apoyarse en otra sin duplicar su procedimiento, manteniendo la declaración de efectos y verificaciones de ambas.
+- **Valor para el arquitecto:** una revisión completa reutiliza el mismo procedimiento de evacuación que la revisión suelta, así que no puede dar dos resultados distintos.
+- **Terminado cuando:** una Skill compuesta acumula los efectos y las limitaciones de las que invoca, y un test demuestra que no puede saltarse las verificaciones de la interna.
+
+### SK-7 · Skill de redacción de memoria justificativa
+`P3` · `PENDIENTE` · PRD: **sí** · dep: `NOR-2`, `DOC-4` · ~3j
+
+- **Objetivo:** el procedimiento de redacción, con la regla dura de que **toda cifra viene de un atributo ya calculado** y toda cita del corpus.
+- **Valor para el arquitecto:** el documento más tedioso del proyecto, con su acta.
+- **Terminado cuando:** ninguna cifra del texto puede rastrearse a algo que no esté en el grafo, verificado por el detector de cifras sin respaldo, y el documento sale marcado como borrador.
+- **No empieza antes de `NOR-2`.** Ver OP-6.
+
+---
+
+## 5. Tools (capacidades)
+
+### TL-1 · Capacidades de geometría que el cuadro necesita
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: — · ~1,5j
+
+- **Objetivo:** envolver como capacidades **solo** lo que el vertical usa de `parser.py`, `escala.py`, `superficie_util.py` y `cuadro_superficies.py`. Nada más de `analyzer/`.
+- **Valor para el arquitecto:** es lo que permite que el agente calcule superficies de verdad en vez de repetir lo que le digan.
+- **Terminado cuando:** el registro tiene entre 6 y 8 capacidades, **no más**, y cada una devuelve resultado estructurado con `ok` y su golden.
+- **Cómo quedó (2026-08-19):** `agente/herramientas/plano.py` con tres capacidades gruesas — `plano.leer_dxf`, `plano.cuadro_de_superficies`, `plano.superficie_util` — sobre `parser`, `escala`, `cuadro_superficies_export` y `superficie_util`. Registro: **7** capacidades, dentro del techo de C4. Ninguna escribe nada (la escritura es `TL-2`), y el test comprueba el sha256 del DXF de entrada. Lo que más importa: un plano cuya unidad no se puede deducir devuelve `ok: false` **con la pregunta**, y confirmar la escala desbloquea.
+
+### TL-2 · Capacidad `io` de escritura de DXF, con el patrón de protección
+`P0` · `HECHO (2026-08-19)` · PRD: **APROBADO por Pablo el 2026-08-19** — `docs/prd/2026-08-19-escritura-protegida-del-dxf-del-cliente.md` · dep: `TL-1` (HECHO) · ~2j
+
+> **Condiciones de la aprobación:** original **siempre intacto y verificado por SHA-256**; efecto **explícitamente autorizado**; **`N/D` nunca convertido en número**.
+
+- **Objetivo:** elevar a política lo que `tests/test_cuadro_superficies_export.py` ya hace: sha256 del original antes y después, `audit()` de la copia, ningún otro fichero escrito, **nunca escribir sobre el original**, ninguna celda bloqueada con una cifra inventada.
+- **Valor para el arquitecto:** su plano no se toca. Esa frase, verificada byte a byte, es lo que permite que confíe la primera vez.
+- **Terminado cuando:** el DXF de cliente sale relleno y el original conserva su sha256, verificado en test.
+- **Cómo quedó (2026-08-19):** `plano.escribir_cuadro`, la **primera y única capacidad `io`** del registro. Las tres condiciones de la aprobación son tests: el sello del original se recalcula **también cuando la escritura falla a mitad** (que es donde de verdad podría tocarse algo) y un cambio convierte el resultado en un fallo grave; el portero de efectos se ha bajado de `Ejecutor` a **`Capacidad.invocar`**, de modo que cubre el CLI, MCP y un futuro plugin y no sólo las Skills; y las celdas sin resolver salen `N/D` con su motivo. `_destino_seguro` rechaza el origen por cuatro vías (misma cadena, ruta con rodeo, capitalización de Windows, `samefile`) y **se niega a sobrescribir un fichero existente**, que podría ser un entregable ya revisado. Invariante nuevo: **una Skill no puede declarar una capacidad cuyo efecto no declara** — el manifiesto no puede mentir por omisión sobre lo que le va a pasar al ordenador del arquitecto.
+
+### TL-3 · Un manifiesto, tres consumidores generados
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: — · ~2j
+
+- **Objetivo:** de una sola declaración de `Capacidad` salen (a) el JSON Schema de herramienta para Anthropic, (b) la operación OpenAPI, (c) la firma de invocación programática.
+- **Valor para el arquitecto:** indirecto pero decisivo — es lo que hace que ArchMuse pueda vivir dentro de su Revit algún día sin reescribirse.
+- **Terminado cuando:** los tres artefactos de una capacidad son coherentes en nombres de parámetro, y añadir una capacidad no obliga a escribir su forma tres veces. **Es la verificación mecánica de C1.**
+- **Cómo quedó (2026-08-19):** `agente/manifiesto.py` genera los tres del mismo `dataclass`; `comprobar_registro()` los compara entre sí **y contra la función Python real**, y `tests/test_agente_manifiesto.py::test_TODAS_las_capacidades_del_registro_son_coherentes` recorre el registro, de modo que la garantía cubre también las capacidades que aún no existen. El defecto que cierra: declarar `municipio` en el esquema sobre una función que espera `nombre_municipio` — hoy eso reventaba con `TypeError` delante de un cliente y nada lo detectaba antes.
+
+### TL-4 · Golden obligatorio por capacidad determinista
+`P1` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-1` · ~0,5j
+
+- **Objetivo:** test de política que recorra el registro y **falle** si una capacidad de naturaleza `determinista` no tiene su golden.
+- **Valor para el arquitecto:** la garantía de que la misma entrada da la misma salida el año que viene.
+- **Terminado cuando:** añadir una capacidad determinista sin golden pone la suite en rojo.
+- **Cómo quedó (2026-08-19):** `tests/test_agente_goldens.py` recorre el registro y exige caso congelado en `tests/fixtures/golden/G11_capacidades.json` para toda capacidad `determinista` — 7 casos hoy. Compara el resultado entero, no campos elegidos, y las claves excluidas van declaradas con motivo por caso (GUID de IFC, ruta temporal). `python tests/test_agente_goldens.py --recapturar` regenera. **Limitación anotada:** el caso de `plano.cuadro_de_superficies` congela la negativa (DXF sin `ACAD_TABLE`); el camino bueno sólo se prueba contra el `v2s.dxf` real cuando `ARCHMUSE_DXF_V2S` está definida.
+
+### TL-5 · Desatar `classify_problems` y envolver las 38 reglas
+`P2` · `PENDIENTE` · PRD: no · dep: `TL-3` · ~4j
+
+- **Objetivo:** invertir las 382 líneas de `if/elif` de `evaluator.classify_problems` para que cada regla declare su propia traducción a hallazgo, y agrupar las 38 `evaluate_*` en 4-6 capacidades **gruesas** (no 38 herramientas finas: un planificador que elige entre 38 opciones casi idénticas se degrada).
+- **Valor para el arquitecto:** es lo que abre OP-4, la revisión completa.
+- **Terminado cuando:** ninguna regla necesita una rama en `classify_problems`, y los goldens existentes siguen pasando sin recapturar.
+- **Riesgo registrado:** es el aplazamiento más peligroso del plan (riesgo A3). Si el segundo vertical no arranca, esto no se hace nunca y el producto se queda con una capacidad.
+
+### TL-6 · Caché determinista por (versión de capacidad, sello del grafo)
+`P2` · `PENDIENTE` · PRD: no · dep: `ME-2`, `TL-4` · ~1j
+
+- **Objetivo:** las capacidades deterministas son reproducibles por definición: un acierto de caché es gratis **y correcto**.
+- **Valor para el arquitecto:** reanálisis instantáneo tras un cambio pequeño, y factura menor.
+- **Terminado cuando:** reejecutar un plan sobre un grafo sin cambios no ejecuta ninguna capacidad determinista y da el mismo sello.
+
+### TL-7 · Servidor MCP del registro de capacidades
+`P2` · `PENDIENTE` · PRD: **sí** · dep: `TL-3` · ~1,5j
+
+- **Objetivo:** exponer el registro como servidor MCP — el cuarto consumidor del mismo manifiesto. **Restricción no negociable:** no expone capacidades con efecto `io` sin confirmación explícita.
+- **Valor para el arquitecto:** ArchMuse entra en Claude Desktop y en su editor. Es canal de distribución, no funcionalidad.
+- **Terminado cuando:** una capacidad se ejecuta desde fuera de la web sin escribir código nuevo, y un intento de invocar una capacidad `io` sin confirmación es rechazado.
+
+### TL-9 · Contestar las preguntas del cuadro, sin escribir nada
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-1` · ~0,5j
+
+**Añadida el 2026-08-19, durante `TL-1`.** Carencia encontrada al usar la capacidad recién hecha: `plano.cuadro_de_superficies` sabía decir qué no podía calcular y **no tenía forma de recibir la respuesta**. Los datos que faltan —el espesor de muro, cuántas viviendas de este tipo hay, qué pieza del plano es cada espacio exterior— no están en el dibujo: están en la cabeza del arquitecto. Una capacidad que sólo sabe decir «no puedo» deja el cuadro a medias para siempre, y el objetivo `OP-1` promete un cuadro relleno.
+
+- **Objetivo:** que la misma capacidad acepte `respuestas` y rehaga el cálculo incorporándolas, marcadas como **declaradas por el arquitecto** y no como calculadas por ArchMuse.
+- **Valor para el arquitecto:** cierra el bucle pregunta → respuesta → cuadro completo **sin tocar todavía ningún fichero**. Puede recorrer el flujo entero antes de arriesgar su DXF.
+- **Terminado cuando:** contestar una pregunta numérica deja su celda `CALCULADO` con `declarado_por_usuario: true`, y el resultado lista aparte qué celdas vienen de él.
+- **Cómo quedó:** `respuestas` en el manifiesto, con los tres consumidores regenerados solos (`TL-3`); `[]` y `None` no se confunden; la limitación «no comprueba lo que el arquitecto declara, lo registra con esa procedencia» va declarada en el manifiesto y por tanto llega al modelo y al acta.
+
+### TL-8 · Sustituir Nominatim
+`P1` · `HECHO (2026-08-19)` · PRD: no · dep: — · ~1j
+
+- **Objetivo:** pasar la geocodificación a Mapbox (ya hay token) o a instancia propia, y cachear Overpass agresivamente con plan para cuando no responda.
+- **Valor para el arquitecto:** ninguno visible — y por eso hay que anotarlo aquí: **la política de uso de Nominatim prohíbe el uso comercial de su instancia pública**. Es un bloqueante legal antes de **cobrar**, no antes de demostrar.
+- **Terminado cuando:** ninguna llamada del producto va a `nominatim.openstreetmap.org`, y Overpass caído degrada con mensaje en vez de romper.
+- **Cómo quedó (2026-08-19):** `analyzer/sitio.py` geocodifica con **Mapbox** (v6, y entiende también la forma v5), acotando a España y limitando resultados en el servidor porque la cuota la paga ArchMuse. **Sin `MAPBOX_TOKEN` no hay repliegue a Nominatim**: se lanza `GeocodificacionNoConfigurada` y `/api/geocodificar` responde **501, no 502** — «esto no está montado aquí» y «vuelve a intentarlo» son dos conversaciones distintas. `tests/test_geocodificacion_y_overpass.py` vigila que el dominio prohibido no reaparezca por ninguna puerta. La mitad de Overpass ya estaba resuelta (espejos, fallo aislado por consulta, `entorno_consultado=False` cuando hay errores); lo que faltaba era el test que lo sujeta, y ya está.
+- **Pendiente de verificar con token real:** el parser se ha probado contra las dos formas documentadas de respuesta, pero **nadie ha hecho aún una llamada real a Mapbox** desde este cambio: hace falta un `MAPBOX_TOKEN` válido y ejecutar `ARCHMUSE_TEST_RED=1 python tests/test_sitio.py`. Hasta entonces, la sustitución está probada contra fixtures, no contra el servicio.
+
+---
+
+## 6. Memoria y contexto de proyecto
+
+### ME-1 · La memoria de proyecto sale de ficheros a Postgres
+`P1` · `PENDIENTE` · PRD: no · dep: `INF-2`, D-6 decidida · ~1,5j
+
+- **Objetivo:** `agente/memoria.py` guarda hoy JSONL append-only en disco. Conservar la interfaz y cambiar el sustrato, sin perder el orden ni la procedencia.
+- **Valor para el arquitecto:** su proyecto deja de vivir en un portátil.
+- **Terminado cuando:** la suite de memoria pasa contra Postgres y una memoria en ficheros se migra sin perder una declaración.
+- **Bloqueada por:** D-6.
+
+### ME-2 · `graph_versions` append-only con sello verificado
+`P0` · `PENDIENTE` · PRD: no · dep: `INF-2` · ~1,5j
+
+- **Objetivo:** cada versión sellada se escribe como fila nueva —nunca `UPDATE`— con `sello_sha256`, versión del motor y versión del corpus. **`UPDATE` y `DELETE` revocados a nivel de base de datos**, no por convención. Incluye decidir la política de retención antes de que la tabla crezca.
+- **Valor para el arquitecto:** es lo que enseña a su aseguradora dos años después. Sin esto, ArchMuse es una app que rellena tablas.
+- **Terminado cuando:** un `UPDATE` con el usuario de la aplicación falla por permisos; guardar dos veces crea dos filas y la primera queda intacta.
+
+### ME-3 · Conflictos de requisitos, visibles y resolubles
+`P1` · `PARCIAL` · PRD: no · dep: `ME-1` · ~1j
+
+- **Objetivo:** `memoria.conflictos()` ya los detecta y hace mandar al más reciente sin elegir en silencio. Falta que el arquitecto pueda **resolverlos**: cuál vale, por qué, y que la decisión quede sellada.
+- **Valor para el arquitecto:** el cliente dijo tres dormitorios en marzo y cuatro en agosto. ArchMuse no decide por él, pero tampoco lo deja pasar.
+- **Terminado cuando:** un conflicto sin resolver bloquea el entregable que depende de él, y resolverlo queda registrado con autor y fecha.
+
+### ME-4 · Memoria de estudio: las convenciones del cliente
+`P2` · `PENDIENTE` · PRD: **sí** · dep: `SEG-2` · ~2j
+
+- **Objetivo:** nomenclatura de capas, formato de cuadro, criterios habituales del estudio, como **datos estructurados revisables y editables por el cliente** — nunca como embeddings.
+- **Valor para el arquitecto:** ArchMuse encaja cada vez mejor en su forma de trabajar. Es la retención de `MOAT_ANALYSIS.md`.
+- **Terminado cuando:** el cliente puede ver y corregir todo lo que ArchMuse «cree» sobre su forma de trabajar, y eso cambia el resultado de una ejecución.
+
+### ME-5 · Resumen tipado del grafo para el planificador
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: — · ~1j
+
+- **Objetivo:** el planificador **nunca ve el grafo completo**: ve qué rutas están `KNOWN`, cuáles `UNKNOWN`, y los manifiestos en orden determinista, en el prefijo cacheado.
+- **Valor para el arquitecto:** coste y latencia bajos, y ningún dato de su proyecto viajando al modelo sin motivo.
+- **Terminado cuando:** el resumen tiene tamaño acotado independientemente del tamaño del proyecto, y el orden de manifiestos es estable entre ejecuciones (si no, la caché no acierta nunca y el planificador se encarece en silencio).
+- **Cómo quedó (2026-08-19):** `agente/contexto.py`. Se acota **por estructura, no truncando**: las claves que alguna Skill exige van una a una (su número lo fija el catálogo, no el proyecto) y el resto se agrega por espacio de nombres, diciendo cuántas hay. Probado con 10.000 atributos: el resumen no llega al doble del de 20. Los valores del proyecto **no viajan al modelo**, sólo los estados. `prefijo_cacheable()` separa la mitad estable de la variable.
+
+---
+
+## 7. BIM / IFC
+
+### BIM-1 · Importador de IFC a atributos con procedencia
+`P2` · `PENDIENTE` · PRD: **sí** · dep: `TL-3` · ~2j
+
+- **Objetivo:** `bim/lector_ifc.py` ya lee espacios y cantidades. Falta que lo leído entre al grafo como `Atributo` con `origen=observado` y la entidad IFC concreta como procedencia.
+- **Valor para el arquitecto:** deja de tener que redibujar en DXF lo que ya modeló.
+- **Terminado cuando:** un IFC exportado por el propio repositorio entra al grafo y cada superficie dice de qué `IfcSpace` salió.
+
+### BIM-2 · Contraste IFC ↔ declarado ↔ DXF
+`P2` · `PENDIENTE` · PRD: **sí** · dep: `BIM-1` · ~2j
+
+- **Objetivo:** detectar discrepancias entre lo que dice el modelo, lo que declaró el cliente y lo que hay en el plano, y **presentarlas como discrepancias, no elegir una**.
+- **Valor para el arquitecto:** encuentra el error de coordinación que hoy aparece en obra.
+- **Terminado cuando:** una superficie que difiere más del umbral entre las tres fuentes produce un hallazgo con las tres cifras y sus tres orígenes.
+
+### BIM-3 · Mover la escritura de IFC dentro de `bim/`
+`P3` · `PENDIENTE` · PRD: no · dep: `BIM-1` · ~1j
+
+- **Objetivo:** `analyzer/ifc_export.py` (~300 líneas probadas) pasa a `bim/`, manteniendo la regla de que `bim/` no importa `agente/` ni `analyzer/`.
+- **Valor para el arquitecto:** ninguno directo. Es higiene de frontera.
+- **Terminado cuando:** los tests de exportación pasan sin cambios y la regla de dependencia sigue vigilada.
+- **Nota:** mover hoy 300 líneas probadas no gana nada. Se hace cuando el vertical BIM lo pida.
+
+### BIM-4 · Robustez contra IFC de software real
+`P3` · `PENDIENTE` · PRD: no · dep: `BIM-1` · ~2j
+
+- **Objetivo:** ficheros exportados por Revit y ArchiCAD reales, con sus rarezas (`IfcRelAggregates` vs `IfcRelContainedInSpatialStructure`, cantidades ausentes, unidades exóticas), más límites de tamaño y memoria.
+- **Valor para el arquitecto:** que funcione con **su** fichero, no con el de laboratorio.
+- **Terminado cuando:** tres IFC de origen distinto se leen o fallan con `ok=False` y motivo — **nunca con un número inventado**.
+
+---
+
+## 8. Revit / AutoCAD
+
+### CAD-1 · La prueba del plugin, ejecutada de verdad
+`P1` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-3` · ~0,5j
+
+- **Objetivo:** un CLI que invoque una capacidad cualquiera **sin HTTP, sin Flask, sin FastAPI**, con el mismo manifiesto. No es un plugin: es la prueba de que el plugin sería posible.
+- **Valor para el arquitecto:** ninguno hoy. Es el seguro de que el día que quiera ArchMuse dentro de Revit, no haya que reescribir el motor.
+- **Terminado cuando:** `python -m archmuse.invocar territorial.resolver_ambito --municipio Madrid` devuelve el mismo resultado que la API, y el test que prohíbe importar transporte en `agente/` sigue verde.
+- **Cómo quedó (2026-08-19):** el comando es `python -m agente.invocar territorial.resolver_ambito --municipio Madrid` — no se crea un paquete `archmuse` sólo para esto; el punto de la tarea es que el motor responda sin transporte, y `agente/` ya es ese motor. Los argumentos se derivan del esquema, así que una capacidad nueva aparece en el CLI sin tocar el fichero. Trae además `--openapi` (el contrato) y `--comprobar` (la coherencia de `TL-3` a un comando). `ok: false` sale con código 1 **conservando la pregunta**: tratarlo como excepción perdería lo único que hace útil esa respuesta.
+
+### CAD-2 · Contrato de invocación estable y versionado
+`P2` · `HECHO (2026-08-19)` · PRD: no · dep: `CAD-1` · ~1j
+
+- **Objetivo:** semver del manifiesto con política escrita: qué cambio es compatible, cuál obliga a mayor, y cómo un invocador antiguo sigue funcionando.
+- **Valor para el arquitecto:** su plugin no deja de funcionar el martes porque alguien añadió un parámetro.
+- **Terminado cuando:** un cambio incompatible sin subir la mayor rompe un test, y un plan guardado con una versión antigua sigue ejecutándose o falla con un mensaje claro.
+- **Cómo quedó (2026-08-19):** `agente/compatibilidad.py` con la política escrita y ejecutable: `huella()` reduce cada capacidad a **su contrato** —dejando la prosa fuera, para que reescribir lo que lee el modelo no obligue a nadie a actualizar un complemento instalado— y `revisar()` la compara con `tests/fixtures/contratos_de_capacidad.json`. Un cambio de contrato sin subir el tramo que toca pone la suite en rojo **diciendo qué cambió y qué tramo tocaba**. El caso que más importa: **añadir un efecto es MAYOR**, porque una capacidad que ayer era pura y hoy escribe un fichero se ejecutaría bajo una autorización concedida para otra cosa. Y `Registro.buscar` acepta `id@version`: la versión exacta y cualquier posterior de la misma mayor se ejecutan; otra mayor se **rechaza** con las dos versiones en el mensaje, porque ejecutar «lo más parecido» reescribiría en silencio lo que se hizo aquel día.
+
+### CAD-3 · Complemento de Revit / AutoCAD
+`APLAZADO` · `PENDIENTE` · PRD: **sí** · dep: `CAD-2`, OP-1 en manos de estudios reales · ~10j+
+
+- **Objetivo:** el complemento real, con su instalación, su firma y su ciclo de actualización.
+- **Valor para el arquitecto:** ArchMuse donde ya trabaja, que es donde se gana la distribución.
+- **Terminado cuando:** un arquitecto ejecuta una capacidad desde Revit sin abrir un navegador.
+- **Por qué aplazado:** construir el envoltorio antes de tener capacidades que merezcan invocarse es hacer el lazo de un regalo vacío. Y son diez jornadas de un ecosistema (C#, instaladores, versiones de Revit) que no se parece a nada del repositorio actual.
+
+---
+
+## 9. Normativa verificable
+
+> **Esta sección es el camino crítico del negocio.** Todo lo demás de este backlog vale menos sin ella, y ninguna decisión de arquitectura la desbloquea. Es C5.
+
+### NOR-1 · Encargo del curador colegiado
+`P0` · `PARCIAL (2026-08-19)` · PRD: no · dep: — · lo técnico hecho; falta contratar
+
+- **Objetivo:** el encargo escrito —alcance, prioridad de Documentos Básicos, cadencia, revisión, tarifa— y la ficha de transcripción probada, de modo que un colegiado pueda aceptarlo el lunes. Las dos piezas ya existen en borrador (`docs/design/2026-08-18-encargo-curador-normativo.md`, `...-ficha-de-transcripcion-normativa.md`).
+- **Valor para el arquitecto:** es literalmente todo. Sin corpus, ArchMuse no puede verificar normativa.
+- **Terminado cuando:** un colegiado que no ha hablado con Pablo transcribe una segunda regla siguiendo la ficha **sin ayuda**, y `normativa/` la resuelve de punta a punta.
+
+**Hecho el 2026-08-19 — lo que impedía el «sin ayuda»:**
+
+- **`scripts/validar_corpus.py`.** El curador comprueba su propio trabajo y obtiene el fichero, la regla y el motivo con el número de validación. Antes las diecisiete validaciones existían pero **sólo se invocaban desde los tests**: la única forma de saber si un YAML recién escrito estaba bien era preguntarle a un programador, lo que convertía a Pablo en el cuello de botella del único trabajo que no puede tenerlo. El guion enumera además los tres criterios humanos que no puede ver, para no enseñar a confiar en él de más.
+- **Estado de cobertura `transcrito_sin_firmar`** (`normativa/manifiesto.py`). Es el estado en el que vive toda regla entre transcribirla y firmarla — o sea, el estado normal durante todo el trabajo que queda. No existía, y al declarar la primera regla real había que elegir entre dos mentiras: `ausente` niega un trabajo hecho y en disco, y `parcial` es **afirmable**, con lo que ArchMuse habría evaluado seguridad contra incendios con una regla que nadie ha revisado.
+- **Validación 18** (`validar_firma_de_lo_declarado`). Rechaza al cargar cualquier promoción a `completo`/`parcial` mientras alguna regla de esa materia conserve `pendiente_firma_colegiado`. Convierte el orden de trabajo en algo que no se puede saltar por descuido: transcribir → declarar sin firmar → firmar → retirar la etiqueta → promover.
+- **Defecto real corregido en la validación 17.** Su segundo recorrido —«hay reglas en disco sin declarar»— vivía **dentro** del bucle sobre lo declarado, así que un ámbito sin entrada en el manifiesto no se miraba nunca. El corpus de producción estaba exactamente en ese caso (una regla en disco, `cobertura: []`) y la validación respondía que todo cuadraba. Es el error que comete quien **empieza** a transcribir, es decir, todo el trabajo que queda por delante.
+- **El manifiesto de cobertura dice la verdad** por primera vez: declara la regla que hay, la declara sin firmar, y por tanto ArchMuse sigue bloqueando por falta de cobertura de seguridad contra incendios — que es lo correcto hasta la primera firma.
+
+**Lo que sigue pendiente, y es el 100 % de lo que queda:** que un colegiado acepte el encargo. Es **contratación, no programación**, y ninguna tarea de este backlog la sustituye. El corpus tiene una regla, sin firmar; ArchMuse no puede verificar ni una sola norma.
+
+- **No depende de nada y no bloquea nada de V1. Arranca hoy, en paralelo.**
+
+### NOR-2 · Primer Documento Básico completo en el corpus
+`P0` · `PENDIENTE` · PRD: no · dep: `NOR-1` · continuo
+
+- **Objetivo:** DB-SI entero transcrito, validado y resolviendo. No una selección: **completo**, para poder decir «este DB lo cubrimos» sin asteriscos.
+- **Valor para el arquitecto:** la primera frase honesta de venta que ArchMuse puede decir.
+- **Terminado cuando:** toda regla del DB-SI que el producto invoca sale del corpus con su cita al BOE, y la cobertura declarada (`NOR-5`) dice «DB-SI: completo».
+
+### NOR-3 · Endurecer la validación del corpus
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: — · ~0,5j
+
+- **Objetivo:** `normativa/validacion.py` regla 7 acepta **cualquier cadena** como nivel de repliegue. Eso es lo que dejó pasar una regla piloto cuyo repliegue no casaba con ningún eje y por tanto no se resolvía nunca. Validar contra los ejes declarados.
+- **Valor para el arquitecto:** una regla mal transcrita falla al cargar, en vez de quedarse muda y parecer que «no aplica».
+- **Terminado cuando:** una regla con un nivel de repliegue inexistente es rechazada por el validador, con el nombre del nivel en el mensaje.
+- **Es media jornada y cierra un defecto real ya observado. Hacer pronto.**
+
+### NOR-4 · La versión del corpus viaja en el sello
+`P1` · `PENDIENTE` · PRD: no · dep: `ME-2`, `NOR-2` · ~1j
+
+- **Objetivo:** cada versión sellada del grafo registra qué corpus estaba vigente. Y una regla derogada no invalida en silencio un análisis antiguo: lo marca como emitido bajo la norma anterior.
+- **Valor para el arquitecto:** puede defender un análisis de hace dos años **con la norma que estaba vigente entonces**, que es exactamente lo que le preguntarán.
+- **Terminado cuando:** dos análisis del mismo proyecto con corpus distintos son distinguibles, y el acta dice cuál.
+
+### NOR-5 · Cobertura declarada: qué se puede verificar hoy
+`P1` · `PENDIENTE` · PRD: no · dep: `NOR-2` · ~1j
+
+- **Objetivo:** una respuesta normativa **declara su propia cobertura**: qué DB están, cuáles parcialmente, cuáles no, y qué ámbitos territoriales.
+- **Valor para el arquitecto:** el silencio deja de significar «cumple». Es la diferencia entre una herramienta que sobrevende y una en la que se puede confiar.
+- **Terminado cuando:** una consulta sobre un DB ausente responde «sin cobertura» con esas palabras y no devuelve `no_aplica`, y la diferencia está probada.
+
+### NOR-6 · Recuperación acotada sobre el corpus curado
+`P2` · `PENDIENTE` · PRD: no · dep: `NOR-2`, `INF-2` · ~1,5j
+
+- **Objetivo:** búsqueda de texto completo **sobre el corpus curado**, nunca sobre PDF crudos. Dos usos legítimos: que el arquitecto vea el articulado que respalda un hallazgo, y que el curador no duplique lo ya transcrito.
+- **Valor para el arquitecto:** lee el artículo entero sin salir a buscarlo.
+- **Terminado cuando:** la búsqueda localiza y muestra articulado y **no puede producir una cifra**, verificado por test.
+
+### NOR-7 · Ordenanzas municipales
+`P3` · `PENDIENTE` · PRD: **sí** · dep: `NOR-2` · continuo
+
+- **Objetivo:** el nivel municipal del motor territorial, que existe y está vacío. Empezando por los municipios donde estén los primeros clientes, no por los grandes.
+- **Valor para el arquitecto:** la normativa que realmente le bloquea un proyecto suele ser la municipal, no la estatal.
+- **Terminado cuando:** un municipio tiene su ordenanza resolviendo y el resto declara `sin_cobertura` sin fingir.
+
+---
+
+## 10. Generación de trabajo profesional
+
+### DOC-1 · Acta de procedencia legible por un arquitecto
+`P0` · `PARCIAL` · PRD: **sí** · dep: `ME-2` · ~3j
+
+- **Objetivo:** `agente/acta.py` ya la levanta y deriva las limitaciones de los manifiestos. Lo que falta es **que se entienda**: una página, con el porqué a un clic, en el lenguaje de un arquitecto y no de un ingeniero.
+- **Valor para el arquitecto:** es el diferencial entero. Sin el acta, ArchMuse es una app que rellena una tabla, y eso lo hace cualquiera.
+- **Terminado cuando:** para tres celdas al azar de un cuadro relleno se puede seguir el acta hasta la entidad concreta del DXF, y para una celda `N/D` se lee el motivo. **El criterio de aceptación es de arquitecto, no de ingeniero:** lo valida la voz del arquitecto veterano antes de darse por buena.
+- **Riesgo A4:** es la tarea más fácil de recortar bajo presión de tiempo y la única que hace este producto distinto de una app cualquiera. No se recorta.
+
+### DOC-2 · Los entregables del vertical: DXF relleno y cuadro en PDF
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-2`, `DOC-3` · ~1j
+
+- **Objetivo:** los dos ficheros que el arquitecto se lleva, con el acta viajando con ellos.
+- **Valor para el arquitecto:** trabajo terminado, no una pantalla que hay que copiar a mano.
+- **Terminado cuando:** ambos se descargan, ambos llevan la marca y el acta, y el original conserva su sha256.
+- **Cómo quedó (2026-08-19):** `analyzer/cuadro_pdf.py` + la capacidad `plano.cuadro_en_pdf`. Los dos entregables salen con el mismo nombre y en la misma carpeta a propósito: en una carpeta con veinte ficheros, que el PDF que explica un DXF se llame igual es lo que evita enseñarle a un cliente el acta de otro plano. **La columna que importa del PDF no es la del número: es la última** — de dónde sale cada cifra, o por qué la celda está en blanco. Distingue «declarado por el arquitecto» de «calculado por ArchMuse» y de «ya estaba escrito en el DXF»: tres procedencias que en un acta no valen lo mismo. Los estados van en castellano de arquitecto (quien lo lee no sabe qué es un `CERO_REAL`), la lista de «lo que NO comprueba» se deriva de los manifiestos ejecutados, y la huella SHA-256 del original va impresa para que «tu plano no se ha tocado» sea comprobable. Si el PDF falla, **el DXF ya escrito no se pierde**: se declara con motivo.
+- **Lo que queda para `DOC-1`:** el acta a nivel de ejecución (qué Skills, qué versiones, qué sello) sigue saliendo por consola y en JSON. El PDF lleva el acta **a nivel de celda**, que es la que el arquitecto necesita para decidir si se fía; juntarlas en un solo documento es trabajo de `DOC-1`.
+
+### DOC-3 · Marca de borrador, sin opción de desactivarla
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-2` · ~0,5j
+
+- **Objetivo:** todo artefacto sale marcado como **borrador para revisión de un colegiado**, sin excepción y **sin opción de configuración que lo quite**.
+- **Valor para el arquitecto:** protege la frontera legal del producto: ArchMuse asesora, no firma. Y le protege a él.
+- **Terminado cuando:** DXF y PDF llevan la marca, y un test demuestra que no existe forma de generarlos sin ella.
+- **Cerrada (2026-08-19):** faltaba la mitad del DXF y ya está. `analyzer/marca_borrador.py::estampar_dxf` pone la leyenda en **su propia capa** (`00 ARCHMUSE BORRADOR`): el arquitecto puede apagarla para imprimir sin borrar nada suyo, y las consultas que el producto ya hace sobre `00 CUADROS` siguen viendo lo mismo. Se estampa en el único sitio que guarda un DXF, así que **no hay camino que produzca una copia sin ella** — y hay un test que recorre `analyzer/` buscando cualquier módulo nuevo que guarde un DXF sin pasar por la marca.
+- **Cómo va (2026-08-19): la mitad de PDF, HECHA.** `analyzer/marca_borrador.py` estampa la leyenda en **todas** las páginas de `pdf_report` y `dossier_pdf` — no sólo en la primera, que es la que nadie mira cuando el documento circula suelto. La leyenda es **una sola**: `agente/acta.py` la importa de allí en vez de repetirla. `tests/test_marca_borrador.py` recorre `analyzer/` y se pone rojo si aparece un generador de PDF que no pase por ella, y comprueba por AST que no exista ningún parámetro ni variable de entorno para desactivarla. **Falta la mitad del DXF**, que depende de `TL-2` (PRD escrito, pendiente de aprobación). Hallazgo del camino: los PDF del producto actual **no llevaban ninguna marca** — C3 estaba incumplido en lo que ya se entrega, no sólo en lo que viene.
+- **Es C3 literal.**
+
+### DOC-4 · Redactor que solo cita atributos ya calculados
+`P2` · `PENDIENTE` · PRD: **sí** · dep: `ME-2` · ~1,5j
+
+- **Objetivo:** la única capacidad de naturaleza `llm` que produce prosa. Con la regla dura de que **no toca ninguna cifra**: las recibe calculadas y las redacta. El detector de cifras sin respaldo de `agente/respaldo.py` es su portero.
+- **Valor para el arquitecto:** texto presentable sin el riesgo de que el modelo invente un número por el camino.
+- **Terminado cuando:** un intento de emitir una cifra que no está en el grafo falla la verificación, y está probado.
+
+### DOC-5 · Memoria justificativa y dossier de entrega
+`P3` · `PENDIENTE` · PRD: **sí** · dep: `SK-7`, `NOR-2`, `DOC-4` · ~4j
+
+- **Objetivo:** el documento largo, y el paquete de entrega coherente y sellado junto.
+- **Valor para el arquitecto:** el trabajo más tedioso del proyecto.
+- **Terminado cuando:** el documento se genera, va marcado como borrador, y cada cifra rastrea a su atributo.
+- **Ver OP-6:** es el objetivo que más se va a pedir y el más peligroso de adelantar. No empieza sin `NOR-2`.
+
+---
+
+## 11. Seguridad, aprobación y trazabilidad
+
+### SEG-1 · Aprobación explícita antes de un efecto
+`P0` · `PARCIAL` · PRD: no · dep: `TL-2` · ~1j
+
+- **Objetivo:** el portero de efectos existe en `agente/efectos.py` y rechaza lo no autorizado. Falta el **paso de producto**: enseñar al arquitecto qué va a pasar («voy a escribir en una copia de tu DXF, voy a gastar ~0,40 €») y esperar su sí.
+- **Valor para el arquitecto:** nada le ocurre a sus ficheros ni a su presupuesto sin que lo haya visto antes.
+- **Terminado cuando:** una ejecución con efecto `io` se detiene, muestra el efecto declarado en el manifiesto, y sin confirmación no escribe ni un byte.
+
+### SEG-2 · `tenant_id` en el núcleo, RLS y test de ataque
+`P1` · `PENDIENTE` · PRD: no · dep: `SEG-3`, `INF-2` · ~2,5j
+
+- **Objetivo:** un objeto de contexto (`tenant_id`, `user_id`, `run_id`) que atraviesa **toda** invocación de capacidad; RLS en Postgres como segunda capa; un test que falle si alguna consulta carece de predicado de tenant; y un test que **ataque**: autenticado como A, intentar leer datos de B en cada endpoint.
+- **Valor para el arquitecto:** el plano de su cliente no lo ve otro estudio. Es la primera pregunta de toda venta.
+- **Terminado cuando:** una consulta sin predicado devuelve cero filas por RLS, y el test de ataque falla en todos los endpoints.
+- **Por qué dos capas:** el día que la superficie sea un plugin de Revit, el middleware de Next no está. Es C1.
+
+### SEG-3 · Identidad gestionada: organizaciones, invitaciones, roles
+`P1` · `PENDIENTE` · PRD: **sí** · dep: `INF-2`, D-1 decidida · ~2j
+
+- **Objetivo:** Clerk o WorkOS, con los cuatro roles (propietario, arquitecto, colaborador, **lectura**). Comparativa escrita antes de elegir, con región europea y DPA como criterios de primer orden.
+- **Valor para el arquitecto:** invita a su equipo. Y el rol de lectura abre el segundo comprador: el promotor que quiere cuantificar riesgo.
+- **Terminado cuando:** dos correos crean dos estudios; una invitación aceptada da acceso al estudio correcto **y solo a ese**.
+- **Bloqueada por:** D-1 (residencia de datos).
+
+### SEG-4 · Telemetría de tokens, coste y tope de gasto
+`P0` · `HECHO (2026-08-19)` · PRD: no · dep: — · ~1,5j
+
+- **Objetivo:** en `ia/cliente.py` —único sitio donde se construye el cliente— registrar por llamada: módulo, modelo, tokens de entrada, de salida, de lectura de caché, duración y coste. Tope acumulado configurable que corta con error explícito. **Solo métricas, nunca texto de prompt:** son datos del proyecto de un cliente.
+- **Valor para el arquitecto:** indirecto — pero hoy es **imposible** responder cuánto cuesta un usuario, y sin eso no hay precio defendible.
+- **Terminado cuando:** un análisis completo devuelve una cifra en euros desglosada por punto de llamada, y ningún prompt aparece en el registro.
+- **Cómo quedó (2026-08-19):** `ia/uso.py` acumula por punto de llamada y por modelo; `desglose_de_registro()` lo reconstruye del JSONL cuando el análisis lo hizo otro proceso; `python scripts/coste_de_uso.py` lo imprime. **Los euros exigen declarar `ARCHMUSE_EUR_POR_USD`**: la tarifa de Anthropic está en dólares y un cambio inventado da una cifra que parece contable sin serlo. Sin cambio declarado el desglose sale en USD, nunca convertido a ojo.
+
+### SEG-5 · Bitácora exportable como registro defendible
+`P1` · `PENDIENTE` · PRD: no · dep: `ME-2`, `DOC-1` · ~1j
+
+- **Objetivo:** que el arquitecto pueda **exportar** el registro completo de un proyecto: qué se ejecutó, con qué versión, contra qué corpus, con qué resultado, sellado.
+- **Valor para el arquitecto:** es lo que enseña a su aseguradora o a un juzgado. Y es lo que hace que irse de ArchMuse no signifique perder el historial — lo cual, contraintuitivamente, es lo que hace que se quede.
+- **Terminado cuando:** el registro exportado permite reconstruir el resultado sin acceso al sistema, y su sello se verifica desde fuera.
+
+---
+
+## 12. Infraestructura y producto SaaS
+
+### INF-1 · CI en GitHub Actions con la suite completa, y árbol limpio
+`P0` · `PARCIAL` · PRD: no · dep: — · ~1,5j
+
+- **Objetivo:** workflow que en cada push instale las dependencias fijadas y ejecute `pytest` entero (~8 min hoy), con marcador `lento` y un job nocturno para las pruebas que necesitan red, IA o el DXF real. Y de paso, lo que ensucia el clon: `JarvisApp.py` y su entorno a su propio repositorio; `cloudflared_tunnel.log` (731 KB), `flask*.log`, `venv/` y `.venv-jarvis/` fuera del árbol versionado.
+- **Valor para el arquitecto:** indirecto y enorme — 24.584 líneas de test que hoy solo corren cuando alguien se acuerda.
+- **Terminado cuando:** un PR con un umbral cambiado a mano pone CI en rojo, y un clon limpio instala y pasa la suite.
+- **Presupuestar que el primer arranque no sale verde** (rutas Windows, `\r\n`, `ifcopenshell`). Encontrar eso **es** el beneficio.
+- **Nota:** el fichero `.github/workflows/` ya existe sin ejecutar; requiere un push, que a día de hoy está excluido por la regla de no hacer commits.
+- **Cómo va (2026-08-19):** el árbol ya está limpio (`git ls-files` no tiene logs, ni `venv/`, ni Jarvis) y el workflow está escrito y revisado; se le ha añadido `MAPBOX_TOKEN` al job nocturno, que es donde vive la única llamada real al geocodificador nuevo de `TL-8`. **Bloqueado en el último paso, y no por una decisión de producto:** el criterio de terminado exige ver CI en verde, y eso exige un push. Con la regla de no hacer commits en vigor, esta tarea no puede cerrarse desde una sesión autónoma. Es lo primero que hay que hacer en cuanto se levante.
+
+### INF-2 · Postgres: el esquema mínimo del vertical
+`P0` · `PENDIENTE` · PRD: no · dep: — · ~2j
+
+- **Objetivo:** proveedor gestionado, **región UE decidida antes que proveedor**. Solo las tablas que el vertical usa: `tenants`, `users`, `memberships`, `projects`, `graph_versions`, `runs`, `run_steps`, `artifacts`. Cambiar el driver de `analyzer/storage.py` conservando su interfaz.
+- **Valor para el arquitecto:** su proyecto sobrevive a que se apague un portátil.
+- **Terminado cuando:** la suite pasa contra Postgres, y una base SQLite con proyectos reales se migra sin pérdida.
+- **Barato porque `storage.py` documenta su propio invariante:** hay un único escritor y `analyzer/` no lo importa.
+
+### INF-3 · Ficheros a almacenamiento de objetos
+`P1` · `PENDIENTE` · PRD: no · dep: `INF-2` · ~1j
+
+- **Objetivo:** DXF, PDF, IFC y GLB a S3/R2 con URL firmada de caducidad corta; `artifacts` guarda clave, tipo y qué versión del grafo lo produjo.
+- **Valor para el arquitecto:** sus ficheros dejan de vivir dentro de una fila de base de datos.
+- **Terminado cuando:** subir y descargar sin que la base guarde un byte del PDF, y una URL caducada devuelve 403.
+- **Riesgo:** una URL firmada mal acotada expone el plano de un cliente. La tenencia se comprueba **antes** de firmar, ya en esta tarea.
+
+### INF-4 · Cola en Postgres con `SKIP LOCKED` y worker
+`P1` · `PENDIENTE` · PRD: no · dep: `INF-2` · ~2j
+
+- **Objetivo:** worker aparte consumiendo `SELECT ... FOR UPDATE SKIP LOCKED`. Las ejecuciones dejan de vivir dentro de una petición HTTP. **Ni Redis ni Celery:** a este volumen, añadir un sistema es peor que usar el que ya hay.
+- **Valor para el arquitecto:** puede cerrar la pestaña y volver. Hoy una llamada retiene uno de los 8 hilos hasta 15 minutos.
+- **Terminado cuando:** 20 ejecuciones simultáneas; la API responde al instante con un identificador, ningún trabajo se procesa dos veces, y matar el worker a mitad recupera el trabajo.
+- **Nota:** el ejecutor ya reanuda por checkpoint, y eso es justo lo que hace innecesaria la ejecución durable de un framework (D-4).
+
+### INF-5 · FastAPI conviviendo con Flask, solo las rutas del vertical
+`P1` · `PENDIENTE` · PRD: no · dep: `TL-3` · ~1,5j
+
+- **Objetivo:** montar FastAPI junto a Flask detrás del mismo dominio, sirviendo **únicamente** las rutas del vertical, generadas desde el manifiesto. Las 40 rutas de `app.py` **no se tocan**.
+- **Valor para el arquitecto:** nada de lo que usa hoy se cae.
+- **Terminado cuando:** el vertical responde por FastAPI y el resto del producto sigue respondiendo por Flask, sin cambios en la SPA.
+
+### INF-6 · Cliente TypeScript generado en CI
+`P1` · `PENDIENTE` · PRD: no · dep: `INF-5` · ~1j
+
+- **Objetivo:** generar el cliente TS desde el OpenAPI en CI y **fallar si difiere del comiteado**. Cero tipos del dominio escritos a mano.
+- **Valor para el arquitecto:** menos errores tontos en la pantalla que usa.
+- **Terminado cuando:** renombrar un campo de un modelo Pydantic pone CI en rojo.
+
+### INF-7 · Next: shell, sesión y la pantalla del vertical
+`P1` · `PENDIENTE` · PRD: **sí** · dep: `SEG-3`, `INF-6` · ~3j
+
+- **Objetivo:** proyecto Next (App Router, TS estricto), sesión con cookie `httpOnly`, rutas protegidas en servidor, y **una** pantalla: subir DXF, escribir la intención, ver el plan y el progreso por capacidad, descargar los entregables y leer el acta. **Ni una línea de lógica de negocio**, con una regla de lint que lo impida.
+- **Valor para el arquitecto:** es la mitad visible del producto, y donde se juega si entiende el acta.
+- **Terminado cuando:** la pantalla completa el recorrido de punta a punta, y ninguna ruta de servidor importa nada salvo el cliente generado.
+
+### INF-8 · Despliegue en la UE
+`P1` · `PENDIENTE` · PRD: no · dep: `INF-4`, `INF-2` · ~2,5j
+
+- **Objetivo:** contenedor Linux del núcleo (con `gunicorn`, que en Linux sí funciona), worker como proceso separado, frontend desplegado, secretos en gestor, región UE, y el túnel `cloudflared` retirado del camino del vertical.
+- **Valor para el arquitecto:** puede usarlo sin que nadie le abra un túnel desde un portátil Windows.
+- **Terminado cuando:** dominio propio con TLS sin túnel; matar el worker no tira la API; ningún secreto en el repositorio ni en la imagen.
+- **Presupuestar que `ifcopenshell` y `mapbox_earcut` darán trabajo en la imagen.**
+
+### INF-9 · Precio, medición y límites por plan
+`P2` · `PENDIENTE` · PRD: **sí** · dep: `SEG-4`, `AG-3` · ~2j
+
+- **Objetivo:** asiento por arquitecto con **verificación ilimitada** y generación/redacción **medida**. Alinea el precio con el valor (defensa profesional) y el coste con la parte cara.
+- **Valor para el arquitecto:** paga por lo que le sirve y no subvenciona al usuario que genera plantas todo el día.
+- **Terminado cuando:** un plan agotado degrada con mensaje claro en vez de fallar, y la cifra de consumo que ve el cliente coincide con la medida.
+- **Ventaja estructural que conviene saber vender:** cada regla determinista que se añade **mejora el margen**, porque sustituye trabajo que un competidor puramente LLM paga por token.
+
+---
+
+## 13. Cola de trabajo
+
+### 13.1 Lo hecho el 2026-08-19 (sesión autónoma)
+
+Dieciséis tareas cerradas y una a medias. En orden de ejecución:
+
+| Tarea | Qué quedó |
+|---|---|
+| `NOR-3` | La validación del corpus rechaza un nivel de repliegue inexistente **nombrándolo**, y también uno inalcanzable. Cierra el defecto real ya observado |
+| `SEG-4` | Coste desglosado por punto de llamada y por modelo, en vivo y desde el registro. `scripts/coste_de_uso.py` |
+| `TL-3` | Un manifiesto, tres consumidores, y la comprobación de que no se separan — recorriendo el registro |
+| `CAD-1` | `python -m agente.invocar`: el motor responde sin transporte. La prueba del plugin, ejecutada |
+| `ME-5` | `agente/contexto.py`: el planificador ve lo que decide y nada más, con tamaño acotado |
+| `TL-1` | Tres capacidades de geometría. El registro pasa a 7, dentro del techo de C4 |
+| `TL-9` | *(añadida durante `TL-1`)* Contestar las preguntas del cuadro, sin escribir nada |
+| `TL-4` | Golden obligatorio por capacidad determinista, con test de política |
+| `TL-8` | Fuera Nominatim, entra Mapbox. Bloqueante legal antes de cobrar, cerrado |
+| `CAD-2` | Política de compatibilidad escrita y ejecutable; `id@version` en el registro para los planes guardados |
+| `TL-2` | La escritura protegida del DXF del cliente. PRD aprobado por Pablo; sus tres condiciones son tests |
+| `SK-1` | El procedimiento del vertical, con la verificación de suma **informativa** que pidió Pablo |
+| `DOC-2` | El cuadro en PDF con el porqué de cada celda; los dos entregables viajan juntos |
+| `AG-1` | El planificador tipado: una llamada, un DAG validado, y el plan enseñable antes de ejecutarlo |
+| `AG-2` | El validador determinista: rechaza sin gastar, y cuando faltan datos la salida es la pregunta |
+| `DOC-3` | **Cerrada:** faltaba la mitad del DXF, y la marca va ya en su propia capa |
+| `INF-1` | **Parcial:** árbol limpio y workflow revisado. El último paso exige un push (ver D-9) |
+
+Tres PRD escritos y pendientes de aprobación: `TL-2`, `AG-1`, `SK-1`. Son las tres piezas que faltan para que `OP-1` sea un entregable, y ninguna se implementa sin la firma de Pablo.
+
+### 13.2 Lo que queda sin hacer teniendo las dependencias cerradas, y por qué
+
+| Tarea | Por qué no |
+|---|---|
+| `NOR-1` | Es **contratación**, no programación. El encargo y la ficha están redactados; falta que un colegiado los acepte. **Sigue siendo lo más importante del backlog**, y sigue sin empezar |
+| `INF-2` | Exige provisionar un Postgres gestionado y decidir la región antes que el proveedor. Sin credenciales, una sesión autónoma sólo podría escribir el esquema a ciegas |
+| `INF-5` | Exige meter `fastapi` y `uvicorn` en `requirements.txt` y regenerar el lock, con consecuencias de despliegue que no se pueden verificar desde aquí. Ver `D-11` |
+| `TL-5` | Cuatro jornadas que no acercan el primer vertical. Sigue siendo el aplazamiento más peligroso del plan (riesgo A3): anotado, no olvidado |
+| `SK-5` | Bloqueada por `D-7`. **Ahora urge**: `SK-1` ya codifica criterio profesional —el orden de las comprobaciones, la tolerancia de la suma— y nadie lo ha firmado |
+| `AG-3` | Necesita la tabla de coste **medida** por perfil. `SEG-4` da la maquinaria; falta ejecutar cargas reales y leer las cifras |
+
+### 13.4 Lo hecho el 2026-08-19 (segunda sesión: el plano real y el corpus)
+
+**Sobre `v2s.dxf`, el plano real del cliente.** El flujo completo se ejecutó de punta a punta y **entregó**: DXF relleno (18 textos añadidos, 0 perdidos), PDF explicativo de 2 páginas, acta, y el original con su sha256 intacto (`37e982b4…`, idéntico antes y después). La celda que el plano ya traía (`VT1 /3`) no se sobrescribió. La suite entera corre ya **sin saltos**: 733 tests con `ARCHMUSE_DXF_V2S` definido.
+
+Tres defectos reales que **sólo el plano real podía destapar**, porque los fixtures no tienen ni tildes ni solapes:
+
+| Defecto | Por qué importaba |
+|---|---|
+| Una comprobación que **no pudo ejecutarse** se imprimía como `[FALLA]` | El plano tiene recintos solapados, así que no había superficie medida contra la que cruzar la suma. El arquitecto leía «la suma no cuadra»: una acusación sobre su trabajo por algo que nadie llegó a mirar. Gasta la credibilidad que hará falta el día que falle de verdad. Ahora hay un tercer estado (`NoSeHaPodidoComprobar`) que no cuenta como superada —no comprobar no es comprobar— pero tampoco acusa |
+| Los rótulos del PDF salían **sin tildes ni eñe**: «Bano», «Salon cocina», «Vestibulo» | Es el documento que el arquitecto le enseña a su cliente. El nombre bueno ya estaba leído (`CeldaCuadro.etiqueta`), sólo que no viajaba hasta el PDF: el rótulo se derivaba del identificador interno, que es ASCII a propósito |
+| El PDF decía `BLOQUEADO` donde el DXF escribe `N/D` | Dos vocabularios para la misma celda, en un documento cuyo único trabajo es explicar el otro |
+
+**Sobre el corpus (`NOR-1`, ahora `PARCIAL`).** Ver la tarea para el detalle. Lo importante: la validación 17 no veía el error que comete quien **empieza** a transcribir, el manifiesto obligaba a mentir sobre una regla sin firmar, y el curador no tenía forma de comprobar su trabajo sin un programador. Las tres cosas están cerradas. Lo que queda es contratar a un colegiado, y no lo sustituye ninguna tarea.
+
+---
+
+### 13.3 Lo siguiente, en orden
+
+| # | Tarea | Por qué va aquí |
+|---:|---|---|
+| 1 | **`NOR-1` (contratar)** | Lo técnico está hecho el 2026-08-19: el curador ya puede trabajar solo. Queda **contratar**, y sigue siendo lo único que ArchMuse promete y no puede cumplir: una regla en el corpus, sin firmar, cero normas verificables |
+| 2 | `D-7` | Ya no es preventivo. `SK-1` **tiene** criterio profesional aplicado sobre un plano real y sin firmar: el orden del procedimiento, qué hacer ante una ambigüedad de reparto, y si un solape es error del plano o convención del autor. Los tres van enumerados en la decisión. Bloquea cobrar por el cuadro de superficies |
+| 3 | `INF-1` (cerrar) | Necesita un push. Ver `D-9` |
+| 4 | `DOC-1` | El acta legible. El PDF ya lleva el acta **a nivel de celda**; falta juntarla con la de ejecución en un solo documento |
+| 5 | `INF-2` → `ME-2` | Postgres y el registro append-only sellado. Es el foso, y hasta aquí todo vive en ficheros |
+| 6 | `SEG-1` | La pantalla de autorización. El portero ya existe en las dos capas; falta enseñar el efecto **antes** en una interfaz que no sea una línea de órdenes |
+| 7 | `AG-3` | Presupuesto por ejecución, con las cifras medidas de `SEG-4` |
+
+Después, vestir el vertical: `SEG-3` → `SEG-2` → `INF-4` → `INF-5` → `INF-6` → `INF-7` → `INF-8`.
+
+---
+
+## 14. Decisiones pendientes que bloquean tareas
+
+De `docs/design/decisiones-pendientes.md`. Una tarea bloqueada por una decisión **no se empieza**: se salta y se sigue con la siguiente.
+
+| Decisión | Bloquea | Urgencia |
+|---|---|---|
+| D-1 · Residencia de datos del proveedor de identidad | `SEG-3` | Alta: condiciona `SEG-2`, `INF-7`, `INF-8` |
+| D-2 · `uv` en lugar de `pip` | nada | Baja: conveniencia |
+| D-3 · `pydantic` para los manifiestos | `TL-3` (forma, no fondo) | Media |
+| D-4 · Ejecución durable de terceros | nada hoy | Baja: reabrir solo si `INF-4` no basta |
+| D-5 · Modelo por perfil de tarea | `AG-3` | Media: se decide **con** las cifras de `SEG-4`, no antes |
+| D-6 · Dónde vive la memoria de proyecto | `ME-1` | Alta |
+| D-7 · Qué Skills primero y quién valida su procedimiento | `SK-5` | Alta: es contratación, como `NOR-1` |
+| D-8 · Umbral para mostrar una propuesta de Skill | `AG-7` | Baja |
+| D-9 · Si una sesión autónoma puede empujar a una rama con prefijo | `INF-1` | **Alta**: es lo único que bloquea la red de seguridad de todo lo demás |
+| D-10 · Tipo de cambio para facturar en euros | nada hoy | Baja: se decide con `INF-9`, y entonces el cambio tiene que guardarse **con la factura** |
+| D-11 · Cuándo entra FastAPI y quién regenera el lock de dependencias | `INF-5` | Media: hoy serviría capacidades que no llama nadie; el valor llega con `INF-6` e `INF-7` |
+
+---
+
+## 15. Cómo se sabe que este backlog está funcionando
+
+Cuatro señales, y ninguna es «número de tareas hechas»:
+
+1. **El registro de capacidades crece más despacio que la lista de capacidades auditadas.** Si se invierte, C4 está incumplido y hay que parar de añadir.
+2. **La tasa de falsos positivos por regla no sube.** Un hallazgo falso destruye la confianza en los verdaderos; `DESTROY_ARCHMUSE.md` §5.1 dice que es el motivo nº1 de abandono. Bloquea release.
+3. **Toda tarea `HECHO` tiene su criterio verificado, no aproximado.** Un criterio que se da por bueno «en espíritu» es una tarea sin hacer con etiqueta verde.
+4. **El corpus crece cada semana.** Si esta señal está parada, las otras tres dan igual.

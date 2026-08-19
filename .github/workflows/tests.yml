@@ -1,0 +1,117 @@
+# ArchMuse — la suite entera en cada push y cada PR (tarea V0-2 del plan de
+# migración v2, `docs/design/2026-08-18-plan-de-migracion.md`).
+#
+# Por qué existe: hay 104 ficheros y 24.584 líneas de test, y hasta hoy sólo se
+# ejecutaban cuando alguien se acordaba. Es el activo principal del repositorio
+# sin usar, y V1 mueve demasiada superficie como para fiarlo a la memoria.
+#
+# Tres decisiones que conviene no deshacer sin pensarlo:
+#
+# 1. **Linux, aunque el desarrollo sea en Windows.** El producto se va a
+#    desplegar en contenedores Linux (V1-21), así que la suite tiene que correr
+#    ahí antes que en ningún otro sitio. Es además donde aparecerán las
+#    diferencias de ruta y de fin de línea que hoy nadie ve.
+#
+# 2. **`requirements.lock.txt`, no `requirements.txt`.** El lock tiene las 58
+#    distribuciones exactas, transitivas incluidas. Instalar el otro haría que
+#    CI probara un entorno distinto del que se despliega, que es justo lo que
+#    la tarea 12 del REFACTOR_MASTERPLAN vino a cerrar.
+#
+# 3. **Los tres interruptores caros quedan SIN definir en este job.**
+#    `ARCHMUSE_TEST_RED` golpearía boe.es y el Catastro en vivo (resultado
+#    dependiente de que terceros estén arriba), `ARCHMUSE_TEST_IA` gastaría
+#    tokens de Anthropic en cada ejecución, y `ARCHMUSE_DXF_V2S` apunta a un
+#    plano real de cliente que no está ni puede estar en el repositorio. Sin
+#    ellos esos tests se saltan con motivo, no fallan. El job `nocturno` de
+#    abajo activa los dos primeros una vez al día.
+
+name: tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # 04:15 UTC. Sólo dispara el job `nocturno` de más abajo.
+    - cron: "15 4 * * *"
+
+# Un push nuevo sobre la misma rama cancela el anterior: la suite dura ~14 min
+# y no tiene sentido pagar dos veces por un commit que ya está superado.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suite:
+    name: suite completa (Linux)
+    # En la cita diaria sólo corre `nocturno`, que ya ejecuta esto y más.
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # ~14 min de suite, con margen para un runner lento
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # La misma línea 3.14 con la que se desarrolla hoy.
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+
+      - name: Instalar dependencias exactas
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.lock.txt
+          pip install -r requirements-dev.txt
+
+      - name: Comprobar que los interruptores caros están apagados
+        # Barato y explícito: si alguien los mete algún día como variable de
+        # repositorio, este paso lo dice en vez de que la factura lo diga.
+        run: |
+          for v in ARCHMUSE_TEST_RED ARCHMUSE_TEST_IA ARCHMUSE_DXF_V2S; do
+            if [ -n "${!v}" ]; then echo "::error::$v está definido en CI y no debe estarlo"; exit 1; fi
+          done
+
+      - name: pytest
+        run: pytest -q --durations=15
+
+  nocturno:
+    name: suite con servicios en vivo
+    # Sólo en la programación diaria o a mano: nunca en un push, para que un
+    # PR no dependa de que boe.es esté arriba ni gaste tokens.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+
+      - name: Instalar dependencias exactas
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.lock.txt
+          pip install -r requirements-dev.txt
+
+      - name: pytest con red e IA
+        env:
+          # Golpea boe.es y el Catastro de verdad, y llama a la API de
+          # Anthropic. Por eso vive aquí y no en el job de cada push.
+          ARCHMUSE_TEST_RED: "1"
+          ARCHMUSE_TEST_IA: "1"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Desde la tarea TL-8 la geocodificacion es de Mapbox y no de
+          # Nominatim (cuya instancia publica prohibe el uso comercial). Este
+          # es el unico sitio donde se hace una llamada real al geocodificador:
+          # sin el secreto, esa comprobacion se salta con motivo y lo dice, no
+          # falla -- pero entonces la sustitucion sigue probada solo contra
+          # fixtures, que es exactamente el punto abierto de esa tarea.
+          MAPBOX_TOKEN: ${{ secrets.MAPBOX_TOKEN }}
+        run: pytest -q

@@ -1,0 +1,207 @@
+{
+  "_nota": "Contrato de cada capacidad (tarea CAD-2): lo que un invocador de fuera nota. La descripción NO está aquí a propósito. Generado por `python tests/test_agente_compatibilidad.py --congelar`. Si esto cambia, alguien ha cambiado un contrato: la versión tiene que reflejarlo.",
+  "bim.inventario_de_ifc": {
+    "efectos": [],
+    "id": "bim.inventario_de_ifc",
+    "limitaciones": 4,
+    "naturaleza": "determinista",
+    "obligatorios": [
+      "ruta"
+    ],
+    "parametros": {
+      "ruta": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "normativa.reglas_aplicables": {
+    "efectos": [],
+    "id": "normativa.reglas_aplicables",
+    "limitaciones": 2,
+    "naturaleza": "determinista",
+    "obligatorios": [
+      "codigo_municipio",
+      "tipologia",
+      "uso"
+    ],
+    "parametros": {
+      "codigo_municipio": {
+        "type": "string"
+      },
+      "fecha_devengo": {
+        "type": "string"
+      },
+      "tipologia": {
+        "type": "string"
+      },
+      "uso": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "normativa.umbral_de_regla": {
+    "efectos": [],
+    "id": "normativa.umbral_de_regla",
+    "limitaciones": 2,
+    "naturaleza": "determinista",
+    "obligatorios": [
+      "ambito_id",
+      "concept_id"
+    ],
+    "parametros": {
+      "ambito_id": {
+        "type": "string"
+      },
+      "concept_id": {
+        "type": "string"
+      },
+      "ejes": {
+        "type": "object"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "plano.cuadro_de_superficies": {
+    "efectos": [],
+    "id": "plano.cuadro_de_superficies",
+    "limitaciones": 5,
+    "naturaleza": "determinista",
+    "obligatorios": [
+      "ruta"
+    ],
+    "parametros": {
+      "respuestas": {
+        "type": [
+          "array",
+          "null"
+        ]
+      },
+      "ruta": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "plano.cuadro_en_pdf": {
+    "efectos": [
+      "escribe_fichero"
+    ],
+    "id": "plano.cuadro_en_pdf",
+    "limitaciones": 3,
+    "naturaleza": "io",
+    "obligatorios": [
+      "ruta",
+      "ruta_destino"
+    ],
+    "parametros": {
+      "respuestas": {
+        "type": [
+          "array",
+          "null"
+        ]
+      },
+      "ruta": {
+        "type": "string"
+      },
+      "ruta_destino": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "plano.escribir_cuadro": {
+    "efectos": [
+      "escribe_fichero"
+    ],
+    "id": "plano.escribir_cuadro",
+    "limitaciones": 5,
+    "naturaleza": "io",
+    "obligatorios": [
+      "ruta_destino",
+      "ruta_origen"
+    ],
+    "parametros": {
+      "respuestas": {
+        "type": [
+          "array",
+          "null"
+        ]
+      },
+      "ruta_destino": {
+        "type": "string"
+      },
+      "ruta_origen": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "plano.leer_dxf": {
+    "efectos": [],
+    "id": "plano.leer_dxf",
+    "limitaciones": 3,
+    "naturaleza": "determinista",
+    "obligatorios": [
+      "ruta"
+    ],
+    "parametros": {
+      "capa": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "factor_escala": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "ruta": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "plano.superficie_util": {
+    "efectos": [],
+    "id": "plano.superficie_util",
+    "limitaciones": 3,
+    "naturaleza": "determinista",
+    "obligatorios": [
+      "ruta"
+    ],
+    "parametros": {
+      "capa": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "ruta": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  },
+  "territorial.resolver_ambito": {
+    "efectos": [],
+    "id": "territorial.resolver_ambito",
+    "limitaciones": 2,
+    "naturaleza": "determinista",
+    "obligatorios": [
+      "municipio"
+    ],
+    "parametros": {
+      "municipio": {
+        "type": "string"
+      },
+      "provincia": {
+        "type": "string"
+      }
+    },
+    "version": "1.0.0"
+  }
+}
