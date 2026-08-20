@@ -5,6 +5,23 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-08-20 (madrugada) · Trabajo autónomo (1h, sin parar a preguntar) -- checkpoints
+
+`[00:00]` Arranque: termina el rediseño de cabecera pendiente (selector de
+modo compacto + botón de enviar sólo icono + quitar `required`). Suite
+completa verde antes de tocar nada nuevo: 1057 passed, 2 failed (los mismos
+guardianes C4 de siempre), 18 skipped.
+
+`[00:05]` Cabecera terminada y verificada por DOM (los screenshots del
+navegador dieron timeout intermitente en esta sesión -- verificación por
+JS directo en su lugar, más precisa): desplegable con 5 ítems (2
+seleccionables con marca ✓, 3 "próximamente" deshabilitadas), botón de
+enviar `disabled` de verdad en vacío y activo al escribir, `required` fuera
+del textarea. Suite completa: 1057 passed, 2 failed (mismos de siempre),
+18 skipped, 521 s. Commit local hecho (sin `git push`, según instrucción).
+
+---
+
 ## 2026-08-20 (noche, aún más tarde) · Informe de test: hallazgo 1 (medición de cobertura) cerrado
 
 Pablo trajo un informe externo de estrategia de tests, medido ejecutando la

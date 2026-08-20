@@ -2905,9 +2905,8 @@ body::before {
 }
 .conv-sidebar a.sidebar-item { text-decoration: none; }
 /* Bloque 1 (2026-08-20): aviso de la etiqueta de /proyectos, bajo el enlace
-   de la sidebar -- mismo tratamiento tipográfico que `.conv-accion-sub`
-   (texto apagado, sin pastilla), indentado para alinear bajo la etiqueta
-   "Proyectos" (16px de icono + 8px de gap, ver `.sidebar-icono`). */
+   de la sidebar -- texto apagado, sin pastilla, indentado para alinear bajo
+   la etiqueta "Proyectos" (16px de icono + 8px de gap, ver `.sidebar-icono`). */
 .conv-sidebar-aviso {
   margin: -2px 0 var(--space-2); padding: 0 var(--space-2) 0 24px;
   color: var(--text-tertiary); font-size: var(--text-xs); line-height: 1.4;
@@ -2915,6 +2914,7 @@ body::before {
 
 .conv-main {
   flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0;
+  position: relative; /* ancla al overlay de arrastrar-y-soltar, ver .conv-drop-aviso */
 }
 
 .conv-header {
@@ -2932,36 +2932,15 @@ body::before {
 }
 .conv-cerrar:hover { color: var(--text-primary); background: var(--overlay-subtle); }
 
-/* Acciones rápidas: SOLO una tarjeta ofrece algo real (la que dispara la
-   pregunta que mide de verdad). El resto se inyecta desde `CONV_ROADMAP` en
-   app.js -- la misma lista que ya usaba "En el mapa, todavía no" dentro de
-   la tarjeta "fuera de alcance", nunca un catálogo nuevo y separado. Ver
-   HAZ del encargo: "solo pueden ofrecer lo que existe hoy". */
-.conv-acciones-rapidas {
-  display: flex; flex-wrap: wrap; gap: var(--space-3);
-  padding: var(--space-4) var(--space-4) 0; flex-shrink: 0;
-}
-.conv-accion-card {
-  flex: 1 1 220px; min-width: 200px; max-width: 320px;
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-  padding: var(--space-4); border-radius: var(--radius-lg);
-  background: var(--bg-card); border: 1px solid var(--border);
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
-  text-align: left; font-family: inherit;
-}
-.conv-accion-card-real {
-  cursor: pointer; color: inherit; transition: border-color 0.15s ease, background 0.15s ease;
-}
-.conv-accion-card-real:hover { border-color: var(--accent); background: var(--accent-soft); }
-.conv-accion-icono { font-size: var(--text-lg); color: var(--accent); line-height: 1; }
-.conv-accion-titulo { font-weight: var(--font-medium); font-size: var(--text-base); }
-.conv-accion-sub { color: var(--text-tertiary); font-size: var(--text-xs); line-height: 1.4; }
-/* "Próximamente": mismo tratamiento que `.sidebar-item:disabled` -- texto
-   apagado y `not-allowed`, nunca una cifra ni un check de relleno. */
-.conv-accion-card-resto { display: contents; }
-.conv-accion-card-proximamente { cursor: not-allowed; opacity: 0.55; }
-.conv-accion-card-proximamente .conv-accion-icono { color: var(--text-tertiary); }
-.conv-accion-card-proximamente .conv-accion-titulo { display: flex; align-items: center; gap: var(--space-2); }
+/* Selector de modo (pulido 2026-08-20, "que se sienta como la interfaz de
+   Claude, con menos ruido visual"): sustituye a las dos tarjetas grandes +
+   "En el mapa, todavía no" que vivían aquí arriba. Ahora es un botón
+   pequeño en la barra de entrada, mismo espíritu que el selector de modelo
+   de Claude.ai -- el desplegable que abre es `.shell-dropdown`, reutilizado
+   tal cual (ver más abajo, junto a `.conv-entrada`). Sin icono a propósito
+   (petición explícita del encargo: "nada de iconos en esa zona"). */
+.conv-modo-trigger { gap: var(--space-1); }
+.conv-modo-flecha { color: var(--text-tertiary); font-size: 10px; }
 
 .conv-log {
   flex: 1; overflow-y: auto; padding: var(--space-6) var(--space-4) var(--space-4);
@@ -3029,7 +3008,13 @@ body::before {
 .conv-badge-fuera { color: var(--text-tertiary); border: 1px solid var(--border); }
 .conv-badge-error { color: var(--color-critical); border: 1px solid var(--color-critical); }
 
-.conv-titulo { margin: 0 0 var(--space-2); font-size: var(--text-lg); font-weight: var(--font-medium); letter-spacing: -0.01em; }
+/* Pulido (2026-08-20, referencia Apple DESIGN.md -- saltos de tamaño
+   marcados entre niveles de jerarquía, con tracking negativo reservado a
+   los tamaños grandes). Antes 16px/-0.01em contra los 14px del cuerpo: solo
+   2px de salto, tracking casi imperceptible a ese tamaño. `--text-xl` ya
+   existe (20px) -- no se introduce ningún tamaño nuevo. El cuerpo no se
+   toca. */
+.conv-titulo { margin: 0 0 var(--space-2); font-size: var(--text-xl); font-weight: var(--font-medium); letter-spacing: -0.02em; }
 .conv-cuerpo { margin: 0; color: var(--text-secondary); line-height: 1.6; font-size: var(--text-base); }
 .conv-cifra {
   display: inline-block; margin-top: var(--space-3); padding: 2px 9px; border-radius: var(--radius-sm);
@@ -3108,6 +3093,58 @@ body::before {
 }
 .conv-adjunto-quitar:hover { opacity: 1; }
 
+/* Arrastrar y soltar un DXF sobre la caja de conversación (2026-08-20;
+   redibujado el mismo día con más profundidad -- "menos borde punteado
+   plano"). Mismos tokens que el resto de la app: `--ease-apple` y
+   `--shadow-lg` (ver §raíz), ningún color ni curva nuevos. Sólo CSS --
+   transforms/blur/sombras, nada de 3D real. `.conv-drop-aviso` vive siempre
+   en el DOM y sólo se hace visible con `.conv-dragover` en `.conv-main` (ver
+   wireConversacion en app.js) -- evita montar/desmontar el nodo en cada
+   dragenter/dragleave; la lógica de esos eventos no se toca, sólo esto.
+
+   Dos capas, como una hoja modal: una capa a pantalla completa que atenúa y
+   desenfoca el fondo (la profundidad "premium" que pedía Pablo), y encima
+   -- vía `::before`, sin nodo nuevo en el HTML -- la tarjeta con el borde y
+   la sombra que de verdad demarca la zona de soltar. Cada capa entra con su
+   propia duración, ligeramente escalonada, para que se lea como una pieza
+   con más de un plano en vez de un único rectángulo apareciendo de golpe. */
+.conv-drop-aviso {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 10, 14, 0.35);
+  backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.32s var(--ease-apple);
+}
+.conv-main.conv-dragover .conv-drop-aviso { opacity: 1; }
+
+.conv-drop-aviso::before {
+  content: ""; position: absolute; inset: var(--space-4);
+  border: 1.5px solid var(--accent); border-radius: var(--radius-xl);
+  background: var(--accent-soft);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: scale(0.965);
+  transition: transform 0.38s var(--ease-apple);
+}
+.conv-main.conv-dragover .conv-drop-aviso::before { transform: scale(1); }
+
+.conv-drop-aviso-texto {
+  position: relative; z-index: 1;
+  font-weight: var(--font-medium); font-size: var(--text-lg); color: var(--accent);
+  opacity: 0; transform: translateY(6px) scale(0.96);
+  transition: opacity 0.3s var(--ease-apple) 0.06s, transform 0.3s var(--ease-apple) 0.06s;
+}
+.conv-main.conv-dragover .conv-drop-aviso-texto { opacity: 1; transform: translateY(0) scale(1); }
+
+/* Confirmación breve al soltar un DXF válido -- transición, no efecto: el
+   chip (ya verde, ver .conv-adjunto-chip arriba) simplemente entra suave en
+   vez de aparecer de golpe. Sólo se aplica cuando el adjunto llega por
+   arrastre (ver renderConvAdjunto(animar) en app.js); adjuntar con el botón
+   sigue exactamente igual que hasta hoy. */
+@keyframes conv-adjunto-in { from { opacity: 0; transform: translateY(4px) scale(0.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.conv-adjunto-chip.conv-adjunto-nuevo { animation: conv-adjunto-in 0.35s var(--ease-apple); }
+
 .conv-entrada { display: flex; align-items: flex-end; gap: var(--space-2); }
 
 /* Sugerencia en línea (noche 7): el fantasma vive DETRÁS del textarea real
@@ -3140,7 +3177,25 @@ body::before {
 .conv-sugerencia-tipeado { color: transparent; } /* sólo reserva el hueco del texto ya escrito */
 .conv-sugerencia-resto { color: var(--text-tertiary); }
 
-.conv-entrada .btn-ghost, .conv-entrada .btn-primary { flex-shrink: 0; padding: 0.7rem 1.3rem; font-size: var(--text-sm); }
+.conv-entrada .btn-ghost { flex-shrink: 0; padding: 0.7rem 1.3rem; font-size: var(--text-sm); }
+
+/* Botón de enviar, sólo icono (pulido 2026-08-20: "igual que el botón de
+   envío de Claude.ai"). `disabled` de verdad con la caja vacía -- no sólo
+   apagado visualmente: evita también el aviso nativo "Rellene este campo"
+   que disparaba el `required` del textarea (ya retirado, ver index.html).
+   `convActualizarSugerencia()` en app.js activa/desactiva el atributo en
+   cada tecla. */
+.conv-btn-enviar {
+  flex-shrink: 0; width: 2.5rem; height: 2.5rem; padding: 0; margin: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: var(--radius-pill); cursor: pointer;
+  font-size: var(--text-lg); line-height: 1; font-family: inherit;
+  background: var(--btn-primary-bg); color: var(--btn-primary-text);
+  transition: opacity 0.15s var(--ease-apple), transform 0.1s var(--ease-apple);
+}
+.conv-btn-enviar:hover:not(:disabled) { transform: scale(1.05); }
+.conv-btn-enviar:active:not(:disabled) { transform: scale(0.94); }
+.conv-btn-enviar:disabled { background: var(--bg-tertiary); color: var(--text-tertiary); cursor: default; opacity: 1; }
 
 /* --- Barra de estado --------------------------------------------------------
    Sólo hechos: el fichero adjunto (si lo hay) y el nombre de la única Skill
@@ -3171,8 +3226,6 @@ body::before {
 
 @media (max-width: 720px) {
   .conv-header { padding: 0.6rem var(--space-4); }
-  .conv-acciones-rapidas { padding: var(--space-3) var(--space-3) 0; }
-  .conv-accion-card { flex-basis: 100%; max-width: none; }
   .conv-log { padding: var(--space-4) var(--space-3); }
   .conv-tarjeta { padding: var(--space-4); }
   .conv-fila { max-width: 100%; }

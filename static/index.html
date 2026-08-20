@@ -284,36 +284,17 @@
     </aside>
 
     <div class="conv-main">
+      <!-- Arrastrar y soltar un DXF sobre toda la caja (2026-08-20): overlay
+           siempre presente en el DOM, invisible hasta que `wireConversacion`
+           en app.js añade `.conv-dragover` a `.conv-main`. Mismos tokens que
+           `.dropzone.dragover` (static/style.css) -- ningún color nuevo. -->
+      <div class="conv-drop-aviso" id="conv-drop-aviso" aria-hidden="true">
+        <span class="conv-drop-aviso-texto">Suelta el DXF aquí</span>
+      </div>
       <div class="conv-header">
         <span class="conv-header-marca">ArchMuse</span>
         <span class="conv-header-sub" id="conv-header-sub">conversación</span>
         <button type="button" id="btn-conversacion-cerrar" class="conv-cerrar">&larr; Volver</button>
-      </div>
-
-      <!-- Acciones rápidas: la única real mide de verdad (misma pregunta que
-           dispara `superficies.medicion_de_planta`); el resto se rellena
-           desde `CONV_ROADMAP` en app.js -- una sola lista con la del panel
-           "fuera de alcance", nunca dos catálogos que se puedan desincronizar. -->
-      <div class="conv-acciones-rapidas" id="conv-acciones-rapidas">
-        <button type="button" class="conv-accion-card conv-accion-card-real"
-                data-pregunta="¿Cuánta superficie útil tiene esta planta?">
-          <span class="conv-accion-icono" aria-hidden="true">&#9638;</span>
-          <span class="conv-accion-titulo">Medir superficies</span>
-          <span class="conv-accion-sub">Superficie útil por estancia, con procedencia</span>
-        </button>
-        <!-- Bloque 1 (2026-08-20): segunda tarjeta real, misma disciplina que
-             la de arriba -- `revision.coherencia_del_plano` estaba `HECHO` y
-             probada desde el 19/8 (`test_agente_skill_coherencia.py`) pero
-             sin ninguna puerta HTTP que la alcanzara; esta tarjeta y el
-             wiring de `app.py` (`_EJECUTORES_PARA_PREGUNTAR`) son esa
-             puerta. -->
-        <button type="button" class="conv-accion-card conv-accion-card-real"
-                data-pregunta="¿Hay algo solapado o repetido en este plano?">
-          <span class="conv-accion-icono" aria-hidden="true">&#8853;</span>
-          <span class="conv-accion-titulo">Revisar coherencia</span>
-          <span class="conv-accion-sub">Solapes, rótulos y cuadro contra el dibujo — no comprueba normativa</span>
-        </button>
-        <div class="conv-accion-card-resto" id="conv-acciones-rapidas-resto"></div>
       </div>
 
       <div class="conv-log" id="conv-log">
@@ -332,15 +313,48 @@
                mostrando lo ya escrito en transparente (sólo para ocupar el
                mismo espacio) + el resto de la pregunta en gris. TAB la
                acepta -- ver `convActualizarSugerencia()`/wireConversacion en
-               app.js. Nunca sustituye al valor real del textarea. -->
+               app.js. Nunca sustituye al valor real del textarea.
+
+               SIN `placeholder` nativo a propósito (se quitó esta noche):
+               el fantasma ya cubre los dos estados de caja vacía --con
+               plano adjunto y sin él-- así que un `placeholder` aquí sólo
+               puede volver a competir por el mismo sitio, como pasó al
+               chocar dos ediciones sobre esta caja. -->
           <div class="conv-campo-pregunta">
-            <textarea id="conv-pregunta" class="conv-textarea" rows="1"
-                      placeholder="¿Cuánta superficie útil tiene esta planta?" required></textarea>
+            <!-- Sin `required` (quitado 2026-08-20, hallazgo de Pablo): con
+                 él, pulsar "Preguntar" en vacío disparaba el aviso nativo
+                 "Rellene este campo" -- el popup por defecto del navegador,
+                 ajeno al diseño de la app. La caja vacía ya no puede
+                 enviarse porque el propio botón está `disabled` (ver
+                 `.conv-btn-enviar` más abajo y `convActualizarSugerencia()`
+                 en app.js); el `if (!pregunta) return;` del `submit` sigue
+                 ahí como red de seguridad para Enter. -->
+            <textarea id="conv-pregunta" class="conv-textarea" rows="1"></textarea>
             <div class="conv-sugerencia-fantasma" id="conv-sugerencia-fantasma" aria-hidden="true"></div>
           </div>
           <input type="file" id="conv-dxf" accept=".dxf" hidden>
           <button type="button" id="conv-btn-adjuntar" class="btn-ghost conv-btn-adjuntar">Adjuntar DXF</button>
-          <button type="submit" id="conv-btn-enviar" class="btn-primary conv-btn-enviar">Preguntar</button>
+          <!-- Pulido (2026-08-20, "que se sienta como la interfaz de Claude"):
+               sustituye a las dos tarjetas grandes + "En el mapa, todavía
+               no" de arriba. Mismo lenguaje visual que el selector de
+               modelo de Claude.ai -- un botón pequeño con el modo activo,
+               que despliega la lista al pulsarlo. El desplegable en sí es
+               `.shell-dropdown`, ya usado por los 5 menús de la barra
+               (wireShellMenu) -- no un componente nuevo, sólo un sitio
+               nuevo donde se abre (ver abrirConvModoDropdown en app.js).
+               `aria-haspopup`/`aria-expanded` mismo patrón que esos menús. -->
+          <button type="button" id="conv-modo-trigger" class="btn-ghost conv-modo-trigger"
+                  aria-haspopup="true" aria-expanded="false">
+            <span id="conv-modo-etiqueta">Medir superficies</span>
+            <span class="conv-modo-flecha" aria-hidden="true">&#9662;</span>
+          </button>
+          <!-- Botón de enviar, sólo icono (petición explícita: "igual que el
+               botón de envío de Claude.ai"). Apagado/gris con la caja vacía,
+               con color en cuanto hay texto -- ver `.conv-btn-enviar-activo`,
+               que activa `convActualizarSugerencia()` en cada tecla. -->
+          <button type="submit" id="conv-btn-enviar" class="conv-btn-enviar" aria-label="Preguntar" disabled>
+            <span aria-hidden="true">&#8593;</span>
+          </button>
         </div>
       </form>
 

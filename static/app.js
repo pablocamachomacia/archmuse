@@ -5349,8 +5349,22 @@
   // proximamente`) para lo mismo. Ver HAZ #5 del encargo.
   var CONV_ROADMAP = ["Normativa (CTE)", "Presupuesto", "Geometría 3D"];
 
+  // Selector de modo (pulido 2026-08-20): las dos capacidades reales, en el
+  // mismo orden que llevaban las tarjetas que sustituye. El `id` es el
+  // nombre real de la capacidad -- no un slug inventado -- para que quede
+  // claro que esto es una etiqueta sobre algo que ya existe, no un catálogo
+  // nuevo y paralelo.
+  var CONV_MODOS = [
+    { id: "superficies.medicion_de_planta", label: "Medir superficies" },
+    { id: "revision.coherencia_del_plano", label: "Revisar coherencia" }
+  ];
+
   var convState = {
     archivoAdjunto: null,
+    // Petición de Pablo (2026-08-20): preseleccionado con "Medir
+    // superficies" al cargar, nunca vacío -- fidelidad con el selector de
+    // modelo de Claude.ai, que tampoco aparece nunca sin uno elegido.
+    modoActivo: CONV_MODOS[0].id,
     // Últimos DXF adjuntados en ESTA sesión (noche 7): un navegador no
     // puede rastrear el disco por seguridad, así que "recordar" sólo puede
     // significar "seguir sujetando el `File` ya concedido" -- se pierde al
@@ -5470,7 +5484,10 @@
     if (overlay) overlay.classList.remove("open");
   }
 
-  function renderConvAdjunto() {
+  // `animar`: sólo lo pasa el drop de un DXF (ver wireConversacion) -- el
+  // botón "Adjuntar DXF" y el resto de caminos quedan exactamente igual que
+  // antes de esta noche.
+  function renderConvAdjunto(animar) {
     var cont = document.getElementById("conv-adjunto");
     if (cont) {
       if (!convState.archivoAdjunto) {
@@ -5478,7 +5495,8 @@
         cont.innerHTML = "";
       } else {
         cont.hidden = false;
-        cont.innerHTML = '<span class="conv-adjunto-chip">' + escapeHtml(convState.archivoAdjunto.name) +
+        cont.innerHTML = '<span class="conv-adjunto-chip' + (animar ? " conv-adjunto-nuevo" : "") + '">' +
+          escapeHtml(convState.archivoAdjunto.name) +
           '<button type="button" class="conv-adjunto-quitar" id="conv-adjunto-quitar" aria-label="Quitar plano adjunto">&times;</button></span>';
       }
     }
@@ -5494,19 +5512,87 @@
     }
   }
 
-  // Fila "próximamente" de las acciones rápidas -- misma lista que "En el
-  // mapa, todavía no" (`CONV_ROADMAP`), nunca un catálogo aparte. Cada
-  // tarjeta es un `<div>`, no un `<button>`: no hay nada que pulsar, es un
-  // estado, no una acción.
-  function renderConvAccionesRapidasResto() {
-    var cont = document.getElementById("conv-acciones-rapidas-resto");
-    if (!cont) return;
-    cont.innerHTML = CONV_ROADMAP.map(function (r) {
-      return '<div class="conv-accion-card conv-accion-card-proximamente">' +
-        '<span class="conv-accion-titulo">' + escapeHtml(r) +
-        '<span class="sidebar-badge-proximamente">próximamente</span></span>' +
-        '<span class="conv-accion-sub">Todavía no hay una capacidad real para esto</span></div>';
+  // Selector de modo (pulido 2026-08-20, sustituye a las tarjetas + "En el
+  // mapa, todavía no"): mismo mecanismo visual que `.shell-dropdown`
+  // (wireShellMenu, más arriba en este fichero) -- se construye en JS y se
+  // añade a `document.body` con posición fija, en vez de vivir siempre en
+  // el DOM. No se reutiliza literalmente `openShellMenu`/`SHELL_ACTIONS`
+  // (esos están acoplados a los 5 triggers de la barra superior y a
+  // acciones globales por nombre); esto sólo necesita abrir/cerrar y
+  // recordar un `id` en `convState.modoActivo`, así que es más simple
+  // tener su propio mecanismo pequeño con las mismas clases CSS.
+  var convModoDropdownEl = null;
+
+  function renderConvModoTrigger() {
+    var etiqueta = document.getElementById("conv-modo-etiqueta");
+    var modo = CONV_MODOS.filter(function (m) { return m.id === convState.modoActivo; })[0];
+    if (etiqueta && modo) etiqueta.textContent = modo.label;
+  }
+
+  function _convModoDropdownClickFuera(e) {
+    if (!convModoDropdownEl || convModoDropdownEl.contains(e.target)) return;
+    var trigger = document.getElementById("conv-modo-trigger");
+    if (trigger && trigger.contains(e.target)) return; // el propio click del trigger lo gestiona su handler
+    cerrarConvModoDropdown();
+  }
+  function _convModoDropdownEscape(e) {
+    if (e.key === "Escape") cerrarConvModoDropdown();
+  }
+
+  function cerrarConvModoDropdown() {
+    if (!convModoDropdownEl) return;
+    convModoDropdownEl.remove();
+    convModoDropdownEl = null;
+    document.removeEventListener("click", _convModoDropdownClickFuera);
+    document.removeEventListener("keydown", _convModoDropdownEscape);
+    var trigger = document.getElementById("conv-modo-trigger");
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
+  }
+
+  // Sin icono a propósito (petición explícita: "nada de iconos en esa
+  // zona") -- sólo texto, la marca (✓) y, en las apagadas, la misma
+  // etiqueta `sidebar-badge-proximamente` de siempre. Las tres apagadas son
+  // `<button disabled>`: no disparan click, mismo criterio que ya tenían
+  // las tarjetas "próximamente" que sustituye.
+  function abrirConvModoDropdown() {
+    var trigger = document.getElementById("conv-modo-trigger");
+    if (!trigger) return;
+    var rect = trigger.getBoundingClientRect();
+    var el = document.createElement("div");
+    el.className = "shell-dropdown";
+    // Se abre HACIA ARRIBA: el trigger vive en la barra de entrada, al pie
+    // de la pantalla -- abrir hacia abajo lo sacaría del viewport.
+    el.style.bottom = (window.innerHeight - rect.top + 4) + "px";
+    el.style.left = rect.left + "px";
+    el.innerHTML = CONV_MODOS.map(function (m) {
+      var marca = m.id === convState.modoActivo ? "✓" : "";
+      return '<button type="button" class="shell-dropdown-item" data-modo="' + m.id + '">' +
+        '<span class="shell-dropdown-item-check">' + marca + "</span>" +
+        '<span class="shell-dropdown-item-body"><span class="shell-dropdown-item-label">' +
+        escapeHtml(m.label) + "</span></span></button>";
+    }).join("") + '<div class="shell-dropdown-sep"></div>' + CONV_ROADMAP.map(function (r) {
+      return '<button type="button" class="shell-dropdown-item" disabled>' +
+        '<span class="shell-dropdown-item-check"></span>' +
+        '<span class="shell-dropdown-item-body"><span class="shell-dropdown-item-label">' +
+        escapeHtml(r) + ' <span class="sidebar-badge-proximamente">próximamente</span></span></span></button>';
     }).join("");
+    el.addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-modo]");
+      if (!btn) return;
+      convState.modoActivo = btn.dataset.modo;
+      renderConvModoTrigger();
+      cerrarConvModoDropdown();
+    });
+    document.body.appendChild(el);
+    convModoDropdownEl = el;
+    trigger.setAttribute("aria-expanded", "true");
+    // El propio click que abre el desplegable no debe cerrarlo de
+    // inmediato al llegarle al listener de "fuera" -- se registra en el
+    // siguiente ciclo, después de que este click termine de propagarse.
+    setTimeout(function () {
+      document.addEventListener("click", _convModoDropdownClickFuera);
+      document.addEventListener("keydown", _convModoDropdownEscape);
+    }, 0);
   }
 
   // El `<summary>` de cada `<details class="limitacion">` lleva la etiqueta
@@ -5776,6 +5862,14 @@
   // entrada aquí para ninguna de esas, así que no hay nada que sugerir
   // hacia ellas -- prometerlo como sugerencia sería la misma alucinación
   // que prometerlo como respuesta.
+
+  // Única candidata sin plano adjunto. Una sola cadena, reusada tal cual
+  // como fantasma por defecto en caja vacía (petición de Pablo, sesión de
+  // hoy: "demasiado estricto" exigir que el usuario tecleara el prefijo
+  // exacto antes de ver algo) -- nunca dos frases parecidas que puedan
+  // divergir con el tiempo.
+  var CONV_SUGERENCIA_SIN_ADJUNTO = "adjunta un plano dxf para que pueda medir algo real";
+
   var CONV_SUGERENCIAS_POR_CAPACIDAD = {
     "superficies.medicion_de_planta": function (ctx) {
       var candidatas = CONV_EJEMPLOS.slice();
@@ -5828,16 +5922,34 @@
     var fantasma = document.getElementById("conv-sugerencia-fantasma");
     if (!textarea || !fantasma) return;
     var escrito = textarea.value;
+    // Botón de enviar (pulido 2026-08-20): `disabled` de verdad, no sólo
+    // apagado visualmente -- así ni siquiera hay ocasión de disparar el
+    // aviso nativo del formulario. Se recalcula en cada tecla, aquí y no en
+    // un listener aparte, porque esta función ya se llama en cada uno de
+    // los sitios que pueden cambiar el contenido del textarea (tecleo, TAB,
+    // limpiar tras enviar).
+    var btnEnviar = document.getElementById("conv-btn-enviar");
+    if (btnEnviar) btnEnviar.disabled = !escrito.trim();
     if (!escrito) {
-      convState.sugerenciaActual = null;
-      fantasma.innerHTML = "";
+      // Caja vacía: sin nada tecleado no hay prefijo que completar, así
+      // que `completo` y `resto` coinciden. El textarea NO lleva ya
+      // `placeholder` nativo (lo llevaba hasta esta noche: competía con
+      // este fantasma, mismo sitio, dos textos superpuestos e ilegibles --
+      // hallazgo de Pablo tras el choque con la sesión de Cowork) -- así
+      // que este fantasma es la ÚNICA fuente de texto por defecto, en
+      // los dos estados posibles:
+      var porDefecto = convState.archivoAdjunto
+        ? CONV_EJEMPLOS[0]              // ejemplo de pregunta, el mismo que llevaba el placeholder nativo
+        : CONV_SUGERENCIA_SIN_ADJUNTO;  // sin plano, invita a adjuntar uno (petición de Pablo, sesión de hoy)
+      convState.sugerenciaActual = { completo: porDefecto, resto: porDefecto };
+      fantasma.innerHTML = '<span class="conv-sugerencia-resto">' + escapeHtml(porDefecto) + "</span>";
       return;
     }
     // Sin plano adjunto, la sugerencia anima a adjuntar uno -- nunca a
     // preguntar algo que hoy no se podría responder sin él.
     var candidatas = convState.archivoAdjunto
       ? _convCandidatasDeSugerencia()
-      : ["adjunta un plano dxf para que pueda medir algo real"];
+      : [CONV_SUGERENCIA_SIN_ADJUNTO];
     var sugerencia = _convSugerirCompletado(escrito, candidatas);
     convState.sugerenciaActual = sugerencia;
     fantasma.innerHTML = sugerencia
@@ -5989,30 +6101,20 @@
   }
 
   function wireConversacion() {
-    renderConvAccionesRapidasResto();
+    renderConvModoTrigger();
     renderConvAdjunto(); // pinta la barra de estado también en el arranque, sin adjunto todavía.
+    convActualizarSugerencia(); // idem con el fantasma: visible desde el primer segundo, sin esperar a que el usuario teclee algo.
 
     var cerrar = document.getElementById("btn-conversacion-cerrar");
     if (cerrar) cerrar.addEventListener("click", cerrarConversacion);
 
-    // Acciones rápidas: la única tarjeta real (`data-pregunta`) se comporta
-    // exactamente como una sugerencia del panel "fuera de alcance" -- si ya
-    // hay un DXF adjunto, pregunta directamente; si no, sólo rellena el
-    // campo y deja que el arquitecto adjunte primero. Las tarjetas
-    // "próximamente" no llevan `data-pregunta`, así que no hacen nada al
-    // pulsarlas -- ni falta que hace, `cursor: not-allowed` ya lo dice.
-    var accionesRapidas = document.getElementById("conv-acciones-rapidas");
-    if (accionesRapidas) accionesRapidas.addEventListener("click", function (e) {
-      var tarjeta = e.target.closest("[data-pregunta]");
-      if (!tarjeta) return;
-      var pregunta = tarjeta.dataset.pregunta || "";
-      var textarea = document.getElementById("conv-pregunta");
-      if (textarea) textarea.value = pregunta;
-      if (convState.archivoAdjunto) {
-        convEnviarPregunta(pregunta);
-      } else if (textarea) {
-        textarea.focus();
-      }
+    // Selector de modo: abre/cierra con el mismo click (mismo criterio que
+    // `wireShellMenu`), la elección la resuelve el propio listener del
+    // desplegable, dentro de `abrirConvModoDropdown()`.
+    var modoTrigger = document.getElementById("conv-modo-trigger");
+    if (modoTrigger) modoTrigger.addEventListener("click", function () {
+      if (convModoDropdownEl) { cerrarConvModoDropdown(); return; }
+      abrirConvModoDropdown();
     });
 
     var form = document.getElementById("conv-form");
@@ -6024,18 +6126,63 @@
       convEnviarPregunta(pregunta);
     });
 
+    // Un único camino para "adjuntar este File", que use quien lo use --
+    // el botón, el histórico de la sesión o el arrastre de más abajo. Antes
+    // de esta noche cada uno repetía las mismas cuatro líneas por su cuenta.
+    function convAdjuntarArchivo(file, animar) {
+      convState.archivoAdjunto = file;
+      convState.ultimoContexto = null; // plano nuevo: el contexto del anterior ya no aplica
+      convRegistrarArchivoUsado(file);
+      renderConvAdjunto(animar);
+      convActualizarSugerencia();
+    }
+
     var btnAdjuntar = document.getElementById("conv-btn-adjuntar");
     var inputDxf = document.getElementById("conv-dxf");
     if (btnAdjuntar && inputDxf) {
       btnAdjuntar.addEventListener("click", function () { inputDxf.click(); });
       inputDxf.addEventListener("change", function () {
-        if (inputDxf.files && inputDxf.files[0]) {
-          convState.archivoAdjunto = inputDxf.files[0];
-          convState.ultimoContexto = null; // plano nuevo: el contexto del anterior ya no aplica
-          convRegistrarArchivoUsado(inputDxf.files[0]);
-          renderConvAdjunto();
-          convActualizarSugerencia();
+        if (inputDxf.files && inputDxf.files[0]) convAdjuntarArchivo(inputDxf.files[0]);
+      });
+    }
+
+    // Arrastrar y soltar un DXF sobre toda la caja de conversación
+    // (2026-08-20). `dragEnters` cuenta cuántos elementos han disparado
+    // `dragenter` sin su `dragleave` correspondiente todavía: sin el
+    // contador, el resalte parpadea al cruzar sobre un hijo (`.conv-header`,
+    // `#conv-log`...), porque su `dragleave` del padre llega antes que el
+    // `dragenter` del hijo. El `dragover` global de `window` evita que
+    // soltar FUERA de la caja navegue a el DXF como si fuera una página --
+    // sin tocar el comportamiento normal de nada que no sea un archivo
+    // arrastrado.
+    var convMain = document.querySelector(".conv-main");
+    if (convMain) {
+      var dragEnters = 0;
+      window.addEventListener("dragover", function (e) { e.preventDefault(); });
+      window.addEventListener("drop", function (e) { e.preventDefault(); });
+      convMain.addEventListener("dragenter", function (e) {
+        e.preventDefault();
+        dragEnters += 1;
+        convMain.classList.add("conv-dragover");
+      });
+      convMain.addEventListener("dragleave", function () {
+        dragEnters = Math.max(0, dragEnters - 1);
+        if (dragEnters === 0) convMain.classList.remove("conv-dragover");
+      });
+      convMain.addEventListener("drop", function (e) {
+        dragEnters = 0;
+        convMain.classList.remove("conv-dragover");
+        var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!file) return;
+        // Sin animación de éxito si no es un DXF -- misma tarjeta de error
+        // que ya usa el resto de la conversación, ningún componente nuevo.
+        if (!/\.dxf$/i.test(file.name)) {
+          convAnadirRespuesta(convTarjetaError(
+            "\"" + file.name + "\" no es un DXF -- arrastra un plano en ese formato, " +
+            "o usa \"Adjuntar DXF\"."));
+          return;
         }
+        convAdjuntarArchivo(file, /* animar */ true);
       });
     }
 
@@ -6056,11 +6203,7 @@
       if (histBtn) {
         var item = convState.historialArchivos[Number(histBtn.dataset.adjuntarHistorial)];
         if (item) {
-          convState.archivoAdjunto = item.file;
-          convState.ultimoContexto = null;
-          convRegistrarArchivoUsado(item.file);
-          renderConvAdjunto();
-          convActualizarSugerencia();
+          convAdjuntarArchivo(item.file);
           convAnadirRespuesta(convTarjetaSaludo("Adjunté " + item.name + ". ¿Qué quieres que mida?"));
         }
         return;
@@ -6388,6 +6531,14 @@
   // analizado -- `abrirConversacion()` no depende de `state.archivoAnalizado`.
   if (window.location.pathname === "/") {
     abrirConversacion();
+    // Bloque 1 dejó "/" como puerta única: aquí no hay ninguna portada
+    // clásica "debajo" a la que volver -- `cerrarConversacion()` desvelaría
+    // /proyectos, que ya no es el flujo principal (petición explícita de
+    // Pablo, esta noche). El botón sigue existiendo para cuando la
+    // conversación se abre COMO OVERLAY encima de /proyectos (atajo
+    // "abrir-conversacion" de arriba): ahí sí hay algo real detrás.
+    var btnVolverConv = document.getElementById("btn-conversacion-cerrar");
+    if (btnVolverConv) btnVolverConv.hidden = true;
   }
 
   restaurarColapso();
