@@ -2922,8 +2922,29 @@ class _FalloDeMedicion(Exception):
     que se le enseña al usuario -- ver dónde se captura, en cada endpoint."""
 
 
+class _ConfirmacionRequerida(Exception):
+    """`SEG-1` (`docs/AGENTE_BACKLOG.md` §11): la Skill necesita un efecto
+    (`agente/efectos.py`) que nadie ha autorizado todavía -- hoy, crear el
+    fichero temporal del informe de medición. El ejecutor ya se detiene solo
+    y sin escribir nada (`PENDIENTE_DE_AUTORIZACION`, ver `agente/ejecucion.py`);
+    lo que faltaba era que el backend dejara de concederlo por su cuenta y
+    en su lugar preguntara. `efectos` son los pendientes tal como los
+    devuelve `ResultadoDeEjecucion.efectos_pendientes` -- nunca inventados
+    aquí."""
+
+    def __init__(self, quien: str, efectos) -> None:
+        from agente.efectos import DESCRIPCIONES
+        self.quien = quien
+        self.efectos = tuple(efectos)
+        super().__init__(
+            "ArchMuse necesita tu autorización para: %s. No se ha escrito nada."
+            % "; ".join(DESCRIPCIONES.get(e, e) for e in self.efectos)
+        )
+
+
 def _medir_planta_y_levantar_acta(file, filename: str, capa: Optional[str],
-                                   factor_escala) -> dict:
+                                   factor_escala, *, quien: str,
+                                   autorizar_efectos: bool = False) -> dict:
     """El DXF subido -> Skill real `superficies.medicion_de_planta` -> acta
     de procedencia (`Acta.a_dict()`).
 
@@ -2938,9 +2959,19 @@ def _medir_planta_y_levantar_acta(file, filename: str, capa: Optional[str],
     salir de esta función. Levanta `_FalloDeMedicion` con un mensaje ya listo
     para el usuario si la Skill no puede completarse -- nunca deja pasar la
     excepción original del ejecutor tal cual.
+
+    **`SEG-1`:** la Skill declara `escribe_fichero` (escribe el informe PDF
+    intermedio de su propio procedimiento, `ruta_informe`, antes de esta
+    tarea autorizado en nombre del arquitecto sin preguntarle). Con
+    `autorizar_efectos=False` (el valor por defecto en la primera llamada de
+    cada endpoint) no se concede nada; si la Skill lo necesita, el ejecutor
+    se detiene solo, sin escribir nada, y esta función lo traduce a
+    `_ConfirmacionRequerida` -- nunca a `_FalloDeMedicion`, que es un error,
+    no una pregunta. El llamador reintenta con `autorizar_efectos=True` sólo
+    si el arquitecto dijo que sí.
     """
     from agente import acta as _acta
-    from agente.efectos import ESCRIBE_FICHERO, Autorizaciones
+    from agente.efectos import ESCRIBE_FICHERO, NINGUNA, Autorizaciones
     from agente.ejecucion import Ejecutor, Paso, Plan
     from agente.memoria import MemoriaDeProyecto, SustratoEnMemoria
     from agente.registro import registro, registro_de_skills
@@ -2966,7 +2997,10 @@ def _medir_planta_y_levantar_acta(file, filename: str, capa: Optional[str],
             pasos=(Paso(id="medir", skill="superficies.medicion_de_planta",
                         argumentos=argumentos),),
         )
-        autorizaciones = Autorizaciones.de((ESCRIBE_FICHERO,), por="api:acta-legible")
+        autorizaciones = (
+            Autorizaciones.de((ESCRIBE_FICHERO,), por=quien)
+            if autorizar_efectos else NINGUNA
+        )
 
         try:
             resultado = Ejecutor(capacidades=capacidades, skills=skills).ejecutar(
@@ -2975,18 +3009,39 @@ def _medir_planta_y_levantar_acta(file, filename: str, capa: Optional[str],
             app.logger.exception("medicion: fallo al ejecutar la Skill")
             raise _FalloDeMedicion("No se pudo medir el plano: %s" % exc) from exc
 
+        if resultado.efectos_pendientes:
+            # Ni un byte escrito: el paso se quedó en PENDIENTE_DE_AUTORIZACION
+            # y `Ejecutor` no llegó a invocar la capacidad que escribe.
+            raise _ConfirmacionRequerida(quien, resultado.efectos_pendientes)
+
         documento = _acta.levantar(resultado, capacidades=capacidades, skills=skills)
         return documento.a_dict()
 
 
 def _medir_planta_y_renderizar_acta(file, filename: str, capa: Optional[str],
-                                     factor_escala) -> str:
+                                     factor_escala, *, quien: str,
+                                     autorizar_efectos: bool = False) -> str:
     """`_medir_planta_y_levantar_acta` -> página HTML legible
     (`analyzer.acta_legible.render()`). Separada de ella (MJ-2/`/api/memoria-superficies`,
     2026-08-19) para que un consumidor que quiera el acta y no HTML -- el PDF
     del apartado de superficies -- no tenga que parsear la página de vuelta."""
     from analyzer import acta_legible as _acta_legible
-    return _acta_legible.render(_medir_planta_y_levantar_acta(file, filename, capa, factor_escala))
+    return _acta_legible.render(_medir_planta_y_levantar_acta(
+        file, filename, capa, factor_escala,
+        quien=quien, autorizar_efectos=autorizar_efectos))
+
+
+def _respuesta_confirmacion_requerida(exc: "_ConfirmacionRequerida"):
+    """`SEG-1`: la forma única en la que un efecto pendiente de autorización
+    llega a la interfaz -- 428 (Precondition Required, no 400: no es un
+    error del arquitecto) con la lista estructurada de `agente.efectos.solicitud`,
+    la misma que usaría cualquier otro llamador (CLI, MCP) para preguntar."""
+    from agente.efectos import solicitud
+    return jsonify(
+        error=str(exc),
+        confirmacion_requerida=True,
+        solicitud=solicitud(exc.quien, exc.efectos),
+    ), 428
 
 
 @app.route("/api/acta-legible", methods=["POST"])
@@ -3005,11 +3060,16 @@ def acta_legible_endpoint():
     filename = secure_filename(file.filename) or "plano.dxf"
     capa = (request.form.get("capa") or "").strip() or None
     factor_escala = factor_de_unidad(request.form.get("escala") or "")
+    autorizar_efectos = (request.form.get("autorizar_efectos") or "") == "1"
 
     try:
-        pagina = _medir_planta_y_renderizar_acta(file, filename, capa, factor_escala)
+        pagina = _medir_planta_y_renderizar_acta(
+            file, filename, capa, factor_escala,
+            quien="api:acta-legible", autorizar_efectos=autorizar_efectos)
     except _FalloDeMedicion as exc:
         return jsonify(error=str(exc)), 400
+    except _ConfirmacionRequerida as exc:
+        return _respuesta_confirmacion_requerida(exc)
 
     return Response(pagina, mimetype="text/html")
 
@@ -3036,11 +3096,16 @@ def memoria_superficies_endpoint():
     filename = secure_filename(file.filename) or "plano.dxf"
     capa = (request.form.get("capa") or "").strip() or None
     factor_escala = factor_de_unidad(request.form.get("escala") or "")
+    autorizar_efectos = (request.form.get("autorizar_efectos") or "") == "1"
 
     try:
-        acta = _medir_planta_y_levantar_acta(file, filename, capa, factor_escala)
+        acta = _medir_planta_y_levantar_acta(
+            file, filename, capa, factor_escala,
+            quien="api:memoria-superficies", autorizar_efectos=autorizar_efectos)
     except _FalloDeMedicion as exc:
         return jsonify(error=str(exc)), 400
+    except _ConfirmacionRequerida as exc:
+        return _respuesta_confirmacion_requerida(exc)
 
     from analyzer.memoria_justificativa import ActaSinDatos, generar_memoria_pdf
     try:
@@ -3195,11 +3260,16 @@ def preguntar():
     filename = secure_filename(file.filename) or "plano.dxf"
     capa = (request.form.get("capa") or "").strip() or None
     factor_escala = factor_de_unidad(request.form.get("escala") or "")
+    autorizar_efectos = (request.form.get("autorizar_efectos") or "") == "1"
 
     try:
-        pagina = _medir_planta_y_renderizar_acta(file, filename, capa, factor_escala)
+        pagina = _medir_planta_y_renderizar_acta(
+            file, filename, capa, factor_escala,
+            quien="api:preguntar", autorizar_efectos=autorizar_efectos)
     except _FalloDeMedicion as exc:
         return jsonify(error=str(exc)), 400
+    except _ConfirmacionRequerida as exc:
+        return _respuesta_confirmacion_requerida(exc)
 
     return jsonify(coincide=True, capacidad=capacidad, html=pagina)
 

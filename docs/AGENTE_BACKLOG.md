@@ -680,15 +680,15 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 ## 10. Generación de trabajo profesional
 
 ### DOC-1 · Acta de procedencia legible por un arquitecto
-`P0` · `PARCIAL` · PRD: **sí** · dep: — · ~3j
+`P0` · `HECHO (2026-08-19)` · PRD: **sí** · dep: — · ~3j
 
 - **Objetivo:** `agente/acta.py` ya la levanta y deriva las limitaciones de los manifiestos. Lo que falta es **que se entienda**: una página, con el porqué a un clic, en el lenguaje de un arquitecto y no de un ingeniero.
 - **Valor para el arquitecto:** es el diferencial entero. Sin el acta, ArchMuse es una app que rellena una tabla, y eso lo hace cualquiera.
 - **Terminado cuando:** para tres celdas al azar de un cuadro relleno se puede seguir el acta hasta la entidad concreta del DXF, y para una celda `N/D` se lee el motivo. **El criterio de aceptación es de arquitecto, no de ingeniero:** lo valida la voz del arquitecto veterano antes de darse por buena.
 - **Riesgo A4:** es la tarea más fácil de recortar bajo presión de tiempo y la única que hace este producto distinto de una app cualquiera. No se recorta.
 - **`ME-2` retirada de aquí como dependencia (decisión de Pablo, 2026-08-19).** DOC-1 se cierra con **traza correcta y legible en el momento de la respuesta** (celda → línea del acta → entidad del DXF): eso ya funciona hoy y no necesita persistencia para pasar la validación de un arquitecto veterano. La promesa que sí necesitaría `ME-2` — que ArchMuse conserve esa traza por su cuenta y se pueda volver a consultar dos años después, sin que el arquitecto tuviera que guardarla él mismo — queda **fuera del criterio de aceptación de DOC-1**, no resuelta ni descartada: es la ficha `ME-2` la que la lleva ahora, sola. Ver su nota.
-- **Estado real hoy (verificado 2026-08-19):** ni `agente/acta.py` ni `analyzer/acta_legible.py` ni los endpoints que devuelven un acta (`/api/acta-legible`, `/api/copiloto`, `/api/memoria-superficies`) llaman a `analyzer/storage.py` — el acta se calcula al vuelo en cada petición y no se guarda en ningún sitio. `Acta.sello` (sha256) es determinista, y eso es lo único que `F0-1` ya cerró; la persistencia sigue sin construir.
-- **Pendiente para cerrar formalmente:** la validación humana del criterio de aceptación (la voz del arquitecto veterano) — la hace Pablo, no el agente.
+- **Estado real (verificado 2026-08-19):** ni `agente/acta.py` ni `analyzer/acta_legible.py` ni los endpoints que devuelven un acta (`/api/acta-legible`, `/api/copiloto`, `/api/memoria-superficies`) llaman a `analyzer/storage.py` — el acta se calcula al vuelo en cada petición y no se guarda en ningún sitio. `Acta.sello` (sha256) es determinista, y eso es lo único que `F0-1` ya cerró; la persistencia sigue sin construir (es `ME-2`, aparte).
+- **Cerrada (2026-08-19, noche 14).** Pablo validó el criterio de arquitecto veterano sobre el borrador (§ noche 8-13 de `PROGRESS.md`) y pidió el último eslabón que faltaba: cada bloque desplegado explicaba el motivo en prosa pero no señalaba la entidad concreta del DXF. Añadido sin tocar medición ni el resto de la interfaz: `analyzer/acta_legible.py::clasificar()` ahora lee `datos` (la sección "Qué se ha establecido" del acta) y, para el caso conocido, muestra "Pieza: X · Capa: Y" por cada pieza implicada — rótulo y capa ya estaban en el acta, sólo faltaba mostrarlos. Los `TODO` (sin caso real) llevan la misma explicitud en vez de silencio. 2 tests nuevos en `tests/test_acta_legible.py` (16/16), regresión 46/46 sobre los ficheros relacionados. Commit `7ac7646`, sin push (ver `INF-1`/`D-9`).
 
 ### DOC-2 · Los entregables del vertical: DXF relleno y cuadro en PDF
 `P0` · `HECHO (2026-08-19)` · PRD: no · dep: `TL-2`, `DOC-3` · ~1j
@@ -1002,15 +1002,16 @@ El caso que no funcionaba es **el normal**: una planta de un edificio residencia
 
 **Nota del 2026-08-19 (§13.8):** esta lista no contenía `OP-16` y aun así fue lo que se hizo, con motivo. Los tres primeros puestos siguen bloqueados por una contratación (`NOR-1`, `D-7`) o por una decisión (`D-9`), y el cuarto (`DOC-1`) presenta mejor algo que **ya se entrega**. Medir una planta con varias viviendas era trabajo que un arquitecto pide todas las semanas y que ArchMuse sencillamente **no podía hacer**. Cuando la cola y el plano real no coinciden, manda el plano real.
 
+**Actualización noche 14 (2026-08-19):** `DOC-1` se cerró — Pablo validó el criterio de arquitecto veterano y se añadió el último eslabón (pieza + capa del DXF por cada bloque del acta). Sale de esta lista. Reordenada sin ella:
+
 | # | Tarea | Por qué va aquí |
 |---:|---|---|
 | 1 | **`NOR-1` (contratar)** | Lo técnico está hecho el 2026-08-19: el curador ya puede trabajar solo. Queda **contratar**, y sigue siendo lo único que ArchMuse promete y no puede cumplir: una regla en el corpus, sin firmar, cero normas verificables |
 | 2 | `D-7` | Ya no es preventivo. `SK-1` **tiene** criterio profesional aplicado sobre un plano real y sin firmar: el orden del procedimiento, qué hacer ante una ambigüedad de reparto, y si un solape es error del plano o convención del autor. Los tres van enumerados en la decisión. Bloquea cobrar por el cuadro de superficies |
-| 3 | `DOC-1` (el acta legible) | **Hecho el sondeo del segundo plano** (`V5.dxf`), que era lo que ocupaba este puesto: cerró `OP-13` con datos —la carpintería no se hace como estaba pensada— y encontró 8 falsos positivos en la revisión de coherencia, ya corregidos. Lo siguiente que acerca un entregable es juntar el acta de celda con la de ejecución en un solo documento |
-| 4 | `INF-1` (cerrar) | Necesita un push. Ver `D-9` |
-| 5 | `INF-2` → `ME-2` | Postgres y el registro append-only sellado. Es el foso, y hasta aquí todo vive en ficheros |
-| 6 | `SEG-1` | La pantalla de autorización. El portero ya existe en las dos capas; falta enseñar el efecto **antes** en una interfaz que no sea una línea de órdenes |
-| 7 | `AG-3` | Presupuesto por ejecución, con las cifras medidas de `SEG-4`. **Sube de prioridad:** con `AG-1` ya alcanzable desde la fachada, un plan se puede lanzar sin que nadie sepa lo que va a costar |
+| 3 | `INF-1` (cerrar) | Necesita un push. Ver `D-9`. Sigue sin desbloquearse: 9 commits locales sin subir a `origin/agente/nucleo-agentico` |
+| 4 | `INF-2` → `ME-2` | Postgres y el registro append-only sellado. Es el foso, y hasta aquí todo vive en ficheros. Necesita credenciales/proveedor que sólo puede dar Pablo |
+| 5 | **`SEG-1`** | **Primera tarea de la lista genuinamente ejecutable hoy sin decisión ni contratación pendiente.** La pantalla de autorización. El portero ya existe en las dos capas (`agente/efectos.py`, `Capacidad.invocar`); falta enseñar el efecto **antes** en una interfaz que no sea una línea de órdenes. Dependencia (`TL-2`) ya `HECHO`. PRD: no (endurecimiento de producto sobre una capacidad ya existente, no capacidad nueva) |
+| 6 | `AG-3` | Presupuesto por ejecución, con las cifras medidas de `SEG-4`. Necesita ejecutar cargas reales y leer las cifras antes de poder implementarse — no es sólo código |
 
 Después, vestir el vertical: `SEG-3` → `SEG-2` → `INF-4` → `INF-5` → `INF-6` → `INF-7` → `INF-8`.
 

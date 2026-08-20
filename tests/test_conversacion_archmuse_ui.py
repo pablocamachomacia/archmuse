@@ -62,12 +62,18 @@ def test_reutiliza_el_backend_tal_cual_sin_logica_nueva():
     propios tests (`tests/test_memoria_superficies_endpoint.py`) -- lo que
     este test sigue protegiendo es que el bloque de conversación no
     invente una URL que no esté probada en ningún sitio, no que se quede
-    congelado en un único endpoint para siempre."""
+    congelado en un único endpoint para siempre.
+
+    Ampliado `SEG-1` (`docs/AGENTE_BACKLOG.md` §11, este cambio): las
+    llamadas pasan ahora por `fetchConAutorizacion(url, formData)` en vez de
+    `fetch(url, {...})` directo -- mismas dos URLs, un envoltorio que sabe
+    reintentar una vez si el backend responde 428. La expresión regular
+    reconoce las dos formas para no acoplarse a cuál usa cada llamada."""
     assert '"/api/preguntar"' in BLOQUE
     assert "formData.append(\"pregunta\"" in BLOQUE
     assert "formData.append(\"dxf\"" in BLOQUE
     # Ninguna URL de backend fuera de las dos ya probadas por su cuenta.
-    llamadas_fetch = re.findall(r'fetch\("([^"]+)"', BLOQUE)
+    llamadas_fetch = re.findall(r'fetch(?:ConAutorizacion)?\("([^"]+)"', BLOQUE)
     assert set(llamadas_fetch) == {"/api/preguntar", "/api/memoria-superficies"}
 
 

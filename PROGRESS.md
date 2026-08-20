@@ -5,6 +5,102 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-08-20 · `SEG-1` — la pantalla de autorización, y `DOC-1` cerrada en el backlog
+
+Encargo: leer `PROGRESS.md`/`AGENTE_BACKLOG.md`, dar el estado real, y avanzar
+la siguiente tarea genuinamente desbloqueada sin tocar el techo de `C4`, sin
+BIM real ni corpus normativo, y sin código de capacidad nueva sin PRD.
+
+### Bookkeeping puesto al día, antes de tocar código
+
+`AGENTE_BACKLOG.md` seguía marcando `DOC-1` como `PARCIAL` pendiente de "tu
+validación humana", pero `PROGRESS.md` (noche 14, 2026-08-19) ya registraba
+que validaste el criterio y que esa sesión cerró el último eslabón pedido
+(pieza + capa del DXF por bloque del acta). Corregido: `DOC-1` pasa a
+`HECHO (2026-08-19)`, con nota, y se reordenó §13.3 quitándola de la cola.
+
+### `SEG-1` — el portero de efectos ya existía; la pregunta al arquitecto, no
+
+Investigado antes de escribir nada (regla del propio backlog): `agente/efectos.py`
+(`Autorizaciones`, `solicitud()`, `EfectoNoAutorizado`) y el ciclo
+`copiloto.proponer()`/`ejecutar_propuesta()` (`AG-1`/`AG-2`/`AG-4`) ya estaban
+construidos y probados, pero **nada en la web los usaba**. El único sitio del
+producto que ejecuta una Skill con efecto `io` a través del `Ejecutor` es
+`_medir_planta_y_levantar_acta` en `app.py` (compartido por `/api/acta-legible`,
+`/api/preguntar` y `/api/memoria-superficies`): la Skill `superficies.medicion_de_planta`
+escribe su informe PDF intermedio (`plano.medicion_en_pdf`, efecto
+`escribe_fichero`, `TL-11`), y el endpoint se autoconcedía ese permiso en
+nombre del arquitecto sin preguntarle nunca:
+`Autorizaciones.de((ESCRIBE_FICHERO,), por="api:acta-legible")` a pelo, en
+todas las llamadas.
+
+`plano.escribir_cuadro` (`TL-2`, la escritura de verdad sobre la copia del
+DXF del cliente) no está enchufado a ningún endpoint hoy — sólo lo invocan
+scripts de CLI y tests. Construir un endpoint nuevo para ella habría sido
+capacidad nueva sin PRD y además una segunda implementación del mismo
+entregable que ya sirve el camino `analyzer` de siempre
+(`/api/exportar-cuadro-superficies-completo`); descartado.
+
+**Hecho, sin capacidad nueva y sin tocar `C4`:**
+
+- `app.py`: `_medir_planta_y_levantar_acta` deja de autoconceder el efecto.
+  Con `autorizar_efectos=False` (valor por defecto), si la Skill lo necesita
+  el `Ejecutor` ya se para solo (`PENDIENTE_DE_AUTORIZACION`, sin escribir
+  nada) y la función lo traduce a `_ConfirmacionRequerida`. Los tres
+  endpoints devuelven **428** con el cuerpo estructurado de
+  `agente.efectos.solicitud()` — mismo formato que usaría cualquier otro
+  llamador (CLI, MCP). Un `autorizar_efectos=1` en la petición siguiente
+  concede el efecto y ejecuta de verdad.
+- `static/app.js`: `fetchConAutorizacion(url, formData)`, un solo sitio que
+  traduce el 428 en una pregunta real (`confirm()`, mismo patrón que ya usa
+  el borrado de proyecto) y reintenta **una vez** si el arquitecto dice que
+  sí — nunca un tercer intento, mismo espíritu que `AG-4`. Los tres puntos
+  de llamada (`abrirActaLegible`, `convDescargarMemoria`,
+  `convEnviarPregunta`) pasan por ahí; si el arquitecto dice que no, no hay
+  alerta de error, simplemente no pasa nada.
+
+**Tests:** 3 nuevos (uno por endpoint) que prueban el camino sin autorizar —
+428, cuerpo estructurado correcto, ningún directorio temporal huérfano — y 4
+tests existentes actualizados que asumían la autoconcesión antigua (dos en
+`test_acta_legible_endpoint.py`, uno en `test_memoria_superficies_endpoint.py`,
+uno en `test_preguntar_endpoint.py` vía el parámetro nuevo de `_pedir`), más
+dos guardianes estáticos del JS (`test_conversacion_archmuse_ui.py`,
+`test_conversacion_saludo.py`) ajustados al nombre de la función nueva.
+Suite completa: **1044 passed, 18 skipped, 1 xfailed, 2 failed** — los dos
+fallos son los guardianes de `C4` (`D-12`), rojos a propósito desde antes de
+esta sesión y sin tocar.
+
+### Qué NO se hizo, a propósito
+
+- **No se ha tocado `plano.escribir_cuadro` ni ningún endpoint nuevo para
+  ella.** Ver arriba: habría sido capacidad nueva sin PRD.
+- **No se ha subido el techo de `C4`, ni se ha tocado BIM real ni el
+  corpus normativo.** Ninguno de los tres estaba desbloqueado.
+- **No se ha escrito ningún PRD nuevo:** `SEG-1` ya estaba en el backlog
+  con `PRD: no` (endurecimiento de un flujo existente, no capacidad nueva).
+
+### Un incidente propio, contado tal cual
+
+Al lanzar la suite completa de regresión en background para confirmarla,
+un uso incorrecto de `&` dentro de un comando ya marcado para ejecutarse en
+segundo plano dejó un proceso `pytest` huérfano corriendo en paralelo con el
+siguiente intento. La segunda pasada completa tardó **2 h en vez de ~6 min**
+por la contención de CPU, y un test legacy (`test_golden_circulacion.py`,
+vía `subprocess` con timeout de 900 s) falló por eso — no por el cambio.
+Confirmado en aislado que pasa en 4,68 s. La tercera pasada, ya limpia, dio
+el resultado real: **1044 passed**, sólo `C4` en rojo.
+
+### Push
+
+Con la suite confirmada y un escaneo de secretos limpio (sin claves
+reales, sin `.env`, en los 9 commits pendientes y en este diff), Pablo pidió
+subir sólo esos 9 commits ya existentes y dejar `SEG-1` sin commitear para
+revisión — hecho: `origin/agente/nucleo-agentico` pasó de `4bb5ee5` a
+`7ac7646`. Este bloque (`SEG-1`) se commitea y sube aparte, a petición
+explícita posterior.
+
+---
+
 ## 2026-08-19 (noche, segunda sesión) · `DOC-1` — wiring a una vista real, sin revisar
 
 **Sigue siendo borrador.** Esta sesión no toca el criterio de aceptación ni

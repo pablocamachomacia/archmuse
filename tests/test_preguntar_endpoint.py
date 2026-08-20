@@ -63,10 +63,16 @@ def _guionizar(monkeypatch, *turnos):
     return doble
 
 
-def _pedir(http, pregunta, dxf_bytes=None, nombre_dxf="planta_sintetica.dxf"):
+def _pedir(http, pregunta, dxf_bytes=None, nombre_dxf="planta_sintetica.dxf",
+           autorizar_efectos=True):
+    # `autorizar_efectos` por defecto en `True`: la mayoría de los tests de
+    # este fichero prueban la clasificación, no `SEG-1` -- el camino sin
+    # autorizar tiene su propio test explícito, más abajo.
     data = {"pregunta": pregunta}
     if dxf_bytes is not None:
         data["dxf"] = (BytesIO(dxf_bytes), nombre_dxf)
+    if autorizar_efectos:
+        data["autorizar_efectos"] = "1"
     return http.post("/api/preguntar", data=data, content_type="multipart/form-data")
 
 
@@ -112,6 +118,25 @@ def test_pregunta_que_coincide_ejecuta_la_skill_de_verdad(cliente_http, monkeypa
     assert "class='porque'" in datos["html"]
     assert "class='cifra'" in datos["html"]
     # Una única llamada al modelo: clasificar, no "clasificar + redactar".
+    assert len(doble.llamadas) == 1
+
+
+def test_sin_autorizar_efectos_pide_confirmacion_y_no_ejecuta_la_skill(cliente_http, monkeypatch, dxf_bytes):
+    """`SEG-1` (`docs/AGENTE_BACKLOG.md` §11): aunque la pregunta coincide con
+    la Skill, sin `autorizar_efectos` el endpoint se para antes de que la
+    Skill escriba su informe PDF intermedio -- 428, no 200, con la solicitud
+    estructurada que la interfaz tendría que preguntar."""
+    doble = _guionizar(monkeypatch, RespuestaFalsa(
+        BloqueHerramienta("clasificar_pregunta", {"capacidad": SKILL})))
+
+    resp = _pedir(cliente_http, "¿cuánta superficie útil tiene esta planta?", dxf_bytes,
+                  autorizar_efectos=False)
+    assert resp.status_code == 428, resp.get_data(as_text=True)[:500]
+    cuerpo = resp.get_json()
+    assert cuerpo["confirmacion_requerida"] is True
+    assert cuerpo["solicitud"]["quien"] == "api:preguntar"
+    # La clasificación sí ocurrió (es previa a ejecutar la Skill) -- lo que
+    # no ocurrió es la ejecución de la Skill misma.
     assert len(doble.llamadas) == 1
 
 

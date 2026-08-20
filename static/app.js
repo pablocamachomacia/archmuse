@@ -5248,6 +5248,34 @@
   // por `analyzer/acta_legible.py` -- nada se traduce ni se recalcula aquí.
   // Se abre en pestaña nueva (no se descarga) porque es una página para
   // leer, no un fichero para guardar.
+  // `SEG-1` (docs/AGENTE_BACKLOG.md §11): el backend ya no autoriza en
+  // nombre del arquitecto los efectos de una Skill (hoy, crear un fichero
+  // nuevo); responde 428 con la lista estructurada que expone
+  // `agente/efectos.py::solicitud()` -- ver `_ConfirmacionRequerida` y
+  // `_respuesta_confirmacion_requerida` en `app.py`. Esta función es el
+  // único sitio que traduce ese 428 en una pregunta real y, si la respuesta
+  // es sí, reintenta la MISMA petición con `autorizar_efectos=1`. Un solo
+  // reintento y nunca automático: si el arquitecto dice que no, no se
+  // insiste -- mismo espíritu que "nunca un tercer intento" de `AG-4`.
+  function fetchConAutorizacion(url, formData) {
+    return fetch(url, { method: "POST", body: formData }).then(function (resp) {
+      if (resp.status !== 428) return resp;
+      return resp.json().then(function (json) {
+        var efectos = (json.solicitud && json.solicitud.efectos) || [];
+        var lineas = efectos.map(function (e) { return "- " + (e.descripcion || e.efecto); });
+        var pregunta = "ArchMuse necesita tu autorización antes de continuar:\n\n" +
+          lineas.join("\n") + "\n\n¿Continuar?";
+        if (!window.confirm(pregunta)) {
+          var cancelado = new Error("No autorizado: no se ha hecho nada.");
+          cancelado.cancelado = true;
+          throw cancelado;
+        }
+        formData.append("autorizar_efectos", "1");
+        return fetch(url, { method: "POST", body: formData });
+      });
+    });
+  }
+
   function abrirActaLegible() {
     if (!state.archivoAnalizado) return;
     var btn = document.getElementById("btn-acta-legible");
@@ -5256,7 +5284,7 @@
     var formData = new FormData();
     formData.append("dxf", state.archivoAnalizado);
 
-    fetch("/api/acta-legible", { method: "POST", body: formData })
+    fetchConAutorizacion("/api/acta-legible", formData)
       .then(function (resp) {
         if (!resp.ok) {
           return resp.json()
@@ -5278,6 +5306,7 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
       })
       .catch(function (err) {
+        if (err && err.cancelado) return; // el arquitecto dijo que no: nada que avisar
         // Igual que `descargarDxfRelleno`: el análisis en pantalla no
         // depende de esta llamada, es una petición aparte.
         alert((err && err.message) || "No se pudo levantar el acta.");
@@ -5567,7 +5596,7 @@
     if (boton) boton.disabled = true;
     var formData = new FormData();
     formData.append("dxf", archivo);
-    fetch("/api/memoria-superficies", { method: "POST", body: formData })
+    fetchConAutorizacion("/api/memoria-superficies", formData)
       .then(function (resp) {
         if (!resp.ok) {
           return resp.json().then(function (j) {
@@ -5587,6 +5616,7 @@
         URL.revokeObjectURL(url);
       })
       .catch(function (exc) {
+        if (exc && exc.cancelado) return; // el arquitecto dijo que no: nada que avisar
         alert(exc.message || "No se pudo generar la memoria de superficies.");
       })
       .then(function () {
@@ -5838,7 +5868,7 @@
     formData.append("pregunta", pregunta);
     formData.append("dxf", archivo);
 
-    fetch("/api/preguntar", { method: "POST", body: formData })
+    fetchConAutorizacion("/api/preguntar", formData)
       .then(function (resp) {
         return resp.json().then(function (json) { return { ok: resp.ok, json: json }; });
       })
@@ -5866,9 +5896,10 @@
           });
         }
       })
-      .catch(function () {
+      .catch(function (err) {
         var actual = document.getElementById("conv-estado-actual");
         if (actual) actual.remove();
+        if (err && err.cancelado) return; // el arquitecto dijo que no: nada que avisar
         convAnadirRespuesta(convTarjetaError("Error de red al atender la pregunta."));
       })
       .then(function () {

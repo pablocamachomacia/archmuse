@@ -94,12 +94,17 @@ def test_el_mensaje_de_error_original_sigue_existiendo_para_preguntas_reales():
 
 def test_el_saludo_se_gestiona_antes_de_llamar_al_backend():
     """`_convEsSaludo` decide y sale de `convEnviarPregunta` con un
-    `return` ANTES del único `fetch(\"/api/preguntar\"...)` del fichero --
-    ni un saludo, ni el bloqueo por falta de DXF, tocan la red."""
+    `return` ANTES de la única llamada a `/api/preguntar` del fichero --
+    ni un saludo, ni el bloqueo por falta de DXF, tocan la red.
+
+    `SEG-1` (docs/AGENTE_BACKLOG.md §11): la llamada pasa ahora por
+    `fetchConAutorizacion(url, formData)` en vez de `fetch(url, {...})`
+    directo -- mismo endpoint, un envoltorio que sabe reintentar una vez
+    si el backend pide autorización (428)."""
     inicio = JS.index("function convEnviarPregunta(pregunta)")
     fin_saludo = JS.index("if (_convEsSaludo(pregunta)) {", inicio)
     fin_return = JS.index("return;", fin_saludo)
-    fin_fetch = JS.index('fetch("/api/preguntar"', inicio)
+    fin_fetch = JS.index('fetchConAutorizacion("/api/preguntar"', inicio)
     assert fin_saludo < fin_return < fin_fetch
 
 

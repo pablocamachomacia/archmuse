@@ -74,10 +74,15 @@ def test_archivo_no_dxf_da_400_no_500(client):
 
 def test_el_endpoint_devuelve_html_con_el_caso_real_renderizado(client, dxf_bytes):
     """La prueba central: subida real por HTTP -> Skill real -> acta real ->
-    página real, con el caso conocido (VT1/1, solape) explicado y no mudo."""
+    página real, con el caso conocido (VT1/1, solape) explicado y no mudo.
+
+    `autorizar_efectos=1` porque la Skill escribe su informe PDF intermedio
+    (`SEG-1`, ver `test_sin_autorizar_efectos_pide_confirmacion_y_no_escribe_nada`
+    para el camino sin autorizar) -- aquí se comprueba el camino feliz, con el
+    arquitecto ya habiendo dicho que sí."""
     resp = client.post(
         "/api/acta-legible",
-        data={"dxf": (BytesIO(dxf_bytes), "planta_sintetica.dxf")},
+        data={"dxf": (BytesIO(dxf_bytes), "planta_sintetica.dxf"), "autorizar_efectos": "1"},
         content_type="multipart/form-data",
     )
     assert resp.status_code == 200, resp.get_data(as_text=True)[:500]
@@ -109,7 +114,7 @@ def test_el_endpoint_no_deja_ningun_desplegable_vacio(client, dxf_bytes):
 
     resp = client.post(
         "/api/acta-legible",
-        data={"dxf": (BytesIO(dxf_bytes), "planta_sintetica.dxf")},
+        data={"dxf": (BytesIO(dxf_bytes), "planta_sintetica.dxf"), "autorizar_efectos": "1"},
         content_type="multipart/form-data",
     )
     html = resp.get_data(as_text=True)
@@ -118,6 +123,34 @@ def test_el_endpoint_no_deja_ningun_desplegable_vacio(client, dxf_bytes):
     for bloque in bloques:
         cuerpo = bloque[bloque.index("</summary>") + len("</summary>"):-len("</details>")]
         assert cuerpo.strip(), "desplegable vacío servido por el endpoint: %s" % bloque[:120]
+
+
+def test_sin_autorizar_efectos_pide_confirmacion_y_no_escribe_nada(client, dxf_bytes):
+    """`SEG-1` (`docs/AGENTE_BACKLOG.md` §11): la Skill escribe un fichero
+    (su informe PDF intermedio) y hasta ahora el backend se autoconcedía ese
+    permiso sin preguntar. Sin `autorizar_efectos`, el endpoint tiene que
+    pararse -- 428, no 200 y no 500 -- y decir exactamente qué efecto le
+    falta, con la misma estructura (`agente.efectos.solicitud`) que usaría
+    cualquier otro llamador (CLI, MCP)."""
+    import glob
+
+    antes = set(glob.glob(os.path.join(tempfile.gettempdir(), "archmuse_acta_*")))
+    resp = client.post(
+        "/api/acta-legible",
+        data={"dxf": (BytesIO(dxf_bytes), "planta_sintetica.dxf")},
+        content_type="multipart/form-data",
+    )
+    despues = set(glob.glob(os.path.join(tempfile.gettempdir(), "archmuse_acta_*")))
+
+    assert resp.status_code == 428, resp.get_data(as_text=True)[:500]
+    cuerpo = resp.get_json()
+    assert cuerpo["confirmacion_requerida"] is True
+    efectos = [e["efecto"] for e in cuerpo["solicitud"]["efectos"]]
+    assert efectos == ["escribe_fichero"]
+    assert cuerpo["solicitud"]["quien"] == "api:acta-legible"
+    # Ni un directorio temporal huérfano: no se detiene DESPUÉS de escribir,
+    # se detiene ANTES.
+    assert despues - antes == set(), "el endpoint escribió algo sin autorización"
 
 
 def test_el_dxf_subido_no_se_persiste_en_ningun_sitio(client, dxf_bytes):

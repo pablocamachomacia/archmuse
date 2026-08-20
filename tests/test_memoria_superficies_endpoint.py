@@ -68,9 +68,12 @@ def test_archivo_no_dxf_da_400_no_500(client):
 
 
 def test_el_endpoint_devuelve_un_pdf_real_con_el_caso_conocido(client, dxf_bytes):
+    """`autorizar_efectos=1`: la Skill escribe su informe PDF intermedio, y
+    `SEG-1` exige decirlo que sí explícitamente -- ver
+    `test_sin_autorizar_efectos_pide_confirmacion_y_no_escribe_nada`."""
     resp = client.post(
         "/api/memoria-superficies",
-        data={"dxf": (BytesIO(dxf_bytes), "planta_sintetica.dxf")},
+        data={"dxf": (BytesIO(dxf_bytes), "planta_sintetica.dxf"), "autorizar_efectos": "1"},
         content_type="multipart/form-data",
     )
     assert resp.status_code == 200, resp.get_data(as_text=True)[:500]
@@ -84,6 +87,21 @@ def test_el_endpoint_devuelve_un_pdf_real_con_el_caso_conocido(client, dxf_bytes
     assert "BORRADOR PARA REVISIÓN DE UN COLEGIADO" in texto
     # El caso conocido: sin total útil, por el solape del DXF sintético.
     assert "Sin superficie útil total" in texto
+
+
+def test_sin_autorizar_efectos_pide_confirmacion_y_no_genera_pdf(client, dxf_bytes):
+    """`SEG-1` (`docs/AGENTE_BACKLOG.md` §11), mismo criterio que en
+    `tests/test_acta_legible_endpoint.py`: sin autorización, 428 con la
+    solicitud estructurada -- nunca un PDF."""
+    resp = client.post(
+        "/api/memoria-superficies",
+        data={"dxf": (BytesIO(dxf_bytes), "planta_sintetica.dxf")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 428, resp.get_data(as_text=True)[:500]
+    cuerpo = resp.get_json()
+    assert cuerpo["confirmacion_requerida"] is True
+    assert cuerpo["solicitud"]["quien"] == "api:memoria-superficies"
 
 
 def test_el_dxf_subido_no_se_persiste_en_ningun_sitio(client, dxf_bytes):
