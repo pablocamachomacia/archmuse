@@ -150,7 +150,11 @@ def test_el_registro_de_sugerencias_no_promete_capacidades_inexistentes():
     aunque sea sólo como sugerencia de texto (misma regla de oro que
     prohíbe inventar una respuesta)."""
     inicio = JS.index("var CONV_SUGERENCIAS_POR_CAPACIDAD = {")
-    fin = JS.index("\n\n  function _convCandidatasDeSugerencia", inicio)
+    # Sin exigir "\n\n  " justo antes del `function`: un comentario explicativo
+    # delante de la función (como el que se añadió el 2026-08-20 al dar
+    # prioridad al modo activo) es contenido legítimo, no un cambio del
+    # propio registro que este test vigila.
+    fin = JS.index("function _convCandidatasDeSugerencia", inicio)
     bloque = JS[inicio:fin]
     for termino in ("normativa", "presupuesto", "coste", "€", "%", "geometría 3d", "cumplimiento"):
         assert termino not in bloque.lower(), "encontrado %r en el registro de sugerencias" % termino

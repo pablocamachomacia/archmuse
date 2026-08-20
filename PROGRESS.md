@@ -53,6 +53,66 @@ skipped -- idéntico al baseline de antes de tocar nada. Commit local hecho.
 
 ---
 
+## 2026-08-20 (madrugada, 2ª hora) · Diagnóstico y arreglo real del selector de modo
+
+Pablo reportó por verificación propia en el navegador: "el selector 'Medir
+superficies' no funciona". Diagnóstico pedido explícitamente antes de
+tocar nada.
+
+**Diagnóstico:** el desplegable SÍ abre y SÍ deja seleccionar (confirmado
+por DOM: 5 ítems correctos, marca ✓ en el activo, las 3 "próximamente"
+deshabilitadas de verdad). El fallo real es el que Pablo mismo apuntó como
+tercera opción: **seleccionar "Revisar coherencia" actualizaba la etiqueta
+del botón, pero no llamaba a `convActualizarSugerencia()`** -- el fantasma
+de sugerencia se quedaba congelado con el ejemplo del modo anterior hasta
+la próxima tecla. Un `render` a medias: cambiaba lo visible en el botón,
+no el resto de la conversación. Coincide con el hallazgo, ya conocido
+antes de este reporte, de que el modo tampoco influía en el texto por
+defecto del fantasma ni en las sugerencias al escribir -- las tres cosas
+se arreglan juntas, mismo origen.
+
+**Arreglo:**
+1. `convActualizarSugerencia()` llamada dentro del click de selección del
+   desplegable -- una línea, la causa real del reporte de Pablo.
+2. El texto por defecto del fantasma (caja vacía + DXF adjunto) ahora
+   depende de `convState.modoActivo` (antes siempre mostraba el ejemplo de
+   medición, sin importar el modo).
+3. `_convCandidatasDeSugerencia()` prioriza el modo activo al escribir (la
+   otra capacidad sigue de red de seguridad detrás).
+4. Salvaguarda defensiva: `abrirConvModoDropdown()` cierra cualquier
+   desplegable previo al empezar (mismo patrón que ya usa
+   `openShellMenu()`).
+5. Posición del desplegable cambiada de anclaje por la izquierda a la
+   derecha del trigger -- evita que se saliera del viewport en una ventana
+   estrecha (hallazgo propio al investigar, no reportado por Pablo).
+
+**Nota sobre el propio proceso de verificación:** parte de la sesión de
+diagnóstico se perdió persiguiendo un falso positivo -- una pestaña de
+Chrome degradada por reutilización prolongada (mismo síntoma que los
+timeouts de captura de pantalla de hoy) hacía que ni un `dispatchEvent`
+manual disparara ningún listener, simulando un "adjuntar DXF roto" que no
+existía. Se confirmó descartándolo en una pestaña nueva. Apunte para el
+futuro: reiniciar la pestaña de verificación cada cierto número de
+pruebas en sesiones largas, no confiar en una que lleva mucho abierta.
+
+**Verificado en el navegador (pestaña nueva, clics reales `element.click()`
+sobre los nodos exactos, no coordenadas):**
+- Fantasma con medición: "¿Cuánta superficie útil tiene esta planta?"
+- Tras seleccionar Revisar coherencia: etiqueta → "Revisar coherencia",
+  fantasma → "¿Hay algo solapado o repetido en este plano?"
+- De vuelta a Medir superficies: fantasma vuelve a medición.
+- Botón de enviar: disabled en vacío, activo con texto.
+- Escape cierra el desplegable. Click fuera cierra el desplegable.
+- Los 3 "próximamente": disabled de verdad, un click no cambia nada.
+
+7 de 7 comprobaciones en verde. Un test unitario roto por el propio arreglo
+(límite de búsqueda de texto demasiado estricto en
+`test_conversacion_adjuntar_y_sugerencias.py`, no relacionado con lógica)
+-- corregido para no depender de que no haya un comentario delante de la
+función. Suite completa relanzada tras el arreglo.
+
+---
+
 ## 2026-08-20 (noche, aún más tarde) · Informe de test: hallazgo 1 (medición de cobertura) cerrado
 
 Pablo trajo un informe externo de estrategia de tests, medido ejecutando la

@@ -5555,15 +5555,20 @@
   // `<button disabled>`: no disparan click, mismo criterio que ya tenían
   // las tarjetas "próximamente" que sustituye.
   function abrirConvModoDropdown() {
+    cerrarConvModoDropdown(); // salvaguarda: nunca dos abiertos a la vez (mismo criterio que closeShellMenu() al principio de openShellMenu())
     var trigger = document.getElementById("conv-modo-trigger");
     if (!trigger) return;
     var rect = trigger.getBoundingClientRect();
     var el = document.createElement("div");
     el.className = "shell-dropdown";
     // Se abre HACIA ARRIBA: el trigger vive en la barra de entrada, al pie
-    // de la pantalla -- abrir hacia abajo lo sacaría del viewport.
+    // de la pantalla -- abrir hacia abajo lo sacaría del viewport. Ancla por
+    // la DERECHA del trigger, no por la izquierda: el trigger no vive pegado
+    // al borde de la pantalla (el botón de enviar va después), así que
+    // anclar por la izquierda podía sacar el desplegable (220-320px de
+    // ancho) del viewport en una ventana estrecha.
     el.style.bottom = (window.innerHeight - rect.top + 4) + "px";
-    el.style.left = rect.left + "px";
+    el.style.right = (window.innerWidth - rect.right) + "px";
     el.innerHTML = CONV_MODOS.map(function (m) {
       var marca = m.id === convState.modoActivo ? "✓" : "";
       return '<button type="button" class="shell-dropdown-item" data-modo="' + m.id + '">' +
@@ -5581,6 +5586,11 @@
       if (!btn) return;
       convState.modoActivo = btn.dataset.modo;
       renderConvModoTrigger();
+      // Sin esto el fantasma se queda con el ejemplo del modo anterior
+      // hasta la próxima tecla -- el bug real que reportó Pablo ("selecciona
+      // pero no cambia nada"): el cambio de modo nunca disparaba un
+      // repintado de la sugerencia, sólo de la etiqueta del botón.
+      convActualizarSugerencia();
       cerrarConvModoDropdown();
     });
     document.body.appendChild(el);
@@ -5883,10 +5893,16 @@
     }
   };
 
+  // El modo activo del desplegable va PRIMERO -- de eso depende cuál gana
+  // en `_convSugerirCompletado` (se queda con la primera candidata cuyo
+  // prefijo encaja). La otra capacidad sigue detrás como red de seguridad:
+  // si el arquitecto teclea algo que sólo encaja con la que no tiene
+  // seleccionada, sigue saliendo una sugerencia en vez de ninguna.
   function _convCandidatasDeSugerencia() {
     var ctx = convState.ultimoContexto || {};
-    var candidatas = [];
+    var candidatas = (CONV_SUGERENCIAS_POR_CAPACIDAD[convState.modoActivo] || function () { return []; })(ctx);
     Object.keys(CONV_SUGERENCIAS_POR_CAPACIDAD).forEach(function (cap) {
+      if (cap === convState.modoActivo) return;
       candidatas = candidatas.concat(CONV_SUGERENCIAS_POR_CAPACIDAD[cap](ctx));
     });
     return candidatas;
@@ -5937,10 +5953,18 @@
       // este fantasma, mismo sitio, dos textos superpuestos e ilegibles --
       // hallazgo de Pablo tras el choque con la sesión de Cowork) -- así
       // que este fantasma es la ÚNICA fuente de texto por defecto, en
-      // los dos estados posibles:
-      var porDefecto = convState.archivoAdjunto
-        ? CONV_EJEMPLOS[0]              // ejemplo de pregunta, el mismo que llevaba el placeholder nativo
-        : CONV_SUGERENCIA_SIN_ADJUNTO;  // sin plano, invita a adjuntar uno (petición de Pablo, sesión de hoy)
+      // los dos estados posibles. Con plano adjunto, el ejemplo depende del
+      // MODO seleccionado en el desplegable (arreglo del mismo día: antes
+      // seleccionar un modo no cambiaba nada observable aquí, que es
+      // justo lo que Pablo reportó como "no funciona").
+      var porDefecto;
+      if (!convState.archivoAdjunto) {
+        porDefecto = CONV_SUGERENCIA_SIN_ADJUNTO;  // sin plano, invita a adjuntar uno (petición de Pablo, sesión de hoy)
+      } else {
+        porDefecto = convState.modoActivo === "revision.coherencia_del_plano"
+          ? CONV_EJEMPLOS_COHERENCIA[0]
+          : CONV_EJEMPLOS[0];
+      }
       convState.sugerenciaActual = { completo: porDefecto, resto: porDefecto };
       fantasma.innerHTML = '<span class="conv-sugerencia-resto">' + escapeHtml(porDefecto) + "</span>";
       return;
