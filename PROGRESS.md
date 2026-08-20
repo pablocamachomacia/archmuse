@@ -5,7 +5,52 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
-## 2026-08-20 (noche, más tarde) · Housekeeping post-Bloque 3: limpieza trivial + auditoría de `REFACTOR_MASTERPLAN.md`
+## 2026-08-20 (noche, aún más tarde) · Informe de test: hallazgo 1 (medición de cobertura) cerrado
+
+Pablo trajo un informe externo de estrategia de tests, medido ejecutando la
+suite en Linux sobre el commit `12bbb74` (no leído, medido). Se verificó
+contra HEAD actual (`59fc6a9`, 9 commits por delante) antes de tocar nada:
+el hallazgo 1 (cobertura falsa por 15 puntos porque `coverage` no instrumenta
+los 72 scripts legacy que corren como subproceso) seguía vigente sin cambios.
+Pablo pidió arreglar sólo el hallazgo 1 y el 3 (ver más abajo, sin ejecutar),
+y parar ahí.
+
+**Arreglo:** `.coveragerc` (`parallel = true`, `source = .` con `omit` de
+`venv/`, `tests/`, `scripts/`, etc., `ignore_errors = true` para los dos
+ficheros de prueba transitorios que `test_el_registro_se_puebla_por_descubrimiento`
+escribe y borra en el mismo test) + `scripts/medir_cobertura_real.py`, que
+instala el gancho `coverage.process_startup()` en el `site-packages` de este
+venv (nunca versionado), corre la suite entera instrumentada, combina los
+datos de los ~70 procesos y emite el informe. `coverage==7.15.4` fijado en
+`requirements-dev.txt`. Documentado en el README, sección "Measuring real
+coverage".
+
+**Verificado de punta a punta:** `python scripts/medir_cobertura_real.py`
+corre la suite completa (1057 passed, 2 failed — los mismos dos guardianes
+C4 de siempre, sin cambios —, 18 skipped, 1 xfailed, 691 s) y combina 70
+ficheros de datos. Cobertura real: **86,2 %** (16.626 sentencias, 2.295 sin
+cubrir) — coincide de cerca con el 86,8 % que medía el informe sobre
+`12bbb74`; la diferencia es exactamente lo esperable por los 9 commits de
+por medio. Ningún test se tocó.
+
+**No se tocó ningún fichero de código de producto** — sólo `.coveragerc`
+(nuevo), `scripts/medir_cobertura_real.py` (nuevo), `requirements-dev.txt` y
+`README.md`.
+
+**Hallazgo 3 (goldens no en CI, `ejemplo.dxf`): investigado, NO ejecutado a
+propósito.** Al mirar por qué los goldens sí corren en esta máquina sin
+`ejemplo.dxf` en el repo, `tests/golden.py:51,61` resolvió la ruta a
+`os.path.dirname(RAIZ)/ejemplo.dxf` — **un nivel por encima de la carpeta del
+repositorio**, no dentro. Y no es un accidente: `main.py:28-31` lo documenta
+explícitamente ("vive JUNTO al repositorio, no dentro... evita que la carpeta
+de nadie acabe publicada"), y el propio README ("Do not put real project
+data in this repository") y `tests.yml` (comentario sobre `ARCHMUSE_DXF_V2S`,
+"un plano real de cliente que no está ni puede estar en el repositorio") dejan
+la misma regla por escrito en tres sitios distintos. Mover el fichero dentro
+de la carpeta del proyecto y committearlo a un repositorio público podría
+significar publicar el plano real de un cliente. Se lo señalé a Pablo antes
+de tocar nada; quiere pensarlo antes de decidir cómo proceder. **Cero cambios
+de la tarea 2 en este commit.**
 
 Encargo de Pablo: "sigue trabajando en el proyecto" / "lo que decidas". Se
 ofrecieron cuatro direcciones (ejecutar el housekeeping documentado del

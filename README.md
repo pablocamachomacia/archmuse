@@ -239,6 +239,22 @@ pytest tests/test_coherencia.py -q          # a single module
 pytest -q -p no:randomly                    # deterministic order
 ```
 
+### Measuring real coverage
+
+`pytest --cov` alone under-reports by about 15 points. Roughly half the test suite's lines live in
+scripts that `tests/test_scripts_legacy.py` runs as **subprocesses**, and `coverage` does not
+instrument a subprocess unless it is told to. The number `--cov` prints looks like "worst modules"
+but is really "modules with legacy tests" — it points at the wrong thing.
+
+```bash
+python scripts/medir_cobertura_real.py
+```
+
+Installs a one-time hook in this virtualenv (`coverage.process_startup()`, never committed — it
+lives inside `venv/`), runs the full suite with subprocess coverage enabled, combines every
+process's data, and prints the real report. See the script's own docstring and `.coveragerc` for
+why the plain `--cov` number is misleading (test-strategy report, 2026-08-20, hallazgo 1).
+
 ---
 
 ## Do not put real project data in this repository

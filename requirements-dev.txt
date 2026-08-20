@@ -5,3 +5,5 @@
 # y la Fase 0 dejo claro lo que cuesta que la recoleccion deje de funcionar.
 -r requirements.txt
 pytest==9.1.1
+# Para `scripts/medir_cobertura_real.py` (informe de test 2026-08-20, hallazgo 1).
+coverage==7.15.4

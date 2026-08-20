@@ -1,0 +1,50 @@
+# Config de `coverage.py` para medir la cobertura REAL de la suite, no la que
+# ve `pytest --cov` a secas.
+#
+# El hallazgo (informe de test, 2026-08-20, hallazgo 1): `test_scripts_legacy.py`
+# lanza 72 de los 138 ficheros de `tests/` como SUBPROCESOS, y `coverage` no
+# instrumenta un subproceso salvo que se le pida explícitamente. Sin esto, la
+# cobertura medida omite el 53 % de las líneas de test del repo, y la lista de
+# "peores módulos" que enseña `coverage report` es la lista de módulos con test
+# heredado -- no la de módulos sin probar. Apunta al sitio equivocado.
+#
+# `parallel = true` es la mitad del arreglo: hace que cada proceso (el de
+# pytest y cada subproceso que lanza) escriba su propio fichero
+# `.coverage.<host>.<pid>.<random>` en vez de pelearse por uno compartido. La
+# otra mitad -- que cada subproceso SEPA que tiene que medir -- no se configura
+# aquí: es el gancho `coverage.process_startup()` que instala
+# `scripts/medir_cobertura_real.py`, junto con la variable de entorno
+# `COVERAGE_PROCESS_START` que ese script fija apuntando a este fichero.
+#
+# Usar:  python scripts/medir_cobertura_real.py
+
+[run]
+parallel = true
+branch = false
+source = .
+omit =
+    venv/*
+    .venv-jarvis/*
+    node_modules/*
+    tests/*
+    scripts/*
+    experimentos/*
+    static/*
+    docs/*
+    */__pycache__/*
+    conftest.py
+    setup.py
+
+[report]
+skip_empty = true
+precision = 1
+# `test_el_registro_se_puebla_por_descubrimiento` escribe
+# `agente/herramientas/zzz_prueba_descubrimiento.py` en disco, lo importa y lo
+# borra en el mismo test. Para cuando `coverage report` lee los datos
+# combinados, el fichero ya no existe -- sin esto, `coverage` aborta el
+# informe entero por un solo fichero transitorio en vez de omitirlo.
+ignore_errors = true
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError
