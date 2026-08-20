@@ -150,8 +150,19 @@ quedaron sin uso en `circulation.py`/`spatial_quality.py`.
 
 Verificado: `ruff check` sobre los tres ficheros sin ningún hallazgo
 nuevo (los 18 que quedan son del baseline, sin relación). 31 tests de
-`circulation`/`spatial`/`plan_svg`/`golden` en verde. Legacy scripts del
-mismo grupo corriendo en segundo plano para confirmar antes de comprometer.
+`circulation`/`spatial`/`plan_svg`/`golden` + 15 legacy scripts del mismo
+grupo (incluidos los goldens que congelan el SVG exacto) en verde. Suite
+completa: 1057 passed, 2 failed (mismos guardianes C4 de siempre), 18
+skipped, 594s. Commit local hecho. `REFACTOR_MASTERPLAN.md` tarea 14
+actualizada a HECHA.
+
+**Cierre de la sesión autónoma.** Dado el tiempo real ya invertido en las
+dos horas (los reinicios de suite completa solos ya suman ~35 min de
+las dos), y con dos entregas verificadas y comprometidas en esta segunda
+hora, paro aquí en vez de arrancar una tercera tarea bajo presión de
+tiempo -- mejor una menos que una a medias sin la misma revisión que las
+anteriores. Árbol de trabajo limpio, todo comprometido en local, nada
+subido a GitHub.
 
 ---
 
