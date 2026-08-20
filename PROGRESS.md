@@ -84,7 +84,23 @@ tarea anterior), 2 failed (mismos guardianes C4 de siempre), 18 skipped,
 tenía ese mock), `test_analizar_sitio_procedencia.py` (nuevo, HTTP end-to-
 end: primera consulta, segunda desde caché con fecha original y `de_cache`
 correcto, y una fila sin procedencia que no se rellena a posteriori).
-Commit local hecho, sin push.
+Commit local hecho, y subido a GitHub (pediste "actualiza con github" a
+mitad de esta tarea) junto con el resto de commits pendientes de la sesión.
+
+**Confirmado con `gh run watch` sobre el push del arreglo de red:** CI
+completo, 95s, **2 failed, 1041 passed, 43 skipped -- exactamente los
+mismos dos guardianes C4 de siempre, ninguna señal espuria más.** INF-1
+queda en el estado real descrito en `docs/AGENTE_BACKLOG.md`.
+
+**Cierre de esta ronda del backlog:** revisado REFACTOR_MASTERPLAN entero
+(8/14/20 hechas, 27 mitad hecha, 15/26 descartadas por diseño ya antes de
+hoy, 16/19/21/22-24/28-29 demasiado grandes o con secuencia explícita que
+las bloquea hasta la 16) y los ítems `PRD: no` de `AGENTE_BACKLOG.md` sin
+BIM/normativa/capacidad nueva -- todos los que quedan tienen una
+dependencia `PENDIENTE` real (INF-2, INF-4, INF-5, INF-7, ME-2, TL-3,
+TL-4, SEG-3, SEG-4) o están bloqueados por una decisión humana (`D-6`,
+`D-7`, un colegiado firmando `SK-5`). No queda nada que pueda tocar sin
+cruzar un límite duro o inventar alcance por mi cuenta. Paro aquí.
 
 ---
 
