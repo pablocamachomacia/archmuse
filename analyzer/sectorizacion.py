@@ -85,7 +85,7 @@ ya calculados, como cualquier otro módulo de CAP-3/CAP-4.
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence
 
 from .hechos import ALTA, BAJA, ESTIMATED, KNOWN, MEDIA, UNKNOWN, Hecho, Motivo
 

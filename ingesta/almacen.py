@@ -28,7 +28,6 @@ memoria de la Fase 0) — aquí no se repite.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional

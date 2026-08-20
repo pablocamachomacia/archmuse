@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 try:
     import trimesh

@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from . import catalogos, condiciones as cond, loader, manifiesto as _manif
-from .ambito import Ambito, CadenaAmbitos
+from .ambito import CadenaAmbitos
 from .condiciones import Ternario
 from .errores import CoberturaInsuficiente
 from .modelo import PRIORIDADES, TIPOS_REGLA, Vigencia

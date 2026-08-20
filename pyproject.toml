@@ -1,6 +1,6 @@
-# Este fichero existe solo para configurar pytest. No declara el paquete, ni
-# dependencias, ni herramientas de estilo: eso es la tarea 8 del
-# REFACTOR_MASTERPLAN, y es otra conversación.
+# Este fichero configura pytest y, desde 2026-08-20 (madrugada, trabajo
+# autónomo, REFACTOR_MASTERPLAN tarea 8), ruff. No declara el paquete ni
+# dependencias -- eso sigue sin ser el papel de este fichero.
 
 [tool.pytest.ini_options]
 # Fija la raíz del proyecto como rootdir aunque se invoque `pytest` desde
@@ -9,3 +9,34 @@
 # y no son pruebas de ArchMuse.
 testpaths = ["tests"]
 norecursedirs = ["venv", ".venv-jarvis", "node_modules", "__pycache__", "tests/fixtures", "experimentos"]
+
+[tool.ruff]
+# La misma línea de Python con la que se desarrolla y se despliega
+# (tests.yml, README).
+target-version = "py312"
+line-length = 100
+extend-exclude = ["venv", ".venv-jarvis", "node_modules", "experimentos", "static"]
+
+[tool.ruff.lint]
+# El conjunto congela justo las clases de defecto que ESTA auditoría ya
+# encontró de verdad en el repositorio -- no una plantilla genérica:
+#   E/W   - pycodestyle (estilo básico)
+#   F     - pyflakes (importaciones/variables sin usar, nombres indefinidos)
+#   B     - flake8-bugbear (el argumento por defecto mutable de la tarea 6
+#           original, el except desnudo, la comparación == con un tipo)
+#   C4    - flake8-comprehensions
+#   SIM   - flake8-simplify
+#   PERF  - perflint (la tarea 27 del propio REFACTOR_MASTERPLAN nació de
+#           un PERF401 real en evaluator.py)
+select = ["E", "W", "F", "B", "C4", "SIM", "PERF"]
+# B008: argumento por defecto en una llamada de función -- FastAPI/Depends
+# lo usa a propósito; este repo es Flask y no lo necesita, pero desactivar
+# aquí evita falsos positivos si algún día se usa un patrón similar.
+ignore = ["E501"]  # line-length ya lo cubre `line-length` de arriba con margen
+
+[tool.ruff.lint.per-file-ignores]
+# Los 72 scripts heredados de tests/ se ejecutan como programas sueltos
+# (comprobaciones a nivel de módulo, sys.exit) -- F841/F401 disparan por
+# ese propio diseño, no por un descuido. Ver conftest.py y
+# tests/test_scripts_legacy.py para el porqué de esa forma.
+"tests/*.py" = ["F841"]

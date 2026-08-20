@@ -225,8 +225,8 @@ def test_un_solo_paso_con_efecto_serio_pone_el_nivel_entero_en_serie(
 def test_la_lista_blanca_es_cerrada():
     """Un efecto nuevo del catálogo nace secuencial. Si algún día se añade uno
     y aparece aquí sin que nadie lo haya pensado, este test lo dice."""
-    assert _efectos.SEGUROS_EN_PARALELO == frozenset(
-        {_efectos.LLAMA_API_EXTERNA, _efectos.GASTA_TOKENS})
+    assert frozenset(
+        {_efectos.LLAMA_API_EXTERNA, _efectos.GASTA_TOKENS}) == _efectos.SEGUROS_EN_PARALELO
     assert not (_efectos.SEGUROS_EN_PARALELO & _efectos.EXIGEN_AUTORIZACION_PUNTUAL)
 
 

@@ -28,7 +28,6 @@ en E2 esa función se muda a este módulo, cuando ya no queden consumidores del
 """
 from __future__ import annotations
 
-import re
 import unicodedata
 from typing import List, Optional, Sequence, Tuple
 
@@ -36,7 +35,7 @@ from analyzer import adyacencia, evaluator, parser  # frontera declarada
 
 from .aristas import CONECTA_CON, CRITERIO_ACTUAL, ES_CONTIGUO_A, Arista, Criterio
 from .atributo import (
-    ALTA, BAJA, DERIVADO, MEDIA, OBSERVADO, SUPUESTO, Atributo, declarado,
+    ALTA, BAJA, MEDIA, OBSERVADO, SUPUESTO, Atributo, declarado,
     derivado, desconocido, observado,
 )
 from .geometria import (
@@ -47,7 +46,7 @@ from .grafo import Grafo
 from .identidad import Identidades
 from .invariantes import exigir_invariantes
 from .nodos import (
-    CATALOGO, Edificio, Espacio, Planta, PRESENCIA_INFERIDO,
+    Edificio, Espacio, Planta, PRESENCIA_INFERIDO,
     PRESENCIA_NO_OBSERVABLE, PRESENCIA_OBSERVADO, Procedencia, Proyecto, Unidad,
 )
 from .serializacion import sellado_de

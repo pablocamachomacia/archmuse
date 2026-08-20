@@ -28,7 +28,7 @@ llame decide cómo servirlo (ver `app.py`, mismo patrón que
 `exportar_planta_dxf`)."""
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Iterable
 
 import ifcopenshell
 import ifcopenshell.api.aggregate

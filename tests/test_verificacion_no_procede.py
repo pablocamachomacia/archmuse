@@ -31,7 +31,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 from agente.verificacion import (  # noqa: E402
-    Dictamen, NoSeHaPodidoComprobar, Verificacion, dictaminar,
+    NoSeHaPodidoComprobar, Verificacion, dictaminar,
 )
 
 

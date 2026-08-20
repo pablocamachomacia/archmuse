@@ -47,7 +47,7 @@ puros y sostienen los mismos usos sin fingir una semántica que no está.
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from shapely.geometry import Polygon
 from shapely.geometry.base import BaseGeometry

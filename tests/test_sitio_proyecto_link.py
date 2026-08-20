@@ -6,7 +6,6 @@ vincular_sitio_proyecto() al generar el proyecto". Determinista, con
 
 Ejecutar:  python tests/test_sitio_proyecto_link.py
 """
-import json
 import os
 import sys
 import tempfile

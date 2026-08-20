@@ -57,7 +57,7 @@ from shapely.geometry import Polygon  # noqa: E402
 import app as app_module  # noqa: E402
 from analyzer.ai_generator import GeneratedProject  # noqa: E402
 from analyzer.evaluator import Unit  # noqa: E402
-from analyzer.hechos import ESTIMATED, KNOWN, UNKNOWN  # noqa: E402
+from analyzer.hechos import ESTIMATED, UNKNOWN  # noqa: E402
 from analyzer.parser import Room  # noqa: E402
 from app import _planta_desde_nombre_unidad  # noqa: E402
 

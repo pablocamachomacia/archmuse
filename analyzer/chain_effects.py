@@ -29,7 +29,6 @@ from .evaluator import (
     UnitScore,
     _DORMITORIO_ANY_PATTERN,
     _normalize,
-    evaluate_itinerario_accesible,
 )
 
 

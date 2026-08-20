@@ -28,7 +28,6 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
 import ezdxf  # noqa: E402
-from shapely.geometry import box  # noqa: E402
 
 from analyzer import evaluator, parser, validacion_capas as vc  # noqa: E402
 

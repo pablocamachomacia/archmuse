@@ -144,7 +144,7 @@ def test_patrimonio_no_exigible_hasta_que_se_declara():
 
     # Declarado ausente -> ni se exige ni se pregunta.
     c3 = _resolver(sectoriales={"patrimonio": False})
-    assert not any("¿El proyecto está afectado por patrimonio?" == p for p in c3.preguntas_pendientes)
+    assert not any(p == "¿El proyecto está afectado por patrimonio?" for p in c3.preguntas_pendientes)
 
 
 # --- Nunca silencio ---------------------------------------------------------

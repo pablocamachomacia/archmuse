@@ -11,7 +11,6 @@ Anthropic FALSO (nunca el real `anthropic.Anthropic`) — mismo criterio que
 la suite normal, y se puede afirmar con certeza qué se le pidió al "modelo"
 sin depender de lo que responda de verdad.
 """
-import json
 import os
 import sys
 from types import SimpleNamespace

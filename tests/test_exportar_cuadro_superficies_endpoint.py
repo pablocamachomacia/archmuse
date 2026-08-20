@@ -136,7 +136,6 @@ check(payload_v2s["proyecto"]["cuadro_superficies_detectado"] is True,
 
 # DXF sintético SIN ACAD_TABLE -- caso negativo real, construido en memoria.
 import ezdxf  # noqa: E402
-from ezdxf.entities import LWPolyline  # noqa: E402
 
 import io  # noqa: E402
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
-from typing import Iterable, Optional, Set
+from typing import Optional, Set
 
 from . import almacen
 from .errores import DocumentoIlegible, ErrorDeRed, ErrorIngesta

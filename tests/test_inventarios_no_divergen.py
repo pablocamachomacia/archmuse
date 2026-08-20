@@ -61,7 +61,6 @@ def _deterministas() -> set:
 def test_ningun_inventario_se_queda_atras_del_registro():
     """Un solo mensaje con todo lo que falta, en vez de tres fallos sueltos."""
     from tests.test_agente_goldens import CASOS
-    from tests.test_agente_herramientas import test_toda_capacidad_devuelve_un_dict_con_ok as _
 
     # El inventario de invocaciones vive dentro de la funcion de test, asi que
     # se lee del fuente: es feo, y es preferible a duplicarlo aqui --que seria

@@ -76,7 +76,6 @@ from analyzer.cuadro_superficies_export import (  # noqa: E402
     PUNTO_INSERCION,
     exportar_cuadro_relleno,
 )
-from analyzer.cuadro_superficies import BLOQUEADO, NO_DISPONIBLE  # noqa: E402
 
 resultado = exportar_cuadro_relleno(ORIGEN, DESTINO)
 

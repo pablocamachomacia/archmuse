@@ -12,7 +12,7 @@ Dos ideas gobiernan este módulo, ambas de `docs/design/NORMATIVE_RESOLUTION.md`
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 # Niveles con competencia normativa reconocida. `provincia` NO está: ninguna

@@ -25,7 +25,7 @@ en `docs/prd/2026-08-17-checklist-cumplimiento-cte.md`).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional
 
 

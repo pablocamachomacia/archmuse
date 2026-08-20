@@ -87,7 +87,7 @@ from typing import List, Optional, Sequence, Tuple
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
-from .hechos import ALTA, KNOWN, MEDIA, UNKNOWN, Hecho, Motivo
+from .hechos import KNOWN, MEDIA, UNKNOWN, Hecho, Motivo
 
 # `concept_id` de la definición en `normativa/terminologia/dbsi_anejo_a.yaml`.
 # Se guarda la referencia, no el literal: `analyzer/` no importa `normativa/`

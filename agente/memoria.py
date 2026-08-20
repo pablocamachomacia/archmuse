@@ -193,18 +193,17 @@ class SustratoEnFicheros:
         if not ruta.exists():
             return []
         fuera: List[Entrada] = []
-        with self._cerrojo:
-            with open(ruta, encoding="utf-8") as f:
-                for linea in f:
-                    linea = linea.strip()
-                    if not linea:
-                        continue
-                    try:
-                        fuera.append(Entrada.de_dict(json.loads(linea)))
-                    except (ValueError, KeyError, TypeError):
-                        # Una línea corrupta no puede hacer desaparecer el resto
-                        # de la memoria del proyecto. Se salta y se sigue.
-                        continue
+        with self._cerrojo, open(ruta, encoding="utf-8") as f:
+            for linea in f:
+                linea = linea.strip()
+                if not linea:
+                    continue
+                try:
+                    fuera.append(Entrada.de_dict(json.loads(linea)))
+                except (ValueError, KeyError, TypeError):
+                    # Una línea corrupta no puede hacer desaparecer el resto
+                    # de la memoria del proyecto. Se salta y se sigue.
+                    continue
         return fuera
 
 

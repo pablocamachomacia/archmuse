@@ -291,15 +291,14 @@ class BitacoraEnFicheros:
         if not ruta.exists():
             return []
         fuera: List[ResultadoDePaso] = []
-        with self._cerrojo:
-            with open(ruta, encoding="utf-8") as f:
-                for linea in f:
-                    linea = linea.strip()
-                    if linea:
-                        try:
-                            fuera.append(ResultadoDePaso.de_dict(json.loads(linea)))
-                        except (ValueError, KeyError, TypeError):
-                            continue
+        with self._cerrojo, open(ruta, encoding="utf-8") as f:
+            for linea in f:
+                linea = linea.strip()
+                if linea:
+                    try:
+                        fuera.append(ResultadoDePaso.de_dict(json.loads(linea)))
+                    except (ValueError, KeyError, TypeError):
+                        continue
         return fuera
 
 

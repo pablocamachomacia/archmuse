@@ -19,7 +19,6 @@ from typing import Any, Dict
 
 from bim import IFCIlegible, inventariar
 
-from ..capacidad import Capacidad
 
 
 def inventario_de_ifc(ruta: str) -> Dict[str, Any]:

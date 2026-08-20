@@ -23,7 +23,6 @@ Lo que protege, por orden de gravedad si se rompiera:
      lo detecta ninguna comprobacion de areas.
   3. Que no se entre en bucle con bloques anidados.
 """
-import math
 import os
 import shutil
 import sys

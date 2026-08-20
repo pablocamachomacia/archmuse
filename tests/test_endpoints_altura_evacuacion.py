@@ -309,7 +309,7 @@ check(set(alt_g.keys()) == CAMPOS_ALTURA,
       "proyecto.altura_evacuacion de /api/generar tiene los campos esperados",
       sorted(alt_g.keys()))
 if FORMA_ANALIZAR is not None:
-    check(FORMA_ANALIZAR == set(alt_g.keys()),
+    check(set(alt_g.keys()) == FORMA_ANALIZAR,
           "MISMA forma exacta en /api/analizar y /api/generar (mismo "
           "serializador, no dos contratos parecidos)",
           sorted(FORMA_ANALIZAR ^ set(alt_g.keys())))

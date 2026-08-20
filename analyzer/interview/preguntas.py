@@ -20,7 +20,7 @@ del PRD v2 §22.2 (`"solar.superficie_m2"`, `"prioridades.trade_off"`).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Optional
 
 from .modelo import CATEGORIAS_ESPECIFICACION, _validar_enum

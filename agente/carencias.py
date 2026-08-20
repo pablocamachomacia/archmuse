@@ -145,17 +145,16 @@ class CarenciasEnFicheros:
         if not self.ruta.exists():
             return []
         fuera: List[Tuple[str, str]] = []
-        with self._cerrojo:
-            with open(self.ruta, encoding="utf-8") as f:
-                for linea in f:
-                    linea = linea.strip()
-                    if not linea:
-                        continue
-                    try:
-                        d = json.loads(linea)
-                        fuera.append((d["objetivo"], d.get("momento", "")))
-                    except (ValueError, KeyError):
-                        continue
+        with self._cerrojo, open(self.ruta, encoding="utf-8") as f:
+            for linea in f:
+                linea = linea.strip()
+                if not linea:
+                    continue
+                try:
+                    d = json.loads(linea)
+                    fuera.append((d["objetivo"], d.get("momento", "")))
+                except (ValueError, KeyError):
+                    continue
         return fuera
 
 

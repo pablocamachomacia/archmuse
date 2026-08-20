@@ -41,7 +41,7 @@ from analyzer.avisos_altura_evacuacion import (  # noqa: E402
     aviso_c15,
     aviso_c18,
 )
-from analyzer.hechos import ESTIMATED, KNOWN, UNKNOWN  # noqa: E402
+from analyzer.hechos import UNKNOWN  # noqa: E402
 
 fallos = []
 comprobaciones = 0

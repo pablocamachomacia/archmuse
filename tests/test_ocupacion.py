@@ -40,8 +40,6 @@ from analyzer.planta import (  # noqa: E402
     planta as hecho_planta,
 )
 from analyzer.ocupacion import (  # noqa: E402
-    DENSIDAD_NO_DISPONIBLE,
-    FILA_PLANTAS_DE_VIVIENDA,
     SUPERFICIE_NO_DISPONIBLE,
     USO_FUERA_DE_TABLA,
     USO_NO_DISPONIBLE,
@@ -51,7 +49,6 @@ from analyzer.ocupacion import (  # noqa: E402
     ocupacion_por_zona,
 )
 from analyzer.superficie_util import (  # noqa: E402
-    superficie_util_db_si,
     superficie_util_ocupable_db_si,
 )
 from analyzer.uso_previsto import (  # noqa: E402

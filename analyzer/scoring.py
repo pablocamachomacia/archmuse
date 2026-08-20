@@ -103,7 +103,7 @@ def compute_scoring_breakdown(issues: List[IssueReport]) -> ScoringBreakdown:
     reconoce (no debería pasar con los códigos actuales de `evaluator.py`/
     `chain_effects.py`) caen en "Habitabilidad y confort" vía el cajón de
     sastre de `categoria_for`, nunca se pierden silenciosamente."""
-    deducciones = {nombre: 0.0 for nombre in CATEGORY_WEIGHTS}
+    deducciones = dict.fromkeys(CATEGORY_WEIGHTS, 0.0)
     for issue in issues:
         deducciones[categoria_for(issue)] += DEDUCTION_BY_SEVERITY.get(issue.severity, 0.0)
 
@@ -150,7 +150,7 @@ def compute_project_breakdown(issues: List[IssueReport], unit_names: List[str]) 
             de_edificio.append(issue)
 
     por_vivienda = [compute_scoring_breakdown(de_vivienda[n]) for n in unit_names]
-    deduccion_edificio = {nombre: 0.0 for nombre in CATEGORY_WEIGHTS}
+    deduccion_edificio = dict.fromkeys(CATEGORY_WEIGHTS, 0.0)
     for issue in de_edificio:
         deduccion_edificio[categoria_for(issue)] += DEDUCTION_BY_SEVERITY.get(issue.severity, 0.0)
 

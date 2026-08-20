@@ -25,7 +25,7 @@ import sys
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
-from analyzer.hechos import ALTA, ESTIMATED, KNOWN, MEDIA, UNKNOWN, Hecho, Motivo  # noqa: E402
+from analyzer.hechos import ESTIMATED, KNOWN, MEDIA, UNKNOWN, Hecho, Motivo  # noqa: E402
 from analyzer.planta import (  # noqa: E402
     ORIGEN_CONVENCION_NOMBRE,
     ORIGEN_DECLARADO,

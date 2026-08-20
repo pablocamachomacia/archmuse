@@ -21,7 +21,7 @@ hacer con los fallos es el loader, que es fail-closed.
 from __future__ import annotations
 
 from datetime import date
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Set
 
 from jsonschema import Draft202012Validator
 

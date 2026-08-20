@@ -28,12 +28,10 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-from extraccion.confianza import calcular_confianza  # noqa: E402
 from extraccion.interprete import interpretar  # noqa: E402
 from extraccion.modelo import Segmento  # noqa: E402
 from extraccion.pipeline import _candidata_desde_bruto  # noqa: E402
 from extraccion.segmentador import segmentar  # noqa: E402
-from extraccion.verificacion import construir_señales  # noqa: E402
 from ingesta.fuentes.boe import FuenteBOE  # noqa: E402
 
 ACTIVO = os.environ.get("ARCHMUSE_TEST_IA") == "1"

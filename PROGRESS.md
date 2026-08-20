@@ -39,6 +39,18 @@ comportamiento de TODA la suite (riesgo de romper algo que hoy sí necesita
 un socket local, p.ej. el cliente de test de Flask) y no es algo que deba
 decidir yo solo sin supervisión. Sigo con otra cosa.
 
+`[00:35]` Tarea 8 del REFACTOR_MASTERPLAN (`ruff` + `pyproject.toml`,
+"congela lo aprendido en esta auditoría"): instalado `ruff==0.16.3`,
+config en `pyproject.toml` con el conjunto de reglas que nacen de defectos
+reales ya encontrados en este repo (E/W/F/B/C4/SIM/PERF, no una plantilla
+genérica). Línea base: **277 hallazgos**. Apliqué solo los **59 arreglos
+seguros** (`ruff check . --fix`, sin `--unsafe-fixes`) -- casi todos
+imports sin usar. Los 65 "unsafe" y los ~159 restantes (106 son
+`PERF401`, comprehensiones manuales) **no se tocan**: cambiar lógica de
+verdad sin que tú lo revises no es housekeeping, es riesgo. Suite completa
+tras el fix: 1057 passed, 2 failed (mismos guardianes C4 de siempre), 18
+skipped -- idéntico al baseline de antes de tocar nada. Commit local hecho.
+
 ---
 
 ## 2026-08-20 (noche, aún más tarde) · Informe de test: hallazgo 1 (medición de cobertura) cerrado

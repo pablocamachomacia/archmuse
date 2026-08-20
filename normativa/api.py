@@ -29,13 +29,13 @@ lista corta que se leería como completa.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from . import catalogos, derivados
-from .ambito import Ambito, AmbitoSectorial, CadenaAmbitos, Procedencia
+from .ambito import Ambito, AmbitoSectorial, CadenaAmbitos
 from .manifiesto import InformeCobertura, cobertura as _cobertura
 from .errores import (
     AmbitoAmbiguo,

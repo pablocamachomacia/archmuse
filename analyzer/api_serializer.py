@@ -35,7 +35,6 @@ from .evaluator import (
     classify_problems,
     get_missing_data_warnings,
     rating_con_severidad,
-    score_rating,
 )
 from .circulation import evaluate_circulation, serialize_unit_circulation
 from .parser import CAPA_UTIL_INTERIOR, EntidadDescartada, Room

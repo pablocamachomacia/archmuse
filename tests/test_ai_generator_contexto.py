@@ -56,7 +56,6 @@ storage.init_db()
 import app as app_module  # noqa: E402
 from analyzer import ai_generator  # noqa: E402
 from analyzer.evaluator import Unit  # noqa: E402
-from analyzer.interview import modelo as interview_modelo  # noqa: E402
 from analyzer.parser import Room  # noqa: E402
 from shapely.geometry import Polygon  # noqa: E402
 

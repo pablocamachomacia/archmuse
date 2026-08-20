@@ -36,9 +36,7 @@ sys.path.insert(0, RAIZ)
 
 from analyzer.cuadro_superficies import (  # noqa: E402
     BLOQUEADO,
-    CALCULADO,
     CERO_REAL,
-    NO_DISPONIBLE,
     CeldaCuadro,
     CuadroSuperficies,
     aplicar_respuestas,

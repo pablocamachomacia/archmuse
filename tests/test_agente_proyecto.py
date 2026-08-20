@@ -124,7 +124,7 @@ def test_una_operacion_fuera_del_catalogo_se_declara_y_no_se_aproxima():
 
 def test_no_se_puede_dejar_el_proyecto_sin_viviendas():
     r = ajustar_programa(params(), "cambiar_mix",
-                         {t: 0 for t in TIPOS_DE_VIVIENDA})
+                         dict.fromkeys(TIPOS_DE_VIVIENDA, 0))
     assert r["ok"] is False
     assert r["error"] == "proyecto_sin_viviendas"
 

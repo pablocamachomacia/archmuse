@@ -13,7 +13,6 @@ si algo falla. La capa HTTP reutiliza el mismo patrón ya probado en `test_sitio
 (`storage.guardar_sitio` + `/api/generar` con `referencia_catastral` -> enlace automático) -- nunca
 llama a Overpass de verdad salvo que se indique `ARCHMUSE_TEST_RED=1`.
 """
-import json
 import os
 import sys
 import tempfile
