@@ -28,6 +28,15 @@ from agente.herramientas.bim import inventario_de_ifc  # noqa: E402
 from analyzer.ifc_export import exportar_espacios_ifc  # noqa: E402
 from bim import IFCIlegible, inventariar  # noqa: E402
 
+#: Tres IFC reales de terceros (no escritos por ArchMuse), ver
+#: `tests/fixtures/ifc_real/README.md` para su procedencia y por qué se
+#: eligió cada uno. Añadidos 2026-08-20 (paso 3 del roadmap) para que esta
+#: suite deje de probar solo el round-trip sintético de `exportar_espacios_ifc`.
+FIXTURES_IFC_REAL = RAIZ / "tests" / "fixtures" / "ifc_real"
+IFC_ARQUITECTURA = FIXTURES_IFC_REAL / "Building-Architecture.ifc"
+IFC_ESTRUCTURA = FIXTURES_IFC_REAL / "Building-Structural.ifc"
+IFC_VENTANA = FIXTURES_IFC_REAL / "wall-with-opening-and-window.ifc"
+
 HABITACIONES = [
     {"nombre": "Salón", "poligono": [[0, 0], [5, 0], [5, 4], [0, 4]],
      "area_m2": 20.0, "tipo": "salon"},
@@ -166,6 +175,114 @@ def test_la_funcion_sigue_viva_aunque_no_este_registrada(tmp_path):
     exportar_espacios_ifc(HABITACIONES, nombre_planta="Planta baja").write(str(ruta))
 
     assert inventario_de_ifc(str(ruta))["ok"] is True
+
+
+# --- Contra IFC reales de terceros, no solo el round-trip sintético --------
+#
+# BIM-4 del backlog ("Robustez contra IFC de software real") pide justo esto:
+# que el lector funcione o falle con motivo contra ficheros que ArchMuse no
+# ha escrito. Ver `tests/fixtures/ifc_real/README.md` para la procedencia.
+
+def test_lee_un_ifc_real_exportado_por_software_de_terceros_sin_romper():
+    """SketchUp, no ArchMuse. Si esto falla, el PoC ya no aguanta el mundo real."""
+    inventario = inventariar(IFC_ARQUITECTURA)
+
+    assert inventario.esquema == "IFC4"
+    assert inventario.plantas == ("00 groundfloor",)
+    assert {e.nombre for e in inventario.espacios} == {"living room", "entry hall"}
+    assert inventario.conteo_por_clase["IfcWall"] == 4
+    assert inventario.conteo_por_clase["IfcSlab"] == 3
+
+
+def test_el_inventario_de_clases_no_deja_invisible_lo_que_no_estaba_en_la_lista_fija():
+    """El hallazgo central de esta ampliación: antes, solo 9 clases contaban.
+
+    Contra este fichero real, `IfcBuildingElementProxy`, `IfcFooting`,
+    `IfcRoof`, `IfcChimney` y `IfcDiscreteAccessory` no estaban en la lista
+    fija anterior -- con el inventario dinámico, aparecen todas.
+    """
+    inventario = inventariar(IFC_ESTRUCTURA)
+
+    assert inventario.conteo_por_clase["IfcBeam"] == 6
+    assert inventario.conteo_por_clase["IfcBuildingElementProxy"] == 3
+    assert inventario.conteo_por_clase["IfcFooting"] == 1
+    assert inventario.conteo_por_clase["IfcRoof"] == 1
+    assert inventario.conteo_por_clase["IfcChimney"] == 1
+    assert inventario.conteo_por_clase["IfcDiscreteAccessory"] == 2
+    # Este fichero no tiene ningún IfcSpace: el aviso lo dice, no se calla.
+    assert any("ningún IfcSpace" in a for a in inventario.avisos)
+
+
+def test_las_unidades_de_un_ifc_real_en_milimetros_se_convierten_a_metros():
+    """El bug real que motivó esta ampliación: sin corregir, esto saldría
+    1000 (longitud) o 1.000.000 (superficie, si se hubiera elevado al
+    cuadrado la escala de longitud en vez de leer AREAUNIT aparte) veces
+    distinto de lo real."""
+    inventario = inventariar(IFC_ARQUITECTURA)
+
+    assert inventario.escala_longitud == pytest.approx(0.001)
+    assert any("0.001 m/unidad de longitud" in a for a in inventario.avisos)
+
+
+def test_lee_una_ventana_real_con_ancho_y_alto_declarados():
+    """`OverallWidth`/`OverallHeight` son atributos directos del `IfcWindow`,
+    no una cantidad ni geometría teselada -- 1000mm declarados en el fichero,
+    deben leerse como 1.0 m, no como 1000 (bug de unidades) ni como `None`
+    (el fichero SÍ los declara)."""
+    inventario = inventariar(IFC_VENTANA)
+
+    assert len(inventario.aberturas) == 1
+    ventana = inventario.aberturas[0]
+    assert ventana.tipo == "IfcWindow"
+    assert ventana.ancho_m == pytest.approx(1.0)
+    assert ventana.alto_m == pytest.approx(1.0)
+    assert ventana.motivo_sin_dimension == ""
+    assert ventana.planta == "Default Building Storey"
+
+
+def test_lee_el_sitio_real_con_coordenadas_geograficas_declaradas():
+    """`RefLatitude`/`RefLongitude` son `IfcCompoundPlaneAngleMeasure`
+    (grados, minutos, segundos) -- (24, 28, 0) tiene que dar 24 + 28/60,
+    no 24.28 ni 24.0."""
+    inventario = inventariar(IFC_VENTANA)
+
+    assert len(inventario.sitios) == 1
+    sitio = inventario.sitios[0]
+    assert sitio.latitud_grados == pytest.approx(24 + 28 / 60)
+    assert sitio.longitud_grados == pytest.approx(54 + 25 / 60)
+    assert sitio.elevacion_m is not None
+
+
+def test_un_sitio_sin_coordenadas_declaradas_no_inventa_ninguna():
+    """`Building-Architecture.ifc` tiene dos `IfcSite` (uno de "entorno", uno
+    del edificio) y ninguno declara lat/lon -- los dos deben salir `None`,
+    nunca 0.0 (0°,0° es un punto real del planeta, no "sin dato")."""
+    inventario = inventariar(IFC_ARQUITECTURA)
+
+    assert len(inventario.sitios) == 2
+    for sitio in inventario.sitios:
+        assert sitio.latitud_grados is None
+        assert sitio.longitud_grados is None
+
+
+def test_una_planta_real_declara_su_elevacion_sin_ruido_de_punto_flotante():
+    """El ruido de punto flotante de un IFC real (`Elevation` casi-cero pero
+    no exactamente 0.0) no debe colarse como "-0.0" -- se normaliza a 0.0."""
+    inventario = inventariar(IFC_ARQUITECTURA)
+
+    assert len(inventario.plantas_detalle) == 1
+    elevacion = inventario.plantas_detalle[0].elevacion_m
+    assert elevacion == 0.0
+    assert str(elevacion) != "-0.0"
+
+
+def test_tres_ifc_de_origen_distinto_se_leen_o_fallan_con_motivo_nunca_con_un_numero_inventado():
+    """BIM-4, criterio de terminado literal: tres IFC de origen distinto se
+    leen o fallan con `ok=False` y motivo -- nunca con un número inventado."""
+    for ruta in (IFC_ARQUITECTURA, IFC_ESTRUCTURA, IFC_VENTANA):
+        resultado = inventario_de_ifc(str(ruta))
+        assert resultado["ok"] is True
+        assert resultado["esquema"] == "IFC4"
 
 
 if __name__ == "__main__":  # pragma: no cover
