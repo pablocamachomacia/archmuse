@@ -151,7 +151,7 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Por qué es el primero que se ha podido hacer entero:** es **el único objetivo del catálogo que no depende del corpus normativo**. Todo lo que comprueba es geometría y texto del propio fichero contrastados entre sí, así que su valor no espera a ninguna firma colegiada. Y ahorra un trabajo real: el repaso previo a la entrega se hace hoy a ojo y se rehace entero en cada revisión del plano, porque mover un tabique invalida el anterior.
 - **El hallazgo que lo motivó:** casi todo esto ya se calculaba **y se tiraba**. Los solapes servían para negarse a medir —el arquitecto veía el efecto, nunca la causa—; los avisos de polilínea mal cerrada iban a `_log.warning`, o sea a un terminal que nadie lee, pese a que el propio parser documenta que «tiene que quedar visible para quien audite»; y la etiqueta repetida acababa en una celda `BLOQUEADO`. Sobre `v2s.dxf` eso son **nueve hallazgos reales** que el producto ya sabía y no decía.
 - **Lo que lo mantiene fuera de `D-7`:** **no gradúa la gravedad de nada.** «Se solapan 4,00 m²» es un hecho comprobable; «esto es grave» es criterio profesional, y el de ArchMuse está sin firmar. La frontera es la verificación bloqueante `ningun_hallazgo_lleva_gravedad`, con su test de que **falla de verdad**.
-- **Entregable demostrable:** `python scripts/revisar_plano.py mi_plano.dxf` — enseña el procedimiento, revisa, escribe el informe en PDF, imprime el acta y no toca el DXF (sha256 verificado antes y después). Sin clave de API y sin red.
+- **Entregable demostrable:** `python scripts/revisar_plano.py mi_plano.dxf` — enseña el procedimiento, revisa, escribe el informe en PDF, imprime el acta y no toca el DXF (sha256 verificado antes y después). Sin clave de API y sin red. **Desde el 2026-08-20 (Bloque 1), también desde la web:** `/` → tarjeta "Revisar coherencia" o pregunta libre → `/api/preguntar` → `revision.coherencia_del_plano` de verdad, con `SEG-1`. Hasta ese bloque esta Skill estaba `HECHO` y probada pero sin ninguna puerta HTTP -- sólo se podía llegar a ella desde un test o la línea de órdenes.
 - **Tareas:** `CO-1` a `CO-8` (todas hechas). PRD: `docs/prd/2026-08-19-revision-de-coherencia-del-plano.md`.
 
 ### OP-16 · «Mídeme esta planta y dime lo que mide cada vivienda» — **HECHO (2026-08-19)**
@@ -729,11 +729,11 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 ## 11. Seguridad, aprobación y trazabilidad
 
 ### SEG-1 · Aprobación explícita antes de un efecto
-`P0` · `PARCIAL` · PRD: no · dep: `TL-2` · ~1j
+`P0` · **HECHO (2026-08-20)** · PRD: no · dep: `TL-2` · ~1j
 
-- **Objetivo:** el portero de efectos existe en `agente/efectos.py` y rechaza lo no autorizado. Falta el **paso de producto**: enseñar al arquitecto qué va a pasar («voy a escribir en una copia de tu DXF, voy a gastar ~0,40 €») y esperar su sí.
+- **Objetivo:** el portero de efectos existe en `agente/efectos.py` y rechaza lo no autorizado. El paso de producto (428 + `solicitud()` en el backend, `fetchConAutorizacion` reintentando en el frontend) se cerró el 2026-08-19/20 para las tres puertas de medición (`/api/acta-legible`, `/api/memoria-superficies`, `/api/preguntar`), y el 2026-08-20 (Bloque 2 de `docs/design/2026-08-20-reorientacion-estrategica-v1.md`) se extendió al único punto de escritura que quedaba alcanzable por HTTP sin cubrir: `revision.coherencia_del_plano` dentro de `/api/preguntar`. Auditado el resto del código HTTP-reachable (`/api/copiloto` sólo toca `proyecto.ajustar_programa`, sin efectos; `/api/exportar-cuadro-superficies-completo` usa `analyzer/` directamente, nunca `agente.Ejecutor`, así que el mecanismo de `SEG-1` no aplica ahí) y no queda ningún punto de escritura de `agente/` alcanzable desde la web sin pasar por esta pantalla.
 - **Valor para el arquitecto:** nada le ocurre a sus ficheros ni a su presupuesto sin que lo haya visto antes.
-- **Terminado cuando:** una ejecución con efecto `io` se detiene, muestra el efecto declarado en el manifiesto, y sin confirmación no escribe ni un byte.
+- **Terminado cuando:** una ejecución con efecto `io` se detiene, muestra el efecto declarado en el manifiesto, y sin confirmación no escribe ni un byte. ✓
 
 ### SEG-2 · `tenant_id` en el núcleo, RLS y test de ataque
 `P1` · `PENDIENTE` · PRD: no · dep: `SEG-3`, `INF-2` · ~2,5j
@@ -1002,18 +1002,21 @@ El caso que no funcionaba es **el normal**: una planta de un edificio residencia
 
 **Nota del 2026-08-19 (§13.8):** esta lista no contenía `OP-16` y aun así fue lo que se hizo, con motivo. Los tres primeros puestos siguen bloqueados por una contratación (`NOR-1`, `D-7`) o por una decisión (`D-9`), y el cuarto (`DOC-1`) presenta mejor algo que **ya se entrega**. Medir una planta con varias viviendas era trabajo que un arquitecto pide todas las semanas y que ArchMuse sencillamente **no podía hacer**. Cuando la cola y el plano real no coinciden, manda el plano real.
 
-**Actualización noche 14 (2026-08-19):** `DOC-1` se cerró — Pablo validó el criterio de arquitecto veterano y se añadió el último eslabón (pieza + capa del DXF por cada bloque del acta). Sale de esta lista. Reordenada sin ella:
+**Actualización noche 14 (2026-08-19):** `DOC-1` se cerró — Pablo validó el criterio de arquitecto veterano y se añadió el último eslabón (pieza + capa del DXF por cada bloque del acta). Sale de esta lista.
+
+**Actualización 2026-08-20 (reorientación estratégica, Bloques 1 y 2):** `SEG-1` se cerró del todo — cubría ya las tres puertas de medición desde el 19/8, y hoy se extendió a `revision.coherencia_del_plano` dentro de `/api/preguntar`, la única capacidad con efecto `io` que quedaba alcanzable por HTTP sin la pantalla de autorización. De paso, esa misma Skill (`OP-15`, `HECHO` desde el 19/8 pero sin ninguna puerta HTTP) se enganchó a `/` como segunda capacidad real del panel de conversación — ver `docs/design/2026-08-20-reorientacion-estrategica-v1.md` §7/§8. Sale de esta lista. Reordenada sin ella:
 
 | # | Tarea | Por qué va aquí |
 |---:|---|---|
 | 1 | **`NOR-1` (contratar)** | Lo técnico está hecho el 2026-08-19: el curador ya puede trabajar solo. Queda **contratar**, y sigue siendo lo único que ArchMuse promete y no puede cumplir: una regla en el corpus, sin firmar, cero normas verificables |
 | 2 | `D-7` | Ya no es preventivo. `SK-1` **tiene** criterio profesional aplicado sobre un plano real y sin firmar: el orden del procedimiento, qué hacer ante una ambigüedad de reparto, y si un solape es error del plano o convención del autor. Los tres van enumerados en la decisión. Bloquea cobrar por el cuadro de superficies |
-| 3 | `INF-1` (cerrar) | Necesita un push. Ver `D-9`. Sigue sin desbloquearse: 9 commits locales sin subir a `origin/agente/nucleo-agentico` |
+| 3 | `INF-1` (cerrar) | Ver `D-9`. **Revisar antes de fiarse de esta fila:** los 9 commits que motivaron esta entrada ya se subieron a `origin/agente/nucleo-agentico` el 2026-08-20 (a petición explícita de Pablo) — falta comprobar qué queda pendiente de verdad en `INF-1`, no asumir que sigue igual que el 19/8 |
 | 4 | `INF-2` → `ME-2` | Postgres y el registro append-only sellado. Es el foso, y hasta aquí todo vive en ficheros. Necesita credenciales/proveedor que sólo puede dar Pablo |
-| 5 | **`SEG-1`** | **Primera tarea de la lista genuinamente ejecutable hoy sin decisión ni contratación pendiente.** La pantalla de autorización. El portero ya existe en las dos capas (`agente/efectos.py`, `Capacidad.invocar`); falta enseñar el efecto **antes** en una interfaz que no sea una línea de órdenes. Dependencia (`TL-2`) ya `HECHO`. PRD: no (endurecimiento de producto sobre una capacidad ya existente, no capacidad nueva) |
-| 6 | `AG-3` | Presupuesto por ejecución, con las cifras medidas de `SEG-4`. Necesita ejecutar cargas reales y leer las cifras antes de poder implementarse — no es sólo código |
+| 5 | `AG-3` | Presupuesto por ejecución, con las cifras medidas de `SEG-4`. Necesita ejecutar cargas reales y leer las cifras antes de poder implementarse — no es sólo código |
 
 Después, vestir el vertical: `SEG-3` → `SEG-2` → `INF-4` → `INF-5` → `INF-6` → `INF-7` → `INF-8`.
+
+Y, en paralelo (no compite por tiempo de ingeniería): el Bloque 3 (housekeeping: vendorizar three.js si hiciera falta -- ya está hecho, ver `static/index.html`; sacar `JarvisApp.py` del repo; decidir por escrito el futuro de `/mvp`, congelado desde el Bloque 1) y el Bloque 4 (probar el flujo de revisión con 3 arquitectos reales) del informe del 2026-08-20, ambos a la espera de que Pablo confirme el resultado de los Bloques 1 y 2 antes de arrancar.
 
 ---
 

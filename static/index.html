@@ -258,10 +258,21 @@
           <span class="sidebar-icono" aria-hidden="true">?</span>
           <span class="sidebar-etiqueta">Conversación</span>
         </span>
-        <a class="sidebar-item" href="/proyectos">
+        <a class="sidebar-item" href="/proyectos"
+           title="Verificación normativa, sin corpus firmado todavía — usa esto bajo tu propio criterio profesional.">
           <span class="sidebar-icono" aria-hidden="true">&#9750;</span>
           <span class="sidebar-etiqueta">Proyectos</span>
         </a>
+        <!-- Bloque 1 (docs/design/2026-08-20-reorientacion-estrategica-v1.md
+             §7/§8), aprobado por Pablo con la instrucción explícita de no
+             suavizarlo ni acortarlo: el motor CTE de /proyectos (analyzer/,
+             ~40 reglas) no tiene acta de procedencia ni corpus firmado
+             detrás -- esta frase es la que evita que se confunda con algo
+             tan trazable como el acta de este panel. Visible sin pasar el
+             ratón (mismo criterio que .sidebar-item:disabled más arriba en
+             style.css): el `title` de encima queda como refuerzo, no como
+             único sitio donde vive el aviso. -->
+        <p class="conv-sidebar-aviso">Verificación normativa, sin corpus firmado todavía — usa esto bajo tu propio criterio profesional.</p>
       </div>
       <div class="sidebar-pie">
         <button type="button" class="sidebar-item" disabled title="Ajustes — próximamente. Aún no hay opciones que configurar.">
@@ -289,6 +300,18 @@
           <span class="conv-accion-icono" aria-hidden="true">&#9638;</span>
           <span class="conv-accion-titulo">Medir superficies</span>
           <span class="conv-accion-sub">Superficie útil por estancia, con procedencia</span>
+        </button>
+        <!-- Bloque 1 (2026-08-20): segunda tarjeta real, misma disciplina que
+             la de arriba -- `revision.coherencia_del_plano` estaba `HECHO` y
+             probada desde el 19/8 (`test_agente_skill_coherencia.py`) pero
+             sin ninguna puerta HTTP que la alcanzara; esta tarjeta y el
+             wiring de `app.py` (`_EJECUTORES_PARA_PREGUNTAR`) son esa
+             puerta. -->
+        <button type="button" class="conv-accion-card conv-accion-card-real"
+                data-pregunta="¿Hay algo solapado o repetido en este plano?">
+          <span class="conv-accion-icono" aria-hidden="true">&#8853;</span>
+          <span class="conv-accion-titulo">Revisar coherencia</span>
+          <span class="conv-accion-sub">Solapes, rótulos y cuadro contra el dibujo — no comprueba normativa</span>
         </button>
         <div class="conv-accion-card-resto" id="conv-acciones-rapidas-resto"></div>
       </div>
@@ -327,7 +350,7 @@
       <div class="conv-statusbar">
         <span class="conv-statusbar-dot" id="conv-statusbar-dot" aria-hidden="true"></span>
         <span class="conv-statusbar-proyecto" id="conv-statusbar-proyecto">Sin plano adjunto</span>
-        <span class="conv-statusbar-capacidad">superficies.medicion_de_planta</span>
+        <span class="conv-statusbar-capacidad">superficies.medicion_de_planta · revision.coherencia_del_plano</span>
       </div>
     </div>
   </div>

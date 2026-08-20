@@ -2922,10 +2922,20 @@ class _FalloDeMedicion(Exception):
     que se le enseña al usuario -- ver dónde se captura, en cada endpoint."""
 
 
+class _FalloDeRevision(Exception):
+    """Igual que `_FalloDeMedicion`, para la Skill `revision.coherencia_del_plano`
+    (Bloque 1, 2026-08-20). Dos clases y no una compartida a propósito: el
+    mensaje de cada una ya lo escribe quien la lanza, y compartir una sola
+    clase con nombre "de medición" para un fallo de revisión de coherencia
+    sería el mismo tipo de etiqueta engañosa que este bloque de trabajo
+    existe para quitar de la interfaz."""
+
+
 class _ConfirmacionRequerida(Exception):
     """`SEG-1` (`docs/AGENTE_BACKLOG.md` §11): la Skill necesita un efecto
-    (`agente/efectos.py`) que nadie ha autorizado todavía -- hoy, crear el
-    fichero temporal del informe de medición. El ejecutor ya se detiene solo
+    (`agente/efectos.py`) que nadie ha autorizado todavía -- al principio sólo
+    el informe temporal de medición; desde el Bloque 1 (2026-08-20) también el
+    informe de `revision.coherencia_del_plano`. El ejecutor ya se detiene solo
     y sin escribir nada (`PENDIENTE_DE_AUTORIZACION`, ver `agente/ejecucion.py`);
     lo que faltaba era que el backend dejara de concederlo por su cuenta y
     en su lugar preguntara. `efectos` son los pendientes tal como los
@@ -3031,6 +3041,89 @@ def _medir_planta_y_renderizar_acta(file, filename: str, capa: Optional[str],
         quien=quien, autorizar_efectos=autorizar_efectos))
 
 
+def _revisar_coherencia_y_levantar_acta(file, filename: str, capa: Optional[str],
+                                         factor_escala, *, quien: str,
+                                         autorizar_efectos: bool = False) -> dict:
+    """El mismo camino que `_medir_planta_y_levantar_acta`, para la Skill
+    `revision.coherencia_del_plano` (`agente/skills/coherencia.py`, `OP-15`).
+
+    Bloque 1 (`docs/design/2026-08-20-reorientacion-estrategica-v1.md` §7/§8):
+    hasta hoy esta Skill estaba `HECHO` y probada (`test_agente_skill_coherencia.py`)
+    pero sin ninguna ruta HTTP que la alcanzara -- un arquitecto no podía
+    llegar a ella desde `/`, sólo desde un test. Esta función es la única
+    diferencia real con la de medición: el `Paso` invoca otra Skill
+    (`revision.coherencia_del_plano` en vez de `superficies.medicion_de_planta`),
+    con los mismos argumentos (`ruta_dxf`/`ruta_informe`/`capa`/`factor_escala`,
+    ver el `parametros` de la Skill) y la misma autorización de `SEG-1` para el
+    único efecto que declara (`ESCRIBE_FICHERO`, el informe de coherencia).
+    """
+    from agente import acta as _acta
+    from agente.efectos import ESCRIBE_FICHERO, NINGUNA, Autorizaciones
+    from agente.ejecucion import Ejecutor, Paso, Plan
+    from agente.memoria import MemoriaDeProyecto, SustratoEnMemoria
+    from agente.registro import registro, registro_de_skills
+
+    with tempfile.TemporaryDirectory(prefix="archmuse_coherencia_") as tmp_dir:
+        ruta_dxf = os.path.join(tmp_dir, filename)
+        file.save(ruta_dxf)
+        ruta_informe = os.path.join(tmp_dir, "coherencia.pdf")
+
+        argumentos = {"ruta_dxf": ruta_dxf, "ruta_informe": ruta_informe}
+        if capa:
+            argumentos["capa"] = capa
+        if factor_escala is not None:
+            argumentos["factor_escala"] = factor_escala
+
+        raiz = os.path.splitext(filename)[0] or "plano"
+        capacidades = registro(recargar=True)
+        skills = registro_de_skills(recargar=True)
+        memoria = MemoriaDeProyecto("revision-coherencia-%s" % raiz, SustratoEnMemoria())
+        plan = Plan(
+            objetivo="Revisar la coherencia de %s antes de entregarlo" % filename,
+            proyecto_id=memoria.proyecto_id,
+            pasos=(Paso(id="revisar", skill="revision.coherencia_del_plano",
+                        argumentos=argumentos),),
+        )
+        autorizaciones = (
+            Autorizaciones.de((ESCRIBE_FICHERO,), por=quien)
+            if autorizar_efectos else NINGUNA
+        )
+
+        try:
+            resultado = Ejecutor(capacidades=capacidades, skills=skills).ejecutar(
+                plan, memoria, ejecucion_id="api-coherencia-%s" % raiz,
+                autorizaciones=autorizaciones)
+        except Exception as exc:  # noqa: BLE001 - límite del sistema: DXF arbitrario subido por el usuario
+            app.logger.exception("coherencia: fallo al ejecutar la Skill")
+            raise _FalloDeRevision("No se pudo revisar el plano: %s" % exc) from exc
+
+        if resultado.efectos_pendientes:
+            raise _ConfirmacionRequerida(quien, resultado.efectos_pendientes)
+
+        documento = _acta.levantar(resultado, capacidades=capacidades, skills=skills)
+        return documento.a_dict()
+
+
+def _revisar_coherencia_y_renderizar_acta(file, filename: str, capa: Optional[str],
+                                           factor_escala, *, quien: str,
+                                           autorizar_efectos: bool = False) -> str:
+    """`_revisar_coherencia_y_levantar_acta` -> página HTML legible.
+
+    Reutiliza literalmente `analyzer.acta_legible.render()` -- ese módulo ya
+    está escrito para degradar sin inventar nada ante datos que no reconoce
+    (`clasificar()` devuelve `"pendiente"` con un TODO visible en vez de un
+    porqué inventado, `_formatear_dato()` cae a una frase genérica). No hay
+    ningún caso real probado de una limitación de coherencia todavía, así que
+    hoy esta página muestra los datos de la revisión (recintos, hallazgos...)
+    en su forma genérica -- exactamente el mismo criterio que ya se aplicó a
+    cualquier dato de medición sin traductor propio, no una excepción nueva
+    para esta Skill."""
+    from analyzer import acta_legible as _acta_legible
+    return _acta_legible.render(_revisar_coherencia_y_levantar_acta(
+        file, filename, capa, factor_escala,
+        quien=quien, autorizar_efectos=autorizar_efectos))
+
+
 def _respuesta_confirmacion_requerida(exc: "_ConfirmacionRequerida"):
     """`SEG-1`: la forma única en la que un efecto pendiente de autorización
     llega a la interfaz -- 428 (Precondition Required, no 400: no es un
@@ -3120,16 +3213,34 @@ def memoria_superficies_endpoint():
     )
 
 
-#: La única capacidad que hoy puede ofrecer `/api/preguntar`. Un `dict` y no
-#: una constante suelta porque el día que haya una segunda, la lista crece
-#: en una línea y el prompt del clasificador se construye solo -- no hay que
-#: tocar la lógica del endpoint para añadir una Skill más.
+#: Las capacidades que hoy puede ofrecer `/api/preguntar`. Un `dict` y no una
+#: constante suelta porque el día que haya una tercera, la lista crece en una
+#: línea y el prompt del clasificador se construye solo -- no hay que tocar la
+#: lógica del endpoint para añadir una Skill más. La segunda entrada
+#: (`revision.coherencia_del_plano`) se añadió en el Bloque 1 del 2026-08-20
+#: (`docs/design/2026-08-20-reorientacion-estrategica-v1.md`): la Skill ya
+#: estaba `HECHO` y probada desde el 19/8, sólo le faltaba esta puerta.
 _SKILLS_DISPONIBLES_PARA_PREGUNTAR = {
     "superficies.medicion_de_planta": (
         "Medir las superficies útiles de una planta a partir de un DXF, "
         "vivienda por vivienda, y mostrar el acta de procedencia de esa "
         "medición (qué se ha establecido y qué no se ha podido comprobar)."
     ),
+    "revision.coherencia_del_plano": (
+        "Revisar si un DXF es coherente consigo mismo antes de entregarlo -- "
+        "recintos solapados, contornos cerrados por suposición, rótulos "
+        "repetidos o ausentes, y si el cuadro de superficies y el dibujo "
+        "nombran y cuentan las mismas piezas -- y entregar el informe con la "
+        "entidad y la magnitud de cada hallazgo. NO comprueba normativa."
+    ),
+}
+
+#: Qué función ejecuta y renderiza cada capacidad de arriba. Mismo motivo que
+#: el dict de descripciones: una entrada nueva por Skill, nunca una rama de
+#: `if`/`elif` que crece sin límite dentro de `preguntar()`.
+_EJECUTORES_PARA_PREGUNTAR = {
+    "superficies.medicion_de_planta": _medir_planta_y_renderizar_acta,
+    "revision.coherencia_del_plano": _revisar_coherencia_y_renderizar_acta,
 }
 
 _NOMBRE_HERRAMIENTA_CLASIFICADOR = "clasificar_pregunta"
@@ -3210,9 +3321,11 @@ def _capacidad_que_coincide(pregunta: str, api_key: str) -> Optional[str]:
 _MENSAJE_SIN_CAPACIDAD = (
     "ArchMuse no tiene todavía una capacidad registrada para esto. Hoy sólo "
     "sabe medir las superficies útiles de una planta a partir de un DXF y "
-    "mostrar el acta de procedencia de esa medición -- nada más. No voy a "
-    "intentar responder con conocimiento general del modelo: eso es "
-    "exactamente lo que ArchMuse existe para no hacer."
+    "revisar si el plano es coherente consigo mismo (recintos solapados, "
+    "rótulos repetidos, el cuadro y el dibujo contando lo mismo) -- nada de "
+    "normativa, coste, estructura ni instalaciones. No voy a intentar "
+    "responder con conocimiento general del modelo: eso es exactamente lo "
+    "que ArchMuse existe para no hacer."
 )
 
 
@@ -3225,10 +3338,12 @@ def preguntar():
     El LLM interpreta la frase UNA sola vez y para UNA sola cosa: elegir,
     de una lista cerrada, qué capacidad ya registrada (si alguna) resuelve la
     pregunta (`_capacidad_que_coincide`). Si hay match, la ejecución pasa por
-    el mismo camino que `/api/acta-legible`
-    (`_medir_planta_y_renderizar_acta`) -- nada se reimplementa. Si no hay
-    match, la respuesta lo dice explícitamente: el modelo nunca contesta con
-    su conocimiento general, ni aquí ni en ninguna otra rama de esta función.
+    la función registrada en `_EJECUTORES_PARA_PREGUNTAR` para esa capacidad
+    -- el mismo camino que usaría su propio endpoint dedicado si lo tuviera
+    (`/api/acta-legible` para medición; para coherencia no hay endpoint
+    propio, sólo esta puerta) -- nada se reimplementa. Si no hay match, la
+    respuesta lo dice explícitamente: el modelo nunca contesta con su
+    conocimiento general, ni aquí ni en ninguna otra rama de esta función.
     """
     pregunta = (request.form.get("pregunta") or "").strip()
     if not pregunta:
@@ -3262,11 +3377,12 @@ def preguntar():
     factor_escala = factor_de_unidad(request.form.get("escala") or "")
     autorizar_efectos = (request.form.get("autorizar_efectos") or "") == "1"
 
+    ejecutar = _EJECUTORES_PARA_PREGUNTAR[capacidad]
     try:
-        pagina = _medir_planta_y_renderizar_acta(
+        pagina = ejecutar(
             file, filename, capa, factor_escala,
             quien="api:preguntar", autorizar_efectos=autorizar_efectos)
-    except _FalloDeMedicion as exc:
+    except (_FalloDeMedicion, _FalloDeRevision) as exc:
         return jsonify(error=str(exc)), 400
     except _ConfirmacionRequerida as exc:
         return _respuesta_confirmacion_requerida(exc)

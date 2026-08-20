@@ -5,6 +5,189 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-08-20 (noche) · Bloque 3 — housekeeping (sin código, dos correcciones al documento)
+
+Encargo: sacar `JarvisApp.py`/`requirements-jarvis.txt`/`.venv-jarvis/` a su
+propio repositorio, y documentar por escrito (sin ejecutar) qué es `/mvp`.
+
+**`JarvisApp.py` — la tarea ya estaba hecha, y el documento de diagnóstico no
+lo sabía.** Verificado en `git log`, no asumido: `JarvisApp.py` (989 líneas),
+`requirements-jarvis.txt` e `Iniciar Jarvis.bat` se eliminaron del repositorio
+en el commit `4bb5ee5` ("preparar el repositorio para publicación"), anterior
+a esta sesión. No queda ni un fichero fuente de Jarvis en `git ls-files` ni en
+el árbol de trabajo. Es el mismo tipo de error que el de `three.js` de esta
+tarde: una afirmación heredada de `PROJECT_AUDIT.md`/el ADR, repetida sin
+contrastarla contra el repositorio real. Corregido en el documento (tachado,
+no borrado, con nota de qué decía antes y por qué estaba mal), en los tres
+sitios donde repetía la afirmación. Lo único que queda en disco —
+`.venv-jarvis/` (gitignored desde siempre, nunca publicado) y un `.pyc`
+huérfano— no se ha tocado: es local, no es un riesgo del repositorio, y
+borrarlo es decisión de Pablo, no mía.
+
+**`/mvp` — decisión razonada, documentada, nada ejecutado.** No sustituye a
+`/` ni a `/proyectos` (revisar un plano existente) porque hace algo distinto:
+generar alternativas de envolvente a partir de parámetros urbanísticos, con
+la distribución interior del LLM claramente separada y marcada "sin
+auditar". Verificado: 6 pestañas (el documento original decía "cinco",
+corregido), tests dedicados en verde
+(`tests/test_mvp_no_mezcla_auditado_con_generado.py`,
+`tests/test_mvp_parcela_real.py`, 15 tests). No se retira — sería borrar una
+capacidad real y probada sin motivo. No se decide su integración con `/`
+todavía — esa pregunta depende de qué pida un arquitecto real en el Bloque
+4, no de especular ahora. Conclusión operativa: sigue exactamente como está,
+congelada.
+
+Detalle completo en `docs/design/2026-08-20-reorientacion-estrategica-v1.md`
+§11. Ningún fichero de código se ha tocado en este bloque — sólo el
+documento de diseño y este `PROGRESS.md`.
+
+## 2026-08-20 (tarde) · Bloques 1 y 2 de la reorientación estratégica
+
+Encargo: tras el diagnóstico de `docs/design/2026-08-20-reorientacion-estrategica-v1.md`
+(análisis puro, sin código), Pablo aprobó el Bloque 1 (puerta única) y el
+Bloque 2 (cerrar el ciclo de confianza del flujo principal) con una precisión
+explícita sobre la etiqueta del enlace a `/proyectos` ("no la suavices ni la
+acortes"). Bloques 3 y 4 quedan a la espera de que confirme el resultado de
+estos dos.
+
+### Verificación previa, pedida explícitamente antes de decidir el Bloque 1
+
+Dos comprobaciones contra código, no contra `PROGRESS.md`: el percentil
+comparativo inventado sigue eliminado del todo (`static/app.js`, sólo queda
+el comentario que explica por qué se quitó); el bug de tipología/zona
+climática sigue corregido, con `tests/test_aviso_zona_climatica.py` en verde.
+Y una tercera, en el navegador: abrir `/` como un arquitecto nuevo. Corrección
+al informe original — las pestañas "próximamente" (Normativa CTE, Presupuesto,
+Geometría 3D) ya están honestamente deshabilitadas, no hay ningún elemento que
+finja ofrecer verificación CTE. El hallazgo real y más pequeño que sí
+sobrevivió: sin DXF adjunto, cualquier pregunta —incluida una de normativa—
+recibía el mismo "Adjunta un DXF antes de preguntar", que un arquitecto podía
+leer como "y entonces sí lo comprobaré". Corregido en el Bloque 2, ver abajo.
+
+### Bloque 1 — una puerta, no tres
+
+`/` ya abría el panel de conversación como puerta principal desde el 19/8
+(noche 5) — eso no se tocó. Lo que faltaba, encontrado al investigar antes de
+tocar el enlace a `/proyectos`: **`revision.coherencia_del_plano` (`OP-15`)
+estaba `HECHO` y probada desde el 19/8 pero sin ninguna ruta HTTP que la
+alcanzara** — `/api/preguntar` sólo reconocía `superficies.medicion_de_planta`
+(`_SKILLS_DISPONIBLES_PARA_PREGUNTAR` tenía una única entrada). Un arquitecto
+en `/` nunca podía llegar a la revisión de coherencia, aunque estuviera
+construida y validada. Se lo planteé a Pablo antes de decidir por mi cuenta
+(cambiaba lo que "puerta única" significa de verdad) y confirmó ampliar el
+Bloque 1 para cerrarlo:
+
+- `app.py`: `_revisar_coherencia_y_levantar_acta`/`_revisar_coherencia_y_renderizar_acta`,
+  mismo patrón que las de medición (Ejecutor + Plan + Paso sobre la Skill
+  `revision.coherencia_del_plano`, `SEG-1` desde el primer día, nunca
+  autoconcedido). `_SKILLS_DISPONIBLES_PARA_PREGUNTAR` y
+  `_EJECUTORES_PARA_PREGUNTAR` ahora tienen las dos entradas; el clasificador
+  ya era genérico (construye el catálogo del propio dict), no hubo que
+  tocarlo.
+- `static/index.html`: segunda tarjeta real ("Revisar coherencia") junto a
+  "Medir superficies"; enlace a `/proyectos` con la etiqueta exacta que pidió
+  Pablo, visible sin pasar el ratón (mismo criterio que
+  `.sidebar-item:disabled`) y en el `title` como refuerzo, no como único
+  sitio.
+- `/mvp`: no se ha tocado nada, congelado tal como pedía el Bloque 1.
+- `analyzer/acta_legible.py` reutilizado tal cual para renderizar el acta de
+  coherencia (ya estaba escrito para degradar sin inventar nada ante datos
+  sin traductor) — pero se le añadieron traductores reales para
+  `revision.hallazgos`/`recintos`/`comprobado`/`recuento_por_tipo`/`informe`,
+  porque sin ellos caían al genérico "N elemento(s), sin traducción todavía"
+  y un solape real no se distinguía de un dict de Python en crudo.
+
+**Corrección encontrada y aplicada al propio documento de diagnóstico,
+durante la ejecución, no después:** el §1.4/§5 del informe del 20/8 afirmaba
+que `three.js` seguía cargándose desde 6 hosts externos, citando
+`REFACTOR_MASTERPLAN.md` sin contrastarlo contra el código de hoy — exactamente
+el error que ese mismo documento pedía no cometer. Verificado: `three.js`,
+Inter y Mapbox GL JS/Threebox ya están vendorizados (`tarea 20`, cerrada antes
+de esta sesión). Sólo sale a un host externo el *servicio* de teselas de mapa
+(datos, no código), por diseño documentado en `static/vendor/README.md`. El
+documento queda corregido in situ (tachado, no borrado) en los tres sitios
+donde repetía el error; el Bloque 3 ya no necesita esa tarea.
+
+### Bloque 2 — cerrar el ciclo de confianza
+
+- **`SEG-1` extendido**: auditado todo el código que ejecuta una Skill a
+  través de `agente.Ejecutor` desde HTTP — sólo hay dos sitios (medición,
+  coherencia) y los dos piden autorización antes de escribir. `/api/copiloto`
+  sólo toca `proyecto.ajustar_programa` (sin efectos); el exportador viejo del
+  cuadro de superficies usa `analyzer/` directamente, nunca pasa por
+  `agente.Ejecutor`, así que el mecanismo de `SEG-1` no aplica ahí y no hace
+  falta tocarlo. `docs/AGENTE_BACKLOG.md` §11 (`SEG-1`) pasa de `PARCIAL` a
+  `HECHO (2026-08-20)`.
+- **"Falta el DXF" vs. "no tengo esa capacidad"**: el mensaje del bloqueo
+  cliente (antes de tocar la red, la "regla de oro" no se toca) ya no dice
+  "hoy ArchMuse sólo puede medir..." — dice qué es lo único que adjuntar un
+  DXF puede desbloquear (medir o revisar coherencia) y es explícito en que
+  otra pregunta (normativa, coste, estructura) no cambia con el plano
+  adjunto. `_MENSAJE_SIN_CAPACIDAD` (backend, cuando sí hay DXF pero la
+  pregunta no coincide con ninguna capacidad) también se actualizó para
+  mencionar las dos capacidades reales.
+- **"No comprueba normativa todavía", visible en el propio resultado**: nueva
+  `.conv-aviso-normativa` en `convTarjetaHallazgo`, fuera de cualquier
+  `<details>`, en las dos capacidades.
+- **Acta enlazada a la pieza señalada del plano, si hay vista disponible**:
+  investigado y **no hay vista disponible hoy**. El único visor 3D
+  (`abrirVisor3d`) consume `state.data`, la estructura completa de
+  `/api/analizar` (el flujo viejo de `/proyectos`) — el panel de conversación
+  nunca llama a ese endpoint, opera sobre un DXF efímero que no se persiste.
+  No hay ningún visor construido para el flujo de `/`. No se ha construido
+  uno nuevo: sería una capacidad nueva de verdad (parseo/render de DXF en el
+  navegador, con su propio picking), no un enganche de algo que ya existe, y
+  el propio Bloque 2 no lo pedía si no había vista que enlazar. Queda anotado
+  como hueco real, no resuelto.
+- **Bug encontrado y corregido de camino**: los hallazgos de coherencia no
+  viven en "Qué no se ha comprobado" como el "sin total" de medición —son
+  datos establecidos (`revision.hallazgos`, un `calculo()`)—, así que la
+  señal que `convTarjetaHallazgo` ya usaba para titular "Hallazgo"
+  (`comprobadas.length`, basada en `_PATRON_SIN_TOTAL` de
+  `analyzer/acta_legible.py`, específico de medición) siempre daba 0 para
+  coherencia. Sin arreglarlo, un plano con solapes reales se habría titulado
+  "Sin incidencias" — el fallo contrario al que toda esta sesión existe para
+  evitar. Arreglado con `_convHallazgosDesdeDatos` (`static/app.js`), que lee
+  el prefijo `"N hallazgo(s):"` que ahora escribe
+  `_dato_revision_hallazgos()`.
+- **Botón "Descargar apartado de superficies" gateado**: aparecía
+  incondicionalmente si el acta traía datos, sin mirar qué capacidad la
+  produjo. Para una revisión de coherencia habría llamado a
+  `/api/memoria-superficies`, que reejecuta `superficies.medicion_de_planta`
+  sobre el mismo DXF — el PDF equivocado bajo una etiqueta que promete el
+  documento que sí se pidió. Ahora sólo aparece para
+  `superficies.medicion_de_planta`. No hay descarga de PDF de coherencia
+  todavía (el informe que la Skill escribe internamente vive en un directorio
+  temporal que se borra al responder) — es trabajo aparte, no algo que
+  improvisar aquí.
+
+### Tests
+
+Nuevos: `tests/test_preguntar_coherencia.py` (clasificación + ejecución real +
+`SEG-1` para coherencia, con el mismo DXF sintético que ya usa
+`test_preguntar_endpoint.py` — tiene un solape real, así que sirve para
+probar el camino "con hallazgos"), `tests/test_conversacion_hallazgos_coherencia.py`
+(`_convHallazgosDesdeDatos` ejecutado de verdad en Node + inspección de fuente
+para `convTarjetaHallazgo`, mismo criterio que el resto de guardianes
+estáticos de `static/app.js`), `tests/test_puerta_unica_bloque1.py` (la
+etiqueta exacta del enlace, verbatim, en dos sitios). Suite completa: ver
+resultado al pie de esta entrada.
+
+### Qué NO se ha tocado
+
+El techo de `C4` (sigue en 13, no se registró ninguna capacidad nueva — sólo
+se enganchó una ya existente a una puerta HTTP nueva). `analyzer/` y
+`agente/` no se han fusionado. El corpus normativo no ha crecido ni una
+regla. `ai_generator.py` y `/mvp` no se han tocado. No se ha escrito código de
+ninguna capacidad nueva sin PRD (la Skill de coherencia ya tenía el suyo,
+`docs/prd/2026-08-19-revision-de-coherencia-del-plano.md`; este trabajo es
+wiring HTTP sobre una capacidad existente, no una capacidad nueva).
+
+### Push
+
+Sin subir todavía. Igual que el bloque de `SEG-1`, este trabajo se
+commitea/sube aparte, a petición explícita.
+
 ## 2026-08-20 · `SEG-1` — la pantalla de autorización, y `DOC-1` cerrada en el backlog
 
 Encargo: leer `PROGRESS.md`/`AGENTE_BACKLOG.md`, dar el estado real, y avanzar

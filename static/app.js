@@ -5327,14 +5327,21 @@
   // `app.py`), y sólo presenta lo que vuelve. Cero cálculo, cero criterio
   // nuevo: es una tarea de interfaz, tal como se encargó.
   //
-  // Dos preguntas de ejemplo, no una lista de "capacidades" inventada: son
-  // literalmente formas de pedir lo único que la única Skill registrada hoy
-  // sabe hacer (`superficies.medicion_de_planta`) -- si mañana hay una
-  // segunda Skill, esta lista crece, no se inventa una entrada nueva sin
-  // Skill detrás.
+  // Preguntas de ejemplo, no una lista de "capacidades" inventada: son
+  // literalmente formas de pedir lo que las Skills registradas hoy saben
+  // hacer -- si mañana hay una tercera, esta lista crece, no se inventa una
+  // entrada nueva sin Skill detrás.
   var CONV_EJEMPLOS = [
     "¿Cuánta superficie útil tiene esta planta?",
     "Enséñame el acta de procedencia de este plano"
+  ];
+  // Bloque 1 (2026-08-20): `revision.coherencia_del_plano` es la segunda
+  // Skill real de `/api/preguntar` -- su propia lista, nunca mezclada dentro
+  // de `CONV_EJEMPLOS` (que es de medición), por el mismo motivo por el que
+  // `CONV_SUGERENCIAS_POR_CAPACIDAD` ya separa por capacidad.
+  var CONV_EJEMPLOS_COHERENCIA = [
+    "¿Hay algo solapado o repetido en este plano?",
+    "Revisa la coherencia de este plano antes de entregarlo"
   ];
   // Áreas del mapa del producto que HOY no tienen ninguna capacidad
   // registrada -- nunca una cifra, nunca un check, sólo la palabra y la
@@ -5531,6 +5538,27 @@
     return { datos: datos, limitaciones: limitaciones };
   }
 
+  // Bloque 1 (2026-08-20): los hallazgos de `revision.coherencia_del_plano`
+  // NO viven en "Qué no se ha comprobado" (`details.limitacion`) como el
+  // "sin total" de medición -- son datos establecidos de verdad
+  // (`revision.hallazgos`, un `calculo()`, no un `sin_producir()`), así que
+  // aparecen entre los `.dato` de "Qué se ha establecido". Sin esto,
+  // `comprobadas.length` sale siempre 0 para coherencia y un plano con
+  // solapes reales se titularía "Sin incidencias" -- exactamente el fallo
+  // que esta sesión existe para no cometer. El prefijo "N hallazgo(s):" es
+  // el que escribe `_dato_revision_hallazgos()` en `analyzer/acta_legible.py`
+  // -- si ese texto cambia, este parseo deja de encontrar nada y cae al
+  // "sin incidencias" genérico en vez de inventar un número.
+  function _convHallazgosDesdeDatos(datos) {
+    for (var i = 0; i < datos.length; i++) {
+      var m = /^(\d+) hallazgo\(s\): (.+)\.$/.exec(datos[i]);
+      if (m && parseInt(m[1], 10) > 0) {
+        return { n: parseInt(m[1], 10), texto: datos[i] };
+      }
+    }
+    return null;
+  }
+
   // Tarjeta de un hallazgo real: jerarquía "lo principal primero" (HAZ #3
   // del encargo) -- el caso comprobado (si lo hay) es el titular, el resto
   // de limitaciones (los "TODO, sin caso real" internos) quedan siempre
@@ -5539,6 +5567,7 @@
     var parsed = _convParsearActa(htmlActa);
     var comprobadas = parsed.limitaciones.filter(function (l) { return l.comprobado; });
     var pendientes = parsed.limitaciones.filter(function (l) { return !l.comprobado; });
+    var hallazgosDatos = _convHallazgosDesdeDatos(parsed.datos);
 
     var badge, titulo, cuerpo;
     if (comprobadas.length) {
@@ -5554,9 +5583,26 @@
       titulo = entidad ? "Problema encontrado en «" + escapeHtml(entidad) + "»" : "Problema encontrado";
       cuerpo = '<p class="conv-cuerpo">' + escapeHtml(principal.porque || principal.texto) + "</p>" +
         (principal.cifra ? '<span class="conv-cifra">' + escapeHtml(principal.cifra) + "</span>" : "");
+    } else if (hallazgosDatos) {
+      // Coherencia con hallazgos reales pero sin ningún "caso conocido" en
+      // las limitaciones (ver el comentario de `_convHallazgosDesdeDatos`
+      // encima): se titula igual que el otro camino, "Hallazgo" primero,
+      // sin necesidad de abrir nada.
+      badge = '<span class="conv-badge conv-badge-hallazgo">Hallazgo</span>';
+      titulo = hallazgosDatos.n === 1
+        ? "1 punto que conviene mirar en este plano"
+        : hallazgosDatos.n + " puntos que conviene mirar en este plano";
+      cuerpo = '<p class="conv-cuerpo">' + escapeHtml(hallazgosDatos.texto) + "</p>";
     } else {
+      // Bloque 1 (2026-08-20): el título ya no puede decir "medición" a
+      // secas -- con `revision.coherencia_del_plano` esta rama también se
+      // pinta para una revisión de coherencia limpia, y llamarla "medición"
+      // ahí sería la misma etiqueta engañosa que el resto de este bloque
+      // existe para quitar.
       badge = '<span class="conv-badge conv-badge-limpio">Sin incidencias</span>';
-      titulo = "No se ha encontrado ningún problema en esta medición";
+      titulo = capacidad === "revision.coherencia_del_plano"
+        ? "No se ha encontrado ningún problema en esta revisión"
+        : "No se ha encontrado ningún problema en esta medición";
       cuerpo = '<p class="conv-cuerpo">' + escapeHtml(parsed.datos.join(" ")) + "</p>";
     }
 
@@ -5571,13 +5617,33 @@
     // los `.dato` que trajo el acta HTML). El `data-` lleva la capacidad
     // para que quien conecte el clic sepa qué Skill la produjo, sin tener
     // que volver a mirar `htmlActa`.
-    var botonMemoria = parsed.datos.length
+    //
+    // Bloque 1 (2026-08-20): además, SÓLO para `superficies.medicion_de_planta`
+    // -- `/api/memoria-superficies` reejecuta esa Skill concreta sobre el
+    // mismo DXF (ver `convDescargarMemoria`); mostrar este botón para una
+    // revisión de coherencia generaría el PDF equivocado (el apartado de
+    // superficies de OTRA capacidad) bajo una etiqueta que promete el
+    // documento que sí se acaba de pedir. Sin PDF de coherencia descargable
+    // todavía -- eso es trabajo aparte, no un botón que apunte a lo que no es.
+    var botonMemoria = (capacidad === "superficies.medicion_de_planta" && parsed.datos.length)
       ? '<button type="button" class="btn-ghost conv-btn-memoria" data-descargar-memoria="1">' +
         "Descargar apartado de superficies (PDF)</button>"
       : "";
 
+    // Bloque 2 (2026-08-20): el límite más importante de todo lo que hace
+    // ArchMuse hoy, visible en el propio resultado -- no en un aparte, no
+    // sólo en un `<details>` que hay que abrir. Misma frase para las dos
+    // capacidades a propósito: ninguna de las dos comprueba normativa, y no
+    // hay razón para que un arquitecto tenga que descubrirlo dos veces.
+    var avisoNormativa =
+      '<p class="conv-aviso-normativa">Esto no comprueba normativa: ' +
+      (capacidad === "revision.coherencia_del_plano"
+        ? "dice si el plano es coherente consigo mismo, no si el proyecto cumple el CTE."
+        : "mide superficies, no dice si cumplen ningún mínimo normativo.") +
+      "</p>";
+
     return '<div class="conv-tarjeta">' + badge +
-      '<h3 class="conv-titulo">' + titulo + "</h3>" + cuerpo +
+      '<h3 class="conv-titulo">' + titulo + "</h3>" + cuerpo + avisoNormativa +
       '<details class="conv-detalle"><summary>' + escapeHtml(etiquetaDetalle) + "</summary>" +
       '<iframe class="conv-acta-frame" title="Acta de procedencia completa"></iframe>' +
       "</details>" +
@@ -5717,6 +5783,9 @@
         candidatas.unshift("¿cuánta superficie tiene " + ctx.entidadMencionada + "?");
       }
       return candidatas;
+    },
+    "revision.coherencia_del_plano": function () {
+      return CONV_EJEMPLOS_COHERENCIA.slice();
     }
   };
 
@@ -5846,8 +5915,19 @@
 
     if (!archivo) {
       convAnadirFilaUsuario(pregunta, null);
+      // Bloque 2 (2026-08-20): este mensaje NO puede decir "adjunta el DXF"
+      // a secas -- sin el plano no se ha clasificado la pregunta (la regla
+      // de oro de M2/M3 impide llamar a `/api/preguntar` sin fichero, ver
+      // cabecera de este bloque), así que este texto no sabe si la pregunta
+      // en sí tiene o no una capacidad real. Lo que SÍ puede decir sin
+      // adivinar es qué es lo único que adjuntar un DXF puede desbloquear
+      // hoy -- para que nadie lea "adjunta el plano" como "y entonces
+      // comprobaré tu normativa/coste/estructura", que no es cierto.
       convAnadirRespuesta(convTarjetaError(
-        "Adjunta un DXF antes de preguntar -- hoy ArchMuse sólo puede medir lo que hay dibujado en un plano real."));
+        "Adjunta un DXF antes de preguntar -- con un plano real, ArchMuse puede medir " +
+        "superficies o revisar su coherencia. Si tu pregunta es sobre otra cosa " +
+        "(normativa, coste, estructura...), adjuntar el plano no cambia eso: no es " +
+        "una capacidad que ArchMuse tenga todavía."));
       return;
     }
 

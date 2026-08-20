@@ -236,12 +236,84 @@ def _dato_medicion_informe(valor) -> str:
     return "Informe de medición generado en PDF (%s)." % base if base else "Informe de medición generado en PDF."
 
 
+# --- «Qué se ha establecido» de `revision.coherencia_del_plano` (Bloque 1,
+# 2026-08-20) -- mismo motivo que el bloque de arriba: sin traductor propio,
+# `_formatear_dato` ya caía a un genérico honesto ("N elemento(s), sin
+# traducción específica todavía"), nunca a un dict de Python en crudo. Estos
+# SÍ tienen traductor porque el panel de conversación necesita saber, sin
+# volver a mirar el DXF, si hubo hallazgos de verdad que titular como
+# "Hallazgo" -- ver `_convHallazgosDesdeDatos` en `static/app.js`. El prefijo
+# "%d hallazgo(s):" de `_dato_revision_hallazgos` es el contrato entre los
+# dos lados; si cambia aquí, cambia también allí (hay test en
+# `tests/test_conversacion_hallazgos_coherencia.py`).
+
+
+def _dato_revision_hallazgos(valor) -> str:
+    """Cada elemento es un `Hallazgo.a_dict()` (`analyzer/coherencia.py`):
+    `tipo`, `entidad`, `magnitud`/`unidad` (pueden faltar -- ver el docstring
+    de `Hallazgo`, no cuantitativo se dice `None`, nunca un cero inventado).
+    """
+    hallazgos = valor or []
+    if not hallazgos:
+        return "No se ha encontrado ningún hallazgo en esta revisión."
+    piezas = []
+    for h in hallazgos:
+        cifra = (
+            " %.2f %s" % (h["magnitud"], h.get("unidad") or "")
+            if h.get("magnitud") is not None else ""
+        )
+        piezas.append("%s en %s%s" % (h.get("tipo", "?"), h.get("entidad") or "sin entidad", cifra))
+    return "%d hallazgo(s): %s." % (len(hallazgos), "; ".join(piezas))
+
+
+def _dato_revision_recintos(valor) -> str:
+    return "%s recinto(s) leído(s) en el plano." % valor
+
+
+def _dato_revision_comprobado(valor) -> str:
+    """Cada elemento es `{"que": ..., "para": ...}` (ver `Revision.a_dict()`
+    en `analyzer/coherencia.py`) -- NUNCA `str(dict)` aquí: eso era
+    exactamente el bug que corrigió `_dato_medicion_viviendas` cuando este
+    fichero se escribió (ver la nota de arriba, "El bug que corrige este
+    bloque"), y un `dict` dentro de una lista no queda cubierto por el
+    `isinstance(valor, dict)` de `_formatear_dato` -- sólo mira el nivel de
+    arriba."""
+    items = valor or []
+    if not items:
+        return "Nada declarado como comprobado."
+    frases = []
+    for i in items:
+        if isinstance(i, dict) and "que" in i:
+            frases.append("%s (%s)" % (i.get("que"), i.get("para") or "sin motivo"))
+        else:
+            frases.append(str(i))
+    return "Comprobado: %s." % "; ".join(frases)
+
+
+def _dato_revision_recuento_por_tipo(valor) -> str:
+    recuento = valor or {}
+    if not recuento:
+        return "Ningún hallazgo que agrupar por tipo."
+    return "Por tipo: %s." % ", ".join(
+        "%s (%d)" % (tipo, n) for tipo, n in recuento.items())
+
+
+def _dato_revision_informe(valor) -> str:
+    base = os.path.basename(str(valor)) if valor else None
+    return "Informe de revisión de coherencia generado en PDF (%s)." % base if base else "Informe de revisión de coherencia generado en PDF."
+
+
 _FORMATEADORES_DE_DATO = {
     "medicion.viviendas": _dato_medicion_viviendas,
     "medicion.piezas": _dato_medicion_piezas,
     "medicion.viviendas_con_total": _dato_medicion_viviendas_con_total,
     "medicion.sin_total": _dato_medicion_sin_total,
     "medicion.informe": _dato_medicion_informe,
+    "revision.hallazgos": _dato_revision_hallazgos,
+    "revision.recintos": _dato_revision_recintos,
+    "revision.comprobado": _dato_revision_comprobado,
+    "revision.recuento_por_tipo": _dato_revision_recuento_por_tipo,
+    "revision.informe": _dato_revision_informe,
 }
 
 

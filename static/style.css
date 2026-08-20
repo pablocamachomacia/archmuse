@@ -2904,6 +2904,14 @@ body::before {
   background: var(--overlay-active); color: var(--text-primary); cursor: default;
 }
 .conv-sidebar a.sidebar-item { text-decoration: none; }
+/* Bloque 1 (2026-08-20): aviso de la etiqueta de /proyectos, bajo el enlace
+   de la sidebar -- mismo tratamiento tipográfico que `.conv-accion-sub`
+   (texto apagado, sin pastilla), indentado para alinear bajo la etiqueta
+   "Proyectos" (16px de icono + 8px de gap, ver `.sidebar-icono`). */
+.conv-sidebar-aviso {
+  margin: -2px 0 var(--space-2); padding: 0 var(--space-2) 0 24px;
+  color: var(--text-tertiary); font-size: var(--text-xs); line-height: 1.4;
+}
 
 .conv-main {
   flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0;
@@ -3027,6 +3035,15 @@ body::before {
   display: inline-block; margin-top: var(--space-3); padding: 2px 9px; border-radius: var(--radius-sm);
   background: var(--overlay-subtle); color: var(--accent); font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
+}
+
+/* Bloque 2 (2026-08-20): el límite "no comprueba normativa", en el propio
+   resultado -- por eso vive fuera de `.conv-detalle` (el `<details>` de la
+   traza completa), como el resto de la tarjeta, y no dentro. Tinta de aviso,
+   no de error: no es que algo haya fallado. */
+.conv-aviso-normativa {
+  margin: var(--space-3) 0 0; padding-top: var(--space-3); border-top: 1px dashed var(--border);
+  color: var(--text-tertiary); font-size: var(--text-sm); line-height: 1.5;
 }
 
 .conv-detalle { margin-top: var(--space-4); }
