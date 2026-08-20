@@ -386,7 +386,7 @@ Si solo hay tiempo para una sesión de trabajo corta, este es el subconjunto con
 3. **Tarea 3** — `.env.example` (15 min, trivial).
 4. **Tarea 4** — Retirar ruta personal + banner de CLI en desuso (30 min, evita una vergüenza fácil de evitar).
 5. **Tarea 5** — Corregir el Bug #1 de tipología/zona climática (1,5h, es el fallo funcional más grave de todo el producto).
-6. **Tarea 7** — `zip()` con `strict=` (45 min, cierra un vector de corrupción de datos silenciosa).
+6. ~~**Tarea 7** — `zip()` con `strict=`~~ **hecha (ver Apéndice A.2, corrección 2026-08-20)** — no queda trabajo aquí.
 7. **Tarea 8** — `pyproject.toml` con `ruff` (45 min, congela todo lo aprendido en esta auditoría para que no vuelva a pasar).
 8. **Tarea 9** — Timeout en el cliente de Anthropic (45 min, evita que una llamada colgada tumbe el único worker disponible).
 9. **Tarea 10** — Eliminar código muerto confirmado (1h, reduce ruido con riesgo cero).
@@ -419,6 +419,14 @@ Paquetes que no existían y que el plan no contempla: `modelo/`, `normativa/`, `
 
 Resumen original de la auditoría: **6 resueltas · 3 parciales · 20 pendientes.** Tras las Fases 1 y 2 (2026-08-18): **13 hechas o resueltas · 1 parcial · 15 pendientes**, y de esas 15 hay 2 descartadas (las tareas 15 y 26, ver A.4).
 
+**Corrección (2026-08-20), verificada contra el código real, no contra este documento — mismo patrón de error que el de `three.js` en el diagnóstico estratégico del mismo día (`docs/design/2026-08-20-reorientacion-estrategica-v1.md`):** tres filas de la tabla estaban desactualizadas. **17 hechas o resueltas · 12 pendientes** tras esta corrección.
+
+- **Tarea 7** (`zip()` con `strict=`) pasa de PENDIENTE a **RESUELTA**: los dos sitios que lo necesitaban (`app.py:708`, `plan_svg.py:285`) ya lo llevan, con comentario `(tarea 7)`. Los tres restantes (`evaluator.py:586`, `ocupacion.py:589`, `sectorizacion.py:287`) llevan un comentario `zip-sin-strict` explicando por qué `strict=True` sería incorrecto ahí (pares consecutivos de largos distintos por definición, o largos ya validados con un mensaje de error mejor). No es que falte hacerlo: ya se decidió, caso por caso, y quedó escrito en el propio código.
+- **Tarea 10** (código muerto) pasa de PARCIAL a **RESUELTA**: `scoring.estimar_percentil` ya no existe en ningún fichero (se eliminó junto con el percentil comparativo, no solo quedó sin llamadores). `evaluator._is_adjacent` tampoco existe — sólo queda una mención en un comentario explicando el cambio de criterio. (Hay un `_is_adjacent` distinto y sí usado en `analyzer/ai_generator.py:757`; el documento original lo confundía con el de `evaluator.py`.)
+- **Tarea 20** (vendorizar `three.js`) pasa de "PENDIENTE Y AGRAVADA" a **HECHA**: `static/vendor/three/`, `static/vendor/threebox/`, `static/vendor/mapbox-gl/`, `static/vendor/fuentes/` y `static/vendor/leaflet/` existen, con manifiesto y README propios (`static/vendor/vendorizar.py`, `static/vendor/MANIFEST.json`). El único CDN que queda vivo a propósito es el servicio de mapas (Mapbox/ArcGIS, datos en vivo, no código ejecutable) — riesgo distinto y menor, no una CDN de librería sin vendorizar.
+
+Las tareas 8, 14, 19, 21, 22-24, 27, 28 y 29 se re-verificaron el mismo día y **siguen genuinamente pendientes tal como las describe la tabla** (evidencia re-confirmada línea por línea contra el código actual, no sólo releída).
+
 | # | Tarea | Estado | Evidencia |
 |---|---|---|---|
 | 1 | Confirmar en git el trabajo pendiente | **RESUELTA** | Árbol limpio; los 113 commits de `shell-lateral-inicio` absorbidos en `main` |
@@ -427,10 +435,10 @@ Resumen original de la auditoría: **6 resueltas · 3 parciales · 20 pendientes
 | 4 | Ruta personal hardcodeada | **HECHA** (`e74be5e`) | Los 9 sitios retirados. `ejemplo.dxf` derivado de la ubicación del fichero; `v2s.dxf` vía `ARCHMUSE_DXF_V2S` |
 | 5 | `zona_cte`/`tipología` en `/api/analizar` | **RESUELTA** | `app.py:492-495`, `:507-509`, `:709-715` |
 | 6 | Aviso de zona climática por defecto | **HECHA** (`ed0f373`) | `resolver_zona_cte()` devuelve `(zona, resuelta)`; el repliegue a `"C"` sigue igual pero sale como limitación. No se deduce de "la zona es C": Barcelona **es** zona C por dato |
-| 7 | `zip()` con `strict=` | PENDIENTE | **0 coincidencias de `strict`** en `analyzer/` y `app.py`; 9 usos de `zip()` |
-| 8 | `pyproject.toml` con `ruff` | PENDIENTE | Existe `pyproject.toml`, pero **solo con la configuración de pytest**. `ruff` sigue sin instalar ni configurar |
+| 7 | `zip()` con `strict=` | ~~PENDIENTE~~ **RESUELTA (2026-08-20)** | `app.py:708` y `plan_svg.py:285` ya lo llevan. Los 3 restantes documentan por qué no aplica (`zip-sin-strict`). Ver corrección arriba |
+| 8 | `pyproject.toml` con `ruff` | PENDIENTE | Existe `pyproject.toml`, pero **solo con la configuración de pytest** (el propio fichero lo dice: "eso es la tarea 8... y es otra conversación"). `ruff` sigue sin instalar ni configurar. Re-verificado 2026-08-20 |
 | 9 | Timeout en el cliente de Anthropic | **HECHA** (`0e2312c`) | Eran **seis**, no cinco: faltaba `extraccion/interprete.py:153`. Los seis pasan por `ia/cliente.py`, y `tests/test_anthropic_timeout.py` prohíbe construir el cliente fuera de ella |
-| 10 | Eliminar código muerto | PARCIAL | Ninguno de los 5 símbolos eliminado, y hay 2 nuevos: `scoring.estimar_percentil:216` y `evaluator._is_adjacent:1596` |
+| 10 | Eliminar código muerto | ~~PARCIAL~~ **RESUELTA (2026-08-20)** | `scoring.estimar_percentil` ya no existe en el repo. `evaluator._is_adjacent` tampoco. Ver corrección arriba |
 | 11 | Adyacencia acústica inerte (Bug #2) | **RESUELTA** | `analyzer/adyacencia.py` + `tramo_enfrentado_m`; `tests/test_acoustic_adjacency.py` pasa 29/29 |
 | 12 | Fijar versiones de dependencias | **HECHA** (`88acb90`) | Las 13 directas con `==`, y `requirements.lock.txt` con las 58 distribuciones. Verificado en un venv nuevo desde cero |
 | 13 | `debug=False` + servidor WSGI | **HECHA** (`885dfde`) | `waitress` por defecto sobre 127.0.0.1; el depurador de Werkzeug solo con `FLASK_DEBUG=1` |
@@ -440,7 +448,7 @@ Resumen original de la auditoría: **6 resueltas · 3 parciales · 20 pendientes
 | 17 | README de arranque | **HECHA** (`376fb4c`) | Cerradas las dos lagunas: convención de capas del DXF (contrato `AM_*` y modo heredado) y `app.py` frente a `main.py` |
 | 18 | Suite golden-master | **HECHA** (`35f5a8d`) | G6 pasa de 1 escenario a 4 (por defecto, `unifamiliar`+zona D, `rehabilitacion`+zona A, municipio no reconocido) con un bloque `sensibilidad` que hace legible el diff. De paso: el G6 anterior leía `puntuacion`/`valoracion`, claves que el payload no tiene, así que congelaba `null` en los dos números más importantes de la API |
 | 19 | Parámetros de `serialize_analysis` | **PENDIENTE Y AGRAVADA** | De 19 a **24**; sin dataclases |
-| 20 | Vendorizar `three.js` | **PENDIENTE Y AGRAVADA** | De 1 CDN a **6 hosts externos**: unpkg (×4), jsdelivr (×2), api.mapbox (×2), arcgisonline (×3), fonts.google (×2) |
+| 20 | Vendorizar `three.js` | ~~PENDIENTE Y AGRAVADA~~ **HECHA (2026-08-20)** | `static/vendor/three/`, `/threebox/`, `/mapbox-gl/`, `/fuentes/`, `/leaflet/`, con manifiesto propio. Ver corrección arriba |
 | 21 | Triple recomputación de `room_problems` | PENDIENTE | `api_serializer.py:78`, `:388`, `plan_svg.py:639` |
 | 22-24 | Tabla declarativa (diseño + migración) | **PENDIENTE Y AGRAVADA** | No existe. Su estimación de 6 h se calculó sobre 327 líneas y ~19 bloques |
 | 25 | Consolidar adyacencia duplicada | **RESUELTA** | `circulation.py:143-144` delega en `adyacencia.py` |

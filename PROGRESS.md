@@ -5,6 +5,60 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-08-20 (noche, más tarde) · Housekeeping post-Bloque 3: limpieza trivial + auditoría de `REFACTOR_MASTERPLAN.md`
+
+Encargo de Pablo: "sigue trabajando en el proyecto" / "lo que decidas". Se
+ofrecieron cuatro direcciones (ejecutar el housekeeping documentado del
+Bloque 3, refrescar `REFACTOR_MASTERPLAN.md`, empezar un PRD nuevo, o no
+tocar código hasta el Bloque 4); Pablo eligió housekeeping.
+
+**Al intentar ejecutarlo, resultó que no había nada que ejecutar.** La
+extracción de `JarvisApp.py` a su propio repositorio ya estaba hecha (ver el
+bloque anterior, del mismo día) — no queda fuente que mover. Se hizo una sola
+cosa de bajo riesgo que sí quedaba suelta: borrar
+`__pycache__/JarvisApp.cpython-312.pyc`, bytecode compilado de un fichero que
+ya no existe en ningún sitio, gitignorado, sin efecto en el repositorio.
+`.venv-jarvis/` sigue sin tocar, tal como pidió Pablo explícitamente.
+
+**Con el housekeeping de Jarvis agotado, se auditó `REFACTOR_MASTERPLAN.md`
+contra el código real**, mismo método que ya destapó los errores de
+`three.js` y `JarvisApp.py` en el diagnóstico estratégico: no fiarse de lo
+que dice un documento anterior, verificar con grep/lectura directa. Resultado:
+tres filas de la tabla "Estado de las 29 tareas" (fecha original 2026-08-18)
+estaban desactualizadas:
+
+- **Tarea 7** (`zip()` con `strict=`) — decía PENDIENTE con "0 coincidencias".
+  Falso: ya está resuelta, con razonamiento caso por caso dejado en el propio
+  código (`app.py:708`, `plan_svg.py:285` lo llevan; los tres restantes
+  documentan con un comentario `zip-sin-strict` por qué no aplica ahí).
+- **Tarea 10** (código muerto) — decía PARCIAL, con dos símbolos muertos
+  nuevos. Falso: `scoring.estimar_percentil` ya no existe en el repo (se fue
+  con el percentil comparativo) y `evaluator._is_adjacent` tampoco — el
+  documento lo confundía con un `_is_adjacent` distinto y sí usado en
+  `analyzer/ai_generator.py`.
+- **Tarea 20** (vendorizar `three.js`) — decía "PENDIENTE Y AGRAVADA", con
+  seis CDNs externas. Falso: ya vendorizado (`static/vendor/three/`,
+  `/threebox/`, `/mapbox-gl/`, `/fuentes/`, `/leaflet/`), coincide con el
+  hallazgo del mismo tipo ya corregido en
+  `docs/design/2026-08-20-reorientacion-estrategica-v1.md`.
+
+Las otras nueve tareas marcadas PENDIENTE (8, 14, 19, 21, 22-24, 27, 28, 29)
+se re-verificaron una a una contra el código actual y **siguen pendientes de
+verdad** — no se tocó ninguna, ninguna es un refactor de menos de una sesión
+y ninguna estaba pedida explícitamente.
+
+**Qué se dejó fuera a propósito:** ejecutar cualquiera de las tareas
+grandes que siguen pendientes (16, 22-24: sustituir `classify_problems` por
+una tabla declarativa; 28-29: extraer `models.py`/`urbanismo.py`). Son horas
+de refactor estructural sobre `evaluator.py`, no housekeeping de una tarde, y
+Pablo mismo ya dejó dicho que no hay trabajo de código pendiente antes del
+Bloque 4 — no tiene sentido invertir ahí sin que él lo pida.
+
+Ningún fichero de código de producto se tocó en este bloque. Cambios:
+`REFACTOR_MASTERPLAN.md` (correcciones) y el `.pyc` suelto borrado.
+
+---
+
 ## 2026-08-20 (noche) · Bloque 3 — housekeeping (sin código, dos correcciones al documento)
 
 Encargo: sacar `JarvisApp.py`/`requirements-jarvis.txt`/`.venv-jarvis/` a su
