@@ -1697,7 +1697,6 @@ class AcousticExposureResult:
 
 
 def evaluate_acoustic_exposure(
-    unit: Unit,
     orientation_results: List[OrientationResult],
     densidad_urbana: str = "media",
 ) -> List[AcousticExposureResult]:
@@ -2809,7 +2808,7 @@ def score_unit(
 
     unit_room_ids = {id(r) for r in unit.rooms}
     orientation_results = [o for o in orientation if id(o.room) in unit_room_ids]
-    acoustic_exposure_results = evaluate_acoustic_exposure(unit, orientation_results, densidad_urbana)
+    acoustic_exposure_results = evaluate_acoustic_exposure(orientation_results, densidad_urbana)
 
     checks: List[bool] = []
     # `basic_results` (la tabla `RULES`: Salón>20, D1>10, D2>8, D3>6, Baño>3,

@@ -453,7 +453,7 @@ Las tareas 8, 14, 19, 21, 22-24, 27, 28 y 29 se re-verificaron el mismo día y *
 | 22-24 | Tabla declarativa (diseño + migración) | **PENDIENTE Y AGRAVADA** | No existe. Su estimación de 6 h se calculó sobre 327 líneas y ~19 bloques |
 | 25 | Consolidar adyacencia duplicada | **RESUELTA** | `circulation.py:143-144` delega en `adyacencia.py` |
 | 26 | Benchmark de `compute_puntos_ganados` | PENDIENTE — **descartada**, ver A.4 | No existe ningún benchmark |
-| 27 | `PERF401` + parámetro `unit` sin usar | PENDIENTE | `unit` sigue sin usarse en `evaluate_acoustic_exposure` (`evaluator.py:1682`). Los `PERF401` **no verificados**: `ruff` no está instalado |
+| 27 | `PERF401` + parámetro `unit` sin usar | ~~PENDIENTE~~ **PARCIAL, mitad HECHA (2026-08-20)** | `unit` retirado de `evaluate_acoustic_exposure()` (`evaluator.py`) -- 0 usos en el cuerpo, 1 solo sitio de llamada, verificado antes de tocar la firma. `ruff` ya instalado (tarea 8): quedan 106 `PERF401` reales sin tocar, ver §A.2 |
 | 28 | Extraer `models.py` | PENDIENTE | No existe `analyzer/models.py` |
 | 29 | Extraer `urbanismo.py` | PENDIENTE | No existe; las 6 reglas de edificio siguen en `evaluator.py:3067-3430` |
 

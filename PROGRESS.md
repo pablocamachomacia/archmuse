@@ -51,6 +51,14 @@ procedencia (misma función, mismo commit) -- anotado en
   los dos ficheros (`fechaLegibleProcedencia`, duplicada a propósito -- son
   scripts clásicos sin módulo compartido).
 
+**A continuación, REFACTOR_MASTERPLAN tarea 27 (mitad -- el parámetro `unit`
+sin usar, no los 106 `PERF401` reales que quedan):** `evaluate_acoustic_
+exposure()` en `analyzer/evaluator.py` no usaba su parámetro `unit` en ningún
+sitio del cuerpo (0 usos, verificado); un solo punto de llamada. Retirado de
+la firma y del único call site. Suite completa: 1065 passed (mismo número
+que antes -- es refactor puro, sin tests nuevos), 2 failed (mismos guardianes
+C4), 18 skipped, 580s. `REFACTOR_MASTERPLAN.md` actualizado.
+
 **Verificado:** suite completa 1065 passed (+8 desde el baseline de la
 tarea anterior), 2 failed (mismos guardianes C4 de siempre), 18 skipped,
 581s. Tests nuevos: `test_checklist_campo.py` (7), extensión de
