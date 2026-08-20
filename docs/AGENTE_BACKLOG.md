@@ -163,6 +163,20 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **Entregable demostrable:** `python scripts/medir_planta.py mi_planta.dxf` — enseña el procedimiento, mide, escribe el PDF, imprime el acta y no toca el DXF (sha256 verificado antes y después). Sin clave de API y sin red.
 - **Tareas:** `TL-11`, `SK-10`. **No depende del corpus normativo ni de ninguna firma**, igual que `OP-15`.
 
+### OP-17 · «¿Se puede circular por esta planta y llegar a todas partes?» — **PRÓXIMA, tras cerrar V1**
+`Decidida el 2026-08-20`
+
+- **Devuelve:** anchos de paso libres, radios de giro y pendientes de rampa medidos sobre el DXF/BIM real —no supuestos—, con la pieza concreta de la que sale cada cifra.
+- **Por qué entra en el backlog y por qué no antes de V1:** es geometría pura sobre un plano ya medido, así que reutiliza el mismo motor que `superficies.medicion_de_planta` (`OP-16`) en vez de abrir un camino nuevo — mismo perfil de riesgo bajo que `OP-15`/`OP-16`, no depende del corpus normativo. No entra antes porque V1 no está cerrado todavía y esto amplía, no completa, el vertical ya en marcha.
+- **Tareas:** por definir cuando se aborde. No implementado ni empezado — esta entrada es sólo la decisión de que es la siguiente ampliación, no una tarea abierta.
+
+### OP-18 · «¿Se retranquea el edificio lo que exige la parcela real?» — **PRÓXIMA, tras cerrar V1**
+`Decidida el 2026-08-20`
+
+- **Devuelve:** el contraste entre la geometría del edificio (de `superficies.medicion_de_planta`) y el límite real de la parcela (de Catastro, Fase A ya construida — ver `CP-4` y `docs/prd/2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md`), con el retranqueo medido en cada lindero.
+- **Por qué entra en el backlog y por qué no antes de V1:** cruza dos geometrías que **ya existen y ya están medidas por separado** — no añade ninguna fuente de dato nueva, sólo el cruce entre ellas. Mismo motivo que `OP-17` para no entrar antes: amplía un vertical que todavía no está cerrado.
+- **Tareas:** por definir cuando se aborde. No implementado ni empezado.
+
 ### OP-13 · «Sácame el cuadro de carpintería de este plano» — **NO como estaba pensada** (medido, 2026-08-19)
 
 - **Devuelve:** la tabla de puertas y ventanas por vivienda tipo, con dimensiones, tipo y acabado, y su procedencia pieza a pieza.
@@ -179,7 +193,7 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 - **El veredicto:** un detalle constructivo no se deriva del proyecto, se **elige** con criterio, según clima, sistema constructivo, presupuesto y con qué industrial trabaja el estudio. ArchMuse no tiene ninguno de esos cuatro datos, y pedirlos todos es un formulario, no una Skill. Foso nulo: todo estudio con dos años tiene su biblioteca afinada a base de obras y no la cambia por una generada, y las de los fabricantes son gratis y con garantía detrás. Es además **lo más cercano a la autoría de todo el catálogo** — un detalle mal resuelto no es un aviso en un PDF, es una humedad o un desprendimiento —, así que rompe C3 justo donde `NORTH_STAR_2031.md` §5 la declara innegociable. Mismo patrón que `OP-11`: demuestra muy bien y no vende.
 - **Se registra aquí para que nadie lo redescubra como idea nueva dentro de seis meses.**
 
-**Resumen: 15 objetivos. 4 en el MVP (OP-1, OP-2, OP-3, OP-15), 4 en V2, 2 aplazados, 2 rechazados, 1 transversal, 1 recortado, 1 medido y reorientado.**
+**Resumen: 17 objetivos. 4 en el MVP (OP-1, OP-2, OP-3, OP-15), 4 en V2, 2 aplazados, 2 rechazados, 1 transversal, 1 recortado, 1 medido y reorientado, 2 próximas tras cerrar V1 (OP-17, OP-18).**
 
 ---
 
@@ -196,6 +210,9 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 | Cientos de capacidades | **No** | C4: 8-12 auditadas, no un catálogo. El registro tiene 4; al cerrar el MVP debe tener entre 8 y 12, **no más** |
 | Ingesta de imágenes / planos escaneados | **Aplazado** | El mercado objetivo entrega DXF |
 | Que el agente se instale Skills solo | **Prohibido por diseño** | Un sistema que se amplía a sí mismo pierde la propiedad de que alguien pueda decir qué sabe hacer |
+| Checklist determinista de documentación para visado | **Aplazado, 2026-08-20** | Dominio administrativo/normativo, no geométrico — el mismo riesgo que se evitó a propósito no construyendo sobre el corpus CTE vacío. No se construye sin un corpus verificado detrás |
+| Detección de incoherencias entre memoria descriptiva (texto) y planos medidos | **Aplazado, 2026-08-20** | Requiere NLP sobre texto ambiguo. No encaja con el estándar «nunca inventar» de este producto sin generar falsos silencios — el mismo riesgo que ya costó reescribir `OP-15` y `OP-16` para no dar avisos falsos sobre geometría, aquí sin ni siquiera geometría de por medio |
+| Mediciones y presupuesto desde geometría verificada | **Aplazado, 2026-08-20** | Expansión de mercado, no del foso actual — aparcado hasta que haya evidencia real de demanda, no intuición |
 
 ---
 
@@ -1020,6 +1037,8 @@ El caso que no funcionaba es **el normal**: una planta de un edificio residencia
 Después, vestir el vertical: `SEG-3` → `SEG-2` → `INF-4` → `INF-5` → `INF-6` → `INF-7` → `INF-8`.
 
 Y, en paralelo (no compite por tiempo de ingeniería): el Bloque 3 (housekeeping: vendorizar three.js si hiciera falta -- ya está hecho, ver `static/index.html`; sacar `JarvisApp.py` del repo; decidir por escrito el futuro de `/mvp`, congelado desde el Bloque 1) y el Bloque 4 (probar el flujo de revisión con 3 arquitectos reales) del informe del 2026-08-20, ambos a la espera de que Pablo confirme el resultado de los Bloques 1 y 2 antes de arrancar.
+
+**Decisiones de producto del 2026-08-20 (dirección, no código):** Pablo fijó dos próximas capacidades tras cerrar V1 — `OP-17` (accesibilidad geométrica: anchos de paso, radios de giro, pendientes de rampa) y `OP-18` (retranqueos del edificio vs. límite real de parcela, cruzando `superficies.medicion_de_planta` con la geometría de Catastro de `CP-4`) — ambas sobre el mismo motor geométrico ya existente, sin tocar el corpus normativo. Y descartó explícitamente tres ideas por ahora: el checklist de documentación para visado (dominio normativo, sin corpus detrás), la detección de incoherencias memoria-texto vs. planos (NLP sobre texto ambiguo, riesgo de falso silencio) y mediciones/presupuesto (expansión de mercado sin evidencia de demanda todavía). Detalle completo en `OP-17`, `OP-18` (§1) y la tabla de §2. Ninguna de las dos capacidades nuevas se ha implementado — es sólo la decisión de dirección, registrada para no perderla.
 
 ---
 
