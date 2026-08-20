@@ -2763,6 +2763,11 @@ body::before {
    de un paso intermedio, no un resultado normativo que necesite leerse por color. */
 .parcela-estado-sitio-ok { color: #888888; }
 .parcela-estado-sitio-aviso { color: #888888; }
+/* Procedencia (Fase A, docs/prd/2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md): un
+   renglón aparte, más apagado que el resultado en sí -- es la ficha técnica del dato, no el
+   dato. Mismo tratamiento que ya usa `.conv-procedencia` en la conversación con ArchMuse para
+   el mismo tipo de información. */
+.parcela-estado-sitio-procedencia { color: var(--text-tertiary, #888888); font-size: 0.85em; }
 .parcela-estado-sitio-cargando { color: var(--text-secondary); display: flex; flex-direction: column; gap: var(--space-2); }
 .entrevista-spinner-inline { width: 14px; height: 14px; margin: 0; border-width: 2px; display: inline-block; vertical-align: middle; }
 

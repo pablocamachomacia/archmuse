@@ -270,6 +270,17 @@ check("dirección de Catastro expuesta en el resultado", r12["direccion_catastro
 check("encadena la geometría/superficie real (misma fixture que la sección 1: 11829 m²)",
       r12["geometria_parcela"] is not None and r12["geometria_parcela"]["superficie_m2"] == 11829.0)
 check("sin errores en el camino feliz", r12["errores"] == [], r12["errores"])
+# Procedencia (Fase A, docs/prd/2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md).
+check("procedencia presente cuando SÍ hay geometría real", r12["procedencia"] is not None, r12["procedencia"])
+check("procedencia nombra el servicio real, no solo 'Catastro'",
+      r12["procedencia"] is not None and "Consulta_RCCOOR" in r12["procedencia"]["fuente"]
+      and "WFS" in r12["procedencia"]["fuente"], r12.get("procedencia"))
+check("consultado_en es un ISO 8601 con offset UTC (parseable sin adivinar el formato)",
+      r12["procedencia"] is not None and "T" in r12["procedencia"]["consultado_en"]
+      and r12["procedencia"]["consultado_en"].endswith("+00:00"), r12.get("procedencia"))
+check("de_cache es False -- este módulo nunca sabe si se está sirviendo una fila ya guardada "
+      "(esa distinción vive en app.py/analyzer.storage, no aquí)",
+      r12["procedencia"] is not None and r12["procedencia"]["de_cache"] is False)
 
 print("\n13. obtener_datos_parcela(lat=, lon=): Catastro sin parcela en el punto -> sigue con Overpass, no bloquea")
 with mock.patch("analyzer.sitio._get", return_value=CUERPO_RCCOOR_SIN_PARCELA), \
@@ -283,6 +294,8 @@ check("el fallo de Catastro SÍ se explica en errores", any("referencia catastra
 check("Overpass se sigue consultando con las coordenadas crudas (nunca bloquea el resto del flujo)",
       r13["colindantes"] == [{"nombre": "x"}])
 check("colindantes_overpass se llamó con las coordenadas originales (0.0, 0.0)", colind_mock.call_args[0][:2] == (0.0, 0.0))
+check("sin geometría real, procedencia se queda en None -- nunca se inventa una fuente para un dato que no llegó",
+      r13["procedencia"] is None, r13.get("procedencia"))
 
 print("\n14. geocodificar_direccion: texto -> coords, ahora contra Mapbox (tarea TL-8)")
 # Nominatim salió del producto: la política de uso de su instancia pública prohíbe

@@ -439,6 +439,16 @@ def analizar_sitio():
 
     cacheado = obtener_sitio_por_clave(clave_cache)
     if cacheado is not None:
+        # Procedencia (Fase A, docs/prd/2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md):
+        # `datos["procedencia"]["consultado_en"]` ya es la fecha ORIGINAL -- se congeló al
+        # guardar (analyzer/sitio.py::_procedencia) y una relectura de la misma fila no la toca.
+        # Solo `de_cache` se corrige aquí: analyzer/sitio.py no puede saber que se está sirviendo
+        # una fila ya existente, así que solo `app.py` (que sí sabe, por este mismo `if`) lo marca.
+        # Filas guardadas ANTES de esta tarea no traen `procedencia` -- se dejan en `None`, nunca
+        # se rellena a posteriori con un dato que no se comprobó de verdad en su momento.
+        procedencia = (cacheado.get("datos") or {}).get("procedencia")
+        if procedencia is not None:
+            procedencia["de_cache"] = True
         return jsonify(sitio=cacheado, cache=True)
 
     datos = obtener_datos_parcela(

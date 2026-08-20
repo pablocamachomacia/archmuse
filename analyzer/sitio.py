@@ -68,6 +68,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -696,6 +697,43 @@ def geometria_parcela_por_coordenadas(lat: float, lon: float) -> dict:
     return _geometria_parcela_catastro(rc_info["referencia_catastral"])
 
 
+# --- Procedencia (Fase A, PRD 2026-08-20-procedencia-y-fecha-de-datos-de-
+# parcela.md) --------------------------------------------------------------
+#
+# Recomendación técnica del PRD (§9): NO se reutiliza `agente.afirmacion.
+# Afirmacion` -- su campo `fuente` exige `capacidad_id@version`, es decir,
+# que quien produce el dato esté registrado como `Capacidad` en `agente/
+# registro.py`. Este módulo vive fuera del vertical `agente/` por completo
+# (lo llama un endpoint Flask directo, sin Ejecutor/Plan/Skill de por
+# medio); registrarlo tocaría el techo de C4, expresamente fuera de
+# alcance. Se sigue en su lugar el mismo espíritu que ya usa `normativa.
+# ambito.Procedencia` (ningún valor viaja desnudo) con la forma más simple
+# que encaja en un módulo que ya es 100% dicts sin estado -- ninguna clase
+# nueva, un dict con forma fija.
+
+
+def _ahora_iso() -> str:
+    """Mismo formato que `analyzer/storage.py::_ahora()` -- ISO 8601 UTC,
+    segundos. Dos funciones porque este módulo es deliberadamente una
+    función pura sin estado (ver docstring del módulo): no importa nada de
+    `storage.py`, que sí toca disco."""
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _procedencia(fuente: str) -> dict:
+    """El bloque de procedencia que viaja pegado a `geometria_parcela`/
+    `referencia_catastral` en el resultado. `de_cache` nace siempre en
+    `False` aquí: este módulo no sabe si se está sirviendo una respuesta ya
+    guardada -- eso lo decide `app.py`, que sí conoce el estado de la caché
+    (`analyzer/storage.py`), y lo marca `True` justo antes de responder en
+    el camino de caché. `consultado_en`, en cambio, SÍ debe congelarse aquí:
+    una vez guardado en `analyzer/storage.py`, un acierto de caché
+    devuelve el mismo dict tal cual, así que la fecha que lleva dentro seguirá
+    siendo la de la consulta ORIGINAL sin que nadie tenga que recordarlo
+    (criterio de aceptación del PRD, §8.3)."""
+    return {"fuente": fuente, "consultado_en": _ahora_iso(), "de_cache": False}
+
+
 def _a_float(valor) -> Optional[float]:
     if not valor:
         return None
@@ -801,6 +839,10 @@ def obtener_datos_parcela(
         "direccion_catastro": None,
         "coordenadas": None,
         "geometria_parcela": None,
+        # `None` hasta que se obtenga un dato REAL de Catastro más abajo -- nunca un valor de
+        # relleno: la ausencia de procedencia es tan informativa como su presencia (Fase A del
+        # PRD de parcela, 2026-08-20).
+        "procedencia": None,
         "colindantes": [],
         "viales": [],
         "zonas_verdes": [],
@@ -820,6 +862,9 @@ def obtener_datos_parcela(
             geometria = _geometria_parcela_catastro(referencia_catastral)
             resultado["geometria_parcela"] = geometria
             resultado["coordenadas"] = geometria["centro"]
+            resultado["procedencia"] = _procedencia(
+                "Catastro (Sede Electrónica, WFS/INSPIRE — GetParcel por referencia catastral)"
+            )
             centro_lat, centro_lon = geometria["centro"]["lat"], geometria["centro"]["lon"]
         except ErrorDeSitio as exc:
             resultado["errores"].append("Catastro (geometría de parcela): %s" % exc)
@@ -839,6 +884,10 @@ def obtener_datos_parcela(
                 geometria = _geometria_parcela_catastro(rc_info["referencia_catastral"])
                 resultado["geometria_parcela"] = geometria
                 resultado["coordenadas"] = geometria["centro"]
+                resultado["procedencia"] = _procedencia(
+                    "Catastro (Sede Electrónica: Consulta_RCCOOR por coordenadas + "
+                    "WFS/INSPIRE GetParcel)"
+                )
                 centro_lat, centro_lon = geometria["centro"]["lat"], geometria["centro"]["lon"]
             except ErrorDeSitio as exc:
                 resultado["errores"].append("Catastro (geometría de parcela): %s" % exc)

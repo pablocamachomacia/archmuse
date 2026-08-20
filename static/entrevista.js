@@ -626,6 +626,19 @@
   var UMBRAL_FASE_PROCESANDO_MS = 8000;
   var UMBRAL_FASE_SIGUE_BUSCANDO_MS = 25000;
 
+  // Procedencia (Fase A, docs/prd/2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md):
+  // `consultado_en` llega en ISO 8601 UTC (`analyzer/sitio.py::_ahora_iso`) -- se muestra en
+  // hora local del navegador, formato corto de fecha española. `iso` inválido o ausente
+  // devuelve `null`: mejor no mostrar la fecha que mostrar "Invalid Date".
+  function fechaLegibleProcedencia(iso) {
+    if (!iso) return null;
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleString("es-ES", {
+      day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+    });
+  }
+
   function htmlEstadoSitio() {
     var p = E.parcela;
     if (!p || p.lat == null) return "";
@@ -658,6 +671,16 @@
     }
     if (p.ciudadDetectada) {
       partes.push('<p class="parcela-estado-sitio parcela-estado-sitio-ok">Municipio: <strong>' + escapeHtml(p.ciudadDetectada) + "</strong></p>");
+    }
+    // Procedencia (Fase A, docs/prd/2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md):
+    // criterio de aceptación §8.1 -- el arquitecto tiene que poder leer de qué servicio salió
+    // y cuándo, sin abrir la consola. `de_cache` distingue "se consultó ahora" de "esto ya se
+    // había consultado antes" (§8.3): la fecha mostrada es siempre la de la consulta ORIGINAL.
+    var cuando = p.procedencia && fechaLegibleProcedencia(p.procedencia.consultado_en);
+    if (p.procedencia && cuando) {
+      var prefijo = p.procedencia.de_cache ? "Ya consultado antes, el " : "Consultado el ";
+      partes.push('<p class="parcela-estado-sitio parcela-estado-sitio-procedencia">' +
+        escapeHtml(prefijo + cuando) + " · " + escapeHtml(p.procedencia.fuente) + "</p>");
     }
     if (p.errorSitio) {
       partes.push('<p class="parcela-estado-sitio parcela-estado-sitio-aviso">No hemos podido consultar Catastro para este punto exacto ' +
@@ -725,6 +748,11 @@
     // obligar al Sandbox a volver a pedirla de cero (más lento, y con su propio límite de tiempo que
     // puede no darle tiempo a Catastro/Overpass a responder -- ver `viewer-terreno.js`).
     E.parcela.geometriaParcela = null;
+    // Procedencia (Fase A, docs/prd/2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md):
+    // `{fuente, consultado_en, de_cache}`, tal cual la devuelve `analyzer/sitio.py`. Se reinicia
+    // aquí por el mismo motivo que `geometriaParcela` justo arriba -- un punto nuevo no debe
+    // enseñar la fecha de la consulta ANTERIOR mientras se resuelve.
+    E.parcela.procedencia = null;
     // Fase 1 real: se fija justo antes de despachar el `fetch` de abajo, no antes (ver comentario grande
     // sobre honestidad del progreso en `htmlEstadoSitio`).
     E.parcela.progresoPct = 20;
@@ -794,6 +822,7 @@
       // es lo que el Sandbox necesita para dibujar el contorno/pad real sin volver a pedirla (ver
       // comentario grande más arriba, junto al reinicio de este mismo campo).
       E.parcela.geometriaParcela = geometria || null;
+      E.parcela.procedencia = datos.procedencia || null;
       // Contorno REAL de la parcela (no solo el punto del clic) -- bug reportado en vivo: "no señala la
       // parcela de donde pincho". `geometria.coordenadas` viene de Catastro (WFS), null si Catastro no tenía
       // ninguna parcela en ese punto exacto -- en ese caso `dibujarParcela(null)` ya la borró arriba.

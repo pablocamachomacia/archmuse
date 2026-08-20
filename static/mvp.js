@@ -459,6 +459,19 @@ $("entrada").addEventListener("submit", async (ev) => {
 // numericos son siempre null hoy, asi que aqui solo se enseña como nota de
 // contexto, nunca como dato que rellena un campo.
 
+// Procedencia (Fase A, docs/prd/2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md):
+// mismo helper que static/entrevista.js -- fichero clasico aparte, sin modulo ES compartido,
+// asi que se repite en vez de importarse (mismo criterio que map-picker.js documenta para su
+// propio aislamiento).
+function fechaLegibleProcedencia(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleString("es-ES", {
+    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
 let _parcelaTimeout = null;
 
 $("buscarParcela").addEventListener("input", () => {
@@ -507,8 +520,17 @@ async function elegirParcela(res) {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lat, lon }),
     });
-    const datos = await r.json();
-    const geometria = datos.geometria || {};
+    const respuesta = await r.json();
+    // Arreglo (Fase A, docs/prd/2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md):
+    // esto leia `respuesta.geometria`/`respuesta.referencia_catastral` en la RAIZ del JSON,
+    // que nunca ha existido ahi -- /api/analizar-sitio envuelve todo en
+    // `{sitio: {datos: {...}}}` (ver app.py::analizar_sitio) y el campo se llama
+    // `geometria_parcela`, no `geometria`. La condicion de abajo era siempre
+    // `undefined && undefined`, asi que esta rama NUNCA se disparaba desde que se cableo
+    // CP-4 -- `tests/test_mvp_parcela_real.py` es inspeccion de texto fuente, nunca ejecuto
+    // esto de verdad contra una respuesta real.
+    const datos = (respuesta.sitio && respuesta.sitio.datos) || {};
+    const geometria = datos.geometria_parcela || {};
     if (r.ok && datos.referencia_catastral && geometria.superficie_m2) {
       // Unica cifra que se autorellena en toda esta zona: sale de Catastro,
       // no de una suposicion -- por eso solar (y solo solar) es seguro
@@ -517,6 +539,15 @@ async function elegirParcela(res) {
       estadoEl.className = "estado-parcela ok";
       estadoEl.textContent = "Catastro real: " + Math.round(geometria.superficie_m2) +
         " m² · ref. " + datos.referencia_catastral;
+      // Procedencia visible (Fase A, criterio de aceptacion §8.1): la fecha de la consulta,
+      // "ya consultado antes" si viene de cache -- misma logica que entrevista.js.
+      if (datos.procedencia) {
+        const cuando = fechaLegibleProcedencia(datos.procedencia.consultado_en);
+        if (cuando) {
+          const prefijo = datos.procedencia.de_cache ? "Ya consultado antes, el " : "Consultado el ";
+          estadoEl.textContent += " · " + prefijo + cuando;
+        }
+      }
     } else {
       estadoEl.className = "estado-parcela error";
       estadoEl.textContent = "No se ha encontrado una parcela real de Catastro en ese punto " +

@@ -5,6 +5,64 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-08-20 (madrugada, 4ª hora) · Fase A del PRD de procedencia de parcela -- hecha
+
+**Modelo confirmado Sonnet** (Sonnet 5, sin cambios en toda la sesión) antes de
+empezar, según pediste.
+
+PRD aprobado: `docs/prd/2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md`,
+con tus tres notas incorporadas (§6 sin decidir la ubicación de `map-picker.js`,
+recorte del §14 descartado, y esta misma respuesta sobre cobertura de tests).
+
+**Respuesta a tu pregunta antes de empezar (consumidores protegidos):**
+`checklist_campo.py` tenía CERO tests -- añadido `tests/test_checklist_campo.py`
+(7 tests). `viewer-sandbox.js` (vía `/api/entorno-3d-punto`) tenía test de
+endpoint pero sin mockear `geometria_parcela_por_coordenadas` (fuga de red real
+no detectada hasta ahora) ni afirmar sobre ese campo -- arreglado y afirmado en
+`tests/test_entorno_3d.py`. `pliego_extractor.py` no era en realidad un
+consumidor (corrección a mi propia auditoría anterior: su `referencia_catastral`
+es un campo homónimo que un LLM extrae del pliego del cliente, sin relación con
+`/api/analizar-sitio`).
+
+**Hallazgo real durante la implementación, no relacionado con procedencia:**
+CP-4 (parcela real en `/mvp`, dada por "cableada" el 19-ago) estaba rota desde
+que se escribió -- `mvp.js::elegirParcela()` leía `datos.geometria`/
+`datos.referencia_catastral` en la raíz de la respuesta, que nunca ha existido
+ahí (`/api/analizar-sitio` envuelve todo en `{sitio: {datos: {...}}}`, y el
+campo se llama `geometria_parcela`). La rama de éxito nunca se disparó.
+`tests/test_mvp_parcela_real.py` es inspección de texto fuente, nunca ejecutó
+el JS de verdad, así que nunca pudo pillarlo. Arreglado junto con la
+procedencia (misma función, mismo commit) -- anotado en
+`docs/AGENTE_BACKLOG.md` (CP-4) con el detalle completo.
+
+**Implementado:**
+- `analyzer/sitio.py`: `_procedencia()` (dict simple, NO se reutiliza
+  `agente.afirmacion.Afirmacion` -- acoplada a Capacidad/C4, exactamente lo
+  prohibido; sigue el espíritu más ligero de `normativa.ambito.Procedencia`,
+  documentado en el propio código). `obtener_datos_parcela()` la adjunta en
+  los dos caminos reales (RC directa, lat/lon → RC → geometría); se queda en
+  `None` si no hubo geometría real -- nunca inventada.
+- `app.py`: `de_cache` se corrige a `True` en el camino de caché (única pieza
+  que `analyzer/sitio.py` no puede saber por sí solo); filas guardadas antes
+  de esta tarea (sin `procedencia`) se dejan tal cual, nunca se rellenan a
+  posteriori.
+- `entrevista.js`/`mvp.js`: fecha + fuente visibles en el bloque de resultado
+  ("Consultado el ..." / "Ya consultado antes, el ..."), mismo criterio en
+  los dos ficheros (`fechaLegibleProcedencia`, duplicada a propósito -- son
+  scripts clásicos sin módulo compartido).
+
+**Verificado:** suite completa 1065 passed (+8 desde el baseline de la
+tarea anterior), 2 failed (mismos guardianes C4 de siempre), 18 skipped,
+581s. Tests nuevos: `test_checklist_campo.py` (7), extensión de
+`test_sitio.py` (procedencia presente/ausente en los dos caminos),
+`test_entorno_3d.py` (geometria_parcela + cierre de la fuga de red que
+tenía ese mock), `test_analizar_sitio_procedencia.py` (nuevo, HTTP end-to-
+end: primera consulta, segunda desde caché con fecha original y `de_cache`
+correcto, y una fila sin procedencia que no se rellena a posteriori).
+Commit local hecho, sin push.
+
+---
+
 ## 2026-08-20 (madrugada) · Trabajo autónomo (1h, sin parar a preguntar) -- checkpoints
 
 `[00:00]` Arranque: termina el rediseño de cabecera pendiente (selector de

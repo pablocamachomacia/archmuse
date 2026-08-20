@@ -186,9 +186,18 @@ print("=" * 70)
 print("4. GET /api/entorno-3d-punto -- Modo Sandbox (2026-08-17): lat/lon directos, sin proyecto")
 print("=" * 70)
 
+# `geometria_parcela_por_coordenadas` no estaba mockeada aquí (hallazgo del PRD de procedencia de
+# parcela, 2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md, §auditoría de checklist_campo/
+# viewer-sandbox): sin mock, esta llamada golpeaba Catastro de verdad -- justo la fuga de red que
+# el propio docstring de este fichero dice evitar. `viewer-sandbox.js` lee `body.geometria_parcela`
+# de esta misma respuesta y no tenía ningún test que lo protegiera.
+_GEOMETRIA_PARCELA_MOCK = {
+    "tipo": "Polygon", "coordenadas": [[-3.7006, 40.4204], [-3.7004, 40.4204], [-3.7004, 40.4206]],
+    "superficie_m2": 350.0, "centro": {"lat": 40.4205, "lon": -3.7005},
+}
 with mock.patch("app.edificios_colindantes_geometria", return_value=[
     {"vertices": [[40.4200, -3.7000], [40.4201, -3.7000], [40.4201, -3.6999]], "altura_m": 9.0, "origen_altura": "estimada_por_defecto"},
-]):
+]), mock.patch("app.geometria_parcela_por_coordenadas", return_value=_GEOMETRIA_PARCELA_MOCK):
     r4_1 = client.get("/api/entorno-3d-punto?lat=40.4205&lon=-3.7005")
 check("200 OK", r4_1.status_code == 200, r4_1.status_code)
 body4_1 = r4_1.get_json()
@@ -198,6 +207,8 @@ check("heading_grados = 0.0 (sin ningún plano/proyecto todavía, no hay ningún
       body4_1["heading_grados"] == 0.0)
 check("mismo radio que /georreferencia (180m)", body4_1["radio_m"] == 180)
 check("1 edificio colindante devuelto", len(body4_1["edificios_colindantes"]) == 1)
+check("geometria_parcela viaja en la respuesta -- lo que viewer-sandbox.js lee de verdad",
+      body4_1.get("geometria_parcela") == _GEOMETRIA_PARCELA_MOCK, body4_1.get("geometria_parcela"))
 
 print("\n4.1 Sin lat/lon -> 400, nunca un 500 ni datos inventados")
 r4_2 = client.get("/api/entorno-3d-punto")
