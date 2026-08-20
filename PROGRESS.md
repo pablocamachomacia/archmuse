@@ -79,8 +79,26 @@ dentro de `bim/lector_ifc.py` aunque se le añadan más lecturas, y qué de
 estructurales con dimensión declarada). No registra nada, no toca
 `agente/registro.py`.
 
-Corriendo la suite completa del repo como regresión final antes de comitear
-localmente (sin push).
+**[checkpoint 3, cierre]** Suite completa del repo confirmada como regresión
+final: **1073 passed, 18 skipped, 1 xfailed, 2 failed** -- los 2 fallos son
+los guardianes de `C4`/`D-12` de siempre (`registro` en 13, tope en 12,
+decisión de Pablo pendiente desde el 19-ago), sin relación con este cambio.
+Cero regresiones nuevas.
+
+Commit local hecho (**sin push**, según pediste): `8b94e8e` en
+`agente/nucleo-agentico`, acotado a `bim/lector_ifc.py`,
+`tests/test_bim_lector.py`, `tests/fixtures/ifc_real/`, el documento de
+diseño, y esta misma entrada de `PROGRESS.md` -- **deliberadamente sin
+incluir** los PRD de `docs/prd/` que seguían modificados/nuevos de la sesión
+anterior (siguen sin commitear, a la espera de tu lectura, como pediste esa
+vez).
+
+**Qué NO se hizo, a propósito:** no se ha tocado `agente/registro.py` ni el
+techo de `C4` (`bim.inventario_de_ifc` sigue retirada del registro, tal como
+estaba). No se ha empezado corpus normativo CTE. No se ha tocado
+`ai_generator.py`. No se ha probado contra IFC2X3, ficheros grandes, ni
+dimensión declarada de elementos estructurales (muros/columnas/vigas/losas)
+-- documentado como gap explícito en el documento de diseño, no silenciado.
 
 ---
 
