@@ -513,10 +513,20 @@ body::before {
 }
 
 /* --- Desplegable de menú --------------------------------------------------
-   Único mecanismo para los 4 triggers de la barra (`wireShellMenu`). Sin
-   animación de entrada: un menú de aplicación debe sentirse instantáneo. */
+   Único mecanismo para los 4 triggers de la barra (`wireShellMenu`), y
+   reutilizado hoy (2026-08-20) para el selector de modo de la conversación
+   (`conv-modo-trigger`). z-index:101, no 41 -- se añade a `<body>` como
+   hermano de `#conversacion-archmuse` (`position:fixed; z-index:100`), y con
+   41 quedaba pintado DEBAJO de ese overlay: el navegador confirmaba
+   `display:block` y una posición en pantalla correctas, pero
+   `elementFromPoint` sobre esas coordenadas devolvía `#conv-log`, no el
+   desplegable -- invisible y sin poder hacer click en sus opciones pese a
+   que el DOM decía que estaba "abierto". Encontrado verificando en el
+   navegador el flujo completo de esta noche, no antes. 101 basta (nada más
+   en la página usa un z-index entre 41 y 100) y no cambia nada en los 4
+   triggers de la barra, que no conviven con ningún overlay de z-index:100. */
 .shell-dropdown {
-  position: fixed; z-index: 41; min-width: 220px; max-width: 320px;
+  position: fixed; z-index: 101; min-width: 220px; max-width: 320px;
   background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
@@ -2897,12 +2907,51 @@ body::before {
 }
 #conversacion-archmuse.open { display: flex; }
 
-.conv-shell { display: flex; width: 100%; height: 100%; min-height: 0; }
+.conv-shell { display: flex; width: 100%; height: 100%; min-height: 0; position: relative; }
+
+/* Icono de menú (simplificación al máximo, 2026-08-20): único acceso a la
+   barra lateral, que vive colapsada a 0 por debajo (ver `.conv-sidebar`).
+   Fijo, fuera del flujo de `.conv-sidebar`/`.conv-header` -- sigue
+   encontrable pase lo que pase, incluso con la cabecera oculta en "/". El
+   aviso legal de /proyectos NO desaparece: sólo el acceso se esconde
+   detrás de este clic (petición explícita, ver el comentario junto al
+   propio botón en index.html). "Discreto" es literal: opacidad baja hasta
+   el hover/apertura, un solo glifo tipográfico, nunca un icono ilustrado. */
+.conv-menu-toggle {
+  position: absolute; top: var(--space-4); left: var(--space-4); z-index: 50;
+  width: 2.2rem; height: 2.2rem; padding: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-pill);
+  color: var(--text-tertiary); cursor: pointer; font-size: var(--text-base); font-family: inherit;
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  opacity: 0.55;
+  transition: opacity 0.15s var(--ease-apple), color 0.15s var(--ease-apple), border-color 0.15s var(--ease-apple);
+}
+.conv-menu-toggle:hover, .conv-menu-toggle[aria-expanded="true"] {
+  opacity: 1; color: var(--text-primary); border-color: var(--accent);
+}
 
 /* La sidebar es literalmente `.sidebar` (mismo componente que la portada
    clásica) -- estos son los únicos ajustes que necesita para vivir dentro
-   del panel en vez de dentro de `#app`. */
-.conv-sidebar { border-right: 1px solid var(--border); }
+   del panel en vez de dentro de `#app`. Colapsada a 0 por defecto
+   (simplificación al máximo, 2026-08-20): mismo criterio que
+   `.sidebar.is-colapsado` ya usa en la portada clásica (`width` con
+   transición), pero hasta el final -- aquí no queda ni el carril de
+   iconos, sólo `.conv-menu-toggle` para volver a abrirla. Todo el
+   contenido sigue en el DOM tal cual, incluido el aviso legal.
+
+   Esto también sustituye a un `@media (max-width: 900px) { .conv-sidebar {
+   display: none; } }` que había aquí antes de hoy: cuando la sidebar
+   arrancaba visible a 240px hacía falta forzarla oculta en pantallas
+   estrechas. Ahora que ya arranca en 0 por defecto ese forzado sobraba, y
+   además rompía el toggle nuevo: `display:none` gana siempre a la clase
+   `.conv-sidebar-abierta` en cualquier viewport <900px, dejando el aviso
+   legal inalcanzable ahí -- lo encontró la verificación en el navegador con
+   un viewport real de 630px de ancho. */
+.conv-sidebar {
+  border-right: 1px solid transparent; width: 0; overflow: hidden;
+  transition: width 0.2s var(--ease-apple), border-color 0.2s var(--ease-apple);
+}
+.conv-sidebar.conv-sidebar-abierta { width: 240px; border-right-color: var(--border); }
 .conv-sidebar-marca { cursor: default; }
 .conv-sidebar-marca:hover { background: transparent; }
 .conv-sidebar-activo {
@@ -2920,6 +2969,55 @@ body::before {
 .conv-main {
   flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0;
   position: relative; /* ancla al overlay de arrastrar-y-soltar, ver .conv-drop-aviso */
+}
+
+/* Resplandor azul difuso (simplificación al máximo, 2026-08-20): detrás del
+   centro de la pantalla, reforzando el que ya daba la rejilla arquitectónica
+   de `body::before` (blanca, muy sutil) sin sustituirla -- capas distintas,
+   una encima de otra. Dos radiales del MISMO token superpuestos en vez de
+   uno solo: donde se solapan (el núcleo, 0-45%) la opacidad se acumula y se
+   nota más "presente"; el segundo, más ancho, sólo aporta la caída suave
+   hacia fuera. Ningún color nuevo -- `--accent-soft` ya existe y ya se
+   adapta sola a tema claro/oscuro. `z-index: -1` en vez de tocar el
+   apilamiento de cada hijo de `.conv-main` uno a uno. */
+.conv-main::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  top: 42%; left: 50%; width: 820px; height: 820px; max-width: 90vw;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at center, var(--accent-soft) 0%, transparent 45%),
+    radial-gradient(circle at center, var(--accent-soft) 0%, transparent 72%);
+  filter: blur(50px);
+}
+
+/* Cabecera oculta en "/" (simplificación al máximo, 2026-08-20): "no debe
+   aparecer si no hace falta navegación", y en "/" nunca hace falta -- ya
+   quedó dicho al quitar el botón "Volver" de aquí mismo (2026-08-20, antes),
+   esto sólo lleva el mismo razonamiento a toda la barra. La clase la añade
+   `wireApp()` en app.js sólo cuando `location.pathname === "/"`; abierta
+   como overlay encima de /proyectos, la cabecera sigue intacta. */
+.conv-main.conv-sin-cabecera .conv-header { display: none; }
+
+/* Reposo vs. interacción (simplificación al máximo, 2026-08-20): en reposo
+   sólo se ve la caja de texto + el botón de enviar, centrados en la
+   pantalla -- ni historial vacío, ni "Adjuntar DXF", ni el selector de
+   modo, ni la barra de estado. `.conv-activo` (ver convActivar() en
+   app.js) es el interruptor, de un solo sentido. Sin `.conv-log` que
+   crezca (oculto en reposo, y vacío de contenido: la bienvenida ya vive
+   como placeholder dentro de la caja, ver CONV_SUGERENCIA_SIN_ADJUNTO), el
+   único hijo visible es `#conv-form` -- `justify-content: center` en el
+   contenedor basta para centrarlo verticalmente, sin flexbox extra. */
+.conv-main:not(.conv-activo) { justify-content: center; }
+.conv-main:not(.conv-activo) .conv-log,
+.conv-main:not(.conv-activo) .conv-statusbar,
+.conv-main:not(.conv-activo) #conv-btn-adjuntar,
+.conv-main:not(.conv-activo) #conv-modo-trigger {
+  display: none;
+}
+/* La caja flota sola, sin la barra/fondo de herramienta que sí tiene
+   sentido cuando está anclada abajo en modo activo. */
+.conv-main:not(.conv-activo) #conv-form {
+  background: transparent; border-top: none; backdrop-filter: none; -webkit-backdrop-filter: none;
 }
 
 .conv-header {
@@ -2952,11 +3050,6 @@ body::before {
   display: flex; flex-direction: column; gap: var(--space-4);
 }
 .conv-log > * { max-width: 720px; width: 100%; margin: 0 auto; }
-
-.conv-vacio {
-  color: var(--text-tertiary); text-align: center; line-height: 1.6;
-  padding: var(--space-8) var(--space-4); margin-top: 4vh !important;
-}
 
 /* Burbujas de chat (rediseño noche 5, pedido explícito) -- sustituye al
    trazo vertical de la noche 4. El usuario, a la derecha, en vidrio de
@@ -3223,10 +3316,6 @@ body::before {
 .conv-statusbar-proyecto { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .conv-statusbar-capacidad {
   margin-left: auto; font-family: var(--font-mono, monospace); opacity: 0.8;
-}
-
-@media (max-width: 900px) {
-  .conv-sidebar { display: none; }
 }
 
 @media (max-width: 720px) {

@@ -1383,3 +1383,62 @@ conocido ni TODO, se queda sin decir algo sobre la entidad. Regresión sobre
 `test_preguntar_endpoint.py`, `test_conversacion_archmuse_ui.py`: 46/46.
 
 Demo regenerada: `docs/design/2026-08-19-doc1-acta-legible-demo.html`.
+
+## 2026-08-20 · Simplificación al máximo del estado de reposo de la conversación
+
+Pedido de Pablo con referencia visual descrita (no imagen): en reposo, la
+pantalla de conversación debía verse como una sola caja de texto flotando
+centrada sobre un fondo casi negro con glow azul difuso, sin cabecera, sin
+sidebar, sin bienvenida aparte -- y todo el resto (Adjuntar DXF, selector de
+modo, statusbar) apareciendo solo al interactuar.
+
+**Hecho:**
+- `.conv-header` deja de ser fijo en `/` -- se oculta entera vía
+  `.conv-sin-cabecera` (antes solo escondía el botón "Volver"), sin tocar el
+  caso `/proyectos` (que sigue abriendo la conversación como overlay con su
+  cabecera intacta -- el condicional sigue acotado a `pathname === "/"`).
+- La sidebar entera vive detrás de `#conv-menu-toggle` (☰, fijo, siempre
+  encontrable): colapsada a `width:0` por defecto, se abre con
+  `.conv-sidebar-abierta` (click, cierra con click-fuera o Escape). El aviso
+  legal de "sin corpus firmado todavía" **no se ha tocado ni movido de
+  sitio** -- sigue en el DOM tal cual, solo detrás de un clic.
+- La bienvenida grande centrada desaparece como texto aparte: su primera
+  frase pasa a ser el placeholder por defecto del sistema de sugerencia
+  fantasma (`CONV_SUGERENCIA_SIN_ADJUNTO`) dentro de la propia caja.
+- `.conv-activo` (clase en `.conv-main`, de un solo sentido) gobierna la
+  revelación de "Adjuntar DXF", el selector de modo y la statusbar --
+  ocultos por CSS mientras no está presente.
+- Refuerzo del glow: dos `radial-gradient(--accent-soft)` a distinto radio
+  en `.conv-main::before` (mismo token, núcleo más denso sin inventar color).
+
+**Dos bugs reales encontrados verificando en el navegador (no en tests, que
+no cubren nada de esto):**
+1. `abrirConversacion()` hace `textarea.focus()` al cargar `/` (ya existía,
+   para dejar el cursor listo) -- un `focus` real, no de automatización,
+   dispara igual que un click del usuario. Engancharle `convActivar()` al
+   evento `"focus"` (mi primer intento) activaba la pantalla entera para
+   CUALQUIER visitante real en cuanto cargaba la página, anulando el reposo
+   por completo. Arreglo: `convActivar()` ahora cuelga de `"mousedown"` y
+   `"keydown"` en el textarea, nunca de `"focus"` -- esos dos eventos sólo
+   los dispara hardware real, `.focus()` programático no.
+2. `.shell-dropdown` (componente reutilizado del selector de modo) vivía a
+   `z-index:41`, hermano de `#conversacion-archmuse` (`z-index:100`) por
+   estar añadido a `<body>`. El desplegable se abría (`display:block`,
+   posición correcta) pero quedaba pintado DEBAJO del overlay --
+   invisible y sin poder pulsarlo, aunque el DOM dijera que estaba abierto.
+   Subido a `z-index:101`.
+   También se retiró un `@media (max-width: 900px) { .conv-sidebar {
+   display: none; } }` obsoleto que sobrevivía de cuando la sidebar
+   arrancaba visible a 240px: con el nuevo `width:0` por defecto, ese
+   `display:none` sólo servía para anular el toggle nuevo en pantallas
+   estrechas, dejando el aviso legal inalcanzable ahí.
+
+**Verificado en el navegador** (no solo en tests): reposo limpio a 1400×900
+(sólo caja + botón enviar + ☰), sidebar abre/cierra con el aviso legal
+visible (click-fuera y Escape), activación real por click/tecleo (no por
+`.focus()` programático), dropdown de modo visible y funcional tras el
+arreglo de z-index, envío de pregunta sin adjunto renderiza la respuesta de
+error esperada en `#conv-log`.
+
+**Tests:** suite completa, `1065 passed, 2 failed (los dos guardianes de
+C4, esperados), 18 skipped, 1 xfailed` -- sin regresiones.

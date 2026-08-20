@@ -249,7 +249,19 @@
      #btn-toggle-entorno) -- nada de mascota ni avatar. -->
 <div id="conversacion-archmuse" class="bg-technical">
   <div class="conv-shell">
-    <aside class="sidebar conv-sidebar">
+    <!-- Simplificación al máximo (2026-08-20): la barra lateral entera vive
+         detrás de este botón, oculta por defecto (`static/style.css` la
+         colapsa a 0). NO desaparece ella ni su contenido -- incluido el
+         aviso legal de /proyectos, que sigue siendo el mismo texto exacto
+         aprobado en el Bloque 1 -- solo el ACCESO se esconde detrás de un
+         clic. Posición fija, fuera de `.conv-sidebar`/`.conv-header` (que sí
+         se ocultan), para que siga siendo encontrable pase lo que pase. -->
+    <button type="button" id="conv-menu-toggle" class="conv-menu-toggle"
+            aria-haspopup="true" aria-expanded="false" aria-controls="conv-sidebar"
+            aria-label="Abrir menú">
+      <span aria-hidden="true">&#9776;</span>
+    </button>
+    <aside class="sidebar conv-sidebar" id="conv-sidebar">
       <div class="sidebar-top">
         <span class="sidebar-brand conv-sidebar-marca">ArchMuse</span>
       </div>
@@ -297,13 +309,16 @@
         <button type="button" id="btn-conversacion-cerrar" class="conv-cerrar">&larr; Volver</button>
       </div>
 
-      <div class="conv-log" id="conv-log">
-        <div class="conv-vacio">
-          Pregunta algo sobre un plano, en tus palabras. ArchMuse solo contesta con
-          lo que una capacidad real ya ejecutada puede comprobar — si no tiene una
-          para tu pregunta, te lo dice en vez de inventar.
-        </div>
-      </div>
+      <!-- Simplificación al máximo (2026-08-20): la bienvenida grande ya no
+           vive aquí como texto flotando aparte -- su primera frase pasa a
+           ser el placeholder por defecto del fantasma (`CONV_SUGERENCIA_
+           SIN_ADJUNTO` en app.js), dentro de la propia caja. El resto de la
+           explicación ("solo contesta con lo que una capacidad real...")
+           se retira: no es un aviso legal como el de /proyectos, así que no
+           hace falta preservarlo en ningún sitio -- el mismo criterio ya
+           se aplica en la respuesta de "fuera de alcance" cuando hace
+           falta explicarlo de verdad. -->
+      <div class="conv-log" id="conv-log"></div>
 
       <form id="conv-form" class="conv-form" autocomplete="off">
         <div class="conv-adjunto" id="conv-adjunto" hidden></div>

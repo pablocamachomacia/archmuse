@@ -5877,8 +5877,13 @@
   // como fantasma por defecto en caja vacía (petición de Pablo, sesión de
   // hoy: "demasiado estricto" exigir que el usuario tecleara el prefijo
   // exacto antes de ver algo) -- nunca dos frases parecidas que puedan
-  // divergir con el tiempo.
-  var CONV_SUGERENCIA_SIN_ADJUNTO = "adjunta un plano dxf para que pueda medir algo real";
+  // divergir con el tiempo. Texto actualizado (simplificación al máximo,
+  // misma sesión, más tarde): es la primera frase de la bienvenida grande
+  // que vivía en `.conv-vacio` -- ahora ES el placeholder, no un texto
+  // flotando aparte. `required` sigue sin volver al textarea (ver
+  // index.html): sin plano adjunto, preguntar sigue cayendo en la tarjeta
+  // de error de `convEnviarPregunta`, que explica qué hace falta de verdad.
+  var CONV_SUGERENCIA_SIN_ADJUNTO = "Pregunta algo sobre un plano, en tus palabras";
 
   var CONV_SUGERENCIAS_POR_CAPACIDAD = {
     "superficies.medicion_de_planta": function (ctx) {
@@ -5985,8 +5990,6 @@
   function convAnadirFilaUsuario(pregunta, nombreArchivo) {
     var log = document.getElementById("conv-log");
     if (!log) return;
-    var vacio = log.querySelector(".conv-vacio");
-    if (vacio) vacio.remove();
     var fila = document.createElement("div");
     fila.className = "conv-fila conv-fila-usuario";
     var burbuja = document.createElement("div");
@@ -6124,6 +6127,21 @@
       });
   }
 
+  // Simplificación al máximo (2026-08-20): en reposo sólo se ve la caja
+  // de texto + el botón de enviar -- "Adjuntar DXF", el selector de modo
+  // y la barra de estado aparecen SOLO al interactuar (petición
+  // explícita). `.conv-activo` en `.conv-main` es ese interruptor, de un
+  // solo sentido: una vez que aparece no se vuelve a esconder en esta
+  // carga de página (parpadear cada vez que el textarea pierde el foco
+  // sería peor que dejarlo siempre visible a partir de ahí). Se dispara
+  // desde el foco/tecleo del textarea y desde adjuntar un archivo
+  // (`convAdjuntarArchivo`, más abajo) -- las dos formas reales de
+  // "empezar" que describe el encargo.
+  function convActivar() {
+    var main = document.querySelector(".conv-main");
+    if (main) main.classList.add("conv-activo");
+  }
+
   function wireConversacion() {
     renderConvModoTrigger();
     renderConvAdjunto(); // pinta la barra de estado también en el arranque, sin adjunto todavía.
@@ -6131,6 +6149,42 @@
 
     var cerrar = document.getElementById("btn-conversacion-cerrar");
     if (cerrar) cerrar.addEventListener("click", cerrarConversacion);
+
+    // Icono de menú (simplificación al máximo, 2026-08-20): la barra
+    // lateral entera vive oculta por defecto (`static/style.css` la
+    // colapsa a 0) -- este botón, fijo y siempre encontrable, es el único
+    // acceso. Cierra con click fuera o Escape, mismo criterio que el
+    // desplegable de modo un poco más abajo en este mismo fichero.
+    var menuToggle = document.getElementById("conv-menu-toggle");
+    var sidebarConv = document.getElementById("conv-sidebar");
+    function cerrarMenuConv() {
+      if (sidebarConv) sidebarConv.classList.remove("conv-sidebar-abierta");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+      document.removeEventListener("click", _menuConvClickFuera);
+      document.removeEventListener("keydown", _menuConvEscape);
+    }
+    function _menuConvClickFuera(e) {
+      if (sidebarConv && sidebarConv.contains(e.target)) return;
+      if (menuToggle && menuToggle.contains(e.target)) return;
+      cerrarMenuConv();
+    }
+    function _menuConvEscape(e) {
+      if (e.key === "Escape") cerrarMenuConv();
+    }
+    if (menuToggle && sidebarConv) {
+      menuToggle.addEventListener("click", function () {
+        var abierta = sidebarConv.classList.toggle("conv-sidebar-abierta");
+        menuToggle.setAttribute("aria-expanded", abierta ? "true" : "false");
+        if (abierta) {
+          setTimeout(function () {
+            document.addEventListener("click", _menuConvClickFuera);
+            document.addEventListener("keydown", _menuConvEscape);
+          }, 0);
+        } else {
+          cerrarMenuConv();
+        }
+      });
+    }
 
     // Selector de modo: abre/cierra con el mismo click (mismo criterio que
     // `wireShellMenu`), la elección la resuelve el propio listener del
@@ -6154,6 +6208,7 @@
     // el botón, el histórico de la sesión o el arrastre de más abajo. Antes
     // de esta noche cada uno repetía las mismas cuatro líneas por su cuenta.
     function convAdjuntarArchivo(file, animar) {
+      convActivar(); // adjuntar es "interactuar" tanto como escribir -- ver convActivar()
       convState.archivoAdjunto = file;
       convState.ultimoContexto = null; // plano nuevo: el contexto del anterior ya no aplica
       convRegistrarArchivoUsado(file);
@@ -6255,7 +6310,21 @@
     // libre: el arquitecto ve lo que ha escrito entero.
     var textarea = document.getElementById("conv-pregunta");
     if (textarea) {
+      // "Empieza a escribir o interactuar" (encargo explícito): un click
+      // real en la caja ya cuenta, no hace falta esperar a la primera letra
+      // -- ver convActivar() al principio de este fichero. OJO: esto NO
+      // escucha el evento "focus" -- `abrirConversacion()` hace
+      // `textarea.focus()` mismo al cargar "/" (para dejar el cursor listo),
+      // y esa llamada programática dispara un "focus" tan real como el de
+      // un click de verdad (no hay forma fiable de distinguirlos por el
+      // propio evento). Enganchar convActivar() ahí activaría la pantalla
+      // entera en cuanto carga la página, para CUALQUIER visitante real --
+      // exactamente lo que este encargo pide evitar. "mousedown"/"keydown"
+      // sí son fiables: sólo el hardware real los dispara, nunca `.focus()`.
+      textarea.addEventListener("mousedown", convActivar);
+      textarea.addEventListener("keydown", convActivar);
       textarea.addEventListener("input", function () {
+        convActivar();
         textarea.style.height = "auto";
         textarea.style.height = Math.min(textarea.scrollHeight, 160) + "px";
         convActualizarSugerencia();
@@ -6558,11 +6627,18 @@
     // Bloque 1 dejó "/" como puerta única: aquí no hay ninguna portada
     // clásica "debajo" a la que volver -- `cerrarConversacion()` desvelaría
     // /proyectos, que ya no es el flujo principal (petición explícita de
-    // Pablo, esta noche). El botón sigue existiendo para cuando la
-    // conversación se abre COMO OVERLAY encima de /proyectos (atajo
-    // "abrir-conversacion" de arriba): ahí sí hay algo real detrás.
-    var btnVolverConv = document.getElementById("btn-conversacion-cerrar");
-    if (btnVolverConv) btnVolverConv.hidden = true;
+    // Pablo, esta noche).
+    //
+    // Simplificación al máximo (2026-08-20): ya no basta con ocultar el
+    // botón "Volver" -- la cabecera entera desaparece en "/", no solo esa
+    // pieza. Mismo razonamiento de siempre, llevado a toda la barra: "no
+    // hay ningún flujo real donde haga falta volver desde aquí". La
+    // cabecera sigue existiendo tal cual para cuando la conversación se
+    // abre COMO OVERLAY encima de /proyectos (atajo "abrir-conversacion"
+    // de arriba): ahí sí hay algo real detrás, y la clase no se añade
+    // porque este `if` sólo entra en "/".
+    var convMainInicial = document.querySelector(".conv-main");
+    if (convMainInicial) convMainInicial.classList.add("conv-sin-cabecera");
   }
 
   restaurarColapso();
