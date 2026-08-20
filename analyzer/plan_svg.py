@@ -286,6 +286,41 @@ def svg_points(xs, ys, to_screen) -> str:
     )
 
 
+def calcular_transformador_de_pantalla(minx: float, miny: float, maxx: float, maxy: float):
+    """La otra mitad de la tarea 14, la que quedaba: el cálculo de `scale`,
+    `offset_x`, `offset_y` y el propio cierre `to_screen` -- que encaja un
+    bounding box en metros dentro del `viewBox` fijo con margen (`_VIEWBOX_W`,
+    `_VIEWBOX_H`, `_VIEWBOX_MARGIN`) -- también estaba copiado tal cual en
+    `generate_plan_svg` (este módulo), `generate_circulation_svg`
+    (`circulation.py`) y `generate_spatial_quality_svg`
+    (`spatial_quality.py`). `svg_points` ya resolvió la conversión de un
+    anillo; esto resuelve cómo se construye el `to_screen` que le pasan los
+    tres.
+
+    Devuelve `(to_screen, scale, offset_x, offset_y)` -- los tres generadores
+    sólo usan `to_screen`, salvo `generate_plan_svg`, que además publica
+    `scale`/`offset_x`/`offset_y` como `data-escala`/`data-ox`/`data-oy` para
+    que el frontend pueda invertir la transformación.
+    """
+    width_m = max(maxx - minx, 0.01)
+    height_m = max(maxy - miny, 0.01)
+    avail_w = _VIEWBOX_W - 2 * _VIEWBOX_MARGIN
+    avail_h = _VIEWBOX_H - 2 * _VIEWBOX_MARGIN
+    scale = min(avail_w / width_m, avail_h / height_m)
+    drawn_w = width_m * scale
+    drawn_h = height_m * scale
+    offset_x = (_VIEWBOX_W - drawn_w) / 2
+    offset_y = (_VIEWBOX_H - drawn_h) / 2
+
+    def to_screen(x: float, y: float) -> Tuple[float, float]:
+        # El eje Y del DXF/shapely crece hacia arriba; el de SVG, hacia
+        # abajo -- se invierte aquí para que "arriba" del plano quede arriba
+        # en pantalla.
+        return offset_x + (x - minx) * scale, offset_y + (maxy - y) * scale
+
+    return to_screen, scale, offset_x, offset_y
+
+
 def _envelope_rings(layout: List[Tuple[Room, BaseGeometry]]):
     """Anillos de la envolvente de la vivienda: la unión de todos los
     polígonos de habitación, de la que se toman tanto el contorno exterior
@@ -613,23 +648,7 @@ def generate_plan_svg(vivienda: UnitScore, norte_grados: float = 0.0) -> str:
     miny = min(b[1] for b in bounds)
     maxx = max(b[2] for b in bounds)
     maxy = max(b[3] for b in bounds)
-    width_m = max(maxx - minx, 0.01)
-    height_m = max(maxy - miny, 0.01)
-
-    avail_w = _VIEWBOX_W - 2 * _VIEWBOX_MARGIN
-    avail_h = _VIEWBOX_H - 2 * _VIEWBOX_MARGIN
-    scale = min(avail_w / width_m, avail_h / height_m)
-
-    drawn_w = width_m * scale
-    drawn_h = height_m * scale
-    offset_x = (_VIEWBOX_W - drawn_w) / 2
-    offset_y = (_VIEWBOX_H - drawn_h) / 2
-
-    def to_screen(x: float, y: float) -> Tuple[float, float]:
-        # El eje Y del DXF/shapely crece hacia arriba; el de SVG, hacia
-        # abajo — se invierte aquí para que "arriba" del plano quede arriba
-        # en pantalla.
-        return offset_x + (x - minx) * scale, offset_y + (maxy - y) * scale
+    to_screen, scale, offset_x, offset_y = calcular_transformador_de_pantalla(minx, miny, maxx, maxy)
 
     # --- Transformación publicada para el frontend -------------------------
     # El lienzo tipo CAD necesita convertir píxel del SVG → metro real, y esa

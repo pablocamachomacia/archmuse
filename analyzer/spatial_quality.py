@@ -35,7 +35,7 @@ problema, coloreada según `SPATIAL_ISSUE_COLORS` (un color fijo por tipo).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from shapely.affinity import translate
 from shapely.geometry import Polygon
@@ -54,8 +54,8 @@ from .evaluator import (
 )
 from .parser import Room
 from .plan_svg import (
-    _VIEWBOX_H, _VIEWBOX_MARGIN, _VIEWBOX_W,
-    exterior_rings, layout_room_polygons, room_type, svg_points,
+    _VIEWBOX_H, _VIEWBOX_W,
+    calcular_transformador_de_pantalla, exterior_rings, layout_room_polygons, room_type, svg_points,
 )
 
 # ---------------------------------------------------------------------------
@@ -403,19 +403,7 @@ def generate_spatial_quality_svg(unit_score: UnitScore, quality: UnitQuality) ->
     miny = min(b[1] for b in bounds)
     maxx = max(b[2] for b in bounds)
     maxy = max(b[3] for b in bounds)
-    width_m = max(maxx - minx, 0.01)
-    height_m = max(maxy - miny, 0.01)
-
-    avail_w = _VIEWBOX_W - 2 * _VIEWBOX_MARGIN
-    avail_h = _VIEWBOX_H - 2 * _VIEWBOX_MARGIN
-    scale = min(avail_w / width_m, avail_h / height_m)
-    drawn_w = width_m * scale
-    drawn_h = height_m * scale
-    offset_x = (_VIEWBOX_W - drawn_w) / 2
-    offset_y = (_VIEWBOX_H - drawn_h) / 2
-
-    def to_screen(x: float, y: float) -> Tuple[float, float]:
-        return offset_x + (x - minx) * scale, offset_y + (maxy - y) * scale
+    to_screen, _scale, _offset_x, _offset_y = calcular_transformador_de_pantalla(minx, miny, maxx, maxy)
 
     def render_geometry(geom, fill: str, stroke: str, stroke_width: float, opacity: float = 1.0) -> str:
         parts = []

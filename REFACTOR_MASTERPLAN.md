@@ -442,7 +442,7 @@ Las tareas 8, 14, 19, 21, 22-24, 27, 28 y 29 se re-verificaron el mismo día y *
 | 11 | Adyacencia acústica inerte (Bug #2) | **RESUELTA** | `analyzer/adyacencia.py` + `tramo_enfrentado_m`; `tests/test_acoustic_adjacency.py` pasa 29/29 |
 | 12 | Fijar versiones de dependencias | **HECHA** (`88acb90`) | Las 13 directas con `==`, y `requirements.lock.txt` con las 58 distribuciones. Verificado en un venv nuevo desde cero |
 | 13 | `debug=False` + servidor WSGI | **HECHA** (`885dfde`) | `waitress` por defecto sobre 127.0.0.1; el depurador de Werkzeug solo con `FLASK_DEBUG=1` |
-| 14 | Consolidar polígono→SVG | **PENDIENTE Y AGRAVADA** | De 3 copias a **4**: `circulation.py:436`, `plan_svg.py:306`, `plan_svg.py:651`, `spatial_quality.py:420` |
+| 14 | Consolidar polígono→SVG | ~~PENDIENTE Y AGRAVADA~~ **HECHA (2026-08-20)** | `svg_points()` ya resolvía la conversión de un anillo (commit ya en main). Corrección (2026-08-20, madrugada): quedaba sin resolver el cálculo del propio `to_screen` (`scale`/`offset_x`/`offset_y`), copiado en los tres generadores. Extraído a `calcular_transformador_de_pantalla()` en `plan_svg.py`. Verificado con los goldens (SVG bit a bit idéntico) |
 | 15 | Timestamps con zona horaria | PENDIENTE | `pdf_report.py:93`, `reporter.py:325` |
 | 16 | Cutover de `classify_problems` | **PENDIENTE Y AGRAVADA** | 383 líneas (eran 327); 0 coincidencias de tabla declarativa |
 | 17 | README de arranque | **HECHA** (`376fb4c`) | Cerradas las dos lagunas: convención de capas del DXF (contrato `AM_*` y modo heredado) y `app.py` frente a `main.py` |

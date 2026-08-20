@@ -113,6 +113,48 @@ función. Suite completa relanzada tras el arreglo.
 
 ---
 
+## 2026-08-20 (madrugada, 3ª hora) · Segunda hora autónoma -- REFACTOR_MASTERPLAN tarea 14
+
+Confirmado el arreglo del dropdown por Pablo. Sigo autónomo, sin
+restricción de ficheros, con los mismos límites duros.
+
+Antes de arrancar: **modelo confirmado Sonnet** (Sonnet 5, el que ya
+gobierna toda esta sesión -- no hay `/status` invocable como tool desde
+aquí, lo confirmo por el propio system prompt que me identifica).
+
+**Candidatos considerados y descartados antes de elegir:** tarea 21 del
+REFACTOR_MASTERPLAN (consolidar `room_problems()` calculado 3 veces) --
+descartada tras investigar: las tres llamadas sirven consumidores
+distintos (JSON de la API, conteo agregado, SVG del plano) en dos ficheros
+distintos, y consolidarla bien exige tocar firmas de función que alimentan
+el contrato JSON público. Más invasivo de lo que parecía a primera vista
+para hacerlo sin que alguien lo revise. Aparcada, anotada aquí para que tú
+decidas si merece una sesión dedicada.
+
+**Hecho en su lugar: tarea 14 (la mitad que quedaba).** `svg_points()` ya
+había resuelto la conversión de un anillo a `points` de SVG (tarea 14
+original, commit ya en main). Lo que quedaba sin resolver era el cálculo
+del propio `to_screen` -- `scale`/`offset_x`/`offset_y` a partir del
+bounding box -- copiado tal cual en `generate_plan_svg` (`plan_svg.py`),
+`generate_circulation_svg` (`circulation.py`) y
+`generate_spatial_quality_svg` (`spatial_quality.py`). Verificado antes de
+tocar nada que las tres copias eran byte a byte idénticas (mismas
+constantes `_VIEWBOX_*`, ya importadas de `plan_svg.py` en los tres) --
+no había ninguna diferencia oculta que la extracción pudiera borrar sin
+querer.
+
+Extraído a `calcular_transformador_de_pantalla()` en `plan_svg.py`
+(devuelve `to_screen, scale, offset_x, offset_y`); los tres generadores lo
+llaman. Limpieza de paso: los imports de `_VIEWBOX_MARGIN` y `Tuple` que
+quedaron sin uso en `circulation.py`/`spatial_quality.py`.
+
+Verificado: `ruff check` sobre los tres ficheros sin ningún hallazgo
+nuevo (los 18 que quedan son del baseline, sin relación). 31 tests de
+`circulation`/`spatial`/`plan_svg`/`golden` en verde. Legacy scripts del
+mismo grupo corriendo en segundo plano para confirmar antes de comprometer.
+
+---
+
 ## 2026-08-20 (noche, aún más tarde) · Informe de test: hallazgo 1 (medición de cobertura) cerrado
 
 Pablo trajo un informe externo de estrategia de tests, medido ejecutando la

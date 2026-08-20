@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Optional, Tuple
+from typing import Dict, FrozenSet, List, Optional
 
 from modelo import compat as modelo_compat
 
@@ -57,7 +57,9 @@ from .evaluator import (
     _normalize,
 )
 from .parser import Room
-from .plan_svg import _VIEWBOX_H, _VIEWBOX_MARGIN, _VIEWBOX_W, exterior_rings, layout_room_polygons, svg_points
+from .plan_svg import (
+    _VIEWBOX_H, _VIEWBOX_W, calcular_transformador_de_pantalla, exterior_rings, layout_room_polygons, svg_points,
+)
 
 ROUTE_COLOR_OK = "#16A34A"  # verde
 ROUTE_COLOR_PROBLEM = "#DC2626"  # rojo
@@ -415,19 +417,7 @@ def generate_circulation_svg(unit_score: UnitScore, circulation: UnitCirculation
     miny = min(b[1] for b in bounds)
     maxx = max(b[2] for b in bounds)
     maxy = max(b[3] for b in bounds)
-    width_m = max(maxx - minx, 0.01)
-    height_m = max(maxy - miny, 0.01)
-
-    avail_w = _VIEWBOX_W - 2 * _VIEWBOX_MARGIN
-    avail_h = _VIEWBOX_H - 2 * _VIEWBOX_MARGIN
-    scale = min(avail_w / width_m, avail_h / height_m)
-    drawn_w = width_m * scale
-    drawn_h = height_m * scale
-    offset_x = (_VIEWBOX_W - drawn_w) / 2
-    offset_y = (_VIEWBOX_H - drawn_h) / 2
-
-    def to_screen(x: float, y: float) -> Tuple[float, float]:
-        return offset_x + (x - minx) * scale, offset_y + (maxy - y) * scale
+    to_screen, _scale, _offset_x, _offset_y = calcular_transformador_de_pantalla(minx, miny, maxx, maxy)
 
     parts = [f'<svg viewBox="0 0 {_VIEWBOX_W} {_VIEWBOX_H}" xmlns="http://www.w3.org/2000/svg">']
 
