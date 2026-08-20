@@ -92,6 +92,22 @@ def test_el_destino_no_puede_ser_el_origen(origen):
     assert resultado["pregunta"]
 
 
+# Mismo primitivo que usa la guarda real (`agente/herramientas/plano.py`,
+# `os.path.normcase`) para decidir si el sistema de ficheros distingue
+# mayúsculas de minúsculas -- no `sys.platform`, que sería un proxy más
+# burdo (hay Linux configurados sin distinguir, y el propio código no mira
+# la plataforma, mira esto).
+_FS_SENSIBLE_A_MAYUSCULAS = os.path.normcase("A") != os.path.normcase("a")
+
+
+@pytest.mark.skipif(
+    _FS_SENSIBLE_A_MAYUSCULAS,
+    reason="en un sistema de ficheros sensible a mayusculas (Linux, la "
+           "mayoria de CI) 'Plano.dxf' y 'plano.dxf' NO son el mismo "
+           "fichero -- la guarda (os.path.normcase) hace bien en no "
+           "fundirlos ahi. Este test comprueba el caso Windows/macOS "
+           "especificamente. Informe de test 2026-08-20, hallazgo 4.",
+)
 def test_el_destino_no_puede_ser_el_origen_con_otra_capitalizacion(origen):
     """En Windows `Plano.dxf` y `plano.dxf` son el mismo fichero, y comparar
     cadenas no lo detecta."""

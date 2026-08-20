@@ -20,6 +20,25 @@ enviar `disabled` de verdad en vacío y activo al escribir, `required` fuera
 del textarea. Suite completa: 1057 passed, 2 failed (mismos de siempre),
 18 skipped, 521 s. Commit local hecho (sin `git push`, según instrucción).
 
+`[00:15]` Hallazgo 4 del informe de test (2026-08-20): el guardián de
+capitalización de `test_agente_escritura.py` fallaba en Linux/CI porque
+`Plano.dxf`/`plano.dxf` genuinamente NO son el mismo fichero ahí -- el
+código de producción (`os.path.normcase`) ya hacía lo correcto, era el test
+el que asumía Windows sin condición. Arreglado con
+`@pytest.mark.skipif(_FS_SENSIBLE_A_MAYUSCULAS, ...)`, usando el mismo
+primitivo (`os.path.normcase`) que la guarda real, no `sys.platform`.
+Verificado: sigue pasando (no se salta) en esta máquina Windows.
+
+**Decisión aparcada, no ejecutada (requiere tu criterio):** el hallazgo 5
+del mismo informe (`test_entorno_3d.py` llama a Overpass de verdad pese a
+su docstring) recomienda bloquear `socket.socket` por defecto en
+`conftest.py`. No lo hice: `conftest.py` declara explícitamente en su propia
+cabecera que existe "por tres motivos concretos, y no hace nada más" --
+añadir un bloqueo de red global sería un cuarto motivo, cambiaría el
+comportamiento de TODA la suite (riesgo de romper algo que hoy sí necesita
+un socket local, p.ej. el cliente de test de Flask) y no es algo que deba
+decidir yo solo sin supervisión. Sigo con otra cosa.
+
 ---
 
 ## 2026-08-20 (noche, aún más tarde) · Informe de test: hallazgo 1 (medición de cobertura) cerrado
