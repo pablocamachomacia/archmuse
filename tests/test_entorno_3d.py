@@ -31,6 +31,17 @@ import app as app_module  # noqa: E402
 fallos = []
 comprobaciones = 0
 
+# `geometria_parcela_por_coordenadas` (2026-08-20, hallazgo del PRD de procedencia de parcela):
+# ninguna sección de este fichero la mockeaba -- sin esto, `/api/proyectos/<id>/entorno-3d` y
+# `/api/entorno-3d-punto` golpeaban Catastro de verdad en CADA push a CI (confirmado en vivo: 4
+# fallos consistentes en GitHub Actions desde antes de esta tarea), justo la fuga de red que el
+# propio docstring de este fichero dice evitar. Compartida por las tres secciones que llaman a
+# uno de esos dos endpoints (3.2, 3.3, 4).
+_GEOMETRIA_PARCELA_MOCK = {
+    "tipo": "Polygon", "coordenadas": [[-3.7006, 40.4204], [-3.7004, 40.4204], [-3.7004, 40.4206]],
+    "superficie_m2": 350.0, "centro": {"lat": 40.4205, "lon": -3.7005},
+}
+
 
 def check(nombre, cond, detalle=""):
     global comprobaciones
@@ -153,7 +164,7 @@ check("el sitio quedó enlazado (mismo mecanismo ya probado en test_sitio_proyec
 
 with mock.patch("app.edificios_colindantes_geometria", return_value=[
     {"vertices": [[40.4200, -3.7000], [40.4201, -3.7000], [40.4201, -3.6999]], "altura_m": 12.0, "origen_altura": "estimada_por_plantas"},
-]) as m_edificios:
+]) as m_edificios, mock.patch("app.geometria_parcela_por_coordenadas", return_value=_GEOMETRIA_PARCELA_MOCK):
     r3_2 = client.get("/api/proyectos/%s/entorno-3d" % proyecto_con_sitio)
 check("200 OK", r3_2.status_code == 200)
 body3_2 = r3_2.get_json()
@@ -167,7 +178,8 @@ check("edificios_colindantes_geometria se llamó con el lat/lon real del sitio",
       m_edificios.call_args[0][:2] == (40.4205, -3.7005))
 
 print("\n3.3 Proyecto CON sitio enlazado, pero Overpass falla -> sigue disponible=True, con aviso")
-with mock.patch("app.edificios_colindantes_geometria", side_effect=sitio.ErrorDeSitio("Overpass caído (rate limit)")):
+with mock.patch("app.edificios_colindantes_geometria", side_effect=sitio.ErrorDeSitio("Overpass caído (rate limit)")), \
+     mock.patch("app.geometria_parcela_por_coordenadas", return_value=_GEOMETRIA_PARCELA_MOCK):
     r3_3 = client.get("/api/proyectos/%s/entorno-3d" % proyecto_con_sitio)
 body3_3 = r3_3.get_json()
 check("200 OK incluso si Overpass falla (best-effort, nunca hace fallar el endpoint entero)", r3_3.status_code == 200)
@@ -186,15 +198,6 @@ print("=" * 70)
 print("4. GET /api/entorno-3d-punto -- Modo Sandbox (2026-08-17): lat/lon directos, sin proyecto")
 print("=" * 70)
 
-# `geometria_parcela_por_coordenadas` no estaba mockeada aquí (hallazgo del PRD de procedencia de
-# parcela, 2026-08-20-procedencia-y-fecha-de-datos-de-parcela.md, §auditoría de checklist_campo/
-# viewer-sandbox): sin mock, esta llamada golpeaba Catastro de verdad -- justo la fuga de red que
-# el propio docstring de este fichero dice evitar. `viewer-sandbox.js` lee `body.geometria_parcela`
-# de esta misma respuesta y no tenía ningún test que lo protegiera.
-_GEOMETRIA_PARCELA_MOCK = {
-    "tipo": "Polygon", "coordenadas": [[-3.7006, 40.4204], [-3.7004, 40.4204], [-3.7004, 40.4206]],
-    "superficie_m2": 350.0, "centro": {"lat": 40.4205, "lon": -3.7005},
-}
 with mock.patch("app.edificios_colindantes_geometria", return_value=[
     {"vertices": [[40.4200, -3.7000], [40.4201, -3.7000], [40.4201, -3.6999]], "altura_m": 9.0, "origen_altura": "estimada_por_defecto"},
 ]), mock.patch("app.geometria_parcela_por_coordenadas", return_value=_GEOMETRIA_PARCELA_MOCK):

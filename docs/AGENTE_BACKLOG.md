@@ -772,14 +772,16 @@ Cada objetivo lleva un veredicto. **No todos entran en el MVP, y decirlo es la m
 ## 12. Infraestructura y producto SaaS
 
 ### INF-1 · CI en GitHub Actions con la suite completa, y árbol limpio
-`P0` · `PARCIAL` · PRD: no · dep: — · ~1,5j
+`P0` · `PARCIAL, mucho más avanzada de lo que creía este backlog` · PRD: no · dep: — · ~1,5j
 
 - **Objetivo:** workflow que en cada push instale las dependencias fijadas y ejecute `pytest` entero (~8 min hoy), con marcador `lento` y un job nocturno para las pruebas que necesitan red, IA o el DXF real. Y de paso, lo que ensucia el clon: `JarvisApp.py` y su entorno a su propio repositorio; `cloudflared_tunnel.log` (731 KB), `flask*.log`, `venv/` y `.venv-jarvis/` fuera del árbol versionado.
 - **Valor para el arquitecto:** indirecto y enorme — 24.584 líneas de test que hoy solo corren cuando alguien se acuerda.
 - **Terminado cuando:** un PR con un umbral cambiado a mano pone CI en rojo, y un clon limpio instala y pasa la suite.
 - **Presupuestar que el primer arranque no sale verde** (rutas Windows, `\r\n`, `ifcopenshell`). Encontrar eso **es** el beneficio.
-- **Nota:** el fichero `.github/workflows/` ya existe sin ejecutar; requiere un push, que a día de hoy está excluido por la regla de no hacer commits.
-- **Cómo va (2026-08-19):** el árbol ya está limpio (`git ls-files` no tiene logs, ni `venv/`, ni Jarvis) y el workflow está escrito y revisado; se le ha añadido `MAPBOX_TOKEN` al job nocturno, que es donde vive la única llamada real al geocodificador nuevo de `TL-8`. **Bloqueado en el último paso, y no por una decisión de producto:** el criterio de terminado exige ver CI en verde, y eso exige un push. Con la regla de no hacer commits en vigor, esta tarea no puede cerrarse desde una sesión autónoma. Es lo primero que hay que hacer en cuanto se levante.
+- **Corrección importante (2026-08-20):** este backlog llevaba desde el 19-ago creyendo que `.github/workflows/` "existe sin ejecutar" y que la tarea estaba "bloqueada en el último paso... esperando un push". **Falso, verificado con `gh run list`:** el workflow lleva ejecutándose en CADA push desde al menos las 09:57 del 20-ago (ocho pushes de esta sesión, todos con la suite corriendo de verdad en Linux) -- **y todos en rojo, sin que nadie lo hubiera mirado.** Nadie comprobó el estado real; el backlog describía una tarea bloqueada que en realidad llevaba horas produciendo señal, ignorada.
+- **Lo que estaba rojo de verdad, encontrado y arreglado el mismo día (2026-08-20):** `tests/test_entorno_3d.py` no mockeaba `geometria_parcela_por_coordenadas` en ninguna de sus tres secciones que la disparan (3.2, 3.3, 4) -- en CI (con salida a internet real, a diferencia de este entorno de desarrollo) eso golpeaba Catastro de verdad en cada push, con fallos intermitentes según cómo respondiera la red esa vez. Arreglado con mocks explícitos en las tres secciones. El guardián de capitalización (hallazgo 4 del informe de test) también estaba fallando en CI (Linux, sensible a mayúsculas) hasta el `skipif` de esta misma sesión.
+- **Estado real tras arreglar ambos:** CI pasa **exactamente igual que en local** -- 2 fallos, los mismos dos guardianes C4 deliberados (`assert 13 <= 12`, ver `D-12`), que están rojos A PROPÓSITO hasta que Pablo decida el techo. No es un fallo de infraestructura: es la señal que ese guardián existe para dar.
+- **Lo que queda, y es una decisión de Pablo, no técnica:** ¿el criterio de "terminado" de esta tarea exige status verde LITERAL (lo que obligaría a marcar los guardianes C4 como `xfail` esperado, ocultando la cuenta atrás de D-12 dentro de CI), o el criterio real es "sin fallos que no sean los ya conocidos y deliberados" (que es donde está hoy)? No se decide aquí -- tocar cómo CI trata un guardián de C4 es territorio de D-12, fuera de alcance sin su decisión explícita.
 
 ### INF-2 · Postgres: el esquema mínimo del vertical
 `P0` · `PENDIENTE` · PRD: no · dep: — · ~2j

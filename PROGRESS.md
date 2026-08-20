@@ -59,6 +59,23 @@ la firma y del único call site. Suite completa: 1065 passed (mismo número
 que antes -- es refactor puro, sin tests nuevos), 2 failed (mismos guardianes
 C4), 18 skipped, 580s. `REFACTOR_MASTERPLAN.md` actualizado.
 
+**Después del push que pediste, hallazgo grande al mirar INF-1 (CI en
+GitHub Actions):** el backlog llevaba desde el 19-ago creyendo que el
+workflow "existe sin ejecutar". Falso -- comprobado con `gh run list`:
+lleva corriendo en CADA push de esta sesión desde las 09:57, **en rojo,
+sin que nadie lo hubiera mirado**. La causa real: `tests/test_entorno_3d.py`
+no mockeaba `geometria_parcela_por_coordenadas` en tres de sus secciones
+(3.2, 3.3, 4 -- solo arreglé la 4 en el commit de Fase A) y golpeaba
+Catastro de verdad en CI (que sí tiene salida a internet, a diferencia de
+este entorno de desarrollo). Arreglado en las tres. Verificado con `gh run
+view` sobre el último push: **2 fallos, los mismos dos guardianes C4 de
+siempre** -- ya no hay ninguna señal espuria. `docs/AGENTE_BACKLOG.md`
+(INF-1) corregido con el detalle completo, incluida la pregunta que dejo
+para Pablo: si "terminado" exige status verde literal (lo que pediría
+marcar los guardianes C4 como `xfail`, tocando cómo CI trata D-12) o si
+el criterio real ya está cumplido tal como está. No lo decido -- es
+territorio C4.
+
 **Verificado:** suite completa 1065 passed (+8 desde el baseline de la
 tarea anterior), 2 failed (mismos guardianes C4 de siempre), 18 skipped,
 581s. Tests nuevos: `test_checklist_campo.py` (7), extensión de
