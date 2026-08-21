@@ -3306,6 +3306,14 @@ class RoomOverlapResult:
     # agrupador colado como habitación.
     overlap_pct_menor: float
     passed: bool = False
+    #: Las `Room` implicadas, para quien necesite su geometría (p. ej.
+    #: `analyzer/coherencia.py` para resolver el bbox del hallazgo) sin tener
+    #: que volver a buscarlas por etiqueta -- ambigüo cuando el rótulo se
+    #: repite, que es justo lo que `ETIQUETA_DUPLICADA` vigila. `None` no
+    #: rompe a nadie: son campos nuevos con default, y nada fuera de este
+    #: módulo construye un `RoomOverlapResult` (verificado).
+    room_a: Optional[Room] = None
+    room_b: Optional[Room] = None
 
     @property
     def room_label(self) -> str:
@@ -3345,6 +3353,8 @@ def evaluate_room_overlap(units: List[Unit]) -> List[RoomOverlapResult]:
                         room_b_label=b.label or "(sin etiqueta)",
                         overlap_m2=overlap,
                         overlap_pct_menor=(overlap / menor * 100) if menor > 0 else 0.0,
+                        room_a=a,
+                        room_b=b,
                     )
                 )
     return results

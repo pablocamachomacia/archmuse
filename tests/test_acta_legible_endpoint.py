@@ -95,15 +95,18 @@ def test_el_endpoint_devuelve_html_con_el_caso_real_renderizado(client, dxf_byte
     assert "<details class='limitacion'>" in html
 
     # El caso conocido lleva su explicación en lenguaje llano Y su cifra --
-    # no el TODO genérico que sí deben llevar el resto de limitaciones.
+    # no el "pendiente de explicar" genérico que sí deben llevar el resto de
+    # limitaciones.
     assert "class='porque'" in html
     assert "class='cifra'" in html
     assert "2,00 m²" in html  # la cifra de mentira del DXF sintético, no 7,08 (real, no commiteado)
 
     # Sigue habiendo pendientes explícitos: no se ha inventado una
     # explicación para las limitaciones sin caso real, ni aquí ni al pasar
-    # por HTTP.
-    assert "class='todo'" in html
+    # por HTTP. (2026-08-21: la etiqueta ya no dice "TODO" -- ver
+    # tests/test_acta_legible_coherencia.py -- pero el `<div class='pendiente'>`
+    # que marca el caso sin explicar sigue ahí.)
+    assert "class='pendiente'" in html
 
 
 def test_el_endpoint_no_deja_ningun_desplegable_vacio(client, dxf_bytes):

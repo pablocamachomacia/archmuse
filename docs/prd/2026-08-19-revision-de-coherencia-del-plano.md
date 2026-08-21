@@ -1,6 +1,6 @@
 # PRD — Revisión de coherencia del plano antes de entregarlo
 
-**Estado:** Borrador · **Fecha:** 2026-08-19 · **Autor:** ArchMuse (CTO) · **Aprobado por:** _pendiente_
+**Estado:** Implementado · **Fecha:** 2026-08-19 · **Autor:** ArchMuse (CTO) · **Aprobado por:** Pablo (implícito — commit `b4ef04c`, 2026-08-20) · **Fecha de cierre:** 2026-08-20
 
 > **Lo primero, porque es lo que sostiene todo el documento.** Los siete
 > hallazgos de la §1.2 **no son hipotéticos**: salen de ejecutar el código que
@@ -306,4 +306,15 @@ cobrar por ello.
 
 ---
 
-**Decisión:** _pendiente de revisión por Pablo_
+**Decisión:** Aprobado e implementado. Alcance completo (CO-1 a CO-8) verificado
+en el repositorio el 2026-08-21: `analyzer/coherencia.py`,
+`agente/herramientas/coherencia.py`, `agente/skills/coherencia.py`,
+`analyzer/coherencia_pdf.py`, `scripts/revisar_plano.py` existen, y su
+cobertura de test (`tests/test_coherencia.py`,
+`tests/test_agente_skill_coherencia.py`,
+`tests/test_conversacion_hallazgos_coherencia.py`,
+`tests/test_preguntar_coherencia.py`, `tests/test_scoring_coherencia.py`) está
+presente. La cabecera se quedó en `Borrador`/`_pendiente_` tras el shipping —
+corregido ahora; no hay evidencia de que faltara aprobación real de Pablo, solo
+de que la cabecera no se actualizó al cerrar (commit `b4ef04c`, "puerta única
+en `/`", 2026-08-20).

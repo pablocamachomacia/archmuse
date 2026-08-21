@@ -52,6 +52,12 @@ PRODUCE = (
     "revision.recuento_por_tipo",
     "revision.comprobado",
     "revision.informe",
+    # `docs/prd/2026-08-21-ubicacion-hallazgos-visor2d.md` (UB-6, R-1): sin
+    # esta entrada, `recintos_geometria` existe en `Revision.a_dict()` pero
+    # muere aquí -- `agente/acta.py:levantar()` sólo copia lo que llegue como
+    # `Afirmacion`, no reconstruye nada a partir del dict crudo de la
+    # capacidad. Mismo patrón que las 5 entradas de arriba, no uno nuevo.
+    "revision.recintos_geometria",
 )
 
 
@@ -97,6 +103,9 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
             fuente=ctx.firma),
         "revision.comprobado": calculo("revision.comprobado",
                                        revision.get("comprobado") or [], fuente=ctx.firma),
+        "revision.recintos_geometria": calculo(
+            "revision.recintos_geometria", revision.get("recintos_geometria") or [],
+            fuente=ctx.firma),
     }
 
     # --- 2. El documento que el arquitecto se lleva ------------------------

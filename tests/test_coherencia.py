@@ -444,3 +444,150 @@ def test_con_varias_viviendas_el_cuadro_no_se_cruza_y_se_dice_por_que(tmp_path, 
                  coherencia.PIEZA_DIBUJADA_FUERA_DEL_CUADRO,
                  coherencia.RECUENTO_NO_COINCIDE):
         assert tipo not in tipos(revision)
+
+
+# --- 8. Ubicación estructurada de hallazgos ------------------------------
+#
+# `docs/prd/2026-08-21-ubicacion-hallazgos-visor2d.md`. Contrato de datos para
+# un futuro visor 2D con zoom-to-hallazgo -- sin SVG ni frontend aquí, sólo el
+# `bbox` en `Hallazgo.ubicacion` y los polígonos en
+# `Revision.a_dict()["recintos_geometria"]`. Regla dura: sin geometría real y
+# verificable, `ubicacion` es `None` -- nunca un bbox aproximado.
+
+def _bbox(h):
+    return h.ubicacion["bbox"] if h.ubicacion else None
+
+
+def test_ubicacion_por_defecto_es_none():
+    """Compatibilidad: cualquier sitio que construya un `Hallazgo` sin pasar
+    `ubicacion` sigue funcionando igual que antes de este PRD."""
+    h = coherencia.Hallazgo(tipo=coherencia.SIN_RECINTOS, descripcion="x", entidad="y")
+    assert h.ubicacion is None
+    assert h.a_dict()["ubicacion"] is None
+
+
+def test_solape_trae_el_bbox_union_de_las_dos_piezas(tmp_path):
+    revision = revisar([
+        ("Salon", (0.0, 0.0), (4.0, 3.0)),
+        ("Terraza", (3.0, 0.0), (6.0, 2.0)),
+    ], tmp_path)
+    solape = next(h for h in revision.hallazgos if h.tipo == coherencia.SOLAPE)
+    assert _bbox(solape) == pytest.approx([0.0, 0.0, 6.0, 3.0], abs=0.01)
+
+
+def test_recinto_sin_etiqueta_trae_el_bbox_de_la_pieza(tmp_path):
+    revision = revisar([
+        ("Salon", (0.0, 0.0), (4.0, 3.0)),
+        ("", (6.0, 0.0), (8.0, 2.0)),
+    ], tmp_path)
+    h = next(h for h in revision.hallazgos if h.tipo == coherencia.RECINTO_SIN_ETIQUETA)
+    assert _bbox(h) == pytest.approx([6.0, 0.0, 8.0, 2.0], abs=0.01)
+
+
+def test_etiqueta_duplicada_trae_el_bbox_union_de_las_dos_piezas(tmp_path):
+    revision = revisar([
+        ("Tendedero", (0.0, 0.0), (2.0, 2.0)),
+        ("Tendedero", (5.0, 0.0), (8.0, 2.0)),
+    ], tmp_path)
+    h = next(h for h in revision.hallazgos if h.tipo == coherencia.ETIQUETA_DUPLICADA)
+    assert _bbox(h) == pytest.approx([0.0, 0.0, 8.0, 2.0], abs=0.01)
+
+
+def test_polilinea_mal_cerrada_trae_el_bbox_por_handle(tmp_path):
+    """Regla del PRD (R-4): el bbox por `handle` sale en unidades de dibujo
+    crudas y hay que escalarlo -- este test lo comprueba comparando contra el
+    bbox esperado ya en metros, no sólo comprobando que no es `None`."""
+    revision = revisar([
+        ("Salon", (0.0, 0.0), (4.0, 3.0)),
+        ("Cocina", (5.0, 0.0), (8.0, 3.0)),
+        ("Dormitorio 1", (0.0, 5.0), (4.0, 8.0)),
+        ("Aseo", (6.0, 5.0), (8.0, 7.0)),
+    ], tmp_path, cerradas=[True, True, True, False])
+    h = next(h for h in revision.hallazgos if h.tipo == coherencia.POLILINEA_MAL_CERRADA)
+    assert _bbox(h) == pytest.approx([6.0, 5.0, 8.0, 7.0], abs=0.01)
+
+
+def test_geometria_descartada_trae_el_bbox_por_handle_aunque_el_poligono_sea_invalido():
+    """El bbox de `ezdxf.bbox.extents` viene de los vértices del DXF, no de
+    validar el polígono con Shapely -- por eso resuelve incluso para la
+    geometría que Shapely rechaza (la razón misma de que el hallazgo exista)."""
+    import ezdxf
+
+    from analyzer import parser
+
+    doc = ezdxf.new("R2010")
+    doc.header["$INSUNITS"] = 6
+    msp = doc.modelspace()
+    # Autointersecante (pajarita): GEOMETRIA_INVALIDA en la capa AM_UTIL_INT,
+    # que sí valida (a diferencia del modo heredado, ver `test_capas_am.py`).
+    msp.add_lwpolyline([(0, 0), (4, 4), (4, 0), (0, 4)], close=True,
+                       dxfattribs={"layer": parser.CAPA_UTIL_INTERIOR})
+
+    revision = coherencia.revisar(doc, factor_escala=1.0)
+    h = next(h for h in revision.hallazgos if h.tipo == coherencia.GEOMETRIA_DESCARTADA)
+    assert _bbox(h) == pytest.approx([0.0, 0.0, 4.0, 4.0], abs=0.01)
+
+
+def test_handle_sin_resolver_o_ausente_da_none():
+    """Un `handle` que no existe en el `doc`, o que no hay, no puede tumbar la
+    revisión ni inventar un bbox: `None`, sin excepción."""
+    import ezdxf
+
+    doc = ezdxf.new("R2010")
+    assert coherencia._bbox_por_handle(doc, "FFFFFF", 1.0) is None
+    assert coherencia._bbox_por_handle(doc, None, 1.0) is None
+    assert coherencia._bbox_por_handle(None, "cualquiera", 1.0) is None
+
+
+def test_sin_recintos_no_lleva_ubicacion_y_la_geometria_sale_vacia():
+    """`AM_UTIL_INT` presente pero sin ningún polígono válido: `SIN_RECINTOS`
+    (ver `parser.leer_plano`, "presente pero sin recintos válidos no es lo
+    mismo que ausente") con `ubicacion=None` y `recintos_geometria=[]`."""
+    import ezdxf
+
+    from analyzer import parser
+
+    doc = ezdxf.new("R2010")
+    doc.header["$INSUNITS"] = 6
+    msp = doc.modelspace()
+    msp.add_lwpolyline([(0, 0), (4, 4), (4, 0), (0, 4)], close=True,
+                       dxfattribs={"layer": parser.CAPA_UTIL_INTERIOR})
+
+    revision = coherencia.revisar(doc, factor_escala=1.0)
+    d = revision.a_dict()
+    sin_recintos = next(h for h in d["hallazgos"] if h["tipo"] == coherencia.SIN_RECINTOS)
+    assert sin_recintos["ubicacion"] is None
+    assert d["recintos_geometria"] == []
+
+
+@pytest.mark.parametrize("tipo_hallazgo, construir_hallazgos", [
+    (coherencia.CUADRO_PIDE_PIEZA_NO_DIBUJADA,
+     lambda: coherencia._cuadro_contra_dibujo([_Room("Salon")], _Cuadro(["salon", "pasillo"]))),
+    (coherencia.PIEZA_DIBUJADA_FUERA_DEL_CUADRO,
+     lambda: coherencia._cuadro_contra_dibujo(
+         [_Room("Salon"), _Room("Trastero")], _Cuadro(["salon"]))),
+    (coherencia.RECUENTO_NO_COINCIDE,
+     lambda: coherencia._cuadro_contra_dibujo(
+         [_Room("Tendedero"), _Room("Tendedero")], _Cuadro(["tendedero"]))),
+])
+def test_las_discrepancias_cuadro_dibujo_nunca_llevan_ubicacion(tipo_hallazgo, construir_hallazgos):
+    """Regla dura y sin excepción del PRD: aunque técnicamente haya geometría
+    cerca (p. ej. una pieza dibujada fuera del cuadro), estos cuatro tipos son
+    discrepancias de capa entera, no un punto del plano -- no se infiere nada."""
+    hallazgos = construir_hallazgos()
+    assert [h.tipo for h in hallazgos] == [tipo_hallazgo]
+    assert hallazgos[0].ubicacion is None
+
+
+def test_recintos_geometria_con_al_menos_dos_recintos(tmp_path):
+    revision = revisar([
+        ("Salon", (0.0, 0.0), (4.0, 3.0)),
+        ("Cocina", (4.0, 0.0), (7.0, 3.0)),
+    ], tmp_path)
+    geometria = revision.a_dict()["recintos_geometria"]
+    etiquetas = {r["label"] for r in geometria}
+    assert {"Salon", "Cocina"} <= etiquetas
+    for r in geometria:
+        assert r["layer"]
+        assert len(r["puntos"]) >= 4
+        assert all(len(p) == 2 for p in r["puntos"])

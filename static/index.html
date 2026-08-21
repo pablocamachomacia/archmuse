@@ -10,7 +10,7 @@
      tipografia que no cargaba sin internet. Regenerar con
      `python static/vendor/vendorizar.py`. -->
 <link rel="stylesheet" href="/vendor/fuentes/inter.css">
-<link rel="stylesheet" href="/style.css?v=20260817_apple_glass">
+<link rel="stylesheet" href="/style.css?v=20260821_saludo_repetido">
 </head>
 <body>
 <div id="app">
@@ -348,20 +348,42 @@
             <div class="conv-sugerencia-fantasma" id="conv-sugerencia-fantasma" aria-hidden="true"></div>
           </div>
           <input type="file" id="conv-dxf" accept=".dxf" hidden>
-          <button type="button" id="conv-btn-adjuntar" class="btn-ghost conv-btn-adjuntar">Adjuntar DXF</button>
+          <!-- Disparador visual únicamente (2026-08-21, encargo explícito de
+               Pablo): mismo id, mismo `click -> inputDxf.click()`, mismo
+               flujo de selección de DXF que llevaba "Adjuntar DXF" -- sólo
+               cambia el icono. `aria-label` conserva el texto para quien use
+               lector de pantalla; el "+" es sólo la representación visual.
+               A diferencia del botón de texto que sustituye, este SÍ está
+               visible en reposo (ver `.conv-main:not(.conv-activo)` en
+               style.css): el criterio de "trabajo real" que activa el resto
+               de la pantalla es distinto de "poder empezar a adjuntar". -->
+          <button type="button" id="conv-btn-adjuntar" class="conv-btn-adjuntar" aria-label="Adjuntar DXF" title="Adjuntar DXF">
+            <span aria-hidden="true">&#43;</span>
+          </button>
           <!-- Pulido (2026-08-20, "que se sienta como la interfaz de Claude"):
                sustituye a las dos tarjetas grandes + "En el mapa, todavía
-               no" de arriba. Mismo lenguaje visual que el selector de
-               modelo de Claude.ai -- un botón pequeño con el modo activo,
-               que despliega la lista al pulsarlo. El desplegable en sí es
-               `.shell-dropdown`, ya usado por los 5 menús de la barra
-               (wireShellMenu) -- no un componente nuevo, sólo un sitio
-               nuevo donde se abre (ver abrirConvModoDropdown en app.js).
-               `aria-haspopup`/`aria-expanded` mismo patrón que esos menús. -->
-          <button type="button" id="conv-modo-trigger" class="btn-ghost conv-modo-trigger"
-                  aria-haspopup="true" aria-expanded="false">
-            <span id="conv-modo-etiqueta">Medir superficies</span>
-            <span class="conv-modo-flecha" aria-hidden="true">&#9662;</span>
+               no" de arriba. El desplegable en sí es `.shell-dropdown`, ya
+               usado por los 5 menús de la barra (wireShellMenu) -- no un
+               componente nuevo, sólo un sitio nuevo donde se abre (ver
+               abrirConvModoDropdown en app.js). `aria-haspopup`/
+               `aria-expanded` mismo patrón que esos menús.
+
+               2026-08-21 (encargo explícito de Pablo, prioridad media): el
+               botón de texto completo ("Revisar coherencia ▾") ocupaba
+               espacio permanente en la barra con el nombre de la capacidad
+               activa. Pasa a icono discreto (⚙, mismo tamaño/forma que
+               `#conv-btn-adjuntar`) -- sigue abriendo el mismo
+               `.shell-dropdown` de siempre y sigue permitiendo elegir
+               "Revisar coherencia" explícitamente, sólo que sin el nombre
+               de la capacidad ocupando la barra. `renderConvModoTrigger()`
+               ya no escribe un `<span>` de texto visible: escribe
+               `title`/`aria-label` sobre el propio botón, así que el modo
+               activo sigue anunciado a quien use lector de pantalla o pase
+               el ratón por encima. -->
+          <button type="button" id="conv-modo-trigger" class="conv-modo-trigger"
+                  aria-haspopup="true" aria-expanded="false"
+                  aria-label="Elegir capacidad: Revisar coherencia" title="Elegir capacidad: Revisar coherencia">
+            <span aria-hidden="true">&#9881;</span>
           </button>
           <!-- Botón de enviar, sólo icono (petición explícita: "igual que el
                botón de envío de Claude.ai"). Apagado/gris con la caja vacía,
@@ -374,12 +396,23 @@
       </form>
 
       <!-- Barra de estado: SOLO hechos (nombre del fichero adjunto, si lo
-           hay, y el nombre de la Skill que atendería la pregunta) -- nunca
-           una cifra ni un check, ver renderConvAdjunto() en app.js. -->
+           hay) -- nunca una cifra ni un check, ver renderConvAdjunto() en
+           app.js.
+
+           2026-08-21 (hallazgo de Pablo, prioridad alta): el
+           `<span class="conv-statusbar-capacidad">` que vivía aquí
+           enseñaba los IDs internos de `_SKILLS_DISPONIBLES_PARA_PREGUNTAR`
+           tal cual ("superficies.medicion_de_planta ·
+           revision.coherencia_del_plano") a cualquier usuario real -- una
+           fuga de detalle interno, no un dato pensado para enseñarse. Se
+           retira sin más: no hay ningún flag de depuración en este
+           proyecto (Flask sirve `static/` como ficheros planos, sin
+           renderizado de plantillas -- ver `/api/config` en `app.py`), así
+           que "detrás de un DEBUG=true" habría exigido tocar el backend,
+           fuera de alcance de este cambio. -->
       <div class="conv-statusbar">
         <span class="conv-statusbar-dot" id="conv-statusbar-dot" aria-hidden="true"></span>
         <span class="conv-statusbar-proyecto" id="conv-statusbar-proyecto">Sin plano adjunto</span>
-        <span class="conv-statusbar-capacidad">superficies.medicion_de_planta · revision.coherencia_del_plano</span>
       </div>
     </div>
   </div>
@@ -401,7 +434,7 @@
   </div>
 </div>
 
-<script src="/app.js?v=20260817_sin_marketing"></script>
+<script src="/app.js?v=20260821_saludo_repetido"></script>
 <script src="/map-picker.js?v=20260817_invalidate_size"></script>
 <script src="/entrevista.js?v=20260817_referencia_catastral_sandbox"></script>
 

@@ -24,7 +24,13 @@ RAIZ = Path(__file__).resolve().parent.parent
 JS = (RAIZ / "static" / "app.js").read_text(encoding="utf-8")
 
 _INICIO = "var CONV_SALUDOS = ["
-_FIN = "\n\n  function convMensajeSaludo"
+# 2026-08-21: antes había un salto de línea en blanco justo delante de
+# `function convMensajeSaludo` (`\n\n  function...`) -- ese hueco ya no es
+# fiable como marcador: ahora puede haber un bloque de comentario entre
+# medias (ver el hallazgo de Pablo sobre el saludo repetido). Se ancla al
+# propio `function convMensajeSaludo(` en su lugar, que es único en el
+# fichero (comprobado) y no depende de cuánto comentario le precede.
+_FIN = "\n  function convMensajeSaludo("
 
 
 def _extraer_funcion_pura() -> str:

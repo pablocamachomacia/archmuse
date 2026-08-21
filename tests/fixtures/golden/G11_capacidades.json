@@ -114,6 +114,14 @@
         },
         "magnitud": 2.0,
         "tipo": "solape_entre_recintos",
+        "ubicacion": {
+          "bbox": [
+            0.0,
+            0.0,
+            6.0,
+            3.0
+          ]
+        },
         "unidad": "m2"
       },
       {
@@ -122,6 +130,14 @@
         },
         "magnitud": 0.0,
         "tipo": "polilinea_mal_cerrada",
+        "ubicacion": {
+          "bbox": [
+            7.0,
+            5.0,
+            9.0,
+            7.0
+          ]
+        },
         "unidad": "unidades de dibujo"
       },
       {
@@ -133,6 +149,14 @@
         },
         "magnitud": null,
         "tipo": "geometria_descartada",
+        "ubicacion": {
+          "bbox": [
+            7.0,
+            0.0,
+            9.0,
+            2.0
+          ]
+        },
         "unidad": ""
       },
       {
@@ -145,6 +169,14 @@
         },
         "magnitud": 2.0,
         "tipo": "etiqueta_duplicada",
+        "ubicacion": {
+          "bbox": [
+            0.0,
+            5.0,
+            5.0,
+            7.0
+          ]
+        },
         "unidad": "piezas"
       }
     ],
@@ -154,6 +186,138 @@
     ],
     "ok": true,
     "recintos": 5,
+    "recintos_geometria": [
+      {
+        "label": "Salon",
+        "layer": "00 areas",
+        "puntos": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            4.0,
+            0.0
+          ],
+          [
+            4.0,
+            3.0
+          ],
+          [
+            0.0,
+            3.0
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ]
+      },
+      {
+        "label": "Terraza",
+        "layer": "00 areas",
+        "puntos": [
+          [
+            3.0,
+            0.0
+          ],
+          [
+            6.0,
+            0.0
+          ],
+          [
+            6.0,
+            2.0
+          ],
+          [
+            3.0,
+            2.0
+          ],
+          [
+            3.0,
+            0.0
+          ]
+        ]
+      },
+      {
+        "label": "Tendedero",
+        "layer": "00 areas",
+        "puntos": [
+          [
+            0.0,
+            5.0
+          ],
+          [
+            2.0,
+            5.0
+          ],
+          [
+            2.0,
+            7.0
+          ],
+          [
+            0.0,
+            7.0
+          ],
+          [
+            0.0,
+            5.0
+          ]
+        ]
+      },
+      {
+        "label": "Tendedero",
+        "layer": "00 areas",
+        "puntos": [
+          [
+            3.0,
+            5.0
+          ],
+          [
+            5.0,
+            5.0
+          ],
+          [
+            5.0,
+            7.0
+          ],
+          [
+            3.0,
+            7.0
+          ],
+          [
+            3.0,
+            5.0
+          ]
+        ]
+      },
+      {
+        "label": "Bano",
+        "layer": "00 areas",
+        "puntos": [
+          [
+            7.0,
+            5.0
+          ],
+          [
+            9.0,
+            5.0
+          ],
+          [
+            9.0,
+            7.0
+          ],
+          [
+            7.0,
+            7.0
+          ],
+          [
+            7.0,
+            5.0
+          ]
+        ]
+      }
+    ],
     "recuento_por_tipo": {
       "etiqueta_duplicada": 1,
       "geometria_descartada": 1,

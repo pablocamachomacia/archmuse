@@ -3134,6 +3134,33 @@ def _revisar_coherencia_y_renderizar_acta(file, filename: str, capa: Optional[st
         quien=quien, autorizar_efectos=autorizar_efectos))
 
 
+def _coherencia_a_json(documento: dict) -> dict:
+    """El acta de coherencia (`Acta.a_dict()`, ya calculada por
+    `_revisar_coherencia_y_levantar_acta`) -> el subconjunto que un futuro
+    visor necesita, con los mismos nombres que ya usa `Revision.a_dict()`.
+
+    `docs/prd/2026-08-21-ubicacion-hallazgos-visor2d.md`, addendum Fase 2.
+    **Mapeo puro**: no abre ningún DXF, no importa `analyzer.coherencia` ni
+    `ezdxf`, no ejecuta nada -- sólo lee `documento["datos"]`, la misma lista
+    de Afirmaciones que ya consume `analyzer/acta_legible.py` para la vista
+    HTML. Si `revision.recintos_geometria` o `revision.hallazgos` no están
+    en el acta (p. ej. el procedimiento se cortó antes de producirlos, ver
+    `agente/skills/coherencia.py:_sin_hacer`), salen como lista vacía --
+    igual que hace `analyzer/acta_legible.py` con cualquier dato ausente, no
+    una excepción nueva para este camino.
+    """
+    por_nombre = {d.get("nombre"): d.get("valor") for d in documento.get("datos", ())}
+    hallazgos = por_nombre.get("revision.hallazgos") or []
+    return {
+        "recintos_geometria": por_nombre.get("revision.recintos_geometria") or [],
+        "hallazgos": [
+            {"tipo": h.get("tipo"), "descripcion": h.get("descripcion"),
+             "ubicacion": h.get("ubicacion")}
+            for h in hallazgos
+        ],
+    }
+
+
 def _respuesta_confirmacion_requerida(exc: "_ConfirmacionRequerida"):
     """`SEG-1`: la forma única en la que un efecto pendiente de autorización
     llega a la interfaz -- 428 (Precondition Required, no 400: no es un
@@ -3175,6 +3202,42 @@ def acta_legible_endpoint():
         return _respuesta_confirmacion_requerida(exc)
 
     return Response(pagina, mimetype="text/html")
+
+
+@app.route("/api/coherencia-datos", methods=["POST"])
+def coherencia_datos_endpoint():
+    """`docs/prd/2026-08-21-ubicacion-hallazgos-visor2d.md`, addendum Fase 2
+    -- el contrato de coherencia como JSON, para un futuro visor que ya sabe
+    qué capacidad quiere y no necesita que un LLM se lo confirme.
+
+    Mismo patrón que `acta_legible_endpoint`: valida la subida y le pasa el
+    trabajo a `_revisar_coherencia_y_levantar_acta` -- la MISMA función que
+    usa `/api/preguntar` para el camino HTML (`_revisar_coherencia_y_renderizar_acta`
+    la envuelve con `analyzer.acta_legible.render()`; aquí se envuelve con
+    `_coherencia_a_json` en su lugar). No hay `pregunta`, no hay clasificador
+    de intención, no hace falta `ANTHROPIC_API_KEY`.
+    """
+    file = request.files.get("dxf")
+    if file is None or file.filename == "":
+        return jsonify(error="Selecciona un archivo DXF antes de continuar."), 400
+    if not file.filename.lower().endswith(".dxf"):
+        return jsonify(error="El archivo debe tener extensión .dxf."), 400
+
+    filename = secure_filename(file.filename) or "plano.dxf"
+    capa = (request.form.get("capa") or "").strip() or None
+    factor_escala = factor_de_unidad(request.form.get("escala") or "")
+    autorizar_efectos = (request.form.get("autorizar_efectos") or "") == "1"
+
+    try:
+        documento = _revisar_coherencia_y_levantar_acta(
+            file, filename, capa, factor_escala,
+            quien="api:coherencia-datos", autorizar_efectos=autorizar_efectos)
+    except _FalloDeRevision as exc:
+        return jsonify(error=str(exc)), 400
+    except _ConfirmacionRequerida as exc:
+        return _respuesta_confirmacion_requerida(exc)
+
+    return jsonify(_coherencia_a_json(documento))
 
 
 @app.route("/api/memoria-superficies", methods=["POST"])

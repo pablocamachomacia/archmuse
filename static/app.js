@@ -5349,21 +5349,91 @@
   // proximamente`) para lo mismo. Ver HAZ #5 del encargo.
   var CONV_ROADMAP = ["Normativa (CTE)", "Presupuesto", "Geometría 3D"];
 
-  // Selector de modo (pulido 2026-08-20): las dos capacidades reales, en el
+  // Estados de progreso reales (2026-08-21, encargo explícito de Pablo:
+  // "estados de progreso reales, no inventados"). Cada frase de aquí abajo
+  // es una condensación de un paso concreto y verificable del
+  // `procedimiento` que la propia Skill declara en `agente/skills/*.py` --
+  // no una frase de relleno. La correspondencia, paso a paso:
+  //
+  //   agente/skills/coherencia.py:procedimiento          -> aquí
+  //   1. "Leer el plano comprobando la unidad..."        -> "Leyendo el plano y su unidad"
+  //   2. "Buscar recintos que se solapen..."              -> "Detectando recintos y solapes"
+  //   3+4. "Recoger los contornos... / Mirar los rótulos" -> "Comprobando rótulos y cuadro"
+  //   5. "Contrastar el cuadro de superficies..."          ->   (misma frase que arriba)
+  //   6+7. "Escribir el informe... / Declarar qué..."     -> "Redactando el acta"
+  //
+  //   agente/skills/medicion.py:procedimiento             -> aquí
+  //   1. "Leer el plano comprobando la unidad..."         -> "Leyendo el plano y su unidad"
+  //   2+3. "Separar las viviendas... / Auditar ese reparto" -> "Separando las viviendas"
+  //   4+5. "Medir cada recinto... / Cruzar la suma..."    -> "Midiendo cada recinto"
+  //   6+7. "Totalizar SOLO... / Entregar el documento..." -> "Redactando el informe"
+  //
+  // El primer paso es LITERALMENTE el mismo código en las dos Skills
+  // (`analyzer/parser.py:leer_plano`, invocado por las dos vía
+  // `plano.coherencia`/`plano.medicion_de_la_planta`) -- por eso comparten
+  // frase, no por descuido.
+  var CONV_FASES_PROGRESO = {
+    "revision.coherencia_del_plano": [
+      "Leyendo el plano y su unidad",
+      "Detectando recintos y solapes",
+      "Comprobando rótulos y cuadro",
+      "Redactando el acta"
+    ],
+    "superficies.medicion_de_planta": [
+      "Leyendo el plano y su unidad",
+      "Separando las viviendas",
+      "Midiendo cada recinto",
+      "Redactando el informe"
+    ]
+  };
+
+  // `/api/preguntar` clasifica la intención con el LLM DENTRO de la misma
+  // llamada que ejecuta la Skill (`_capacidad_que_coincide`, `app.py`) -- no
+  // hay ninguna forma de saber desde el frontend, con certeza, cuál de las
+  // dos va a ganar antes de que la respuesta entera vuelva. Esto es sólo
+  // una ESTIMACIÓN para decidir qué secuencia de fases enseñar mientras se
+  // espera -- nunca la fuente de verdad (esa sigue siendo 100% el LLM del
+  // backend) y nunca algo que se compare contra `r.json.capacidad` para
+  // "corregir" nada: si la estimación acierta, las fases que se han visto
+  // encajan con la Skill real; si falla, el usuario ha visto brevemente las
+  // fases de la Skill que NO ha sido, pero el resultado final -- lo único
+  // que se queda en la conversación -- es siempre el real, nunca afectado
+  // por esta estimación. Vocabulario tomado de `CONV_EJEMPLOS_COHERENCIA`/
+  // `CONV_EJEMPLOS` (arriba): las mismas palabras que ya se usan para
+  // sugerir preguntas de cada capacidad, no una lista nueva inventada aquí.
+  var CONV_PALABRAS_COHERENCIA = [
+    "solap", "coheren", "repetid", "duplicad", "cerrada", "cerrado", "entregar"
+  ];
+  function _convCapacidadProbable(pregunta) {
+    var t = (pregunta || "").toLowerCase();
+    var golpea = CONV_PALABRAS_COHERENCIA.some(function (p) { return t.indexOf(p) !== -1; });
+    return golpea ? "revision.coherencia_del_plano" : "superficies.medicion_de_planta";
+  }
+
+  // Selector de modo (pulido 2026-08-20): las capacidades reales, en el
   // mismo orden que llevaban las tarjetas que sustituye. El `id` es el
   // nombre real de la capacidad -- no un slug inventado -- para que quede
   // claro que esto es una etiqueta sobre algo que ya existe, no un catálogo
   // nuevo y paralelo.
+  //
+  // 2026-08-21 (encargo explícito de Pablo): "Medir superficies" sale de
+  // esta lista -- desaparece el atajo de botón, NO la capacidad. La Skill
+  // `superficies.medicion_de_planta` sigue registrada tal cual en
+  // `_SKILLS_DISPONIBLES_PARA_PREGUNTAR` (app.py) y se sigue invocando por
+  // clasificación de lenguaje natural en `/api/preguntar`, exactamente
+  // igual que antes -- lo único que cambia es que ya no tiene un atajo
+  // explícito aquí. `CONV_SUGERENCIAS_POR_CAPACIDAD`/`CONV_EJEMPLOS` (más
+  // abajo) tampoco se tocan: las sugerencias de medición se siguen
+  // ofreciendo igual, sólo que ya no hay un modo que las priorice primero.
   var CONV_MODOS = [
-    { id: "superficies.medicion_de_planta", label: "Medir superficies" },
     { id: "revision.coherencia_del_plano", label: "Revisar coherencia" }
   ];
 
   var convState = {
     archivoAdjunto: null,
-    // Petición de Pablo (2026-08-20): preseleccionado con "Medir
-    // superficies" al cargar, nunca vacío -- fidelidad con el selector de
-    // modelo de Claude.ai, que tampoco aparece nunca sin uno elegido.
+    // Preseleccionado con el único modo que queda, nunca vacío -- fidelidad
+    // con el selector de modelo de Claude.ai, que tampoco aparece nunca sin
+    // uno elegido.
     modoActivo: CONV_MODOS[0].id,
     // Últimos DXF adjuntados en ESTA sesión (noche 7): un navegador no
     // puede rastrear el disco por seguridad, así que "recordar" sólo puede
@@ -5375,7 +5445,14 @@
     // -- sólo para la sugerencia en línea, ver `convTarjetaHallazgo` y
     // `CONV_SUGERENCIAS_POR_CAPACIDAD`.
     ultimoContexto: null,
-    sugerenciaActual: null
+    sugerenciaActual: null,
+    // 2026-08-21 (hallazgo de Pablo): cuántos saludos se han atendido en
+    // ESTA sesión sin DXF adjunto -- memoria en la página, nunca
+    // persistida (se pierde al recargar, a propósito: el criterio de
+    // aceptación no pide que sobreviva). `convMensajeSaludo()` lo usa para
+    // no repetir la bienvenida completa verbatim en el segundo saludo y
+    // siguientes -- ver el comentario de esa función.
+    saludosSinAdjunto: 0
   };
 
   // Saludo o frase suelta, no una pregunta de medición (sesión 2026-08-19,
@@ -5416,11 +5493,31 @@
     });
   }
 
+  // 2026-08-21 (hallazgo de Pablo): antes, sin DXF adjunto, esta función
+  // devolvía SIEMPRE el mismo string fijo -- "hola", "hola" otra vez y "qué
+  // tal" (los tres saludos reales según `CONV_SALUDOS`) daban la bienvenida
+  // completa, palabra por palabra, las tres veces. No era un fallo de
+  // clasificación (`_convEsSaludo` acertaba las tres) -- faltaba memoria de
+  // que ya se había saludado. `convState.saludosSinAdjunto` (incrementado
+  // en `convEnviarPregunta`, justo antes de llamar aquí) es esa memoria:
+  // el primer saludo de la sesión trae la bienvenida de siempre, sin tocar
+  // ni una palabra; el segundo y siguientes, sin DXF todavía, traen un
+  // recordatorio corto en vez de repetirla. No es charla simulada -- sigue
+  // diciendo estrictamente "sin DXF, no puedo hacer nada todavía", sólo
+  // que no como un calco exacto cada vez.
+  //
+  // Con DXF adjunto la rama no cambia: siempre ha sido distinta ("ya tienes
+  // X adjunto"), y sigue siéndolo pase lo que pase con el contador de
+  // arriba -- ver `test_conversacion_saludo_repetido.py` para la
+  // transición saludo -> adjuntar DXF.
   function convMensajeSaludo() {
-    return convState.archivoAdjunto
-      ? "Hola, soy ArchMuse. Ya tienes " + convState.archivoAdjunto.name +
-        " adjunto -- ¿qué quieres que mida?"
-      : "Hola, soy ArchMuse. ¿Analizamos un plano? Adjunta un DXF y pregúntame lo que necesites medir.";
+    if (convState.archivoAdjunto) {
+      return "Hola, soy ArchMuse. Ya tienes " + convState.archivoAdjunto.name +
+        " adjunto -- ¿qué quieres que mida?";
+    }
+    return convState.saludosSinAdjunto <= 1
+      ? "Hola, soy ArchMuse. ¿Analizamos un plano? Adjunta un DXF y pregúntame lo que necesites medir."
+      : "Sigo sin plano que mirar -- adjunta el DXF cuando lo tengas.";
   }
 
   // Adjuntar hablando (sesión 2026-08-19, noche 7, petición directa de
@@ -5512,76 +5609,115 @@
     }
   }
 
-  // Selector de modo (pulido 2026-08-20, sustituye a las tarjetas + "En el
-  // mapa, todavía no"): mismo mecanismo visual que `.shell-dropdown`
-  // (wireShellMenu, más arriba en este fichero) -- se construye en JS y se
-  // añade a `document.body` con posición fija, en vez de vivir siempre en
-  // el DOM. No se reutiliza literalmente `openShellMenu`/`SHELL_ACTIONS`
-  // (esos están acoplados a los 5 triggers de la barra superior y a
-  // acciones globales por nombre); esto sólo necesita abrir/cerrar y
-  // recordar un `id` en `convState.modoActivo`, así que es más simple
-  // tener su propio mecanismo pequeño con las mismas clases CSS.
-  var convModoDropdownEl = null;
+  // Mecanismo genérico de desplegable pequeño para la barra de entrada:
+  // mismo lenguaje visual que `.shell-dropdown` (wireShellMenu, más arriba
+  // en este fichero) -- se construye en JS y se añade a `document.body` con
+  // posición fija, en vez de vivir siempre en el DOM. No se reutiliza
+  // literalmente `openShellMenu`/`SHELL_ACTIONS` (esos están acoplados a
+  // los 5 triggers de la barra superior y a acciones globales por nombre);
+  // esto sólo necesita abrir/cerrar sobre UN trigger cada vez.
+  //
+  // 2026-08-21 (encargo explícito de Pablo): generalizado desde lo que
+  // antes era sólo el selector de modo -- el botón "+" también necesita su
+  // propio desplegable ahora (adjuntar deja de invocar el selector de
+  // archivos del sistema directamente), y repetir el mismo bloque de
+  // abrir/cerrar/click-fuera/Escape una segunda vez habría sido la misma
+  // lógica copiada, no un mecanismo nuevo.
+  var _convDropdownAbiertoEl = null;
+  var _convDropdownAbiertoTriggerId = null;
 
-  function renderConvModoTrigger() {
-    var etiqueta = document.getElementById("conv-modo-etiqueta");
-    var modo = CONV_MODOS.filter(function (m) { return m.id === convState.modoActivo; })[0];
-    if (etiqueta && modo) etiqueta.textContent = modo.label;
-  }
-
-  function _convModoDropdownClickFuera(e) {
-    if (!convModoDropdownEl || convModoDropdownEl.contains(e.target)) return;
-    var trigger = document.getElementById("conv-modo-trigger");
+  function _convDropdownClickFuera(e) {
+    if (!_convDropdownAbiertoEl || _convDropdownAbiertoEl.contains(e.target)) return;
+    var trigger = _convDropdownAbiertoTriggerId && document.getElementById(_convDropdownAbiertoTriggerId);
     if (trigger && trigger.contains(e.target)) return; // el propio click del trigger lo gestiona su handler
-    cerrarConvModoDropdown();
+    cerrarConvDropdown();
   }
-  function _convModoDropdownEscape(e) {
-    if (e.key === "Escape") cerrarConvModoDropdown();
+  function _convDropdownEscape(e) {
+    if (e.key === "Escape") cerrarConvDropdown();
   }
 
-  function cerrarConvModoDropdown() {
-    if (!convModoDropdownEl) return;
-    convModoDropdownEl.remove();
-    convModoDropdownEl = null;
-    document.removeEventListener("click", _convModoDropdownClickFuera);
-    document.removeEventListener("keydown", _convModoDropdownEscape);
-    var trigger = document.getElementById("conv-modo-trigger");
+  // Para el toggle "click en el trigger ya abierto -> cerrar" que usan los
+  // dos triggers de abajo, sin exponer las variables privadas de arriba.
+  function _convDropdownEstaAbierto(triggerId) {
+    return !!_convDropdownAbiertoEl && _convDropdownAbiertoTriggerId === triggerId;
+  }
+
+  function cerrarConvDropdown() {
+    if (!_convDropdownAbiertoEl) return;
+    var triggerId = _convDropdownAbiertoTriggerId;
+    _convDropdownAbiertoEl.remove();
+    _convDropdownAbiertoEl = null;
+    _convDropdownAbiertoTriggerId = null;
+    document.removeEventListener("click", _convDropdownClickFuera);
+    document.removeEventListener("keydown", _convDropdownEscape);
+    var trigger = triggerId && document.getElementById(triggerId);
     if (trigger) trigger.setAttribute("aria-expanded", "false");
   }
 
-  // Sin icono a propósito (petición explícita: "nada de iconos en esa
-  // zona") -- sólo texto, la marca (✓) y, en las apagadas, la misma
-  // etiqueta `sidebar-badge-proximamente` de siempre. Las tres apagadas son
-  // `<button disabled>`: no disparan click, mismo criterio que ya tenían
-  // las tarjetas "próximamente" que sustituye.
-  function abrirConvModoDropdown() {
-    cerrarConvModoDropdown(); // salvaguarda: nunca dos abiertos a la vez (mismo criterio que closeShellMenu() al principio de openShellMenu())
-    var trigger = document.getElementById("conv-modo-trigger");
+  // `triggerId`: el botón junto al que se ancla. `itemsHtml`: el `innerHTML`
+  // ya construido (cada implementación decide su propio marcado de
+  // `.shell-dropdown-item`). `onClick`: el listener de click del propio
+  // desplegable -- quien lo pasa decide qué hacer con cada item y cuándo
+  // cerrar (normalmente llamando a `cerrarConvDropdown()` él mismo tras
+  // actuar).
+  function abrirConvDropdown(triggerId, itemsHtml, onClick) {
+    cerrarConvDropdown(); // salvaguarda: nunca dos abiertos a la vez (mismo criterio que closeShellMenu() al principio de openShellMenu())
+    var trigger = document.getElementById(triggerId);
     if (!trigger) return;
     var rect = trigger.getBoundingClientRect();
     var el = document.createElement("div");
     el.className = "shell-dropdown";
-    // Se abre HACIA ARRIBA: el trigger vive en la barra de entrada, al pie
-    // de la pantalla -- abrir hacia abajo lo sacaría del viewport. Ancla por
-    // la DERECHA del trigger, no por la izquierda: el trigger no vive pegado
-    // al borde de la pantalla (el botón de enviar va después), así que
-    // anclar por la izquierda podía sacar el desplegable (220-320px de
-    // ancho) del viewport en una ventana estrecha.
+    // Se abre HACIA ARRIBA: los triggers viven en la barra de entrada, al
+    // pie de la pantalla -- abrir hacia abajo los sacaría del viewport.
+    // Ancla por la DERECHA del trigger: ninguno de los dos vive pegado al
+    // borde de la pantalla, así que anclar por la izquierda podía sacar el
+    // desplegable (220-320px de ancho) del viewport en una ventana estrecha.
     el.style.bottom = (window.innerHeight - rect.top + 4) + "px";
     el.style.right = (window.innerWidth - rect.right) + "px";
-    el.innerHTML = CONV_MODOS.map(function (m) {
+    el.innerHTML = itemsHtml;
+    el.addEventListener("click", onClick);
+    document.body.appendChild(el);
+    _convDropdownAbiertoEl = el;
+    _convDropdownAbiertoTriggerId = triggerId;
+    trigger.setAttribute("aria-expanded", "true");
+    // El propio click que abre el desplegable no debe cerrarlo de
+    // inmediato al llegarle al listener de "fuera" -- se registra en el
+    // siguiente ciclo, después de que este click termine de propagarse.
+    setTimeout(function () {
+      document.addEventListener("click", _convDropdownClickFuera);
+      document.addEventListener("keydown", _convDropdownEscape);
+    }, 0);
+  }
+
+  // Selector de modo: ahora un icono (⚙, ver `static/index.html`), ya sin
+  // `<span>` de texto visible -- el modo activo se anuncia por
+  // `title`/`aria-label` sobre el propio botón, no por texto en pantalla.
+  //
+  // 2026-08-21 (encargo explícito de Pablo, prioridad media): las opciones
+  // "próximamente" (`CONV_ROADMAP`) se retiran de este desplegable -- deja
+  // de mostrarse ningún roadmap en la barra de entrada, el control de uso
+  // más frecuente de la pantalla. `CONV_ROADMAP` NO se borra del fichero:
+  // `convTarjetaFueraDeAlcance()` (más abajo) lo sigue usando en un sitio
+  // distinto (la respuesta "fuera de alcance hoy"), que el encargo no pidió
+  // tocar.
+  function renderConvModoTrigger() {
+    var trigger = document.getElementById("conv-modo-trigger");
+    var modo = CONV_MODOS.filter(function (m) { return m.id === convState.modoActivo; })[0];
+    if (!trigger || !modo) return;
+    var texto = "Elegir capacidad: " + modo.label;
+    trigger.title = texto;
+    trigger.setAttribute("aria-label", texto);
+  }
+
+  function abrirConvModoDropdown() {
+    var itemsHtml = CONV_MODOS.map(function (m) {
       var marca = m.id === convState.modoActivo ? "✓" : "";
       return '<button type="button" class="shell-dropdown-item" data-modo="' + m.id + '">' +
         '<span class="shell-dropdown-item-check">' + marca + "</span>" +
         '<span class="shell-dropdown-item-body"><span class="shell-dropdown-item-label">' +
         escapeHtml(m.label) + "</span></span></button>";
-    }).join("") + '<div class="shell-dropdown-sep"></div>' + CONV_ROADMAP.map(function (r) {
-      return '<button type="button" class="shell-dropdown-item" disabled>' +
-        '<span class="shell-dropdown-item-check"></span>' +
-        '<span class="shell-dropdown-item-body"><span class="shell-dropdown-item-label">' +
-        escapeHtml(r) + ' <span class="sidebar-badge-proximamente">próximamente</span></span></span></button>';
     }).join("");
-    el.addEventListener("click", function (e) {
+    abrirConvDropdown("conv-modo-trigger", itemsHtml, function (e) {
       var btn = e.target.closest("[data-modo]");
       if (!btn) return;
       convState.modoActivo = btn.dataset.modo;
@@ -5591,18 +5727,29 @@
       // pero no cambia nada"): el cambio de modo nunca disparaba un
       // repintado de la sugerencia, sólo de la etiqueta del botón.
       convActualizarSugerencia();
-      cerrarConvModoDropdown();
+      cerrarConvDropdown();
     });
-    document.body.appendChild(el);
-    convModoDropdownEl = el;
-    trigger.setAttribute("aria-expanded", "true");
-    // El propio click que abre el desplegable no debe cerrarlo de
-    // inmediato al llegarle al listener de "fuera" -- se registra en el
-    // siguiente ciclo, después de que este click termine de propagarse.
-    setTimeout(function () {
-      document.addEventListener("click", _convModoDropdownClickFuera);
-      document.addEventListener("keydown", _convModoDropdownEscape);
-    }, 0);
+  }
+
+  // Menú de adjuntar (2026-08-21, encargo explícito de Pablo, prioridad
+  // media): "+" ya no invoca el selector de archivos del sistema
+  // directamente -- despliega este menú propio primero (una sola opción
+  // hoy, "Adjuntar DXF"), y sólo AL ELEGIRLA se abre el selector nativo.
+  // Mismo mecanismo (`abrirConvDropdown`) que el selector de modo, sobre
+  // `#conv-btn-adjuntar` en vez de `#conv-modo-trigger`.
+  function abrirConvAdjuntarDropdown() {
+    var itemsHtml =
+      '<button type="button" class="shell-dropdown-item" data-accion="adjuntar-dxf">' +
+      '<span class="shell-dropdown-item-check"></span>' +
+      '<span class="shell-dropdown-item-body"><span class="shell-dropdown-item-label">' +
+      "Adjuntar DXF</span></span></button>";
+    abrirConvDropdown("conv-btn-adjuntar", itemsHtml, function (e) {
+      var btn = e.target.closest('[data-accion="adjuntar-dxf"]');
+      if (!btn) return;
+      cerrarConvDropdown();
+      var inputDxf = document.getElementById("conv-dxf");
+      if (inputDxf) inputDxf.click();
+    });
   }
 
   // El `<summary>` de cada `<details class="limitacion">` lleva la etiqueta
@@ -5655,15 +5802,64 @@
     return null;
   }
 
+  // Humaniza un `tipo` interno de hallazgo ("solape_entre_recintos") a
+  // texto legible ("Solape entre recintos") -- transformación de FORMATO
+  // pura (guión bajo -> espacio, mayúscula inicial), nunca una palabra
+  // nueva ni una reinterpretación de lo que el tipo significa.
+  function _convHumanizarTipo(tipo) {
+    var t = (tipo || "").replace(/_/g, " ");
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+
+  // Divide el `.dato` exacto que produce `_dato_revision_hallazgos()`
+  // (`analyzer/acta_legible.py`) -- "N hallazgo(s): tipo en entidad cifra;
+  // tipo en entidad cifra; ..." -- en sus piezas individuales, para poder
+  // pintar cada hallazgo en su propia fila en vez de un párrafo corrido.
+  // Ni se toca el formateador ni se recalcula nada: sólo se separa por ";"
+  // y por el " en " literal que el propio formateador ya pone entre tipo y
+  // entidad (`"%s en %s%s" % (tipo, entidad, cifra)`, ver esa función). Si
+  // el texto no encaja con el contrato (`_convHallazgosDesdeDatos` ya
+  // vigila el prefijo), se devuelve vacío -- nunca se inventa una fila.
+  function _convHallazgosPiezas(texto) {
+    var m = /^\d+ hallazgo\(s\): (.+)\.$/.exec(texto);
+    if (!m) return [];
+    return m[1].split("; ").map(function (pieza) {
+      var enIdx = pieza.indexOf(" en ");
+      return enIdx === -1
+        ? { tipo: _convHumanizarTipo(pieza), resto: "" }
+        : { tipo: _convHumanizarTipo(pieza.slice(0, enIdx)), resto: pieza.slice(enIdx + 4) };
+    });
+  }
+
+  // Mismo criterio sobre el `.dato` que produce `_dato_revision_comprobado()`
+  // -- "Comprobado: qué (para qué); qué (para qué)." -- exclusivo de
+  // `revision.coherencia_del_plano` (medición no produce este dato, ver
+  // `agente/skills/medicion.py:PRODUCE`): si el texto no aparece entre los
+  // `.dato` del acta, esta sección simplemente no se pinta, nunca se rellena
+  // con algo inventado para que medición "tenga lo mismo".
+  function _convComprobadoPiezas(texto) {
+    var m = /^Comprobado: (.+)\.$/.exec(texto);
+    if (!m) return [];
+    return m[1].split("; ").map(function (pieza) {
+      var mm = /^(.*) \((.*)\)$/.exec(pieza);
+      return mm ? { que: mm[1], para: mm[2] } : { que: pieza, para: "" };
+    });
+  }
+
   // Tarjeta de un hallazgo real: jerarquía "lo principal primero" (HAZ #3
-  // del encargo) -- el caso comprobado (si lo hay) es el titular, el resto
-  // de limitaciones (los "TODO, sin caso real" internos) quedan siempre
-  // detrás de un `<details>` cerrado, nunca visibles por defecto.
+  // del encargo, ampliada 2026-08-21) -- el caso comprobado (si lo hay) es
+  // el titular, cada hallazgo real es su propia fila (no un párrafo
+  // corrido), y "qué se ha comprobado"/"qué no" son secciones plegables
+  // propias -- el resto de limitaciones (los "TODO, sin caso real"
+  // internos) siguen detrás de un `<details>` cerrado, nunca visibles por
+  // defecto. Ni un dato nuevo: todo sale de `parsed`, que ya viene del
+  // mismo `htmlActa` que esta función recibía antes de este cambio.
   function convTarjetaHallazgo(capacidad, htmlActa) {
     var parsed = _convParsearActa(htmlActa);
     var comprobadas = parsed.limitaciones.filter(function (l) { return l.comprobado; });
     var pendientes = parsed.limitaciones.filter(function (l) { return !l.comprobado; });
     var hallazgosDatos = _convHallazgosDesdeDatos(parsed.datos);
+    var hallazgosPiezas = hallazgosDatos ? _convHallazgosPiezas(hallazgosDatos.texto) : [];
 
     var badge, titulo, cuerpo;
     if (comprobadas.length) {
@@ -5688,7 +5884,19 @@
       titulo = hallazgosDatos.n === 1
         ? "1 punto que conviene mirar en este plano"
         : hallazgosDatos.n + " puntos que conviene mirar en este plano";
-      cuerpo = '<p class="conv-cuerpo">' + escapeHtml(hallazgosDatos.texto) + "</p>";
+      // 2026-08-21 (encargo explícito): cada hallazgo, su propia fila --
+      // ya no el párrafo corrido de "tipo en entidad; tipo en entidad...".
+      // Si por lo que sea no se ha podido dividir (contrato de texto
+      // distinto al esperado), se cae al párrafo de siempre -- nunca una
+      // lista vacía en su lugar.
+      cuerpo = hallazgosPiezas.length
+        ? '<ul class="conv-hallazgos-lista">' + hallazgosPiezas.map(function (p) {
+            return '<li class="conv-hallazgo-fila"><span class="conv-hallazgo-tipo">' +
+              escapeHtml(p.tipo) + "</span>" +
+              (p.resto ? '<span class="conv-hallazgo-resto">' + escapeHtml(p.resto) + "</span>" : "") +
+              "</li>";
+          }).join("") + "</ul>"
+        : '<p class="conv-cuerpo">' + escapeHtml(hallazgosDatos.texto) + "</p>";
     } else {
       // Bloque 1 (2026-08-20): el título ya no puede decir "medición" a
       // secas -- con `revision.coherencia_del_plano` esta rama también se
@@ -5702,9 +5910,28 @@
       cuerpo = '<p class="conv-cuerpo">' + escapeHtml(parsed.datos.join(" ")) + "</p>";
     }
 
-    var etiquetaDetalle = pendientes.length
-      ? "Ver alcance completo de esta comprobación (" + pendientes.length + " punto(s) más, sin caso real todavía)"
-      : "Ver el acta de procedencia completa";
+    // 2026-08-21 (encargo explícito): "qué se ha comprobado" y "qué no" como
+    // secciones plegables propias, en vez de vivir sólo dentro del acta
+    // completa en el iframe. Mismos datos que ya traía `parsed` -- el
+    // `.dato` de "Comprobado: ..." (sólo coherencia, ver
+    // `_convComprobadoPiezas`) y los `pendientes` que ya se calculaban
+    // arriba para `etiquetaDetalle`.
+    var datoComprobado = parsed.datos.filter(function (d) { return /^Comprobado: /.test(d); })[0];
+    var comprobadoPiezas = datoComprobado ? _convComprobadoPiezas(datoComprobado) : [];
+    var seccionComprobado = comprobadoPiezas.length
+      ? '<details class="conv-detalle-seccion"><summary>Qué se ha comprobado (' +
+        comprobadoPiezas.length + ")</summary><ul class=\"conv-detalle-lista\">" +
+        comprobadoPiezas.map(function (c) {
+          return "<li><strong>" + escapeHtml(c.que) + "</strong>" +
+            (c.para ? " — " + escapeHtml(c.para) : "") + "</li>";
+        }).join("") + "</ul></details>"
+      : "";
+    var seccionNoComprobado = pendientes.length
+      ? '<details class="conv-detalle-seccion"><summary>Qué no se ha comprobado (' +
+        pendientes.length + ")</summary><ul class=\"conv-detalle-lista\">" +
+        pendientes.map(function (p) { return "<li>" + escapeHtml(p.texto) + "</li>"; }).join("") +
+        "</ul></details>"
+      : "";
 
     // Botón de la memoria (MJ-4, sesión 2026-08-19 noche 11): sólo cuando de
     // verdad hay algo que documentar -- mismo criterio que
@@ -5738,9 +5965,14 @@
         : "mide superficies, no dice si cumplen ningún mínimo normativo.") +
       "</p>";
 
+    // "Ver el acta de procedencia completa" ya no necesita decir "(N
+    // puntos más)" -- ese recuento ahora vive en `seccionNoComprobado`,
+    // arriba, como su propia lista. Nada se ha perdido, sólo cambiado de
+    // sitio: el iframe sigue trayendo el acta entera, con todo.
     return '<div class="conv-tarjeta">' + badge +
       '<h3 class="conv-titulo">' + titulo + "</h3>" + cuerpo + avisoNormativa +
-      '<details class="conv-detalle"><summary>' + escapeHtml(etiquetaDetalle) + "</summary>" +
+      seccionComprobado + seccionNoComprobado +
+      '<details class="conv-detalle"><summary>Ver el acta de procedencia completa</summary>' +
       '<iframe class="conv-acta-frame" title="Acta de procedencia completa"></iframe>' +
       "</details>" +
       botonMemoria +
@@ -6001,24 +6233,72 @@
     log.scrollTop = log.scrollHeight;
   }
 
+  // Progreso real mientras dura la llamada (2026-08-21, encargo explícito
+  // de Pablo): "Interpretando la pregunta…" es universal y cierta para
+  // cualquier Skill -- es literalmente lo primero que hace `/api/preguntar`
+  // (`_capacidad_que_coincide` en `app.py`), y por eso es la única fase que
+  // se muestra SIEMPRE, sin depender de ninguna estimación. A partir de ahí
+  // se avanza por `CONV_FASES_PROGRESO[_convCapacidadProbable(pregunta)]`
+  // (ver arriba, con su condena explícita: es una estimación, nunca la
+  // fuente de verdad). Sólo se llama desde el camino que SÍ toca la red
+  // (dentro de `convEnviarPregunta`, después de comprobar que hay
+  // `archivo`) -- las tres ramas que se resuelven sin backend (saludo,
+  // intención de adjuntar, sin DXF) nunca llegan aquí, así que nunca
+  // enseñan un progreso de una Skill que no se ha ejecutado.
+  //
+  // Devuelve `detener()`: limpia el intervalo Y quita el elemento del DOM.
+  // Se llama siempre al terminar la petición (éxito, error de la API, o
+  // fallo de red) -- nunca se deja el temporizador corriendo de fondo.
+  function _convIniciarProgreso(pregunta) {
+    var log = document.getElementById("conv-log");
+    var estado = document.createElement("div");
+    estado.className = "conv-estado";
+    estado.id = "conv-estado-actual";
+    estado.textContent = "Interpretando la pregunta…";
+    if (log) { log.appendChild(estado); log.scrollTop = log.scrollHeight; }
+
+    var fases = CONV_FASES_PROGRESO[_convCapacidadProbable(pregunta)];
+    var indice = -1; // -1 == todavía en "Interpretando la pregunta…"
+    var intervalo = setInterval(function () {
+      indice = Math.min(indice + 1, fases.length - 1);
+      estado.textContent = fases[indice] + "…";
+      // Reinicia la transición de aparición del texto en cada cambio de
+      // fase -- quitar y volver a poner la animación, forzando un reflow
+      // entre medias (`offsetHeight`), es el truco estándar para
+      // reiniciarla sin `classList.remove`/`add` en dos ciclos.
+      estado.style.animation = "none";
+      void estado.offsetHeight;
+      estado.style.animation = "";
+      if (log) log.scrollTop = log.scrollHeight;
+    }, 900);
+
+    return function detener() {
+      clearInterval(intervalo);
+      var actual = document.getElementById("conv-estado-actual");
+      if (actual) actual.remove();
+    };
+  }
+
   // Devuelve el nodo insertado -- quien llama rellena el `<iframe>` (si lo
   // hay) con `.srcdoc` como PROPIEDAD, nunca como atributo de la cadena de
   // HTML: evita cualquier problema de escapado del acta completa dentro de
-  // un atributo. La burbuja del asistente lleva su identidad encima en
-  // texto (`.conv-burbuja-marca`, "ArchMuse") -- logo + tipografía, nunca un
-  // avatar (PROHIBIDO del encargo).
+  // un atributo.
+  //
+  // 2026-08-21 (encargo explícito de Pablo): la burbuja del asistente ya no
+  // lleva la marca "ArchMuse" encima -- se retira el `<div
+  // class="conv-burbuja-marca">` entero, no sólo su texto, para que no
+  // quede un hueco vacío donde estaba (el espaciado que ese `<div>` reservaba
+  // se corrige en `.conv-respuesta` en `style.css`). Sigue sin haber ningún
+  // avatar (PROHIBIDO del encargo original) -- ahora la burbuja no lleva
+  // ninguna identidad visible encima, ni texto ni icono.
   function convAnadirRespuesta(htmlTarjeta) {
     var log = document.getElementById("conv-log");
     if (!log) return null;
     var fila = document.createElement("div");
     fila.className = "conv-fila conv-fila-asistente";
-    var marca = document.createElement("div");
-    marca.className = "conv-burbuja-marca";
-    marca.textContent = "ArchMuse";
     var envoltorio = document.createElement("div");
     envoltorio.className = "conv-respuesta";
     envoltorio.innerHTML = htmlTarjeta;
-    fila.appendChild(marca);
     fila.appendChild(envoltorio);
     log.appendChild(fila);
     log.scrollTop = log.scrollHeight;
@@ -6026,6 +6306,13 @@
   }
 
   function convEnviarPregunta(pregunta) {
+    // Enviar -- lo que sea que se envíe, incluido un saludo o una pregunta
+    // que se acabe bloqueando por falta de DXF -- es "trabajo real" tanto
+    // como adjuntar (2026-08-21, ver convActivar()). Esta función sólo se
+    // llama con `pregunta` ya no vacía (el `submit` y el click de un chip la
+    // comprueban antes), así que activar aquí, sin condición, es correcto
+    // en las cuatro ramas de abajo.
+    convActivar();
     var btn = document.getElementById("conv-btn-enviar");
     var textarea = document.getElementById("conv-pregunta");
     var archivo = convState.archivoAdjunto;
@@ -6035,6 +6322,12 @@
     // red: no hay nada que `/api/preguntar` pueda decidir sobre "hola".
     if (_convEsSaludo(pregunta)) {
       convAnadirFilaUsuario(pregunta, archivo ? archivo.name : null);
+      // 2026-08-21 (hallazgo de Pablo): se cuenta AQUÍ, no dentro de
+      // `convMensajeSaludo()` -- esa función se queda pura (sólo lee
+      // `convState`, no lo muta), más fácil de probar aislada en Node.
+      // Sólo cuenta sin DXF: con archivo adjunto ya hay una rama distinta
+      // en `convMensajeSaludo()` que no necesita este contador.
+      if (!archivo) convState.saludosSinAdjunto += 1;
       convAnadirRespuesta(convTarjetaSaludo(convMensajeSaludo()));
       if (textarea) textarea.value = "";
       convActualizarSugerencia();
@@ -6076,12 +6369,7 @@
     if (textarea) textarea.value = "";
     convActualizarSugerencia();
 
-    var log = document.getElementById("conv-log");
-    var estado = document.createElement("div");
-    estado.className = "conv-estado";
-    estado.id = "conv-estado-actual";
-    estado.textContent = "Interpretando la pregunta…";
-    if (log) { log.appendChild(estado); log.scrollTop = log.scrollHeight; }
+    var detenerProgreso = _convIniciarProgreso(pregunta);
 
     var formData = new FormData();
     formData.append("pregunta", pregunta);
@@ -6092,8 +6380,7 @@
         return resp.json().then(function (json) { return { ok: resp.ok, json: json }; });
       })
       .then(function (r) {
-        var actual = document.getElementById("conv-estado-actual");
-        if (actual) actual.remove();
+        detenerProgreso();
         if (!r.ok) {
           convAnadirRespuesta(convTarjetaError(r.json.error || "No se pudo atender la pregunta."));
           return;
@@ -6116,8 +6403,7 @@
         }
       })
       .catch(function (err) {
-        var actual = document.getElementById("conv-estado-actual");
-        if (actual) actual.remove();
+        detenerProgreso();
         if (err && err.cancelado) return; // el arquitecto dijo que no: nada que avisar
         convAnadirRespuesta(convTarjetaError("Error de red al atender la pregunta."));
       })
@@ -6127,16 +6413,22 @@
       });
   }
 
-  // Simplificación al máximo (2026-08-20): en reposo sólo se ve la caja
-  // de texto + el botón de enviar -- "Adjuntar DXF", el selector de modo
-  // y la barra de estado aparecen SOLO al interactuar (petición
-  // explícita). `.conv-activo` en `.conv-main` es ese interruptor, de un
-  // solo sentido: una vez que aparece no se vuelve a esconder en esta
-  // carga de página (parpadear cada vez que el textarea pierde el foco
-  // sería peor que dejarlo siempre visible a partir de ahí). Se dispara
-  // desde el foco/tecleo del textarea y desde adjuntar un archivo
-  // (`convAdjuntarArchivo`, más abajo) -- las dos formas reales de
-  // "empezar" que describe el encargo.
+  // Simplificación al máximo (2026-08-20; endurecido 2026-08-21, encargo
+  // explícito de Pablo): en reposo sólo se ve la caja de texto + el icono
+  // "+" + el botón de enviar -- el selector de modo y la barra de estado
+  // aparecen SOLO al interactuar. `.conv-activo` en `.conv-main` es ese
+  // interruptor, de un solo sentido: una vez que aparece no se vuelve a
+  // esconder en esta carga de página (parpadear cada vez que el textarea
+  // pierde el foco sería peor que dejarlo siempre visible a partir de ahí).
+  //
+  // 2026-08-21: se dispara EXCLUSIVAMENTE desde trabajo real -- adjuntar un
+  // archivo (`convAdjuntarArchivo`, más abajo) o enviar el primer mensaje
+  // (al principio de `convEnviarPregunta`, más abajo). Antes también se
+  // disparaba con el simple foco/click/tecleo en el textarea (`mousedown`/
+  // `keydown`/`input`) -- eso es justo el defecto que este encargo pide
+  // corregir: hacer click en la caja sin escribir ni adjuntar nada no es
+  // "trabajo real", y no debía moverla. Sólo enviar (aunque sea un saludo o
+  // una pregunta que luego se bloquee por falta de DXF) o adjuntar cuentan.
   function convActivar() {
     var main = document.querySelector(".conv-main");
     if (main) main.classList.add("conv-activo");
@@ -6191,7 +6483,7 @@
     // desplegable, dentro de `abrirConvModoDropdown()`.
     var modoTrigger = document.getElementById("conv-modo-trigger");
     if (modoTrigger) modoTrigger.addEventListener("click", function () {
-      if (convModoDropdownEl) { cerrarConvModoDropdown(); return; }
+      if (_convDropdownEstaAbierto("conv-modo-trigger")) { cerrarConvDropdown(); return; }
       abrirConvModoDropdown();
     });
 
@@ -6216,10 +6508,18 @@
       convActualizarSugerencia();
     }
 
+    // 2026-08-21 (encargo explícito de Pablo, prioridad media): "+" ya no
+    // abre `inputDxf` directamente -- despliega `abrirConvAdjuntarDropdown()`
+    // primero (mismo criterio de toggle que el selector de modo), y es esa
+    // función la que abre el selector nativo cuando se elige la única
+    // opción del menú.
     var btnAdjuntar = document.getElementById("conv-btn-adjuntar");
     var inputDxf = document.getElementById("conv-dxf");
     if (btnAdjuntar && inputDxf) {
-      btnAdjuntar.addEventListener("click", function () { inputDxf.click(); });
+      btnAdjuntar.addEventListener("click", function () {
+        if (_convDropdownEstaAbierto("conv-btn-adjuntar")) { cerrarConvDropdown(); return; }
+        abrirConvAdjuntarDropdown();
+      });
       inputDxf.addEventListener("change", function () {
         if (inputDxf.files && inputDxf.files[0]) convAdjuntarArchivo(inputDxf.files[0]);
       });
@@ -6310,21 +6610,17 @@
     // libre: el arquitecto ve lo que ha escrito entero.
     var textarea = document.getElementById("conv-pregunta");
     if (textarea) {
-      // "Empieza a escribir o interactuar" (encargo explícito): un click
-      // real en la caja ya cuenta, no hace falta esperar a la primera letra
-      // -- ver convActivar() al principio de este fichero. OJO: esto NO
-      // escucha el evento "focus" -- `abrirConversacion()` hace
-      // `textarea.focus()` mismo al cargar "/" (para dejar el cursor listo),
-      // y esa llamada programática dispara un "focus" tan real como el de
-      // un click de verdad (no hay forma fiable de distinguirlos por el
-      // propio evento). Enganchar convActivar() ahí activaría la pantalla
-      // entera en cuanto carga la página, para CUALQUIER visitante real --
-      // exactamente lo que este encargo pide evitar. "mousedown"/"keydown"
-      // sí son fiables: sólo el hardware real los dispara, nunca `.focus()`.
-      textarea.addEventListener("mousedown", convActivar);
-      textarea.addEventListener("keydown", convActivar);
+      // 2026-08-21 (encargo explícito de Pablo): el foco/click/tecleo en la
+      // caja YA NO activa la pantalla -- ni `mousedown`, ni `keydown`, ni
+      // este `input`. Escribir sin enviar tampoco cuenta como "trabajo
+      // real": sólo adjuntar (`convAdjuntarArchivo`) o enviar el primer
+      // mensaje (`convActivar()` al principio de `convEnviarPregunta`, más
+      // abajo) mueven la caja. Antes de este cambio, `abrirConversacion()`
+      // llamando a `textarea.focus()` al cargar "/" ya era la razón por la
+      // que `convActivar()` no podía engancharse al evento "focus" --
+      // seguirá sin poder, por el mismo motivo, si algún día vuelve a
+      // hacer falta distinguir un foco real de uno programático.
       textarea.addEventListener("input", function () {
-        convActivar();
         textarea.style.height = "auto";
         textarea.style.height = Math.min(textarea.scrollHeight, 160) + "px";
         convActualizarSugerencia();

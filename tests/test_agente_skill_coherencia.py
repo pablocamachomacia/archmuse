@@ -266,6 +266,79 @@ def test_no_se_sobrescribe_un_informe_anterior(tmp_path):
     assert segunda.resultado.preguntas
 
 
+# --- 6. Ubicación estructurada llega hasta el acta -----------------------
+#
+# `docs/prd/2026-08-21-ubicacion-hallazgos-visor2d.md`, UB-6 y R-1: sin este
+# cambio, `recintos_geometria` existía en `Revision.a_dict()` pero moría en el
+# paso a `afirmaciones` -- `agente/acta.py:levantar()` sólo copia lo que la
+# Skill entregó, no reconstruye nada del dict crudo de la capacidad. Este es
+# el test que blinda contra que ese hallazgo (R-1) vuelva a colarse sin que
+# nada lo avise.
+
+PIEZAS_CON_SOLAPE = (
+    ("Salon", (0.0, 0.0), (4.0, 3.0)),
+    ("Terraza", (3.0, 0.0), (6.0, 2.0)),   # se solapa con Salon
+    ("Dormitorio 1", (0.0, 5.0), (4.0, 8.0)),
+)
+
+
+def test_recintos_geometria_llega_a_la_afirmacion_de_la_skill(tmp_path):
+    """Nivel Skill: `ResultadoDeSkill.afirmaciones` (antes del acta)."""
+    ruta = construir(PIEZAS_LIMPIAS, destino=tmp_path)
+    destino = tmp_path / "informe.pdf"
+    salida = skill().ejecutar(contexto(
+        {"ruta_dxf": str(ruta), "ruta_informe": str(destino)}))
+
+    nombres = {a.nombre for a in salida.resultado.afirmaciones}
+    assert "revision.recintos_geometria" in nombres
+
+    geometria = next(a.valor for a in salida.resultado.afirmaciones
+                     if a.nombre == "revision.recintos_geometria")
+    assert len(geometria) == len(PIEZAS_LIMPIAS)
+    etiquetas = {r["label"] for r in geometria}
+    assert etiquetas == {"Salon", "Cocina", "Dormitorio 1"}
+    for r in geometria:
+        assert len(r["puntos"]) >= 4
+
+
+def test_ubicacion_y_recintos_geometria_llegan_hasta_el_acta(tmp_path):
+    """Nivel acta: el mismo camino que usa `app.py:_revisar_coherencia_y_levantar_acta`
+    (`Ejecutor` -> `agente.acta.levantar()` -> `Acta.a_dict()`). Comprueba que
+    ambos campos nuevos del PRD sobreviven hasta ahí -- no sólo que
+    `Revision.a_dict()` los traiga, que ya se prueba en `test_coherencia.py`.
+    """
+    from agente import acta as _acta
+    from agente.ejecucion import Ejecutor, Paso, Plan
+
+    ruta = construir(PIEZAS_CON_SOLAPE, destino=tmp_path)
+    destino = tmp_path / "informe.pdf"
+    capacidades = registro(recargar=True)
+    skills = registro_de_skills(recargar=True)
+    memoria = MemoriaDeProyecto("p-ubicacion", SustratoEnMemoria())
+    plan = Plan(
+        objetivo="Revisar la coherencia de un plano con solape",
+        proyecto_id=memoria.proyecto_id,
+        pasos=(Paso(id="revisar", skill=SKILL_ID,
+                    argumentos={"ruta_dxf": str(ruta), "ruta_informe": str(destino)}),),
+    )
+    resultado = Ejecutor(capacidades=capacidades, skills=skills).ejecutar(
+        plan, memoria, ejecucion_id="test-ubicacion", autorizaciones=PERMISO)
+
+    documento = _acta.levantar(resultado, capacidades=capacidades, skills=skills)
+    cuerpo = documento.a_dict()
+
+    dato_geometria = next(
+        (d for d in cuerpo["datos"] if d["nombre"] == "revision.recintos_geometria"), None)
+    assert dato_geometria is not None, (
+        "revision.recintos_geometria no ha llegado al acta -- ver UB-6 del PRD")
+    assert len(dato_geometria["valor"]) == len(PIEZAS_CON_SOLAPE)
+
+    dato_hallazgos = next(
+        d for d in cuerpo["datos"] if d["nombre"] == "revision.hallazgos")
+    solape = next(h for h in dato_hallazgos["valor"] if h["tipo"] == "solape_entre_recintos")
+    assert solape["ubicacion"] == {"bbox": [0.0, 0.0, 6.0, 3.0]}
+
+
 def test_las_dos_capacidades_devuelven_un_dict_con_ok_tambien_al_fallar():
     """El contrato de salida del registro, en el camino de fallo — que es el que
     se olvida."""

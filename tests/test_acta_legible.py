@@ -85,26 +85,38 @@ def test_todo_pendiente_declara_que_lo_es_y_no_inventa_un_porque(acta):
 
 def test_la_pagina_renderizada_no_deja_ningun_desplegable_vacio(acta):
     """El mismo criterio a nivel de HTML: cada `<details>` de limitación tiene
-    contenido detrás, sea la explicación o el TODO — nunca nada."""
+    contenido detrás, sea la explicación o el "pendiente de explicar" — nunca
+    nada.
+
+    2026-08-21 (hallazgo de Pablo): ya no es 1:1 con `no_comprobado` -- la
+    página deduplica las limitaciones que sólo difieren en el id interno que
+    las antepone (`agente/acta.py`, ver
+    `analyzer/acta_legible.py::_sin_prefijo_interno`). El invariante real es
+    "tantos bloques como textos únicos una vez quitado ese prefijo", no "tantos
+    como entradas trae `no_comprobado`" -- se recalcula con la propia función
+    de producción, nunca con un número fijo a mano."""
     pagina = acta_legible.render(acta)
 
     bloques = re.findall(r"<details class='limitacion'>.*?</details>", pagina, re.S)
     no_comprobado = acta.get("no_comprobado") or ()
-    assert len(bloques) == len(no_comprobado), (
-        "la página muestra %d limitaciones y el acta tiene %d"
-        % (len(bloques), len(no_comprobado)))
+    textos_unicos = list(dict.fromkeys(
+        acta_legible._sin_prefijo_interno(t) for t in no_comprobado))
+    assert len(bloques) == len(textos_unicos), (
+        "la página muestra %d limitaciones y hay %d textos únicos (de %d "
+        "entradas en no_comprobado)"
+        % (len(bloques), len(textos_unicos), len(no_comprobado)))
 
     for bloque in bloques:
         cuerpo = bloque[bloque.index("</summary>") + len("</summary>"):-len("</details>")]
         assert cuerpo.strip(), "un desplegable de limitación no tiene nada dentro: %s" % bloque[:120]
         tiene_porque = "class='porque'" in cuerpo
-        tiene_todo = "class='todo'" in cuerpo
-        assert tiene_porque or tiene_todo, (
-            "el desplegable no muestra ni una explicación ni un TODO: %s" % bloque[:200])
+        tiene_pendiente = "class='pendiente'" in cuerpo
+        assert tiene_porque or tiene_pendiente, (
+            "el desplegable no muestra ni una explicación ni un pendiente: %s" % bloque[:200])
         # Y nunca las dos cosas a la vez: mezclar "aquí está el porqué" con
         # "esto está pendiente" en el mismo bloque sería peor que cualquiera
         # de las dos por separado.
-        assert not (tiene_porque and tiene_todo)
+        assert not (tiene_porque and tiene_pendiente)
 
 
 #: Marcas que sólo pueden aparecer si el renderizador ha vuelto a hacer
@@ -236,6 +248,32 @@ def test_el_renderizador_no_recalcula_nada_de_la_skill():
         assert prohibido not in fuente, (
             "analyzer/acta_legible.py parece recalcular en vez de sólo presentar "
             "(encontrado: %r)" % prohibido)
+
+
+def test_el_fallback_generico_nunca_filtra_el_nombre_interno_del_campo():
+    """2026-08-21, hallazgo de Pablo verificando la demo contra `v2s.dxf`:
+    `revision.recintos_geometria` no tiene formateador propio a propósito
+    (fuera de alcance del PRD que lo introdujo) y caía al genérico, que
+    hasta hoy escribía el `nombre` interno tal cual --
+    "sin traducción específica todavía para «revision.recintos_geometria»"--
+    en la vista en pantalla. Un identificador con puntos/snake_case no es
+    español llano, es fuga de detalle interno, aunque el resto de la frase
+    sea honesto (sigue siendo cierto: NO hay descripción detallada). Se
+    prueba `_formatear_dato` directamente, sin pasar por una Skill real --
+    es la función que decide, y cualquier `nombre` futuro sin formateador
+    tiene que quedar cubierto, no sólo el de hoy."""
+    for nombre in ("revision.recintos_geometria", "medicion.algo_que_no_existe_todavia",
+                  "otro.campo.con.puntos"):
+        texto_lista = acta_legible._formatear_dato(nombre, [1, 2, 3])
+        texto_dict = acta_legible._formatear_dato(nombre, {"a": 1})
+        for texto in (texto_lista, texto_dict):
+            assert nombre not in texto, (
+                "%r se filtra en %r" % (nombre, texto))
+            assert "«" not in texto and "»" not in texto, (
+                "el fallback ya no debería necesitar comillas angulares "
+                "para citar un identificador interno (texto: %r)" % texto)
+    # Sigue siendo honesto -- no pretende tener una descripción que no tiene.
+    assert "sin descripci" in texto_lista.lower() or "sin descripci" in texto_dict.lower()
 
 
 if __name__ == "__main__":  # pragma: no cover

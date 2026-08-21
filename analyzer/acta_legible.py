@@ -12,10 +12,12 @@ visto bueno al lenguaje, con cabeza fresca, no esta noche). Ver
 número que aparece viene ya calculado en el `dict` de `Acta.a_dict()` — este
 fichero sólo decide cómo se presenta y, para las limitaciones de las que
 ArchMuse tiene un caso real probado, añade la explicación en lenguaje llano.
-Para las que no, lo dice: **pendiente**, con un TODO visible en la propia
-página, no con una frase genérica de relleno. Inventar un «porqué» para una
-limitación que nunca se ha visto disparar sería exactamente lo que el acta
-existe para evitar: una afirmación sin procedencia.
+Para las que no, lo dice: **pendiente de explicar**, en su propio
+desplegable, no con una frase genérica de relleno. Inventar un «porqué» para
+una limitación que nunca se ha visto disparar sería exactamente lo que el
+acta existe para evitar: una afirmación sin procedencia. (2026-08-21: la
+etiqueta decía antes literalmente "TODO · sin caso real" -- vocabulario de
+desarrollo, no de un arquitecto leyendo su acta; ver `_bloque_limitacion`.)
 
 **Los dos casos reales que hay hoy, y una corrección sobre uno de ellos.**
 `superficies.medicion_de_planta`, ejecutada contra el DXF real del cliente
@@ -322,17 +324,22 @@ def _formatear_dato(nombre: str, valor) -> str:
 
     Con `nombre` reconocido, hay una frase específica arriba. Sin él (dato
     futuro todavía sin traductor propio), cae aquí -- y aquí NUNCA se
-    imprime un dict/list de Python en crudo ni una ruta absoluta, aunque no
-    haya frase específica para ese dato todavía."""
+    imprime un dict/list de Python en crudo, una ruta absoluta, ni el
+    propio `nombre` interno del campo (2026-08-21, hallazgo de Pablo:
+    `revision.recintos_geometria`, sin formateador propio a propósito,
+    salía tal cual -- "«revision.recintos_geometria»» -- en la vista en
+    pantalla del acta; un identificador con puntos y snake_case no es
+    español llano, es fuga de detalle interno, aunque el resto de la
+    frase sea honesto). Sin frase específica para ese dato todavía."""
     formateador = _FORMATEADORES_DE_DATO.get(nombre)
     if formateador is not None:
         return formateador(valor)
     if isinstance(valor, str) and _PATRON_RUTA_ABSOLUTA.match(valor):
         return os.path.basename(valor)
     if isinstance(valor, (list, tuple)):
-        return "%d elemento(s) (sin traducción específica todavía para «%s»)." % (len(valor), nombre)
+        return "%d elemento(s) más registrados aquí, sin descripción detallada por ahora." % len(valor)
     if isinstance(valor, dict):
-        return "dato estructurado (sin traducción específica todavía para «%s»)." % nombre
+        return "Datos adicionales registrados aquí, sin descripción detallada por ahora."
     return str(valor)
 
 
@@ -366,15 +373,27 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: va
             padding: 1px 6px; margin-right: 8px; vertical-align: middle; }
 .etiqueta-comprobado { color: var(--ok); border: 1px solid var(--ok); background: rgba(78,161,114,.12); }
 .etiqueta-todo { color: var(--aviso); border: 1px solid var(--aviso); background: rgba(214,166,53,.10); }
-details.limitacion {
+details.limitacion, details.limitaciones-colapsadas {
   background: var(--panel); border: 1px solid var(--borde); border-radius: 7px;
   margin-bottom: 8px; padding: 10px 13px;
 }
-details.limitacion[open] { border-color: var(--acento); }
-details.limitacion summary { cursor: pointer; font-size: 13px; list-style: none; }
-details.limitacion summary::-webkit-details-marker { display: none; }
-details.limitacion summary::before { content: "▸ "; color: var(--tenue); }
-details.limitacion[open] summary::before { content: "▾ "; color: var(--acento); }
+details.limitacion[open], details.limitaciones-colapsadas[open] { border-color: var(--acento); }
+details.limitacion summary, details.limitaciones-colapsadas summary {
+  cursor: pointer; font-size: 13px; list-style: none;
+}
+details.limitacion summary::-webkit-details-marker,
+details.limitaciones-colapsadas summary::-webkit-details-marker { display: none; }
+details.limitacion summary::before, details.limitaciones-colapsadas summary::before {
+  content: "▸ "; color: var(--tenue);
+}
+details.limitacion[open] summary::before, details.limitaciones-colapsadas[open] summary::before {
+  content: "▾ "; color: var(--acento);
+}
+/* Los bloques anidados dentro de "ver más" no necesitan su propio margen
+   inferior de sobra ni volver a poner fondo/borde -- ya viven dentro del
+   envoltorio, que ya los tiene. */
+details.limitaciones-colapsadas details.limitacion { margin-top: 8px; margin-bottom: 0; }
+details.limitaciones-colapsadas details.limitacion:first-of-type { margin-top: 10px; }
 .porque { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--borde); font-size: 13px; }
 .cifra { display: inline-block; font-family: var(--mono); font-size: 12px; color: var(--acento);
          background: var(--panel-alto); border-radius: 4px; padding: 1px 7px; margin-top: 8px; }
@@ -421,36 +440,116 @@ def _bloque_entidad(entidades: Optional[list], *, hay_caso_real: bool) -> str:
     return "<div class='entidad entidad-vacia'>Pieza del DXF: %s.</div>" % _e(motivo)
 
 
+#: `agente/acta.py:_limitaciones_de`/`_limitaciones_de_capacidad` anteponen
+#: SIEMPRE "<id interno> no comprueba: " a cada limitación declarada por una
+#: Skill o por una capacidad que invoca (`"%s no comprueba: %s" % (id, l)`,
+#: contrato fijo -- no se ha tocado ahí). Un id con puntos/snake_case
+#: (`plano.coherencia`, `revision.coherencia_del_plano`...) no es español
+#: llano: es fuga de detalle interno. `[a-z][\w.]*` porque un id siempre
+#: empieza en minúscula -- una frase real ("«VT1/3» no lleva...") nunca
+#: encaja con esto, así que no hace falta distinguir el origen del texto
+#: aparte de intentar el patrón.
+_RE_LIMITACION_CON_PREFIJO_INTERNO = re.compile(r"^[a-z][\w.]*\.[a-z][\w.]* no comprueba: (.+)$")
+
+
+def _sin_prefijo_interno(texto: str) -> str:
+    """Quita el id interno que antepone `agente/acta.py` a cada limitación
+    declarada. Si `texto` no encaja con ese contrato exacto (un motivo
+    redactado a mano, sin ese prefijo -- p. ej. el "«VT1/3» no lleva..." de
+    medición), se devuelve tal cual: nunca se recorta a ciegas."""
+    m = _RE_LIMITACION_CON_PREFIJO_INTERNO.match(texto)
+    return m.group(1) if m else texto
+
+
+#: A partir de cuántos avisos "pendientes" (sin caso real, genéricos de la
+#: Skill) se colapsan los que sobran detrás de un "mostrar más" -- para que
+#: "Qué no se ha comprobado" no sea un muro de `<details>` cerrados uno
+#: detrás de otro cuando la mayoría dicen, en el fondo, "esto no se ha
+#: probado todavía", no algo específico de ESTE plano.
+_UMBRAL_PENDIENTES_VISIBLES = 4
+
+
+def _bloque_limitacion(texto: str, datos) -> str:
+    ficha = clasificar(texto, datos)
+    if ficha["tipo"] == "caso_conocido":
+        # Etiqueta visible en el `<summary>`, no sólo dentro del
+        # desplegable: tiene que distinguirse de un caso pendiente sin
+        # necesidad de abrirlo -- "de un vistazo".
+        etiqueta = "<span class='etiqueta etiqueta-comprobado'>Caso comprobado</span>"
+        cuerpo = (
+            "<div class='porque'>%s</div>"
+            "<div class='cifra'>%s</div>"
+            "%s"
+            % (_e(ficha["porque"]), _e(ficha["cifra"]),
+               _bloque_entidad(ficha["entidades"], hay_caso_real=True))
+        )
+    else:
+        # 2026-08-21 (hallazgo de Pablo, verificando la demo contra
+        # `v2s.dxf`): "TODO" y "sin caso real" son vocabulario interno de
+        # desarrollo, no de un arquitecto leyendo su acta -- no hay flag de
+        # depuración en este proyecto que los esconda detrás (haría falta
+        # tocar `app.py`/`/api/config`, fuera de alcance), así que
+        # desaparecen sin más, tal como permite el propio encargo.
+        etiqueta = "<span class='etiqueta etiqueta-todo'>Pendiente de explicar</span>"
+        cuerpo = (
+            "<div class='pendiente'>"
+            "Todavía no hay un caso real probado de esta limitación con el que "
+            "escribir su explicación en lenguaje llano sin inventarla. Se "
+            "muestra el texto técnico del acta tal cual, sin traducir.</div>"
+            "%s" % _bloque_entidad(None, hay_caso_real=False)
+        )
+    return "<details class='limitacion'><summary>%s%s</summary>%s</details>" % (
+        etiqueta, _e(texto), cuerpo)
+
+
 def _seccion_limitaciones(no_comprobado, datos=()) -> str:
     if not no_comprobado:
         return "<p class='meta'>(nada que declarar)</p>"
-    bloques = []
+
+    # 2026-08-21 (hallazgo de Pablo): varias capas (la Skill y cada
+    # capacidad que invoca) declaran su propia limitación, a veces con las
+    # MISMAS palabras -- `agente/acta.py` ya las junta si el string
+    # (id incluido) sale idéntico, pero con el id quitado aquí debajo
+    # aparecen duplicados nuevos que antes no lo eran. Se deduplica por el
+    # texto YA SIN el id -- exacto, no aproximado: dos redacciones
+    # DISTINTAS de "no gradúa la gravedad" (una por la Skill, otra por la
+    # capacidad, con otras palabras) no se intentan fusionar aquí --
+    # decidir cuál de las dos es la canónica es una decisión sobre
+    # `agente/skills/coherencia.py`/`agente/herramientas/coherencia.py`,
+    # fuera de alcance de este arreglo (el encargo lo permite explícitamente
+    # dejar sin resolver hoy).
+    textos = []
+    vistos = set()
     for texto in no_comprobado:
-        ficha = clasificar(texto, datos)
-        if ficha["tipo"] == "caso_conocido":
-            # Etiqueta visible en el `<summary>`, no sólo dentro del
-            # desplegable: tiene que distinguirse de un caso pendiente sin
-            # necesidad de abrirlo -- "de un vistazo".
-            etiqueta = "<span class='etiqueta etiqueta-comprobado'>Caso comprobado</span>"
-            cuerpo = (
-                "<div class='porque'>%s</div>"
-                "<div class='cifra'>%s</div>"
-                "%s"
-                % (_e(ficha["porque"]), _e(ficha["cifra"]),
-                   _bloque_entidad(ficha["entidades"], hay_caso_real=True))
-            )
-        else:
-            etiqueta = "<span class='etiqueta etiqueta-todo'>TODO · sin caso real</span>"
-            cuerpo = (
-                "<div class='pendiente'><span class='todo'>TODO</span>"
-                "Todavía no hay un caso real probado de esta limitación con el que "
-                "escribir su explicación en lenguaje llano sin inventarla. Se "
-                "muestra el texto técnico del acta tal cual, sin traducir.</div>"
-                "%s" % _bloque_entidad(None, hay_caso_real=False)
-            )
+        limpio = _sin_prefijo_interno(texto)
+        if limpio in vistos:
+            continue
+        vistos.add(limpio)
+        textos.append(limpio)
+
+    # Separa los que sí tienen caso real probado (siempre visibles, son
+    # específicos de ESTE plano) de los genéricos "pendiente de explicar"
+    # (la mayoría, iguales en cualquier ejecución de la Skill) -- sólo estos
+    # últimos se colapsan si sobran, nunca un caso real.
+    conocidos = [t for t in textos if clasificar(t, datos)["tipo"] == "caso_conocido"]
+    pendientes = [t for t in textos if t not in conocidos]
+
+    bloques = [_bloque_limitacion(t, datos) for t in conocidos]
+    if len(pendientes) <= _UMBRAL_PENDIENTES_VISIBLES:
+        bloques.extend(_bloque_limitacion(t, datos) for t in pendientes)
+    else:
+        visibles, resto = pendientes[:_UMBRAL_PENDIENTES_VISIBLES], pendientes[_UMBRAL_PENDIENTES_VISIBLES:]
+        bloques.extend(_bloque_limitacion(t, datos) for t in visibles)
+        # Clase DISTINTA a `limitacion` a propósito -- este `<details>` es un
+        # envoltorio de navegación ("ver más"), no una limitación en sí
+        # misma, y no debe confundirse con una al contarlas/leerlas (ver
+        # `tests/test_acta_legible.py`, que ya distingue por esta clase
+        # exacta). Los bloques de dentro sí son `class='limitacion'`
+        # normales, con su propia etiqueta cada uno.
         bloques.append(
-            "<details class='limitacion'><summary>%s%s</summary>%s</details>"
-            % (etiqueta, _e(texto), cuerpo)
+            "<details class='limitaciones-colapsadas'><summary>Ver %d aviso(s) genérico(s) "
+            "más, sin nada específico de este plano</summary>%s</details>"
+            % (len(resto), "\n".join(_bloque_limitacion(t, datos) for t in resto))
         )
     return "\n".join(bloques)
 

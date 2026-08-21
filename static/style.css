@@ -2998,19 +2998,26 @@ body::before {
    como overlay encima de /proyectos, la cabecera sigue intacta. */
 .conv-main.conv-sin-cabecera .conv-header { display: none; }
 
-/* Reposo vs. interacción (simplificación al máximo, 2026-08-20): en reposo
-   sólo se ve la caja de texto + el botón de enviar, centrados en la
-   pantalla -- ni historial vacío, ni "Adjuntar DXF", ni el selector de
-   modo, ni la barra de estado. `.conv-activo` (ver convActivar() en
-   app.js) es el interruptor, de un solo sentido. Sin `.conv-log` que
-   crezca (oculto en reposo, y vacío de contenido: la bienvenida ya vive
-   como placeholder dentro de la caja, ver CONV_SUGERENCIA_SIN_ADJUNTO), el
-   único hijo visible es `#conv-form` -- `justify-content: center` en el
-   contenedor basta para centrarlo verticalmente, sin flexbox extra. */
+/* Reposo vs. interacción (simplificación al máximo, 2026-08-20; ajustado
+   2026-08-21 -- ver más abajo): en reposo sólo se ve la caja de texto + el
+   icono "+" + el botón de enviar, centrados en la pantalla -- ni historial
+   vacío, ni selector de modo, ni la barra de estado. `.conv-activo` (ver
+   convActivar() en app.js) es el interruptor, de un solo sentido. Sin
+   `.conv-log` que crezca (oculto en reposo, y vacío de contenido: la
+   bienvenida ya vive como placeholder dentro de la caja, ver
+   CONV_SUGERENCIA_SIN_ADJUNTO), el único hijo visible es `#conv-form` --
+   `justify-content: center` en el contenedor basta para centrarlo
+   verticalmente, sin flexbox extra.
+
+   2026-08-21 (encargo explícito de Pablo): `#conv-btn-adjuntar` sale de esta
+   lista -- antes se ocultaba en reposo igual que el resto, pero ahora es el
+   disparador de adjuntar (icono "+") y tiene que poder pulsarse desde el
+   primer segundo, sin esperar a que "algo real" haya pasado. El criterio de
+   activación (`.conv-activo`) sigue siendo el mismo -- sólo cambia qué está
+   visible ANTES de que se dispare. */
 .conv-main:not(.conv-activo) { justify-content: center; }
 .conv-main:not(.conv-activo) .conv-log,
 .conv-main:not(.conv-activo) .conv-statusbar,
-.conv-main:not(.conv-activo) #conv-btn-adjuntar,
 .conv-main:not(.conv-activo) #conv-modo-trigger {
   display: none;
 }
@@ -3035,15 +3042,27 @@ body::before {
 }
 .conv-cerrar:hover { color: var(--text-primary); background: var(--overlay-subtle); }
 
-/* Selector de modo (pulido 2026-08-20, "que se sienta como la interfaz de
-   Claude, con menos ruido visual"): sustituye a las dos tarjetas grandes +
-   "En el mapa, todavía no" que vivían aquí arriba. Ahora es un botón
-   pequeño en la barra de entrada, mismo espíritu que el selector de modelo
-   de Claude.ai -- el desplegable que abre es `.shell-dropdown`, reutilizado
-   tal cual (ver más abajo, junto a `.conv-entrada`). Sin icono a propósito
-   (petición explícita del encargo: "nada de iconos en esa zona"). */
-.conv-modo-trigger { gap: var(--space-1); }
-.conv-modo-flecha { color: var(--text-tertiary); font-size: 10px; }
+/* Selector de modo: el desplegable que abre es `.shell-dropdown`,
+   reutilizado tal cual (ver más abajo, junto a `.conv-entrada`).
+   2026-08-21 (encargo explícito de Pablo, prioridad media): el botón de
+   texto completo ("Revisar coherencia ▾") pasa a icono discreto -- mismo
+   círculo de 2.5rem que `.conv-btn-adjuntar`, mismo tono `.btn-ghost`
+   (secundario), para que los dos triggers de la barra de entrada se lean
+   como la misma familia de control. Ya no lleva `<span>` de texto ni
+   flecha visibles: el modo activo sigue anunciado por `title`/`aria-label`
+   (`renderConvModoTrigger()` en app.js), no por texto en pantalla. */
+.conv-modo-trigger {
+  flex-shrink: 0; width: 2.5rem; height: 2.5rem; padding: 0; margin: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--panel-border); border-radius: var(--radius-pill); cursor: pointer;
+  font-size: var(--text-lg); line-height: 1; font-family: inherit;
+  background: rgba(255, 255, 255, 0.08); color: var(--text);
+  transition: all 0.2s ease;
+}
+.conv-modo-trigger:hover, .conv-modo-trigger[aria-expanded="true"] {
+  border-color: var(--accent); color: var(--accent); background: var(--accent-soft);
+}
+.conv-modo-trigger:active { transform: scale(0.94); }
 
 .conv-log {
   flex: 1; overflow-y: auto; padding: var(--space-6) var(--space-4) var(--space-4);
@@ -3053,9 +3072,14 @@ body::before {
 
 /* Burbujas de chat (rediseño noche 5, pedido explícito) -- sustituye al
    trazo vertical de la noche 4. El usuario, a la derecha, en vidrio de
-   acento; ArchMuse, a la izquierda, con su identidad de marca en texto
-   encima de la tarjeta (logo + tipografía, nunca un avatar/mascota -- ver
-   PROHIBIDO del encargo). */
+   acento; ArchMuse, a la izquierda.
+   2026-08-21 (encargo explícito de Pablo): la burbuja del asistente ya no
+   lleva ninguna marca de remitente encima -- `.conv-burbuja-marca` se
+   retira (el `<div>` que la llevaba ya no existe en `convAnadirRespuesta`,
+   `static/app.js`), sin dejar hueco: `.conv-fila` es un `flex-direction:
+   column` sin `gap` propio, así que la separación de siempre era el propio
+   margen del `<div>` retirado, no un espacio reservado aparte que haya que
+   corregir a mano. Sigue sin haber avatar (PROHIBIDO del encargo original). */
 .conv-fila { display: flex; flex-direction: column; max-width: 84%; }
 .conv-fila-usuario { align-self: flex-end; align-items: flex-end; }
 .conv-fila-asistente { align-self: flex-start; align-items: flex-start; }
@@ -3066,10 +3090,6 @@ body::before {
 }
 .conv-usuario-adjunto {
   display: block; font-size: var(--text-xs); color: var(--text-secondary); margin-top: 4px; opacity: 0.85;
-}
-.conv-burbuja-marca {
-  font-size: var(--text-xs); font-weight: var(--font-semibold); letter-spacing: 0.02em;
-  color: var(--text-tertiary); margin-bottom: var(--space-1); padding-left: var(--space-1);
 }
 
 .conv-estado {
@@ -3120,6 +3140,21 @@ body::before {
   font-variant-numeric: tabular-nums;
 }
 
+/* Hallazgos individuales (2026-08-21, encargo explícito: "tarjetas
+   individuales" en vez del párrafo corrido de "tipo en entidad; tipo en
+   entidad..."). Fila ligera, no una `.conv-tarjeta` anidada dentro de otra
+   -- el tipo lleva el peso tipográfico (es lo que se escanea al bajar por
+   la lista), el resto (entidad + cifra, tal cual venían) en tono
+   secundario detrás. */
+.conv-hallazgos-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.conv-hallazgo-fila {
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm);
+  background: var(--overlay-subtle); font-size: var(--text-sm); line-height: 1.5;
+}
+.conv-hallazgo-tipo { font-weight: var(--font-medium); color: var(--text); }
+.conv-hallazgo-resto { color: var(--text-tertiary); }
+.conv-hallazgo-resto::before { content: " — "; }
+
 /* Bloque 2 (2026-08-20): el límite "no comprueba normativa", en el propio
    resultado -- por eso vive fuera de `.conv-detalle` (el `<details>` de la
    traza completa), como el resto de la tarjeta, y no dentro. Tinta de aviso,
@@ -3142,6 +3177,27 @@ body::before {
   width: 100%; height: min(60vh, 560px); margin-top: var(--space-3);
   border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-primary);
 }
+
+/* "Qué se ha comprobado" / "Qué no se ha comprobado" (2026-08-21, encargo
+   explícito): mismo patrón visual que `.conv-detalle` -- borde punteado +
+   triángulo -- para que las tres secciones plegables de la tarjeta (estas
+   dos y "ver el acta completa") se lean como la misma familia de control,
+   no como tres componentes distintos. Cerradas por defecto, igual que
+   `.conv-detalle`: lo principal ya está en el titular/las filas de arriba. */
+.conv-detalle-seccion { margin-top: var(--space-3); }
+.conv-detalle-seccion summary {
+  cursor: pointer; list-style: none; font-size: var(--text-sm); color: var(--text-tertiary);
+  padding-top: var(--space-3); border-top: 1px dashed var(--border);
+}
+.conv-detalle-seccion summary::-webkit-details-marker { display: none; }
+.conv-detalle-seccion summary::before { content: "\25B8 "; }
+.conv-detalle-seccion[open] summary::before { content: "\25BE "; }
+.conv-detalle-seccion summary:hover { color: var(--text-secondary); }
+.conv-detalle-lista {
+  list-style: none; margin: var(--space-2) 0 0; padding: 0;
+  color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.6;
+}
+.conv-detalle-lista li { padding: 2px 0; }
 
 .conv-procedencia {
   margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border);
@@ -3277,6 +3333,23 @@ body::before {
 
 .conv-entrada .btn-ghost { flex-shrink: 0; padding: 0.7rem 1.3rem; font-size: var(--text-sm); }
 
+/* Botón de adjuntar, sólo icono "+" (2026-08-21, sustituye al texto
+   "Adjuntar DXF" -- encargo explícito). Mismo tamaño/forma que
+   `.conv-btn-enviar` (círculo de 2.5rem) para que los dos botones-icono de
+   la barra de entrada compartan proporción, pero en tono `.btn-ghost`
+   (secundario) y no en el color primario: el de enviar es la acción
+   principal, adjuntar no lo es. */
+.conv-btn-adjuntar {
+  flex-shrink: 0; width: 2.5rem; height: 2.5rem; padding: 0; margin: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--panel-border); border-radius: var(--radius-pill); cursor: pointer;
+  font-size: var(--text-lg); line-height: 1; font-family: inherit;
+  background: rgba(255, 255, 255, 0.08); color: var(--text);
+  transition: all 0.2s ease;
+}
+.conv-btn-adjuntar:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.conv-btn-adjuntar:active { transform: scale(0.94); }
+
 /* Botón de enviar, sólo icono (pulido 2026-08-20: "igual que el botón de
    envío de Claude.ai"). `disabled` de verdad con la caja vacía -- no sólo
    apagado visualmente: evita también el aviso nativo "Rellene este campo"
@@ -3296,13 +3369,19 @@ body::before {
 .conv-btn-enviar:disabled { background: var(--bg-tertiary); color: var(--text-tertiary); cursor: default; opacity: 1; }
 
 /* --- Barra de estado --------------------------------------------------------
-   Sólo hechos: el fichero adjunto (si lo hay) y el nombre de la única Skill
-   que puede atenderlo. Nunca una cifra ni un check -- `renderConvAdjunto()`
-   en app.js es lo único que la escribe, y sólo con datos que ya existen en
-   `convState`. El punto es un estado binario (adjunto/no adjunto), no un
-   semáforo de calidad: por eso usa `--text-tertiary`/`--color-success`, el
-   mismo par que ya distingue "sin dato" de "hay dato" en el resto de la app,
-   nunca `--color-critical` ni `--color-important`. */
+   Sólo hechos: el fichero adjunto, si lo hay. Nunca una cifra ni un check --
+   `renderConvAdjunto()` en app.js es lo único que la escribe, y sólo con
+   datos que ya existen en `convState`. El punto es un estado binario
+   (adjunto/no adjunto), no un semáforo de calidad: por eso usa
+   `--text-tertiary`/`--color-success`, el mismo par que ya distingue "sin
+   dato" de "hay dato" en el resto de la app, nunca `--color-critical` ni
+   `--color-important`.
+   2026-08-21 (hallazgo de Pablo, prioridad alta): `.conv-statusbar-capacidad`
+   se retira -- enseñaba los IDs internos de Skills tal cual
+   ("superficies.medicion_de_planta · revision.coherencia_del_plano"), una
+   fuga de detalle interno a un usuario real. Ver el comentario en
+   `static/index.html` junto a `.conv-statusbar` para el porqué de no
+   dejarlo detrás de un flag de depuración. */
 .conv-statusbar {
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-2) var(--space-4); flex-shrink: 0;
@@ -3314,9 +3393,6 @@ body::before {
 }
 .conv-statusbar-dot.conv-statusbar-dot-activo { background: var(--color-success); }
 .conv-statusbar-proyecto { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-.conv-statusbar-capacidad {
-  margin-left: auto; font-family: var(--font-mono, monospace); opacity: 0.8;
-}
 
 @media (max-width: 720px) {
   .conv-header { padding: 0.6rem var(--space-4); }
@@ -3325,5 +3401,4 @@ body::before {
   .conv-fila { max-width: 100%; }
   .conv-entrada { flex-wrap: wrap; }
   .conv-entrada .conv-campo-pregunta { flex-basis: 100%; }
-  .conv-statusbar-capacidad { display: none; }
 }

@@ -103,6 +103,14 @@ class Hallazgo:
     hay —metros cuadrados de solape, centímetros de hueco—; `None` cuando el
     hallazgo no es cuantitativo, y entonces se dice `None` en vez de un cero
     que se leería como «cero, medido».
+
+    `ubicacion` es la misma idea que `entidad`, pero para un visor en vez de
+    para un ojo humano: `{"bbox": [xmin, ymin, xmax, ymax]}` en las mismas
+    unidades escaladas que `magnitud`, o `None`. **Regla dura, sin excepción:**
+    sin geometría real y verificable para ESTE hallazgo concreto, `None` —
+    nunca un bbox aproximado, centrado, o "mejor que nada". `None` es un
+    resultado válido (`docs/prd/2026-08-21-ubicacion-hallazgos-visor2d.md`),
+    no un hueco por rellenar.
     """
 
     tipo: str
@@ -112,6 +120,7 @@ class Hallazgo:
     unidad: str = ""
     #: Datos crudos para quien quiera reconstruir el hallazgo sin releer el DXF.
     detalle: Dict[str, Any] = field(default_factory=dict)
+    ubicacion: Optional[Dict[str, Any]] = None
 
     def __post_init__(self) -> None:
         if self.tipo not in TIPOS:
@@ -134,6 +143,7 @@ class Hallazgo:
             "magnitud": self.magnitud,
             "unidad": self.unidad,
             "detalle": dict(self.detalle),
+            "ubicacion": self.ubicacion,
         }
 
 
@@ -161,6 +171,59 @@ class _CapturaDeAvisos(logging.Handler):
             self.mensajes.append(record.getMessage())
         except Exception:                          # pragma: no cover - defensivo
             pass
+
+
+def _bbox_por_handle(doc, handle: Optional[str], factor: float) -> Optional[Dict[str, Any]]:
+    """El bbox de una entidad del DXF por su `handle`, ya escalado a las
+    mismas unidades que el resto del informe -- o `None` si no se puede
+    resolver, por el motivo que sea (`handle` ausente, entidad borrada,
+    geometría sin bbox calculable). **Nunca una excepción**: un solo hallazgo
+    sin geometría resoluble no puede tumbar la revisión entera.
+
+    Usa `ezdxf.bbox.extents`, que ya sabe calcular el bbox por tipo de
+    entidad (línea, polilínea, arco...) -- reinventar ese cálculo aquí
+    duplicaría lo que la librería ya resuelve bien.
+
+    `factor` es el mismo `plano.escala.factor` que `parser.leer_plano` aplica
+    a los `Room`: el bbox crudo de `ezdxf.bbox.extents` está en unidades de
+    dibujo, y guardarlo sin escalar mezclaría dos sistemas de unidades en el
+    mismo `Revision.a_dict()` sin que nada lo avise
+    (`docs/prd/2026-08-21-ubicacion-hallazgos-visor2d.md` R-4).
+    """
+    if not handle or doc is None:
+        return None
+    try:
+        import ezdxf.bbox as ezdxf_bbox
+
+        entidad = doc.entitydb.get(handle)
+        if entidad is None:
+            return None
+        caja = ezdxf_bbox.extents([entidad])
+        if not caja.has_data:
+            return None
+        return {
+            "bbox": [
+                caja.extmin.x * factor, caja.extmin.y * factor,
+                caja.extmax.x * factor, caja.extmax.y * factor,
+            ]
+        }
+    except Exception:  # noqa: BLE001 - defensivo, ver docstring
+        return None
+
+
+def _bbox_de_recintos(rooms: Sequence) -> Optional[Dict[str, Any]]:
+    """Bbox de la unión de un conjunto de `Room` ya escalados, o `None` si
+    la lista viene vacía. Es la misma regla que `_bbox_por_handle`: sin
+    geometría real no hay ubicación, nunca una caja inventada."""
+    polygons = [r.polygon for r in rooms if r is not None]
+    if not polygons:
+        return None
+    # `strict=True`: `Polygon.bounds` es SIEMPRE una 4-tupla (xmin, ymin,
+    # xmax, ymax), así que un desajuste de longitud aquí sólo puede venir de
+    # un bug -- y `zip()` sin `strict` lo tragaría en silencio truncando la
+    # lista más corta en vez de fallar (`tests/test_zip_estricto.py`).
+    xmins, ymins, xmaxs, ymaxs = zip(*(p.bounds for p in polygons), strict=True)
+    return {"bbox": [min(xmins), min(ymins), max(xmaxs), max(ymaxs)]}
 
 
 def leer_plano_capturando_avisos(doc, *, layer=None, factor_escala=None):
@@ -226,17 +289,23 @@ def _solapes(unidades: Sequence) -> List[Hallazgo]:
             unidad="m2",
             detalle={"pct_de_la_pieza_menor": round(s.overlap_pct_menor, 1),
                      "vivienda": s.unit_name},
+            ubicacion=_bbox_de_recintos([s.room_a, s.room_b]),
         ))
     return salida
 
 
-def _polilineas_mal_cerradas(avisos: Sequence[str]) -> List[Hallazgo]:
+def _polilineas_mal_cerradas(avisos: Sequence[str], doc=None,
+                              factor: float = 1.0) -> List[Hallazgo]:
     """Contornos que el DXF declara abiertos y el parser ha cerrado por su cuenta.
 
     Es una **corrección de datos**, no un hecho neutro: la superficie de esa
     pieza se está calculando sobre una suposición razonable pero no comprobada.
     Un hueco de tres centímetros entre el primer y el último vértice puede ser
     ruido de dibujo o puede ser un contorno que en realidad no cierra.
+
+    `doc`/`factor` son opcionales y sólo sirven para resolver `ubicacion` por
+    `handle` (`docs/prd/2026-08-21-ubicacion-hallazgos-visor2d.md`); sin `doc`
+    el hallazgo se emite igual, sólo que con `ubicacion=None`.
     """
     salida = []
     for mensaje in dict.fromkeys(avisos):
@@ -260,13 +329,18 @@ def _polilineas_mal_cerradas(avisos: Sequence[str]) -> List[Hallazgo]:
             magnitud=hueco_m,
             unidad="unidades de dibujo",
             detalle={"capa": capa, "handle": handle},
+            ubicacion=_bbox_por_handle(doc, handle, factor),
         ))
     return salida
 
 
-def _geometria_descartada(plano) -> List[Hallazgo]:
+def _geometria_descartada(plano, doc=None, factor: float = 1.0) -> List[Hallazgo]:
     """Lo que no ha entrado en el análisis, con su motivo. Un descarte
-    silencioso es una superficie que falta sin que nadie lo sepa."""
+    silencioso es una superficie que falta sin que nadie lo sepa.
+
+    `doc`/`factor`: mismo motivo que en `_polilineas_mal_cerradas` -- resolver
+    `ubicacion` por `handle` cuando lo hay, `None` si no.
+    """
     salida = []
     for d in (getattr(plano, "geometria_no_leida", None) or ()):
         handle = getattr(d, "handle", None)
@@ -279,6 +353,7 @@ def _geometria_descartada(plano) -> List[Hallazgo]:
             entidad="handle %s" % handle if handle else "%s en «%s»" % (d.tipo, d.capa),
             detalle={"capa": d.capa, "tipo": d.tipo, "motivo": d.motivo,
                      "handle": handle, "detalle": getattr(d, "detalle", "")},
+            ubicacion=_bbox_por_handle(doc, handle, factor),
         ))
     return salida
 
@@ -319,6 +394,7 @@ def _rotulos(unidades: Sequence) -> List[Hallazgo]:
                 unidad="m2",
                 detalle={"areas_m2": [round(r.area_m2, 2) for r in sin_rotulo],
                          "vivienda": unidad.name},
+                ubicacion=_bbox_de_recintos(sin_rotulo),
             ))
 
         cuenta = collections.Counter(
@@ -326,8 +402,8 @@ def _rotulos(unidades: Sequence) -> List[Hallazgo]:
         for etiqueta, n in sorted(cuenta.items()):
             if n < 2:
                 continue
-            areas = sorted(round(r.area_m2, 2) for r in rooms
-                           if (r.label or "").strip() == etiqueta)
+            piezas = [r for r in rooms if (r.label or "").strip() == etiqueta]
+            areas = sorted(round(r.area_m2, 2) for r in piezas)
             salida.append(Hallazgo(
                 tipo=ETIQUETA_DUPLICADA,
                 descripcion=(
@@ -339,6 +415,7 @@ def _rotulos(unidades: Sequence) -> List[Hallazgo]:
                 magnitud=float(n),
                 unidad="piezas",
                 detalle={"areas_m2": areas, "vivienda": unidad.name},
+                ubicacion=_bbox_de_recintos(piezas),
             ))
     return salida
 
@@ -477,6 +554,11 @@ class Revision:
     viviendas: int = 0
     capa_de_recintos: str = ""
     unidad_del_dibujo: str = ""
+    #: Las `Room` leídas, para poder dibujar el plano entero en un futuro
+    #: visor sin releer el DXF (`recintos_geometria` en `a_dict()`). Guardan
+    #: la geometría, no sólo el recuento -- `recintos` (arriba) sigue siendo
+    #: el entero de siempre, éste es el dato nuevo del PRD del 2026-08-21.
+    rooms: Tuple[Any, ...] = field(default_factory=tuple)
 
     @property
     def limpio(self) -> bool:
@@ -501,6 +583,11 @@ class Revision:
             "capa_de_recintos": self.capa_de_recintos,
             "unidad_del_dibujo": self.unidad_del_dibujo,
             "limpio": self.limpio,
+            "recintos_geometria": [
+                {"label": r.label, "layer": r.layer,
+                 "puntos": [list(p) for p in r.polygon.exterior.coords]}
+                for r in self.rooms
+            ],
         }
 
 
@@ -538,9 +625,17 @@ def revisar(doc, *, layer=None, factor_escala=None) -> Revision:
     # fichero— saliera con ocho hallazgos, los ocho falsos.
     unidades = _agrupar_en_viviendas(plano)
 
+    # `plano.escala.factor` es el mismo multiplicador que `parser.leer_plano`
+    # ya aplicó a los `Room` -- hace falta también aquí para que el bbox de un
+    # hallazgo resuelto por `handle` (unidades de dibujo crudas) quede en la
+    # misma unidad que los recintos, y no se puede ser `None`: `leer_plano` ya
+    # ha lanzado `EscalaIndeterminada` antes de devolver `plano` si no se supo
+    # decidir (ver `_bbox_por_handle`, R-4 del PRD del 2026-08-21).
+    factor = getattr(plano.escala, "factor", None) or 1.0
+
     hallazgos.extend(_solapes(unidades))
-    hallazgos.extend(_polilineas_mal_cerradas(avisos))
-    hallazgos.extend(_geometria_descartada(plano))
+    hallazgos.extend(_polilineas_mal_cerradas(avisos, doc, factor))
+    hallazgos.extend(_geometria_descartada(plano, doc, factor))
     hallazgos.extend(_rotulos(unidades))
 
     cuadro = cs.detectar_cuadro_superficies(doc)
@@ -568,4 +663,5 @@ def revisar(doc, *, layer=None, factor_escala=None) -> Revision:
         viviendas=len(unidades),
         capa_de_recintos=plano.layer,
         unidad_del_dibujo=getattr(plano.escala, "unidad", "") or "",
+        rooms=tuple(rooms),
     )
