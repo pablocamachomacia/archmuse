@@ -50,6 +50,7 @@ def _resolver(
     fecha_devengo=DEVENGO,
     estricto=False,
     ruta_manifiesto=MANIFIESTO,
+    raiz_corpus=CORPUS,
     **kw,
 ):
     ctx = contexto_territorial(
@@ -63,7 +64,7 @@ def _resolver(
         ctx,
         hechos=hechos,
         estricto=estricto,
-        raiz_corpus=CORPUS,
+        raiz_corpus=raiz_corpus,
         ruta_manifiesto=ruta_manifiesto,
         **kw,
     )
@@ -94,28 +95,52 @@ def test_corpus_real_vacio_bloquea():
         raise AssertionError("con el corpus vacío el motor no puede devolver un resultado")
 
 
-def test_falta_una_sola_materia_y_tambien_bloquea():
+def _corpus_sin_urbanismo(tmp_path):
+    """Copia del fixture con `urbanismo.yaml` (urbanismo_parametros +
+    urbanismo_estetica) retirado — la forma de dejar exactamente esas
+    materias sin reglas en disco tras la Tarea 7 (docs/prd/2026-08-21-
+    verificacion-doble-del-corpus.md §5.6): desde que la cobertura se deriva
+    de las reglas, quitar solo el `manifiesto.yaml` ya no basta para vaciar
+    la cobertura de una materia que sigue teniendo reglas confirmadas en
+    disco — hay que quitar las reglas mismas.
+    """
+    import shutil
+
+    destino = tmp_path / "corpus_ficticio"
+    shutil.copytree(CORPUS, destino)
+    (destino / "es" / "13-madrid" / "municipios" / "28115-pozuelo-de-alarcon" / "urbanismo.yaml").unlink()
+    return destino
+
+
+def test_falta_una_sola_materia_y_tambien_bloquea(tmp_path):
     """El fail-closed no es "si falta casi todo": es si falta UNA.
 
-    Se resuelve contra el fixture pero SIN su manifiesto, así que la cobertura
-    declarada desaparece entera. Lo que se comprueba es que basta con que una
-    materia exigible no sea afirmable para que no se emita resultado.
+    Se resuelve contra una copia del fixture sin las reglas de urbanismo, así
+    que esas dos materias exigibles quedan `ausente` (nada que derivar: ni
+    declaración ni regla en disco) mientras el resto sigue afirmable. Lo que
+    se comprueba es que basta con que una materia exigible no sea afirmable
+    para que no se emita resultado — no que falte todo el manifiesto: desde
+    la Tarea 7 la cobertura se deriva de las reglas, y el manifiesto solo
+    no basta para vaciarla si las reglas siguen confirmadas en disco.
     """
+    corpus = _corpus_sin_urbanismo(tmp_path)
     ctx = contexto_territorial(
         municipio="Pozuelo de Alarcón", tipologia="plurifamiliar", fecha_devengo=DEVENGO
     )
     try:
-        normativa_aplicable(ctx, estricto=True, raiz_corpus=CORPUS)
+        normativa_aplicable(ctx, estricto=True, raiz_corpus=corpus, ruta_manifiesto=corpus / "manifiesto.yaml")
     except CoberturaInsuficiente as exc:
         assert exc.faltantes
+        assert any("urbanismo" in f for f in exc.faltantes)
     else:
-        raise AssertionError("sin manifiesto no hay cobertura declarada: debe bloquear")
+        raise AssertionError("sin las reglas de urbanismo en disco, debe bloquear")
 
 
-def test_estricto_false_devuelve_el_hueco_en_vez_de_levantarlo():
+def test_estricto_false_devuelve_el_hueco_en_vez_de_levantarlo(tmp_path):
     """Para una interfaz que quiera PINTAR el hueco. Nunca para seguir
     calculando como si no existiera: `completo` es False y se ve."""
-    c = _resolver(estricto=False, ruta_manifiesto=None)
+    corpus = _corpus_sin_urbanismo(tmp_path)
+    c = _resolver(estricto=False, raiz_corpus=corpus, ruta_manifiesto=corpus / "manifiesto.yaml")
     assert not c.completo
     assert c.faltantes
     assert all(f.justificacion for f in c.faltantes), "un hueco sin justificar no es accionable"
@@ -548,6 +573,23 @@ CORPUS_PRODUCCION_ESPERADO = {
     # `tests/test_generar_borrador_corpus.py::
     # test_no_convierte_capacidad_aparcamiento_sola_por_ser_mitad_de_una_disyuncion`).
     # `_contar_cifras_de_umbral` las corta antes de escribir el fichero.
+    #
+    # Salida de scripts/verificar_doble_ruta.py (Prompt 2,
+    # docs/prd/2026-08-21-verificacion-doble-del-corpus.md): tres reglas
+    # VERIFICADA_AUTOMATICA, confirmadas por dos rutas de extracción
+    # independientes (pypdf+IA / pdfminer.six+extractor determinista). Con
+    # prefijo `_` A PROPÓSITO, aunque estén verificadas: sin
+    # `aplicabilidad.usos`/`tipologias` propios, las tres compiten por la
+    # misma materia+patrón genéricos en la validación 14
+    # (`normativa/validacion.py::validar_sin_contradiccion`) y tumban la
+    # carga del corpus ENTERO si se hacen descubribles — ver
+    # docs/design/2026-08-21-limite-aplicabilidad-generica-verificada-automatica.md.
+    # «Afirmable» (normativa/resolucion.py) y «cargable sin chocar con sus
+    # hermanas» (esta validación) son dos problemas distintos; solo el
+    # primero está resuelto.
+    "estatal/_verificada_db_sua_1_2_discontinuidades_en_el_pavimento.yaml",
+    "estatal/_verificada_db_sua_4_1_alumbrado_normal_en_zonas_de_circulacion.yaml",
+    "estatal/_verificada_db_sua_5_1_ambito_de_aplicacion.yaml",
 }
 
 #: Etiqueta que toda regla del corpus de producción lleva mientras no la haya

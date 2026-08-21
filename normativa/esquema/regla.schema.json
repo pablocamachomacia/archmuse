@@ -34,7 +34,12 @@
             "titulo": { "type": "string", "minLength": 1 },
             "boletin": { "type": "string", "minLength": 1 },
             "url_oficial": { "type": "string" },
-            "hash_texto": { "type": "string" }
+            "hash_texto": { "type": "string" },
+            "documento_sha256": {
+              "type": "string",
+              "description": "SHA-256 del PDF oficial COMPLETO del que se extrajo (hashlib.sha256(bytes_crudos)), no del `literal`. Distinto de `hash_texto`: ese verifica que la cita no ha derivado del texto que se guardó; este identifica de qué versión exacta del PDF salió, independientemente de qué fragmento se citó. Obligatorio para VERIFICADA_AUTOMATICA (docs/prd/2026-08-21-verificacion-doble-del-corpus.md §5.4), no para BORRADOR.",
+              "pattern": "^[0-9a-f]{64}$"
+            }
           }
         },
         "articulo": {
@@ -71,9 +76,9 @@
           "instance_id": { "type": "string", "minLength": 1 },
           "nombre": { "type": "string", "minLength": 1 },
           "estado": {
-            "description": "Procedencia de la regla, NO su aplicabilidad a un proyecto (eso es `_Candidata.estado` en normativa/resolucion.py, un concepto distinto). Ausente = regla histórica anterior a este campo (p. ej. seguridad_incendio.yaml), gobernada por el tag `pendiente_firma_colegiado`. `BORRADOR` = una sola ruta de extracción, sin verificar: normativa/resolucion.py::_paso1_candidatas la descarta siempre, nunca llega a una afirmación de cumplimiento. Catálogo cerrado; docs/prd/2026-08-21-pipeline-borradores-corpus-db-sua.md §9 (Prompt 2) lo amplía con VERIFICADA_AUTOMATICA y FIRMADA.",
+            "description": "Procedencia de la regla, NO su aplicabilidad a un proyecto (eso es `_Candidata.estado` en normativa/resolucion.py, un concepto distinto). Ausente = regla histórica anterior a este campo (p. ej. seguridad_incendio.yaml), gobernada por el tag `pendiente_firma_colegiado`. `BORRADOR` = una sola ruta de extracción, sin verificar: normativa/resolucion.py::_paso1_candidatas la descarta siempre, nunca llega a una afirmación de cumplimiento. `VERIFICADA_AUTOMATICA` = dos rutas de extracción independientes (motor de texto PDF distinto cada una) coinciden en valor y unidad, o Pablo resolvió una discrepancia a mano con `scripts/revisar_pendientes.py` — es la primera evaluable (docs/prd/2026-08-21-verificacion-doble-del-corpus.md). `FIRMADA` reservado, sin lógica todavía, para si algún día hay firma de colegiado. Catálogo cerrado.",
             "type": ["string", "null"],
-            "enum": ["BORRADOR", null]
+            "enum": ["BORRADOR", "VERIFICADA_AUTOMATICA", "FIRMADA", null]
           },
           "materia": { "type": "string", "minLength": 1 },
           "tipo": {

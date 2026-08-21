@@ -234,7 +234,12 @@ def _contar_cifras_de_umbral(texto: str) -> int:
     seguido directamente de una palabra con mayúscula. Un umbral real va
     seguido de una unidad en minúscula (m, cm, %, N, lux…) o de «como
     mínimo/máximo», nunca de una palabra capitalizada — sin este filtro,
-    DB-SUA 1.5 se marcaba como sospechosa por el «5» de su propio título."""
+    DB-SUA 1.5 se marcaba como sospechosa por el «5» de su propio título.
+
+    Y descarta el dígito pegado a una unidad escrita sin superíndice
+    («m2», no «m²»): «5000 m2» no son dos cifras, es una con su unidad
+    escrita en ASCII — un número que empieza justo donde termina una letra,
+    sin espacio de por medio, es la unidad, no una cifra nueva."""
     cifras = 0
     for m in re.finditer(r"\d+(?:[.,]\d+)?", texto):
         numero = m.group()
@@ -246,6 +251,8 @@ def _contar_cifras_de_umbral(texto: str) -> int:
             continue  # nota al pie tipo «(1)»
         if "." not in numero and "," not in numero and re.match(r"\s+[A-ZÁÉÍÓÚÑ]", despues):
             continue  # marcador de artículo/apartado, no una cifra de diseño
+        if m.start() > 0 and texto[m.start() - 1].isalpha():
+            continue  # pegado a una letra sin espacio: es la unidad ("m2"), no una cifra nueva
         cifras += 1
     return cifras
 
@@ -467,13 +474,20 @@ def _decidir(cand: dict) -> Optional[tuple[str, str]]:
 
 # --- Construcción de la regla ---------------------------------------------
 
-def _construir_documento(cand: dict, nivel_confianza: str, sufijo_desambiguador: Optional[str] = None) -> dict:
+def _construir_documento(cand: dict, nivel_confianza: str, sufijo_desambiguador: Optional[str] = None,
+                         estado: str = "BORRADOR", documento_sha256: Optional[str] = None) -> dict:
     """`sufijo_desambiguador` solo se pasa cuando la descomposición produjo
     más de una sub-candidata atómica del mismo artículo padre (p. ej. DB-SUA
     1.2 da 3 conversiones limpias) — sin él, las tres competirían por el
     mismo `concept_id` derivado solo del artículo. Con una única conversión
     por artículo (el caso del Prompt 1: DB-SUA 2.2, 5.1, 7.1) el `concept_id`
-    no cambia — la trazabilidad ya asentada no se rompe por este paso nuevo."""
+    no cambia — la trazabilidad ya asentada no se rompe por este paso nuevo.
+
+    `estado`/`documento_sha256` son del Prompt 2
+    (docs/prd/2026-08-21-verificacion-doble-del-corpus.md): por defecto
+    siguen produciendo exactamente el `BORRADOR` de siempre —
+    `scripts/verificar_doble_ruta.py` es el único llamante que pasa
+    `estado="VERIFICADA_AUTOMATICA"` con su hash."""
     doc_id = cand["documento_identificador"]
     fuente = FUENTES_OFICIALES_CONOCIDAS[doc_id]
     materia = cand["materia_sugerida"]
@@ -511,6 +525,8 @@ def _construir_documento(cand: dict, nivel_confianza: str, sufijo_desambiguador:
 
     nombre = nombre_corto if not sufijo_desambiguador else f"{nombre_corto} — {sufijo_desambiguador.replace('_', ' ')}"
 
+    etiqueta_procedencia = "borrador_automatico" if estado == "BORRADOR" else "verificado_doble_ruta"
+
     regla = {
         "concept_id": concept_id,
         "instance_id": instance_id,
@@ -519,7 +535,7 @@ def _construir_documento(cand: dict, nivel_confianza: str, sufijo_desambiguador:
         "tipo": cand["tipo"],
         "prioridad": prioridad,
         "nivel_de_conocimiento": 2,  # normativa verificable (regla.schema.json §comentario)
-        "estado": "BORRADOR",
+        "estado": estado,
         "aplicabilidad": {"ambito": "es"},
         "patron": cand["patron"],
         "parametro": parametro,
@@ -528,7 +544,7 @@ def _construir_documento(cand: dict, nivel_confianza: str, sufijo_desambiguador:
         "explicacion_tecnica": cand.get("explicacion_tecnica") or "",
         "explicacion_cliente": cand.get("condicion_aplicacion") or "",
         "tags": [
-            "borrador_automatico",
+            etiqueta_procedencia,
             _slug(doc_id),
             materia,
             f"confianza_{nivel_confianza.lower()}",
@@ -536,11 +552,15 @@ def _construir_documento(cand: dict, nivel_confianza: str, sufijo_desambiguador:
         "vigencia": {"vigencia_desde": fecha},
     }
 
+    fuente_norma = {k: v for k, v in fuente.items() if k != "prefijo_concepto"}
+    if documento_sha256:
+        fuente_norma["documento_sha256"] = documento_sha256
+
     norma = {
         "concept_id": f"{prefijo}.{_slug(doc_id)}.norma",
         "instance_id": f"{prefijo}.{_slug(doc_id)}.norma@1",
         "ambito": "es",
-        "fuente": {k: v for k, v in fuente.items() if k != "prefijo_concepto"},
+        "fuente": fuente_norma,
         "articulo": {
             "documento_basico": doc_id,
             "seccion": cand.get("apartado"),

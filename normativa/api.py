@@ -297,7 +297,7 @@ def cobertura(cadena: CadenaAmbitos, fecha: Optional[date] = None) -> InformeCob
     """
     carga: ResultadoCarga = cargar_cadena(cadena)
     rotas = {materia for _, materia in carga.materias_sin_cobertura_por_fallo()}
-    return _cobertura(cadena, rotas=rotas)
+    return _cobertura(cadena, rotas=rotas, reglas_por_ambito_materia=carga.reglas_por_materia())
 
 
 # --- Fases 1 y 6: contrato declarado, sin implementar -----------------------

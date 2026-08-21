@@ -73,6 +73,19 @@ class ResultadoCarga:
             fuera.add((_ambito_de_ruta(p, self.raiz), p.stem))
         return fuera
 
+    def reglas_por_materia(self) -> Dict[Tuple[str, str], List[dict]]:
+        """Agrupa las reglas cargadas por (ámbito, materia).
+
+        Es la forma que `normativa/manifiesto.py::cobertura()` necesita para
+        derivar el estado de cobertura del estado REAL de las reglas en
+        disco, no de una etiqueta escrita a mano
+        (docs/prd/2026-08-21-verificacion-doble-del-corpus.md §5.6)."""
+        fuera: Dict[Tuple[str, str], List[dict]] = {}
+        for fichero in self.ficheros:
+            for regla in (fichero.doc.get("reglas") or []):
+                fuera.setdefault((fichero.ambito, regla.get("materia")), []).append(regla)
+        return fuera
+
 
 def normalizar_fechas(valor):
     """Convierte `date`/`datetime` a cadena ISO, recursivamente.

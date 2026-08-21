@@ -1,0 +1,75 @@
+# Generado automáticamente por scripts/verificar_doble_ruta.py — NO EDITAR A MANO.
+# Origen: DB-SUA — DB-SUA 5.1 Ámbito de aplicación
+#
+# ESTADO: VERIFICADA_AUTOMATICA. Dos rutas de extracción independientes
+# (ruta A: pypdf + interpretación por IA; ruta B: pdfminer.six +
+# extractor determinista de patrones, sin API) coincidieron en valor y
+# unidad para este parámetro.
+# Ver docs/prd/2026-08-21-verificacion-doble-del-corpus.md.
+# SHA-256 del PDF oficial: 3cfb5bbb135e8f02faebd8b844e03e8947994c18d4c9e675a7d2aa37d1cd5958
+
+version: 1
+norma:
+  concept_id: es.rd_173_2010.db_sua.norma
+  instance_id: es.rd_173_2010.db_sua.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 173/2010
+    titulo: Real Decreto 173/2010, de 19 de febrero, por el que se modifica el Código
+      Técnico de la Edificación, aprobado por el Real Decreto 314/2006, de 17 de marzo,
+      en materia de accesibilidad y no discriminación de las personas con discapacidad
+    boletin: BOE-A-2010-3811
+    url_oficial: https://www.boe.es/eli/es/rd/2010/02/19/173/con
+    documento_sha256: 3cfb5bbb135e8f02faebd8b844e03e8947994c18d4c9e675a7d2aa37d1cd5958
+  articulo:
+    documento_basico: DB-SUA
+    seccion: 'Sección DB-SUA 5: Seguridad frente al riesgo causado por situaciones
+      de alta'
+    apartado: '5.1'
+    tabla: null
+  literal: "1 Ámbito de aplicación \n1 Las condiciones establecidas en e sta Sección\
+    \ son de aplicación a los graderíos de estadios, pab e-\nllones polideportivos,\
+    \ centros de reunión, otros edificios de uso cultural, etc. previstos para más\
+    \ de \n3000 espectadores de pie (1). En todo lo relativo a las condiciones de\
+    \ evacuación les es ta mbién de \naplicación la Sección SI 3 del Documento Básico\
+    \ DB-SI."
+  vigencia:
+    vigencia_desde: '2022-06-14'
+reglas:
+- concept_id: es.rd_173_2010.seguridad_utilizacion.5_1_ambito_de_aplicacion
+  instance_id: es.rd_173_2010.seguridad_utilizacion.5_1_ambito_de_aplicacion@1
+  nombre: Ámbito de aplicación
+  materia: seguridad_utilizacion
+  tipo: exigencia_de_presencia
+  prioridad: bloqueante
+  nivel_de_conocimiento: 2
+  estado: VERIFICADA_AUTOMATICA
+  aplicabilidad:
+    ambito: es
+  patron: UMBRAL_SIMPLE
+  parametro:
+    ejes: []
+    unidad: espectadores de pie
+    repliegue:
+    - todos
+    valores:
+    - valor: 3000.0
+  condiciones: null
+  mensaje: previstos para más de 3000 espectadores de pie
+  explicacion_tecnica: 'El artículo delimita el ámbito de aplicación de la Sección
+    DB-SUA 5: sus condiciones aplican a graderíos de estadios, pabellones polideportivos,
+    centros de reunión y otros edificios de uso cultural cuando estén previstos para
+    más de 3000 espectadores de pie. Adicionalmente, para las condiciones de evacuación,
+    remite a la Sección SI 3 del DB-SI.'
+  explicacion_cliente: Aplica a «graderíos de estadios, pabellones polideportivos,
+    centros de reunión, otros edificios de uso cultural, etc. previstos para más de
+    3000 espectadores de pie».
+  tags:
+  - verificado_doble_ruta
+  - db_sua
+  - seguridad_utilizacion
+  - confianza_baja
+  vigencia:
+    vigencia_desde: '2022-06-14'

@@ -1,0 +1,109 @@
+# Generado automáticamente por scripts/verificar_doble_ruta.py — NO EDITAR A MANO.
+# Origen: DB-SUA — DB-SUA 1.2 Discontinuidades en el pavimento
+#
+# ESTADO: VERIFICADA_AUTOMATICA. Dos rutas de extracción independientes
+# (ruta A: pypdf + interpretación por IA; ruta B: pdfminer.six +
+# extractor determinista de patrones, sin API) coincidieron en valor y
+# unidad para este parámetro.
+# Ver docs/prd/2026-08-21-verificacion-doble-del-corpus.md.
+# SHA-256 del PDF oficial: 3cfb5bbb135e8f02faebd8b844e03e8947994c18d4c9e675a7d2aa37d1cd5958
+
+version: 1
+norma:
+  concept_id: es.rd_173_2010.db_sua.norma
+  instance_id: es.rd_173_2010.db_sua.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 173/2010
+    titulo: Real Decreto 173/2010, de 19 de febrero, por el que se modifica el Código
+      Técnico de la Edificación, aprobado por el Real Decreto 314/2006, de 17 de marzo,
+      en materia de accesibilidad y no discriminación de las personas con discapacidad
+    boletin: BOE-A-2010-3811
+    url_oficial: https://www.boe.es/eli/es/rd/2010/02/19/173/con
+    documento_sha256: 3cfb5bbb135e8f02faebd8b844e03e8947994c18d4c9e675a7d2aa37d1cd5958
+  articulo:
+    documento_basico: DB-SUA
+    seccion: 'Sección DB-SUA 1: Seguridad frente al riesgo de caídas'
+    apartado: '1.2'
+    tabla: null
+  literal: "2 Discontinuidades en el pavimento \n1 Excepto en zonas de uso restringido\
+    \ o exteriores y con el fin de limitar el riesgo de caídas como co n-\nsecuencia\
+    \ de traspiés o de tropiezos, el suelo debe cumplir las condiciones siguientes:\
+    \ \fDocumento Básico SUA Seguridad de utilización y accesibilidad \nSUA 1. Seguridad\
+    \ frente al riesgo de caídas \n9 \na) No tendrá juntas que presenten un resalto\
+    \ de más de 4 mm. Los elementos salientes del nivel \ndel pavimento, puntuales\
+    \ y de pequeña dimensión (por ejemplo, los cerraderos de puertas) no \ndeben sobresalir\
+    \ del pavimento más de 12 mm y el saliente que exceda de 6 mm en sus caras \n\
+    enfrentadas al sentido de circulación de las personas no debe formar un ángulo\
+    \ con el p avimen-\nto que exceda de 45º. \nb) Los desniveles que no excedan de\
+    \ 5 cm se resolv erán con una pendiente que no exceda del \n25%;  \nc) En zonas\
+    \ para circulación de personas, el suelo no presentará perforaciones o huecos\
+    \ por los \nque pueda introducirse una esfera de 1,5 cm de diámetro. \n2 Cuando\
+    \ se dispongan barreras para delimitar zonas de c irculación, tendrán una altura\
+    \ de 80 cm c o-\nmo mínimo.  \n3 En zonas de circulación no se podrá disponer\
+    \ un escalón aislado, ni dos consecutivos, exce pto en \nlos casos siguientes.\
+    \ \na) en zonas de uso restringido; \nb) en las zonas comunes de los edificios\
+    \ de uso Residencial Vivienda; \nc) en los accesos y en las salidas de los edificios;\
+    \ \nd) en el acceso a un estrado o escenario. \nEn estos casos, si la zona de\
+    \ circulación incluye un itinerario accesible, el o los escalones no podrán \n\
+    disponerse en el mismo."
+  vigencia:
+    vigencia_desde: '2022-06-14'
+reglas:
+- concept_id: es.rd_173_2010.seguridad_utilizacion.1_2_discontinuidades_en_el_pavimento
+  instance_id: es.rd_173_2010.seguridad_utilizacion.1_2_discontinuidades_en_el_pavimento@1
+  nombre: Discontinuidades en el pavimento
+  materia: seguridad_utilizacion
+  tipo: exigencia_compuesta
+  prioridad: bloqueante
+  nivel_de_conocimiento: 2
+  estado: VERIFICADA_AUTOMATICA
+  aplicabilidad:
+    ambito: es
+  patron: UMBRAL_SIMPLE
+  parametro:
+    ejes: []
+    unidad: mm
+    repliegue:
+    - todos
+    valores:
+    - valor: 4.0
+  condiciones: null
+  mensaje: No tendrá juntas que presenten un resalto de más de 4 mm.
+  explicacion_tecnica: 'El artículo establece tres bloques de exigencias sobre discontinuidades
+    en el pavimento:
+
+
+    **Bloque 1 (párrafo 1)** — Condiciones del suelo en zonas no restringidas ni exteriores:
+
+    - (a) Resaltos en juntas: ≤ 4 mm. Elementos salientes puntuales: ≤ 12 mm sobre
+    el pavimento; si el saliente supera 6 mm en la cara enfrentada al sentido de circulación,
+    el ángulo con el pavimento no puede exceder 45º.
+
+    - (b) Desniveles ≤ 5 cm: pendiente máxima del 25%.
+
+    - (c) Sin perforaciones por las que pueda introducirse una esfera de 1,5 cm de
+    diámetro.
+
+
+    **Bloque 2 (párrafo 2)** — Barreras delimitadoras de zonas de circulación: altura
+    mínima de 80 cm.
+
+
+    **Bloque 3 (párrafo 3)** — Prohibición de escalón aislado o dos consecutivos en
+    zonas de circulación, con cuatro excepciones tasadas. En los casos exceptuados,
+    si existe itinerario accesible, los escalones no pueden disponerse en él.'
+  explicacion_cliente: Aplica a suelos de zonas de circulación de personas, EXCEPTO
+    en zonas de uso restringido o exteriores (para las condiciones del apartado 1).
+    Las condiciones del apartado 3 sobre escalones aislados aplican a todas las zonas
+    de circulación, con las excepciones listadas (uso restringido, zonas comunes de
+    Residencial Vivienda, accesos/salidas de edificios, acceso a estrado o escenario).
+  tags:
+  - verificado_doble_ruta
+  - db_sua
+  - seguridad_utilizacion
+  - confianza_baja
+  vigencia:
+    vigencia_desde: '2022-06-14'

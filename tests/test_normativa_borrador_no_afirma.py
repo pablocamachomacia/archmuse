@@ -90,13 +90,40 @@ def test_paso1_candidatas_descarta_toda_regla_borrador():
     assert "BORRADOR" in c.motivo
 
 
+def test_paso1_candidatas_deja_pasar_verificada_automatica():
+    """El reverso del test anterior: una regla VERIFICADA_AUTOMATICA sí
+    llega a ser candidata evaluable — si el guardarraíl del Prompt 2 se
+    escribiera al revés (bloqueando todo lo que no sea `None`), este test
+    lo detectaría."""
+    regla_verificada = dict(REGLA_BORRADOR)
+    regla_verificada["estado"] = "VERIFICADA_AUTOMATICA"
+    regla_verificada["concept_id"] += "_verificada"
+
+    doc = dict(DOC_CON_BORRADOR)
+    doc["reglas"] = [regla_verificada]
+    fichero = loader.FicheroCorpus(
+        ruta=Path("ficticio.yaml"), ambito="es", doc=doc, materias={"seguridad_incendio"},
+    )
+    carga = loader.ResultadoCarga(raiz=RAIZ)
+    carga.ficheros.append(fichero)
+
+    candidatas = _paso1_candidatas(carga, ids_en_cadena={"es"}, avisos=[])
+    assert len(candidatas) == 1
+    assert candidatas[0].estado != "no_aplica"
+
+
 def test_grep_del_motor_el_guardarrail_esta_en_el_codigo():
     """Prompt 1 pide explícitamente «grep del motor + test». La cadena tiene
     que estar en el código, no solo probada por comportamiento — así una
     refactorización que la borre por accidente rompe este test aunque el
-    comportamiento coincidiera por casualidad."""
+    comportamiento coincidiera por casualidad.
+
+    El Prompt 2 (verificación doble) amplió el guardarraíl de "descarta
+    BORRADOR" a "descarta lo que no sea VERIFICADA_AUTOMATICA/FIRMADA" —
+    la cadena exacta cambió, pero el contrato (greppable, en el código, no
+    solo en el comportamiento) sigue siendo el mismo."""
     texto = (RAIZ / "normativa" / "resolucion.py").read_text(encoding="utf-8")
-    assert 'regla.get("estado") == "BORRADOR"' in texto
+    assert 'estado_regla not in ("VERIFICADA_AUTOMATICA", "FIRMADA")' in texto
 
 
 def test_ficheros_de_borrador_reales_son_invisibles_al_loader():

@@ -378,7 +378,10 @@ def resolver(
     _marcar_no_evaluables(candidatas)
 
     rotas = {materia for _, materia in carga.materias_sin_cobertura_por_fallo()}
-    informe = _manif.cobertura(cadena, rotas=rotas, ruta=ruta_manifiesto)
+    informe = _manif.cobertura(
+        cadena, rotas=rotas, ruta=ruta_manifiesto,
+        reglas_por_ambito_materia=carga.reglas_por_materia(),
+    )
     faltantes, preguntas_cobertura = _cobertura_exigible(cadena, perfil, informe)
 
     normas = tuple(
@@ -437,22 +440,30 @@ def _paso1_candidatas(
                 )
             c = _Candidata(regla=regla, norma=norma, ambito_id=declarado)
             c.traza.append(f"candidata por ámbito {declarado} de la cadena del proyecto")
-            # Guardarraíl de BORRADOR (docs/prd/2026-08-21-pipeline-borradores-
-            # corpus-db-sua.md). `regla["estado"]` es la procedencia de la
-            # regla en el corpus, no `c.estado` (aplicabilidad de ESTA
-            # candidata) — dos campos con el mismo nombre y significados
-            # distintos, a propósito no confundidos aquí. Una regla BORRADOR
-            # nunca llega a `NormaAplicable`: es transcripción de una sola
-            # ruta, sin verificar, y el motor no afirma cumplimiento con ella.
+            # Guardarraíl de procedencia (docs/prd/2026-08-21-pipeline-
+            # borradores-corpus-db-sua.md, ampliado en
+            # docs/prd/2026-08-21-verificacion-doble-del-corpus.md).
+            # `regla["estado"]` es la procedencia de la regla en el corpus,
+            # no `c.estado` (aplicabilidad de ESTA candidata) — dos campos
+            # con el mismo nombre y significados distintos, a propósito no
+            # confundidos aquí. Afirmable = VERIFICADA_AUTOMATICA o FIRMADA
+            # (dos rutas de extracción independientes coincidieron, o Pablo
+            # resolvió la discrepancia a mano). `None`/ausente sigue
+            # dejándose pasar: es una regla anterior a este campo
+            # (seguridad_incendio.yaml), gobernada por el tag
+            # `pendiente_firma_colegiado` a nivel de manifiesto, no por este
+            # guardarraíl. Todo lo demás —BORRADOR, o cualquier valor futuro
+            # que no sea de los dos afirmables— se descarta: transcripción
+            # sin verificar, el motor no afirma cumplimiento con ella.
             # Defensa en profundidad — en la práctica ya es inalcanzable
             # porque `loader.descubrir()` ignora los ficheros `_borrador_*`
             # que la escriben, pero este descarte no depende de esa
             # convención de nombre para ser cierto.
-            if regla.get("estado") == "BORRADOR":
+            estado_regla = regla.get("estado")
+            if estado_regla is not None and estado_regla not in ("VERIFICADA_AUTOMATICA", "FIRMADA"):
                 c.descartar(
-                    "regla en estado BORRADOR: transcripción de una sola ruta "
-                    "de extracción, sin verificar — el motor nunca la usa para "
-                    "afirmar cumplimiento"
+                    f"regla en estado {estado_regla}: no es VERIFICADA_AUTOMATICA "
+                    f"ni FIRMADA — el motor nunca la usa para afirmar cumplimiento"
                 )
                 candidatas.append(c)
                 continue

@@ -20,7 +20,7 @@ from __future__ import annotations
 import functools
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 import yaml
 
@@ -35,7 +35,7 @@ MANIFIESTO = Path(__file__).resolve().parent / "cobertura" / "manifiesto.yaml"
 # corresponden.
 #
 # `transcrito_sin_firmar` es el quinto, y es el estado en el que vive TODA regla
-# entre que el curador la transcribe y un colegiado la firma — o sea, el estado
+# entre que el curador la transcribe y queda confirmada — o sea, el estado
 # normal durante todo el trabajo que queda por delante. Existe porque los cuatro
 # anteriores obligaban a mentir en uno de los dos sentidos: `ausente` niega un
 # trabajo que está hecho y en disco, y `parcial` es **afirmable**, de modo que
@@ -43,6 +43,20 @@ MANIFIESTO = Path(__file__).resolve().parent / "cobertura" / "manifiesto.yaml"
 # ha revisado. Ninguna de las dos es la verdad, y la verdad aquí es barata de
 # decir. No es afirmable a propósito: el trabajo transcrito cuenta como
 # progreso, no como respaldo.
+#
+# Hasta el Prompt 2 (docs/prd/2026-08-21-verificacion-doble-del-corpus.md
+# §5.6) este estado lo escribía a mano el curador en
+# `normativa/cobertura/manifiesto.yaml`, y solo la validación 18 impedía que
+# mintiera. Desde entonces se DERIVA mecánicamente del estado real de las
+# reglas (`cobertura()` + `estado_derivado()`, más abajo): una materia con
+# alguna regla `BORRADOR`, o histórica con el tag `pendiente_firma_colegiado`,
+# nunca sale `completo`/`parcial` aunque el fichero lo declare así — la firma
+# de colegiado que el nombre evoca ya no es el mecanismo (ese concepto se
+# abandonó, docs/prd/2026-08-21-pipeline-borradores-corpus-db-sua.md §9);
+# ahora "confirmada" es `VERIFICADA_AUTOMATICA`/`FIRMADA` a nivel de regla
+# individual (`normativa/resolucion.py`). El nombre del estado se conserva
+# porque el significado —hay trabajo en disco que aún no se puede afirmar— es
+# el mismo.
 ESTADOS = ("completo", "parcial", "transcrito_sin_firmar", "ausente", "no_competente")
 
 #: Los estados que afirman que hay reglas de esa materia EN DISCO. La
@@ -128,6 +142,62 @@ class InformeCobertura:
         }
 
 
+def _regla_confirmada(regla: dict) -> bool:
+    """Afirmable a nivel de UNA regla — el mismo criterio, palabra por
+    palabra, que `normativa/resolucion.py::_paso1_candidatas`. Se duplica la
+    lógica (no se importa) porque `resolucion.py` importa este módulo y un
+    import en sentido contrario crearía un ciclo; que no diverjan depende de
+    `tests/test_normativa_manifiesto_deriva.py`, que las compara.
+    """
+    estado = regla.get("estado")
+    if estado in ("VERIFICADA_AUTOMATICA", "FIRMADA"):
+        return True
+    if estado is not None:
+        return False  # BORRADOR, o cualquier estado futuro no afirmable
+    # Regla histórica, anterior al campo `estado` (p. ej. seguridad_incendio.yaml):
+    # la gobierna el tag legado, como hacía la validación 18 antes de esto.
+    # Import local a propósito: `validacion` importa de este módulo a nivel de
+    # módulo (`ESTADOS_CON_REGLAS`), así que un `import` al principio de este
+    # fichero crearía un ciclo que revienta según quién se importe primero.
+    from . import validacion
+    return validacion.TAG_SIN_FIRMAR not in (regla.get("tags") or [])
+
+
+def estado_derivado(declarado: Optional[str], reglas: List[dict]) -> str:
+    """El estado real de una materia en un ámbito, mirando sus reglas — no
+    la cadena que alguien escribió a mano en `manifiesto.yaml`.
+
+    Decisión de Pablo (2026-08-21, Prompt 1 §9, ejecutada en el Prompt 2
+    §5.6): una materia es `completo`/`parcial` **solo** cuando TODAS sus
+    reglas activas son `VERIFICADA_AUTOMATICA` o `FIRMADA` — nunca si queda
+    alguna `BORRADOR` o sin confirmar, aunque el fichero declare lo
+    contrario. Sustituye la promoción manual de `transcrito_sin_firmar`.
+
+    - Sin reglas en disco y lo declarado no promete reglas (`ausente`,
+      `no_competente`, o nada): se respeta tal cual, no hay nada que derivar.
+    - Sin reglas en disco pero lo declarado SÍ promete reglas (`completo`,
+      `parcial` o `transcrito_sin_firmar`, es decir `ESTADOS_CON_REGLAS`):
+      no se confía a ciegas — es la misma mentira que la validación 17
+      rechaza al cargar, y aquí no hay corpus detrás para comprobarla. Se
+      fuerza a `ausente`.
+    - Con reglas, todas confirmadas: si ya se declaraba `completo` o
+      `parcial`, se mantiene (la EXTENSIÓN de la materia — si es todo el DB
+      o solo un apartado — no se puede derivar del estado de la regla, así
+      que no se inventa); si no, se sube a `parcial` por defecto, nunca a
+      `completo` sin que un humano lo haya declarado así.
+    - Con reglas, alguna sin confirmar: `transcrito_sin_firmar`, siempre,
+      pisando lo declarado — es exactamente el caso que este mecanismo
+      existe para no dejar mentir.
+    """
+    if not reglas:
+        if declarado in ESTADOS_CON_REGLAS:
+            return "ausente"
+        return declarado or "ausente"
+    if all(_regla_confirmada(r) for r in reglas):
+        return declarado if declarado in ("completo", "parcial") else "parcial"
+    return "transcrito_sin_firmar"
+
+
 @functools.lru_cache(maxsize=4)
 def _manifiesto(ruta: Optional[Path] = None) -> dict:
     """Cacheado POR RUTA, no globalmente. La lección es de la Fase 0: un
@@ -151,14 +221,23 @@ def cobertura(
     cadena: CadenaAmbitos,
     rotas: Optional[Set[str]] = None,
     ruta: Optional[Path] = None,
+    reglas_por_ambito_materia: Optional[Dict[Tuple[str, str], List[dict]]] = None,
 ) -> InformeCobertura:
     """Informe de cobertura de una cadena territorial.
 
     Recorre TODAS las materias del catálogo, no solo las declaradas: una
     materia sobre la que el manifiesto calla es `ausente`, y eso hay que
     decirlo. El silencio no es cobertura.
+
+    `reglas_por_ambito_materia` es opcional a propósito (compatibilidad con
+    quien todavía no lo pase), pero en producción SIEMPRE llega poblado
+    (`normativa/api.py::cobertura()`, `normativa/resolucion.py::_resolver`):
+    es lo que permite derivar `completo`/`parcial`/`transcrito_sin_firmar`
+    del estado real de las reglas en vez de confiar en la cadena que alguien
+    escribió en `manifiesto.yaml` (`estado_derivado()`, arriba).
     """
     declarado = _declarado(ruta)
+    reglas_por_ambito_materia = reglas_por_ambito_materia or {}
     comps = catalogos.competencias()
     entradas: List[EntradaCobertura] = []
 
@@ -201,18 +280,24 @@ def cobertura(
             continue
 
         decl = declarado.get(ambito_obj.id, {}).get(materia)
-        if decl is None:
+        reglas = reglas_por_ambito_materia.get((ambito_obj.id, materia), [])
+
+        if decl is None and not reglas:
             entradas.append(EntradaCobertura(ambito_obj.id, materia, "ausente"))
-        else:
-            estado = decl.get("estado") if isinstance(decl, dict) else str(decl)
-            entradas.append(
-                EntradaCobertura(
-                    ambito=ambito_obj.id,
-                    materia=materia,
-                    estado=estado if estado in ESTADOS else "ausente",
-                    verificado=(decl.get("verificado") if isinstance(decl, dict) else None),
-                    por=(decl.get("por") if isinstance(decl, dict) else None),
-                )
+            continue
+
+        estado_declarado = decl.get("estado") if isinstance(decl, dict) else (
+            str(decl) if decl is not None else None
+        )
+        estado = estado_derivado(estado_declarado, reglas)
+        entradas.append(
+            EntradaCobertura(
+                ambito=ambito_obj.id,
+                materia=materia,
+                estado=estado if estado in ESTADOS else "ausente",
+                verificado=(decl.get("verificado") if isinstance(decl, dict) else None),
+                por=(decl.get("por") if isinstance(decl, dict) else None),
             )
+        )
 
     return InformeCobertura(entradas=entradas, rotas=sorted(rotas or set()))
