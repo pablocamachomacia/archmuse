@@ -228,15 +228,17 @@ def test_solo_declaran_efectos_las_que_escriben():
     portero pediría una autorización que no hace falta, y el arquitecto
     aprendería a conceder autorizaciones sin leerlas.
 
-    Las tres de lectura no tienen ninguno; las dos que entregan un fichero
-    —el DXF relleno (`TL-2`) y el PDF que lo explica (`DOC-2`)— tienen
-    exactamente uno cada una, y su test propio está en
-    `tests/test_agente_escritura.py`.
+    Las tres de lectura no tienen ninguno; la que entrega el DXF relleno
+    (`TL-2`) tiene exactamente uno, y su test propio está en
+    `tests/test_agente_escritura.py`. El PDF que lo explica (`DOC-2`,
+    `plano.cuadro_en_pdf`) ya no vive en este módulo como capacidad propia:
+    desde el cierre de C4 (Prompt 1.7, 2026-08-21) se despacha desde
+    `plano.entregable_en_pdf` en `agente/herramientas/entregables.py` — la
+    función sigue aquí, sin registro propio.
     """
     con_efectos = {c.id: c.efectos for c in plano.CAPACIDADES if c.efectos}
     assert con_efectos == {
         "plano.escribir_cuadro": ("escribe_fichero",),
-        "plano.cuadro_en_pdf": ("escribe_fichero",),
     }
 
 

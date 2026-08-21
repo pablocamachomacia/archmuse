@@ -68,10 +68,12 @@ def test_la_skill_esta_en_el_registro_y_se_valida_al_cargar():
 
 
 def test_declara_las_capacidades_que_usa_y_solo_esas():
+    # plano.cuadro_en_pdf se fusionó en plano.entregable_en_pdf (Prompt 1.7,
+    # cierre de C4, 2026-08-21).
     assert set(skill().capacidades) == {
         "plano.leer_dxf", "plano.superficie_util",
         "plano.cuadro_de_superficies", "plano.escribir_cuadro",
-        "plano.cuadro_en_pdf",
+        "plano.entregable_en_pdf",
     }
 
 

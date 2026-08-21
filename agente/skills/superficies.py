@@ -155,8 +155,10 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
     # después. Si falla, NO se pierde el DXF que ya está escrito: se declara
     # con motivo y el trabajo principal sigue entregado.
     ruta_pdf = _pdf_junto_al(destino)
-    pdf = ctx.invocar("plano.cuadro_en_pdf", ruta=ruta, ruta_destino=ruta_pdf,
-                      respuestas=respuestas)
+    # plano.cuadro_en_pdf se fusionó en plano.entregable_en_pdf (Prompt 1.7,
+    # cierre de C4, 2026-08-21) — mismo comportamiento, tipo="cuadro".
+    pdf = ctx.invocar("plano.entregable_en_pdf", tipo="cuadro", ruta=ruta,
+                      ruta_destino=ruta_pdf, respuestas=respuestas)
     if pdf.get("ok"):
         hechas["cuadro.entregable_pdf"] = calculo(
             "cuadro.entregable_pdf", pdf["ruta_destino"], fuente=ctx.firma)
@@ -359,7 +361,7 @@ SKILLS = (
         requiere=(),
         capacidades=("plano.leer_dxf", "plano.superficie_util",
                      "plano.cuadro_de_superficies", "plano.escribir_cuadro",
-                     "plano.cuadro_en_pdf"),
+                     "plano.entregable_en_pdf"),
         produce=PRODUCE,
         funcion=_ejecutar,
         verificaciones=(

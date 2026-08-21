@@ -109,7 +109,9 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
     }
 
     # --- 2. El documento que el arquitecto se lleva ------------------------
-    escritura = ctx.invocar("plano.informe_de_coherencia", ruta=ruta,
+    # plano.informe_de_coherencia se fusionó en plano.entregable_en_pdf
+    # (Prompt 1.7, cierre de C4, 2026-08-21) — mismo comportamiento, tipo="coherencia".
+    escritura = ctx.invocar("plano.entregable_en_pdf", tipo="coherencia", ruta=ruta,
                             ruta_destino=destino, capa=capa, factor_escala=factor)
     if not escritura.get("ok", True) or not escritura.get("ruta_destino"):
         return ResultadoDeSkill(
@@ -269,7 +271,7 @@ SKILLS = (
         # justamente lo que hace que esta Skill sirva para un DXF ajeno, que es
         # su caso de más valor.
         requiere=(),
-        capacidades=("plano.coherencia", "plano.informe_de_coherencia"),
+        capacidades=("plano.coherencia", "plano.entregable_en_pdf"),
         produce=PRODUCE,
         funcion=_ejecutar,
         verificaciones=(

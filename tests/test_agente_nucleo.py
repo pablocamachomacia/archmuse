@@ -408,29 +408,33 @@ def test_el_registro_se_puebla_por_descubrimiento():
         # explica (DOC-2). Son las únicas `io` del registro, las únicas que
         # exigen autorización explícita del efecto.
         "plano.escribir_cuadro",
-        "plano.cuadro_en_pdf",
-        # La revisión de coherencia del plano (tarea CO-4, 2026-08-19), con la
-        # misma separación por efecto: una lee y no pide autorización, la otra
-        # escribe el informe y sí la pide.
+        # La revisión de coherencia del plano (tarea CO-4, 2026-08-19): lee
+        # sin pedir autorización. El PDF de coherencia ya no tiene entrada
+        # propia -- ver plano.entregable_en_pdf, más abajo.
         "plano.coherencia",
-        "plano.informe_de_coherencia",
-        # La medicion de la planta (Terminal 1, 2026-08-19).
+        # La medicion de la planta (Terminal 1, 2026-08-19): igual, el PDF de
+        # medición ya no tiene entrada propia.
         "plano.medicion_de_la_planta",
-        "plano.medicion_en_pdf",
         # El ajuste del encargo desde el copiloto (CP-1, pieza 5 del MVP).
         # NO escribe nada: transforma el diccionario de parametros con el que
         # se genero una alternativa, y quien regenera es la capa HTTP.
         "proyecto.ajustar_programa",
+        # Cierre de C4 (Prompt 1.7, 2026-08-21, decisión de Pablo — ver
+        # docs/design/2026-08-21-fusion-capacidades-pdf-C4.md): fusión de
+        # manifiesto de las tres que escribían un PDF (plano.medicion_en_pdf,
+        # plano.cuadro_en_pdf, plano.informe_de_coherencia) en UNA, despachada
+        # por el parámetro «tipo». El código interno no se tocó -- las tres
+        # implementaciones siguen donde estaban y se siguen llamando igual.
+        "plano.entregable_en_pdf",
     }
     # C4 — cobertura antes que catálogo: entre 8 y 12 capacidades auditadas al
     # cerrar el MVP, no cientos. Esta lista es larga a propósito: obliga a que
     # añadir una capacidad sea una decisión visible, no una deriva.
-    # **NO subir este numero.** Esta en rojo A PROPOSITO desde el 2026-08-19.
-    # El registro esta en **13** --bajo de 14 al retirar `bim.inventario_de_ifc`,
-    # aprobado por Pablo-- y C4 fija el MVP entre 8 y 12: sigue pasandose por
-    # una. La revision formal de C4 esta escrita en
-    # `docs/design/2026-08-19-revision-formal-de-C4.md` y **la decision es de
-    # Pablo**, no de quien pase por aqui con la suite en rojo.
+    # **NO subir este numero.** El registro volvió a estar en verde el
+    # 2026-08-21 (Prompt 1.7): 13 -> 11 por fusión de manifiesto, no por subir
+    # el techo. La revision formal de C4 esta escrita en
+    # `docs/design/2026-08-19-revision-formal-de-C4.md` y el cierre concreto en
+    # `docs/design/2026-08-21-fusion-capacidades-pdf-C4.md`.
     # Un guardian que se ensancha en cuanto salta no protege de nada -- que es
     # justo lo que paso cuando esta linea se subio a 14 y hubo que revertirla el
     # mismo dia (ver PROGRESS.md, 2026-08-19).

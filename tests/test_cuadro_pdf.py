@@ -158,15 +158,18 @@ def test_todas_las_paginas_dicen_que_es_un_borrador():
 # --- 5. La capacidad -------------------------------------------------------
 
 def test_la_capacidad_esta_declarada_como_io_con_su_efecto():
-    cap = registro(recargar=True).buscar("plano.cuadro_en_pdf")
+    # plano.cuadro_en_pdf se fusionó en plano.entregable_en_pdf (Prompt 1.7,
+    # cierre de C4, 2026-08-21) -- mismo comportamiento, tipo="cuadro".
+    cap = registro(recargar=True).buscar("plano.entregable_en_pdf")
     assert cap.naturaleza == "io"
     assert cap.efectos == (ESCRIBE_FICHERO,)
 
 
 def test_sin_autorizacion_no_escribe_el_pdf(tmp_path):
-    cap = registro(recargar=True).buscar("plano.cuadro_en_pdf")
+    cap = registro(recargar=True).buscar("plano.entregable_en_pdf")
     with pytest.raises(EfectoNoAutorizado):
-        cap.invocar({"ruta": "x.dxf", "ruta_destino": str(tmp_path / "x.pdf")})
+        cap.invocar({"tipo": "cuadro", "ruta": "x.dxf",
+                     "ruta_destino": str(tmp_path / "x.pdf")})
     assert not (tmp_path / "x.pdf").exists()
 
 

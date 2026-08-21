@@ -281,17 +281,21 @@ def test_el_pdf_sin_autorizacion_no_se_escribe(tmp_path):
     """El portero de efectos, sobre la capacidad nueva."""
     ruta = construir(tmp_path, DOS_VIVIENDAS, ETIQUETAS_DOS)
     destino = str(tmp_path / "medicion.pdf")
-    capacidad = registro(recargar=True).buscar("plano.medicion_en_pdf")
+    # plano.medicion_en_pdf se fusionó en plano.entregable_en_pdf (Prompt 1.7,
+    # cierre de C4, 2026-08-21) -- mismo comportamiento, tipo="medicion".
+    capacidad = registro(recargar=True).buscar("plano.entregable_en_pdf")
     with pytest.raises(_efectos.EfectoNoAutorizado):
-        capacidad.invocar({"ruta": ruta, "ruta_destino": destino}, None)
+        capacidad.invocar({"tipo": "medicion", "ruta": ruta, "ruta_destino": destino}, None)
     assert not os.path.exists(destino)
 
 
 def test_el_destino_no_puede_ser_el_propio_plano(tmp_path):
     ruta = construir(tmp_path, DOS_VIVIENDAS, ETIQUETAS_DOS)
-    capacidad = registro(recargar=True).buscar("plano.medicion_en_pdf")
+    # plano.medicion_en_pdf se fusionó en plano.entregable_en_pdf (Prompt 1.7,
+    # cierre de C4, 2026-08-21) -- mismo comportamiento, tipo="medicion".
+    capacidad = registro(recargar=True).buscar("plano.entregable_en_pdf")
     permisos = _efectos.Autorizaciones.de(capacidad.efectos, por="test")
-    resultado = capacidad.invocar({"ruta": ruta, "ruta_destino": ruta}, permisos)
+    resultado = capacidad.invocar({"tipo": "medicion", "ruta": ruta, "ruta_destino": ruta}, permisos)
     assert resultado["ok"] is False
     assert resultado["error"] == "destino_es_el_origen"
 
@@ -300,9 +304,11 @@ def test_el_destino_no_sobrescribe_un_fichero_que_ya_existe(tmp_path):
     ruta = construir(tmp_path, DOS_VIVIENDAS, ETIQUETAS_DOS)
     destino = tmp_path / "medicion.pdf"
     destino.write_bytes(b"un entregable anterior")
-    capacidad = registro(recargar=True).buscar("plano.medicion_en_pdf")
+    # plano.medicion_en_pdf se fusionó en plano.entregable_en_pdf (Prompt 1.7,
+    # cierre de C4, 2026-08-21) -- mismo comportamiento, tipo="medicion".
+    capacidad = registro(recargar=True).buscar("plano.entregable_en_pdf")
     permisos = _efectos.Autorizaciones.de(capacidad.efectos, por="test")
-    resultado = capacidad.invocar({"ruta": ruta, "ruta_destino": str(destino)}, permisos)
+    resultado = capacidad.invocar({"tipo": "medicion", "ruta": ruta, "ruta_destino": str(destino)}, permisos)
     assert resultado["ok"] is False
     assert resultado["error"] == "destino_ya_existe"
     assert destino.read_bytes() == b"un entregable anterior"
@@ -314,9 +320,11 @@ def test_el_pdf_se_escribe_y_el_original_conserva_su_sello(tmp_path):
     ruta = construir(tmp_path, DOS_VIVIENDAS, ETIQUETAS_DOS)
     antes = hashlib.sha256(Path(ruta).read_bytes()).hexdigest()
     destino = str(tmp_path / "medicion.pdf")
-    capacidad = registro(recargar=True).buscar("plano.medicion_en_pdf")
+    # plano.medicion_en_pdf se fusionó en plano.entregable_en_pdf (Prompt 1.7,
+    # cierre de C4, 2026-08-21) -- mismo comportamiento, tipo="medicion".
+    capacidad = registro(recargar=True).buscar("plano.entregable_en_pdf")
     permisos = _efectos.Autorizaciones.de(capacidad.efectos, por="test")
-    resultado = capacidad.invocar({"ruta": ruta, "ruta_destino": destino}, permisos)
+    resultado = capacidad.invocar({"tipo": "medicion", "ruta": ruta, "ruta_destino": destino}, permisos)
 
     assert resultado["ok"] is True
     assert resultado["origen_intacto"] is True

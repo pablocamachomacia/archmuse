@@ -88,7 +88,9 @@ def test_no_declara_ninguna_capacidad_de_normativa():
     `Contexto` se niega a dar una capacidad que la Skill no declare, asi que
     basta con que no declare ninguna de normativa.
     """
-    assert set(skill().capacidades) == {"plano.coherencia", "plano.informe_de_coherencia"}
+    # plano.informe_de_coherencia se fusionó en plano.entregable_en_pdf
+    # (Prompt 1.7, cierre de C4, 2026-08-21).
+    assert set(skill().capacidades) == {"plano.coherencia", "plano.entregable_en_pdf"}
     assert not [c for c in skill().capacidades if c.startswith("normativa.")]
 
 
@@ -344,11 +346,14 @@ def test_las_dos_capacidades_devuelven_un_dict_con_ok_tambien_al_fallar():
     se olvida."""
     from agente.registro import registro as _registro
 
+    # plano.informe_de_coherencia se fusionó en plano.entregable_en_pdf
+    # (Prompt 1.7, cierre de C4, 2026-08-21) -- su `.funcion` es ahora el
+    # despachador, así que la llamada directa necesita `tipo`.
     reg = _registro(recargar=True)
     for identificador, argumentos in (
         ("plano.coherencia", {"ruta": "no_existe.dxf"}),
-        ("plano.informe_de_coherencia", {"ruta": "no_existe.dxf",
-                                         "ruta_destino": "tampoco.pdf"}),
+        ("plano.entregable_en_pdf", {"tipo": "coherencia", "ruta": "no_existe.dxf",
+                                     "ruta_destino": "tampoco.pdf"}),
     ):
         salida = reg.buscar(identificador).funcion(**argumentos)
         assert isinstance(salida, dict)

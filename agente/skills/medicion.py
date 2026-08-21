@@ -121,8 +121,10 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
     # La lista de «lo que NO se comprueba» la deriva la propia capacidad de los
     # manifiestos, y por eso no se le pasa desde aquí: si la Skill pudiera
     # dictarla, podría entregar un documento con la lista recortada.
-    escritura = ctx.invocar("plano.medicion_en_pdf", ruta=ruta, ruta_destino=destino,
-                            capa=capa, factor_escala=factor)
+    # plano.medicion_en_pdf se fusionó en plano.entregable_en_pdf (Prompt 1.7,
+    # cierre de C4, 2026-08-21) — mismo comportamiento, tipo="medicion".
+    escritura = ctx.invocar("plano.entregable_en_pdf", tipo="medicion", ruta=ruta,
+                            ruta_destino=destino, capa=capa, factor_escala=factor)
     if not escritura.get("ok", True) or not escritura.get("ruta_destino"):
         detalle = escritura.get("detalle", "no se ha podido escribir la medición")
         return ResultadoDeSkill(
@@ -315,7 +317,7 @@ SKILLS = (
         # Nada de la memoria del proyecto: el plano viene en la petición. Es lo
         # que hace que esta Skill sirva también para un DXF ajeno.
         requiere=(),
-        capacidades=("plano.medicion_de_la_planta", "plano.medicion_en_pdf"),
+        capacidades=("plano.medicion_de_la_planta", "plano.entregable_en_pdf"),
         produce=PRODUCE,
         funcion=_ejecutar,
         verificaciones=(

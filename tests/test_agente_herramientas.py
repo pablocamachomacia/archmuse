@@ -60,31 +60,37 @@ def test_toda_capacidad_devuelve_un_dict_con_ok():
         "plano.superficie_util": {"ruta": "no_existe.dxf"},
         "plano.escribir_cuadro": {"ruta_origen": "no_existe.dxf",
                                   "ruta_destino": "tampoco_existe.dxf"},
-        "plano.cuadro_en_pdf": {"ruta": "no_existe.dxf",
-                                "ruta_destino": "tampoco_existe.pdf"},
-        # Y las dos de la revisión de coherencia (CO-4), con el mismo criterio:
-        # el contrato de salida se comprueba en el camino de fallo, que es el
-        # que más fácilmente se olvida. El camino bueno lo prueban
+        # Y la revisión de coherencia (CO-4): el contrato de salida se
+        # comprueba en el camino de fallo, que es el que más fácilmente se
+        # olvida. El camino bueno lo prueban
         # `tests/test_agente_skill_coherencia.py` y el golden G11.
         "plano.coherencia": {"ruta": "no_existe.dxf"},
-        "plano.informe_de_coherencia": {"ruta": "no_existe.dxf",
-                                        "ruta_destino": "tampoco_existe.pdf"},
         # El ajuste del encargo (CP-1): no toca ficheros, asi que su camino de
         # fallo es otro -- unos parametros vacios. El contrato de salida es el
         # mismo: dict con `ok`.
         "proyecto.ajustar_programa": {"parametros": {}, "operacion": "cambiar_mix"},
-        # Y las dos de la medicion de una planta con varias viviendas: mismo
-        # criterio otra vez. El camino bueno lo prueba
+        # Y la medicion de una planta con varias viviendas: mismo criterio
+        # otra vez. El camino bueno lo prueba
         # `tests/test_medicion_de_planta.py`, contra los DOS planos reales del
         # cliente -- el de tres viviendas y el que tiene solapes.
         "plano.medicion_de_la_planta": {"ruta": "no_existe.dxf"},
-        "plano.medicion_en_pdf": {"ruta": "no_existe.dxf",
-                                  "ruta_destino": "tampoco_existe.pdf"},
+        # Cierre de C4 (Prompt 1.7, 2026-08-21): plano.cuadro_en_pdf,
+        # plano.informe_de_coherencia y plano.medicion_en_pdf se fusionaron en
+        # ÉSTA, despachada por «tipo» -- así que aquí se prueban los tres
+        # caminos de fallo que antes eran tres entradas de esta tabla, no uno.
+        "plano.entregable_en_pdf": [
+            {"tipo": "medicion", "ruta": "no_existe.dxf",
+             "ruta_destino": "tampoco_existe.pdf"},
+            {"tipo": "cuadro", "ruta": "no_existe.dxf",
+             "ruta_destino": "tampoco_existe.pdf"},
+            {"tipo": "coherencia", "ruta": "no_existe.dxf",
+             "ruta_destino": "tampoco_existe.pdf"},
+        ],
     }
     reg = registro()
     assert set(invocaciones) == set(reg.ids()), "hay una capacidad sin probar aquí"
 
-    for identificador, argumentos in invocaciones.items():
+    for identificador, argumentos_o_lista in invocaciones.items():
         capacidad = reg.buscar(identificador)
         # Una capacidad con efectos se niega sin autorización (TL-2), así que
         # aquí se le concede lo que declara: lo que se comprueba en este test
@@ -92,10 +98,15 @@ def test_toda_capacidad_devuelve_un_dict_con_ok():
         # `tests/test_agente_escritura.py`.
         permisos = (_efectos.Autorizaciones.de(capacidad.efectos, por="test")
                     if capacidad.efectos else None)
-        resultado = capacidad.invocar(argumentos, permisos)
-        assert isinstance(resultado, dict)
-        assert isinstance(resultado["ok"], bool)
-        json.dumps(resultado, ensure_ascii=False, default=str)  # serializable
+        # La mayoría declara un único juego de argumentos; entregable_en_pdf
+        # declara una lista, uno por «tipo» -- ver el comentario de arriba.
+        lista_de_argumentos = (argumentos_o_lista if isinstance(argumentos_o_lista, list)
+                               else [argumentos_o_lista])
+        for argumentos in lista_de_argumentos:
+            resultado = capacidad.invocar(argumentos, permisos)
+            assert isinstance(resultado, dict)
+            assert isinstance(resultado["ok"], bool)
+            json.dumps(resultado, ensure_ascii=False, default=str)  # serializable
 
 
 def test_las_capacidades_normativas_son_deterministas():

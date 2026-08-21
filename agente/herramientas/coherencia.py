@@ -10,14 +10,19 @@ arquitecto piense. Un arquitecto piensa «repásame este plano», y eso es una
 capacidad. Mismo criterio grueso que las de `plano.py`, y el mismo que `C4`
 impone al tamaño del registro.
 
-**Dos capacidades y no una, separadas por el efecto.** `plano.coherencia` sólo
-lee: `efectos=()`, no pide autorización y no puede escribir nada.
-`plano.informe_de_coherencia` escribe el PDF y por eso declara
-`escribe_fichero`. Juntarlas obligaría a autorizar una escritura para mirar, y
-un arquitecto al que se le piden autorizaciones que no hacen falta aprende a
-concederlas sin leerlas — ese día la autorización deja de servir para nada. Es
-el mismo criterio con el que `plano.py` separa las tres de lectura de
-`plano.escribir_cuadro`.
+**`plano.coherencia` sigue separada por el efecto.** Sólo lee: `efectos=()`,
+no pide autorización y no puede escribir nada. Juntarla con la escritura
+obligaría a autorizar una escritura para mirar, y un arquitecto al que se le
+piden autorizaciones que no hacen falta aprende a concederlas sin leerlas —
+ese día la autorización deja de servir para nada. Es el mismo criterio con el
+que `plano.py` separa las tres de lectura de `plano.escribir_cuadro`.
+
+**`escribir_informe` (antes `plano.informe_de_coherencia`) ya no tiene entrada
+de registro propia.** Desde el cierre de C4 (Prompt 1.7, 2026-08-21) se invoca
+a través de `plano.entregable_en_pdf` con `tipo="coherencia"` — ver
+`agente/herramientas/entregables.py` y
+`docs/design/2026-08-21-fusion-capacidades-pdf-C4.md`. La función no se ha
+tocado: sigue viviendo aquí, sigue igual de sola en su lógica.
 
 **El DXF del arquitecto no se toca en ninguna de las dos.** Ni siquiera hay un
 motivo para escribir en él; aun así su sha256 se comprueba antes y después de
@@ -30,7 +35,6 @@ import os
 from typing import Any, Dict, Optional
 
 from ..capacidad import Capacidad
-from ..efectos import ESCRIBE_FICHERO
 # Los tres guardianes de la escritura se IMPORTAN, no se reimplementan. Escribir
 # aquí una versión «parecida» es exactamente el fallo que
 # `tests/test_agente_escritura.py` vigila: el día que se endurezca la protección
@@ -170,44 +174,10 @@ CAPACIDADES = (
             "sólo admite un DXF con una única vivienda detectada",
         ),
     ),
-    Capacidad(
-        id="plano.informe_de_coherencia",
-        version="1.0.0",
-        dominio="plano",
-        naturaleza="io",
-        descripcion=(
-            "Escribe en PDF la revisión de coherencia de un DXF: los hallazgos con su "
-            "entidad y su magnitud, qué se ha comprobado, y qué no se ha podido "
-            "comprobar y por qué. El plano de entrada se abre SÓLO PARA LEER y su "
-            "sha256 se verifica antes y después. Sale marcado como borrador para "
-            "revisión de un colegiado, sin opción de quitarlo."
-        ),
-        parametros={
-            "type": "object",
-            "properties": {
-                "ruta": {"type": "string",
-                         "description": "Ruta del .dxf que se revisa. Sólo se lee."},
-                "ruta_destino": {"type": "string",
-                                 "description": ("Dónde se escribe el informe PDF. No "
-                                                 "puede ser el propio plano.")},
-                "capa": {"type": ["string", "null"],
-                         "description": "Capa de recintos, si ya está confirmada."},
-                "factor_escala": {"type": ["number", "null"],
-                                  "description": "Multiplicador a metros, si ya está "
-                                                 "confirmado."},
-            },
-            "required": ["ruta", "ruta_destino"],
-            "additionalProperties": False,
-        },
-        funcion=escribir_informe,
-        efectos=(ESCRIBE_FICHERO,),
-        limitaciones=(
-            "no modifica el DXF del arquitecto: sólo lo lee, y lo comprueba con su "
-            "sha256 antes y después",
-            "no comprueba normativa: el informe dice si el plano es coherente consigo "
-            "mismo, no si el proyecto cumple",
-            "no gradúa la gravedad de los hallazgos: los agrupa por tipo y los mide",
-            "no sobrescribe el plano ni ningún fichero que no sea el destino indicado",
-        ),
-    ),
+    # `escribir_informe` (la función, definida arriba) sigue aquí y se sigue
+    # llamando igual. Lo que ya no está es su entrada de registro propia:
+    # desde el cierre de C4 (Prompt 1.7, 2026-08-21) se invoca a través de
+    # `plano.entregable_en_pdf` con `tipo="coherencia"` —
+    # docs/design/2026-08-21-fusion-capacidades-pdf-C4.md. Fusión de
+    # manifiesto, no de código: esta función no se ha tocado.
 )

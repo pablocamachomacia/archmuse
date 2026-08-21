@@ -96,18 +96,31 @@
     },
     "version": "1.0.0"
   },
-  "plano.cuadro_en_pdf": {
+  "plano.entregable_en_pdf": {
     "efectos": [
       "escribe_fichero"
     ],
-    "id": "plano.cuadro_en_pdf",
-    "limitaciones": 3,
+    "id": "plano.entregable_en_pdf",
+    "limitaciones": 7,
     "naturaleza": "io",
     "obligatorios": [
       "ruta",
-      "ruta_destino"
+      "ruta_destino",
+      "tipo"
     ],
     "parametros": {
+      "capa": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "factor_escala": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
       "respuestas": {
         "type": [
           "array",
@@ -118,6 +131,9 @@
         "type": "string"
       },
       "ruta_destino": {
+        "type": "string"
+      },
+      "tipo": {
         "type": "string"
       }
     },
@@ -145,39 +161,6 @@
         "type": "string"
       },
       "ruta_origen": {
-        "type": "string"
-      }
-    },
-    "version": "1.0.0"
-  },
-  "plano.informe_de_coherencia": {
-    "efectos": [
-      "escribe_fichero"
-    ],
-    "id": "plano.informe_de_coherencia",
-    "limitaciones": 4,
-    "naturaleza": "io",
-    "obligatorios": [
-      "ruta",
-      "ruta_destino"
-    ],
-    "parametros": {
-      "capa": {
-        "type": [
-          "string",
-          "null"
-        ]
-      },
-      "factor_escala": {
-        "type": [
-          "number",
-          "null"
-        ]
-      },
-      "ruta": {
-        "type": "string"
-      },
-      "ruta_destino": {
         "type": "string"
       }
     },
@@ -232,39 +215,6 @@
         ]
       },
       "ruta": {
-        "type": "string"
-      }
-    },
-    "version": "1.0.0"
-  },
-  "plano.medicion_en_pdf": {
-    "efectos": [
-      "escribe_fichero"
-    ],
-    "id": "plano.medicion_en_pdf",
-    "limitaciones": 2,
-    "naturaleza": "io",
-    "obligatorios": [
-      "ruta",
-      "ruta_destino"
-    ],
-    "parametros": {
-      "capa": {
-        "type": [
-          "string",
-          "null"
-        ]
-      },
-      "factor_escala": {
-        "type": [
-          "number",
-          "null"
-        ]
-      },
-      "ruta": {
-        "type": "string"
-      },
-      "ruta_destino": {
         "type": "string"
       }
     },

@@ -31,7 +31,6 @@ import os
 from typing import Any, Dict, Optional
 
 from ..capacidad import Capacidad
-from ..efectos import ESCRIBE_FICHERO
 from .plano import (
     _con_sello_intacto,
     _destino_seguro,
@@ -195,48 +194,10 @@ CAPACIDADES = (
         efectos=(),
         limitaciones=_LIMITACIONES_COMUNES,
     ),
-    Capacidad(
-        id="plano.medicion_en_pdf",
-        version="1.0.0",
-        dominio="plano",
-        naturaleza="io",
-        descripcion=(
-            "Escribe la medición de la planta en un PDF legible: una tabla por vivienda "
-            "con cada pieza, su superficie y DE DÓNDE SALE —qué recinto, con qué rótulo "
-            "y en qué capa del DXF—, más los subtotales y el total cuando lo hay o el "
-            "motivo cuando no. Incluye la geometría que no ha entrado en la medición y "
-            "la lista de lo que este trabajo NO comprueba. El DXF no se toca: se abre "
-            "sólo para leer y su sha256 se verifica antes y después. Exige autorización "
-            "del efecto «escribe_fichero»."
-        ),
-        parametros={
-            "type": "object",
-            "properties": {
-                "ruta": {"type": "string",
-                         "description": "El .dxf del arquitecto. Sólo se lee."},
-                "ruta_destino": {"type": "string",
-                                 "description": ("Dónde se escribe el PDF. No puede ser "
-                                                 "el DXF ni un fichero que ya exista.")},
-                "capa": {"type": ["string", "null"],
-                         "description": "Capa de recintos, si ya está confirmada."},
-                "factor_escala": {"type": ["number", "null"],
-                                  "description": ("Multiplicador a metros, si ya está "
-                                                  "confirmado.")},
-            },
-            "required": ["ruta", "ruta_destino"],
-            "additionalProperties": False,
-        },
-        funcion=medicion_en_pdf,
-        efectos=(ESCRIBE_FICHERO,),
-        # Sólo las suyas. Las de la medición son de `plano.medicion_de_la_planta`
-        # y ya entran en el acta por su lado: repetirlas aquí llenaría la sección
-        # «qué no se ha comprobado» de líneas gemelas con distinto prefijo, y una
-        # lista que nadie termina de leer es una lista que no protege a nadie.
-        limitaciones=(
-            "no calcula nada: presenta la medición tal como la resolvió "
-            "plano.medicion_de_la_planta",
-            "sale marcado como borrador para revisión de un colegiado, sin opción de "
-            "quitarlo",
-        ),
-    ),
+    # `medicion_en_pdf` (la función, justo arriba) sigue aquí y se sigue
+    # llamando igual. Lo que ya no está es su entrada de registro propia:
+    # desde el cierre de C4 (Prompt 1.7, 2026-08-21) se invoca a través de
+    # `plano.entregable_en_pdf` con `tipo="medicion"` —
+    # docs/design/2026-08-21-fusion-capacidades-pdf-C4.md. Fusión de
+    # manifiesto, no de código: esta función no se ha tocado.
 )

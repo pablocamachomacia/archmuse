@@ -666,45 +666,10 @@ CAPACIDADES = (
             "sólo admite un DXF con una única vivienda detectada",
         ),
     ),
-    Capacidad(
-        id="plano.cuadro_en_pdf",
-        version="1.0.0",
-        dominio="plano",
-        naturaleza="io",
-        descripcion=(
-            "Escribe el cuadro de superficies en un PDF legible, con el valor de cada "
-            "celda, su estado y DE DÓNDE SALE — o por qué no se ha podido calcular. "
-            "Incluye las preguntas que resolverían las celdas pendientes y la lista de "
-            "lo que este trabajo NO comprueba, derivada de los manifiestos de lo que se "
-            "ha ejecutado. El DXF no se toca. Exige autorización del efecto "
-            "«escribe_fichero»."
-        ),
-        parametros={
-            "type": "object",
-            "properties": {
-                "ruta": {"type": "string",
-                         "description": "El .dxf del arquitecto. Sólo se lee."},
-                "ruta_destino": {"type": "string",
-                                 "description": ("Dónde se escribe el PDF. No puede ser "
-                                                 "el DXF ni un fichero que ya exista.")},
-                "respuestas": {
-                    "type": ["array", "null"],
-                    "description": ("Lo que el arquitecto declara para las celdas que no "
-                                    "se pueden calcular del plano."),
-                    "items": {"type": "object"},
-                },
-            },
-            "required": ["ruta", "ruta_destino"],
-            "additionalProperties": False,
-        },
-        funcion=cuadro_en_pdf,
-        efectos=(ESCRIBE_FICHERO,),
-        limitaciones=(
-            "no calcula nada: presenta el cuadro tal como lo resolvió "
-            "plano.cuadro_de_superficies",
-            "no comprueba normativa ni si las superficies cumplen ningún mínimo",
-            "sale marcado como borrador para revisión de un colegiado, sin opción de "
-            "quitarlo",
-        ),
-    ),
+    # `cuadro_en_pdf` (la función, definida arriba) sigue aquí y se sigue
+    # llamando igual. Lo que ya no está es su entrada de registro propia:
+    # desde el cierre de C4 (Prompt 1.7, 2026-08-21) se invoca a través de
+    # `plano.entregable_en_pdf` con `tipo="cuadro"` —
+    # docs/design/2026-08-21-fusion-capacidades-pdf-C4.md. Fusión de
+    # manifiesto, no de código: esta función no se ha tocado.
 )

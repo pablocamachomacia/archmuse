@@ -11,8 +11,9 @@ Tres problemas, en la misma página, los tres reales (confirmados contra
 1. `agente/acta.py:_limitaciones_de`/`_limitaciones_de_capacidad` anteponen
    SIEMPRE "<id interno> no comprueba: " a cada limitación declarada
    (`revision.coherencia_del_plano`, `plano.coherencia`,
-   `plano.informe_de_coherencia`) -- un id con puntos/snake_case no es
-   español llano.
+   `plano.entregable_en_pdf` -- antes `plano.informe_de_coherencia`, fusionada
+   el 2026-08-21, Prompt 1.7, cierre de C4) -- un id con puntos/snake_case no
+   es español llano.
 2. La Skill y las dos capacidades que invoca declaran, a propósito, algunas
    limitaciones con las MISMAS palabras -- sin quitar el id, cada una cuenta
    como un texto distinto y sale repetida.
@@ -79,7 +80,7 @@ def pagina() -> str:
 _RE_ID_INTERNO_NO_COMPRUEBA = re.compile(r"[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+ no comprueba")
 
 _IDS_CONOCIDOS = (
-    "revision.coherencia_del_plano", "plano.coherencia", "plano.informe_de_coherencia",
+    "revision.coherencia_del_plano", "plano.coherencia", "plano.entregable_en_pdf",
 )
 
 
@@ -106,9 +107,11 @@ def test_el_mismo_aviso_no_aparece_repetido_tres_veces(pagina):
     declaran, PALABRA POR PALABRA, la misma frase para "no comprueba
     normativa" -- antes salía dos veces (una por cada id); ahora, una.
 
-    `plano.informe_de_coherencia` declara una frase relacionada pero NO
-    idéntica ("...el informe dice si el plano...") -- esa sigue apareciendo
-    aparte, a propósito: la deduplicación es por texto EXACTO, no por tema
+    `plano.entregable_en_pdf` (antes `plano.informe_de_coherencia`, fusionada
+    el 2026-08-21) declara una frase relacionada pero NO idéntica ("...el
+    informe dice si el plano..."), ahora con el prefijo "(tipo=coherencia) "
+    -- esa sigue apareciendo aparte, a propósito: la deduplicación es por
+    texto EXACTO, no por tema
     (ver el porqué en `analyzer/acta_legible.py::_seccion_limitaciones`), así
     que este test comprueba la frase completa, no un fragmento que las dos
     comparten."""
