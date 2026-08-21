@@ -70,6 +70,11 @@
           "concept_id": { "$ref": "#/$defs/concept_id" },
           "instance_id": { "type": "string", "minLength": 1 },
           "nombre": { "type": "string", "minLength": 1 },
+          "estado": {
+            "description": "Procedencia de la regla, NO su aplicabilidad a un proyecto (eso es `_Candidata.estado` en normativa/resolucion.py, un concepto distinto). Ausente = regla histórica anterior a este campo (p. ej. seguridad_incendio.yaml), gobernada por el tag `pendiente_firma_colegiado`. `BORRADOR` = una sola ruta de extracción, sin verificar: normativa/resolucion.py::_paso1_candidatas la descarta siempre, nunca llega a una afirmación de cumplimiento. Catálogo cerrado; docs/prd/2026-08-21-pipeline-borradores-corpus-db-sua.md §9 (Prompt 2) lo amplía con VERIFICADA_AUTOMATICA y FIRMADA.",
+            "type": ["string", "null"],
+            "enum": ["BORRADOR", null]
+          },
           "materia": { "type": "string", "minLength": 1 },
           "tipo": {
             "type": "string",

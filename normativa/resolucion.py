@@ -437,6 +437,25 @@ def _paso1_candidatas(
                 )
             c = _Candidata(regla=regla, norma=norma, ambito_id=declarado)
             c.traza.append(f"candidata por ámbito {declarado} de la cadena del proyecto")
+            # Guardarraíl de BORRADOR (docs/prd/2026-08-21-pipeline-borradores-
+            # corpus-db-sua.md). `regla["estado"]` es la procedencia de la
+            # regla en el corpus, no `c.estado` (aplicabilidad de ESTA
+            # candidata) — dos campos con el mismo nombre y significados
+            # distintos, a propósito no confundidos aquí. Una regla BORRADOR
+            # nunca llega a `NormaAplicable`: es transcripción de una sola
+            # ruta, sin verificar, y el motor no afirma cumplimiento con ella.
+            # Defensa en profundidad — en la práctica ya es inalcanzable
+            # porque `loader.descubrir()` ignora los ficheros `_borrador_*`
+            # que la escriben, pero este descarte no depende de esa
+            # convención de nombre para ser cierto.
+            if regla.get("estado") == "BORRADOR":
+                c.descartar(
+                    "regla en estado BORRADOR: transcripción de una sola ruta "
+                    "de extracción, sin verificar — el motor nunca la usa para "
+                    "afirmar cumplimiento"
+                )
+                candidatas.append(c)
+                continue
             if declarado not in ids_en_cadena:
                 c.descartar(
                     f"el ámbito declarado «{declarado}» no está en la cadena territorial "

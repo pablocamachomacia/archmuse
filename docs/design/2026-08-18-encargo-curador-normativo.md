@@ -1,7 +1,19 @@
 # Encargo — Curador de conocimiento normativo
 
-**Fecha:** 2026-08-18 · **Estado:** propuesta, no aprobada · **Cierra:** tarea V0-5 del plan de migración v2
+**Fecha:** 2026-08-18 · **Estado:** SUPERADO el 2026-08-21 · **Cierra:** tarea V0-5 del plan de migración v2
 **Para:** un arquitecto colegiado en ejercicio. No hace falta que programe.
+
+> **SUPERADO — 2026-08-21.** Pablo decidió no contratar curador colegiado. La
+> confianza del corpus se sustituye por transcripción doble independiente +
+> cita literal enlazada al PDF oficial (verificable por el propio arquitecto
+> usuario), no por una firma humana. Ver
+> `docs/prd/2026-08-21-pipeline-borradores-corpus-db-sua.md` (Prompt 1 de la
+> secuencia de Fase A) y el Prompt 2 de esa misma secuencia, que sustituye el
+> flujo `transcrito_sin_firmar` → firma → `parcial`/`completo` de
+> `normativa/manifiesto.py` por `BORRADOR` → `VERIFICADA_AUTOMATICA` derivado
+> del estado de las reglas. Este documento se conserva sin editar —congelado,
+> no eliminado— porque describe el proceso que gobernó el corpus hasta esa
+> fecha; no es el plan vigente.
 
 ---
 
