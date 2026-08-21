@@ -1,0 +1,87 @@
+# Generado automáticamente por scripts/generar_borrador_corpus.py — NO EDITAR A MANO.
+# Origen: DB-SUA — DB-SUA 5.1 Ámbito de aplicación
+# Candidata: extraccion/estado/candidatas/ (version=3cfb5bbb135e8f02…)
+#
+# ESTADO: BORRADOR. Una sola ruta de extracción, sin verificar. El motor
+# de resolución nunca la usa para afirmar cumplimiento (ver
+# normativa/resolucion.py::_paso1_candidatas). Promoción a
+# VERIFICADA_AUTOMATICA es tarea del Prompt 2 (transcripción doble).
+#
+# Confianza de la extracción: Baja (revisar manualmente).
+#
+# vigencia_desde es la fecha de la versión del PDF consolidado que
+# descargó extraccion/ (campo «fecha» de la candidata), NO una fecha de
+# entrada en vigor verificada del Real Decreto — puede haber una
+# consolidación posterior a 2010. Confirmar contra el BOE antes de usarla
+# para resolver vigencia legal.
+# Motivos de revisión señalados por la propia extracción:
+#   el propio modelo marcó necesita_revision_humana
+#
+# La cita de la fuente oficial (boletín, identificador) la añade este
+# script a mano desde una tabla propia — no la extrae el pipeline de
+# extraccion/. Verificar contra el BOE antes de promover esta regla.
+
+version: 1
+norma:
+  concept_id: es.rd_173_2010.db_sua.norma
+  instance_id: es.rd_173_2010.db_sua.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 173/2010
+    titulo: Real Decreto 173/2010, de 19 de febrero, por el que se modifica el Código
+      Técnico de la Edificación, aprobado por el Real Decreto 314/2006, de 17 de marzo,
+      en materia de accesibilidad y no discriminación de las personas con discapacidad
+    boletin: BOE-A-2010-3811
+    url_oficial: https://www.boe.es/eli/es/rd/2010/02/19/173/con
+  articulo:
+    documento_basico: DB-SUA
+    seccion: 'Sección DB-SUA 5: Seguridad frente al riesgo causado por situaciones
+      de alta'
+    apartado: '5.1'
+    tabla: null
+  literal: "1 Ámbito de aplicación \n1 Las condiciones establecidas en e sta Sección\
+    \ son de aplicación a los graderíos de estadios, pab e-\nllones polideportivos,\
+    \ centros de reunión, otros edificios de uso cultural, etc. previstos para más\
+    \ de \n3000 espectadores de pie (1). En todo lo relativo a las condiciones de\
+    \ evacuación les es ta mbién de \naplicación la Sección SI 3 del Documento Básico\
+    \ DB-SI."
+  vigencia:
+    vigencia_desde: '2022-06-14'
+reglas:
+- concept_id: es.rd_173_2010.seguridad_utilizacion.5_1_ambito_de_aplicacion
+  instance_id: es.rd_173_2010.seguridad_utilizacion.5_1_ambito_de_aplicacion@1
+  nombre: Ámbito de aplicación
+  materia: seguridad_utilizacion
+  tipo: exigencia_de_presencia
+  prioridad: bloqueante
+  nivel_de_conocimiento: 2
+  estado: BORRADOR
+  aplicabilidad:
+    ambito: es
+  patron: UMBRAL_SIMPLE
+  parametro:
+    ejes: []
+    unidad: espectadores de pie
+    repliegue:
+    - todos
+    valores:
+    - valor: 3000.0
+  condiciones: null
+  mensaje: previstos para más de 3000 espectadores de pie
+  explicacion_tecnica: 'El artículo delimita el ámbito de aplicación de la Sección
+    DB-SUA 5: sus condiciones aplican a graderíos de estadios, pabellones polideportivos,
+    centros de reunión y otros edificios de uso cultural cuando estén previstos para
+    más de 3000 espectadores de pie. Adicionalmente, para las condiciones de evacuación,
+    remite a la Sección SI 3 del DB-SI.'
+  explicacion_cliente: Aplica a «graderíos de estadios, pabellones polideportivos,
+    centros de reunión, otros edificios de uso cultural, etc. previstos para más de
+    3000 espectadores de pie».
+  tags:
+  - borrador_automatico
+  - db_sua
+  - seguridad_utilizacion
+  - confianza_baja
+  vigencia:
+    vigencia_desde: '2022-06-14'

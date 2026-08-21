@@ -521,7 +521,34 @@ def test_manifiesto_del_fixture_cuadra_con_el_disco():
 #: Lo único que hay hoy en el corpus de producción: la regla piloto de la
 #: tarea V0-5, transcrita del PDF oficial de DB-SI. Ampliar esta lista es un
 #: acto consciente y va acompañado de la entrega del curador que la justifica.
-CORPUS_PRODUCCION_ESPERADO = {"estatal/seguridad_incendio.yaml"}
+CORPUS_PRODUCCION_ESPERADO = {
+    "estatal/seguridad_incendio.yaml",
+    # Salida de scripts/generar_borrador_corpus.py (Prompt 1,
+    # docs/prd/2026-08-21-pipeline-borradores-corpus-db-sua.md). El prefijo
+    # `_` las hace invisibles a normativa/loader.py::descubrir() — están en
+    # disco pero nunca en `carga.ficheros` — y cada regla que contienen lleva
+    # `estado: BORRADOR`, que normativa/resolucion.py::_paso1_candidatas
+    # descarta explícitamente además (ver tests/test_normativa_borrador_no_afirma.py).
+    # Es exactamente el contenido declarado, no una deriva sin mirar.
+    #
+    # Desde el paso de descomposición (docs/prd/2026-08-21-descomposicion-de-
+    # candidatas-compuestas.md) algunos artículos compuestos dan más de una
+    # sub-candidata atómica: DB-SUA 1.2 da dos (resalto_maximo_junta y
+    # diametro_maximo_perforacion), cada una con su propio fichero.
+    "estatal/_borrador_db_sua_1_2_discontinuidades_en_el_pavimento_resalto_maximo_junta.yaml",
+    "estatal/_borrador_db_sua_1_2_discontinuidades_en_el_pavimento_diametro_maximo_perforacion.yaml",
+    "estatal/_borrador_db_sua_1_5_limpieza_de_los_acristalamientos_exteriores.yaml",
+    "estatal/_borrador_db_sua_2_2_atrapamiento.yaml",
+    "estatal/_borrador_db_sua_4_1_alumbrado_normal_en_zonas_de_circulacion.yaml",
+    "estatal/_borrador_db_sua_5_1_ambito_de_aplicacion.yaml",
+    "estatal/_borrador_db_sua_7_1_ambito_de_aplicacion.yaml",
+    # DB-SUA 7.2 y 7.3 NO están aquí: su única sub-candidata localizable
+    # comparte cláusula con una segunda cifra sin anclar (la profundidad de
+    # 7.2, la superficie de 7.3 — esta última una disyunción real, ver
+    # `tests/test_generar_borrador_corpus.py::
+    # test_no_convierte_capacidad_aparcamiento_sola_por_ser_mitad_de_una_disyuncion`).
+    # `_contar_cifras_de_umbral` las corta antes de escribir el fichero.
+}
 
 #: Etiqueta que toda regla del corpus de producción lleva mientras no la haya
 #: firmado un colegiado. Ver `docs/design/2026-08-18-ficha-de-transcripcion-

@@ -1,0 +1,97 @@
+# Generado automáticamente por scripts/generar_borrador_corpus.py — NO EDITAR A MANO.
+# Origen: DB-SUA — DB-SUA 4.1 Alumbrado normal en zonas de circulación
+# Candidata: extraccion/estado/candidatas/ (version=3cfb5bbb135e8f02…)
+#
+# ESTADO: BORRADOR. Una sola ruta de extracción, sin verificar. El motor
+# de resolución nunca la usa para afirmar cumplimiento (ver
+# normativa/resolucion.py::_paso1_candidatas). Promoción a
+# VERIFICADA_AUTOMATICA es tarea del Prompt 2 (transcripción doble).
+#
+# Confianza de la extracción: Baja (revisar manualmente).
+#
+# Sub-candidata por descomposición del artículo padre «DB-SUA 4.1 Alumbrado normal en zonas de circulación» (criterio: clausula_independiente:clausula[298:355]). Ver docs/prd/2026-08-21-descomposicion-de-candidatas-compuestas.md.
+#
+# vigencia_desde es la fecha de la versión del PDF consolidado que
+# descargó extraccion/ (campo «fecha» de la candidata), NO una fecha de
+# entrada en vigor verificada del Real Decreto — puede haber una
+# consolidación posterior a 2010. Confirmar contra el BOE antes de usarla
+# para resolver vigencia legal.
+# Motivos de revisión señalados por la propia extracción:
+#   el propio modelo marcó necesita_revision_humana
+#
+# La cita de la fuente oficial (boletín, identificador) la añade este
+# script a mano desde una tabla propia — no la extrae el pipeline de
+# extraccion/. Verificar contra el BOE antes de promover esta regla.
+
+version: 1
+norma:
+  concept_id: es.rd_173_2010.db_sua.norma
+  instance_id: es.rd_173_2010.db_sua.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 173/2010
+    titulo: Real Decreto 173/2010, de 19 de febrero, por el que se modifica el Código
+      Técnico de la Edificación, aprobado por el Real Decreto 314/2006, de 17 de marzo,
+      en materia de accesibilidad y no discriminación de las personas con discapacidad
+    boletin: BOE-A-2010-3811
+    url_oficial: https://www.boe.es/eli/es/rd/2010/02/19/173/con
+  articulo:
+    documento_basico: DB-SUA
+    seccion: 'Sección DB-SUA 4: Seguridad frente al riesgo causado por iluminación
+      inadecuada'
+    apartado: '4.1'
+    tabla: null
+  literal: "1 Alumbrado normal en zonas de circulación \n1 En cada zona se dispondrá\
+    \ una instalación de alu mbrado capaz de proporcionar, una iluminancia \nmínima\
+    \ de 20 lux en zonas exteriores y de 100 lux en zonas interiores, excepto aparcamientos\
+    \ int e-\nriores en donde será de 50 lux, medida a nivel del suelo. \nEl factor\
+    \ de uniformidad media será del 40% como mínimo.  \n2 En las zonas de los establecimientos\
+    \ de uso Pública Concurrencia en las que la actividad se desarro-\nlle con un\
+    \ nivel bajo de iluminación, como es el caso de los cin es, teatros, auditorios,\
+    \ discotecas, \netc., se dispondrá una iluminación de balizamiento en las rampas\
+    \ y en cada uno de los peldaños de \nlas escaleras."
+  vigencia:
+    vigencia_desde: '2022-06-14'
+reglas:
+- concept_id: es.rd_173_2010.seguridad_utilizacion.4_1_alumbrado_normal_en_zonas_de_circulacion
+  instance_id: es.rd_173_2010.seguridad_utilizacion.4_1_alumbrado_normal_en_zonas_de_circulacion@1
+  nombre: Alumbrado normal en zonas de circulación
+  materia: seguridad_utilizacion
+  tipo: exigencia_compuesta
+  prioridad: bloqueante
+  nivel_de_conocimiento: 2
+  estado: BORRADOR
+  aplicabilidad:
+    ambito: es
+  patron: UMBRAL_SIMPLE
+  parametro:
+    ejes: []
+    unidad: '%'
+    repliegue:
+    - todos
+    valores:
+    - valor: 40.0
+  condiciones: null
+  mensaje: El factor de uniformidad media será del 40% como mínimo
+  explicacion_tecnica: 'El artículo establece tres requisitos para el alumbrado normal
+    en zonas de circulación: (a) iluminancia mínima medida a nivel del suelo: 20 lux
+    en zonas exteriores, 100 lux en zonas interiores, con excepción de aparcamientos
+    interiores donde el umbral baja a 50 lux; (b) factor de uniformidad media mínimo
+    del 40 %; (c) en establecimientos de uso Pública Concurrencia donde la actividad
+    se desarrolle con nivel bajo de iluminación (cines, teatros, auditorios, discotecas,
+    etc.), obligación de disponer iluminación de balizamiento en rampas y en cada
+    peldaño de las escaleras.'
+  explicacion_cliente: Aplica a «cada zona» de circulación de cualquier edificio.
+    La exigencia de balizamiento aplica específicamente a «las zonas de los establecimientos
+    de uso Pública Concurrencia en las que la actividad se desarrolle con un nivel
+    bajo de iluminación, como es el caso de los cines, teatros, auditorios, discotecas,
+    etc.»
+  tags:
+  - borrador_automatico
+  - db_sua
+  - seguridad_utilizacion
+  - confianza_baja
+  vigencia:
+    vigencia_desde: '2022-06-14'
