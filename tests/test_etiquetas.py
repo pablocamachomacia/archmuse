@@ -241,6 +241,91 @@ try:
           "y el mismo plano en milimetros decide exactamente igual",
           "%d de %d con nombre" % (sum(1 for r in rooms if r.label), len(rooms)))
 
+    # =======================================================================
+    print()
+    print("F. Filtros de fundamento (capa, plausibilidad, ambiguedad)")
+    # =======================================================================
+    # Reproduce en miniatura el hallazgo del caso 11 del banco plausible:
+    # una cota suelta ("7.00") mas cerca del borde que el propio rotulo de
+    # la estancia ("SALON 12.00 m2"). Sin los filtros, la cota ganaba por
+    # distancia y la estancia se quedaba con un nombre que no es el suyo.
+    from shapely.geometry import box as _box  # noqa: E402
+
+    salon = _box(0, 0, 4, 3)  # area 12, tolerancia = 0.5*sqrt(12) = 1.732
+
+    # F1. Plausibilidad: una cifra suelta no gana aunque este mas cerca,
+    # incluso en la MISMA capa que el rotulo real (aisla el filtro 2 del 1).
+    candidatos = [
+        ("SALON 12.00 m2", 2.0, -0.6, "V-04"),   # distancia al borde: 0.6
+        ("7.00", 3.3, -0.4, "V-04"),              # distancia al borde: 0.4 (mas cerca)
+    ]
+    resultado = parser.match_label_to_room(salon, candidatos, capas_validas={"V-04"})
+    check(resultado == "SALON 12.00 m2",
+          "una cota mas cerca que el rotulo real no se adjudica (plausibilidad)",
+          repr(resultado))
+
+    # F2. Capa: un texto de una capa sin ningun rotulo confirmado no es
+    # candidato aunque sea el mas cercano y no sea una cifra (aisla el
+    # filtro 1 del 2). "TEXTOS" no esta en `capas_validas`: en un plano real
+    # eso significa que ese texto nunca ha caido dentro de ningun recinto.
+    candidatos = [
+        ("SALON", 2.0, -0.6, "V-04"),                    # distancia: 0.6, capa valida
+        ("PLANTA BAJA ESC 1:50", 2.1, -0.3, "TEXTOS"),    # distancia: 0.3, capa sin confirmar
+    ]
+    resultado = parser.match_label_to_room(salon, candidatos, capas_validas={"V-04"})
+    check(resultado == "SALON",
+          "un texto de una capa sin confirmar no se adjudica aunque este mas cerca",
+          repr(resultado))
+    # Sin `capas_validas` (llamador que no filtra), se mantiene el comportamiento
+    # anterior: gana el mas cercano de cualquier capa.
+    resultado_sin_filtro = parser.match_label_to_room(salon, candidatos, capas_validas=None)
+    check(resultado_sin_filtro == "PLANTA BAJA ESC 1:50",
+          "sin capas_validas no se filtra por capa (compatibilidad)",
+          repr(resultado_sin_filtro))
+
+    # F2b. Pero si esa misma capa "TEXTOS" ya ha puesto un nombre dentro de
+    # OTRO recinto del plano, `_capas_de_rotulo` la confirma como capa de
+    # rotulos real -convencion "recintos en una capa, nombres en otra"- y
+    # entonces SI gana por cercania. Es la reproduccion exacta del caso real
+    # (`ejemplo.dxf`: recintos en "00 areas", nombres en "00 TEXTO").
+    otro_recinto = _box(20, 0, 24, 3)
+    poligonos = [salon, otro_recinto]
+    etiquetas_con_capa = [
+        ("SALON", 2.0, -0.6, "V-04"),
+        ("PLANTA BAJA ESC 1:50", 2.1, -0.3, "TEXTOS"),
+        ("Cocina", 22.0, 1.5, "TEXTOS"),   # dentro de otro_recinto: confirma la capa
+    ]
+    capas_confirmadas = parser._capas_de_rotulo(poligonos, etiquetas_con_capa, "V-04")
+    check("TEXTOS" in capas_confirmadas,
+          "una capa con un nombre real dentro de OTRO recinto queda confirmada",
+          repr(capas_confirmadas))
+    resultado = parser.match_label_to_room(salon, candidatos, capas_validas=capas_confirmadas)
+    check(resultado == "PLANTA BAJA ESC 1:50",
+          "una vez confirmada, esa capa SI puede ganar por cercania",
+          repr(resultado))
+
+    # F3. Ambiguedad: dos candidatos casi empatados en distancia, mismA capa,
+    # ninguno una cifra -> no se adjudica ninguno.
+    candidatos = [
+        ("SALON", 2.0, -0.6, "V-04"),     # distancia al borde inferior: 0.6
+        ("ESTUDIO", 2.0, 3.6, "V-04"),    # distancia al borde superior: 0.6 (empate)
+    ]
+    resultado = parser.match_label_to_room(salon, candidatos, capas_validas={"V-04"})
+    check(resultado is None,
+          "un empate de distancia entre dos candidatos no se resuelve adivinando",
+          repr(resultado))
+
+    # Control: un margen claro SI decide -- el filtro de ambiguedad no debe
+    # bloquear el caso normal, solo el empate.
+    candidatos = [
+        ("SALON", 2.0, -0.2, "V-04"),     # distancia: 0.2
+        ("ESTUDIO", 2.0, 4.0, "V-04"),    # distancia: 1.0 (5x mas lejos)
+    ]
+    resultado = parser.match_label_to_room(salon, candidatos, capas_validas={"V-04"})
+    check(resultado == "SALON",
+          "un margen claro entre candidatos si decide (no sobre-bloquea)",
+          repr(resultado))
+
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

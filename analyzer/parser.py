@@ -26,7 +26,7 @@ import logging
 import math
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import ezdxf
 from ezdxf.document import Drawing
@@ -100,6 +100,24 @@ class EntidadDescartada:
     tipo: str
     handle: Optional[str] = None
     detalle: str = ""
+
+
+@dataclass(frozen=True)
+class CapaIgnorada:
+    """Una capa del plano que no es ninguna de las capas de recintos que se
+    han mirado, con cuántas entidades tiene.
+
+    Distinta de `EntidadDescartada`: aquélla es una entidad DENTRO de la capa
+    elegida que no se ha podido leer (tipo no soportado, geometría inválida).
+    Ésta es una capa ENTERA que ni siquiera se ha mirado -- mobiliario, cotas,
+    ejes, cajetín... Un descarte silencioso es superficie que falta sin que
+    nadie lo sepa, y eso vale igual para una entidad suelta que para una capa
+    entera que el informe nunca menciona.
+    """
+
+    capa: str
+    entidades: int
+    motivo: str = "no es ninguna de las capas de recintos que se han mirado"
 
 
 def _handle_de(entity) -> Optional[str]:
@@ -231,6 +249,15 @@ class PlanoLeido:
     # `capas_candidatas`) cuando no hay ninguna capa `AM_*` operativa en uso.
     # Ver `EntidadDescartada`.
     geometria_no_leida: List[EntidadDescartada] = field(default_factory=list)
+    # Capas enteras del plano que no son ninguna de las capas de recintos
+    # miradas -- mobiliario, cotas, ejes, cajetín... Ver `CapaIgnorada`.
+    capas_ignoradas: List[CapaIgnorada] = field(default_factory=list)
+    # True cuando `layer` se ha elegido por parecido entre varias candidatas
+    # (`capas_candidatas`/`_decidir_capa`) y no porque el arquitecto la haya
+    # confirmado ni porque coincida con `AREA_LAYER` por sí sola. Es la
+    # frontera entre un hecho declarado y una inferencia -- y una inferencia
+    # declara su hipótesis, no se presenta como si fuera un hecho.
+    capa_elegida_por_heuristico: bool = False
 
 
 def load_document(dxf_path: str) -> Drawing:
@@ -517,9 +544,11 @@ def extract_room_polygons(
     (ver `_discard_container_candidates`). `descartes`: ver
     `_closed_polygons_with_color`."""
     entries = _closed_polygons_with_color(doc, layer, descartes=descartes)
-    labels = extract_labels(doc)
+    labels = extract_labels(doc, con_capa=True)
+    capas_validas = _capas_de_rotulo([p for p, _c in entries], labels, layer)
     labeled_entries = [
-        (polygon, color, match_label_to_room(polygon, labels)) for polygon, color in entries
+        (polygon, color, match_label_to_room(polygon, labels, capas_validas=capas_validas))
+        for polygon, color in entries
     ]
     return _discard_container_candidates(labeled_entries)
 
@@ -558,8 +587,9 @@ def _texto_de(entity) -> str:
             return ""
 
 
-def extract_labels(doc: Drawing) -> List[Tuple[str, float, float]]:
-    """Rótulos del plano como (texto, x, y), **con los MTEXT antes que los TEXT**.
+def extract_labels(doc: Drawing, con_capa: bool = False) -> List[Tuple]:
+    """Rótulos del plano como (texto, x, y) — o (texto, x, y, capa) si
+    `con_capa=True` —, **con los MTEXT antes que los TEXT**.
 
     Ese orden no es cosmético, es la regla de desempate: `match_label_to_room`
     se queda con el primer rótulo que caiga dentro del polígono, así que un
@@ -573,10 +603,17 @@ def extract_labels(doc: Drawing) -> List[Tuple[str, float, float]]:
 
     En un plano rotulado solo con TEXT no hay MTEXT que compita y se usan
     directamente, que es de lo que trata la tarea 7 del PRD de ingesta.
+
+    `con_capa`: `match_label_to_room` necesita saber en qué capa vive cada
+    texto para no adjudicar a un recinto el texto de una cota o de un cajetín
+    que sencillamente cae cerca. El resto de llamadas (`extract_unit_labels`,
+    el heurístico de `capas_candidatas`) no lo necesitan, así que la forma de
+    3 elementos se mantiene por defecto para no romper a nadie que ya
+    desestructura `(texto, x, y)`.
     """
     por_tipo = {"MTEXT": [], "TEXT": []}
 
-    for entity, _capa in _recorrer_plano(doc):
+    for entity, capa in _recorrer_plano(doc):
         tipo = entity.dxftype()
         if tipo not in por_tipo:
             continue
@@ -586,7 +623,8 @@ def extract_labels(doc: Drawing) -> List[Tuple[str, float, float]]:
         punto = _punto_de_texto(entity)
         if punto is None:
             continue
-        por_tipo[tipo].append((text, punto[0], punto[1]))
+        fila = (text, punto[0], punto[1], capa) if con_capa else (text, punto[0], punto[1])
+        por_tipo[tipo].append(fila)
 
     # El recorrido devuelve las entidades entremezcladas, así que la prioridad
     # de MTEXT sobre TEXT se restablece aquí, al agrupar.
@@ -617,41 +655,124 @@ def extract_labels(doc: Drawing) -> List[Tuple[str, float, float]]:
 TOLERANCIA_ETIQUETA = 0.5
 
 
-def match_label_to_room(polygon: Polygon, labels: List[Tuple[str, float, float]]) -> Optional[str]:
+def _capas_de_rotulo(polygons: List[Polygon], labels: List[Tuple[str, float, float, str]],
+                     capa_recintos: str):
+    """Capas de las que sí puede salir un nombre de estancia en ESTE plano:
+    la propia capa de recintos, más cualquier otra capa que en algún punto
+    del plano tenga un texto cuyo punto de inserción caiga dentro de un
+    recinto.
+
+    Esto -no "la misma capa que la geometría"- es lo que separa una capa de
+    rótulos real de una de ruido. Más de un estudio dibuja las estancias en
+    una capa y sus nombres en otra dedicada a texto (comprobado en el propio
+    plano de referencia del proyecto: recintos en `00 areas`, nombres en
+    `00 TEXTO`); exigir coincidencia exacta con la capa de recintos perdería
+    todos los rótulos de un plano así. Una capa de cotas, en cambio, no pone
+    nunca un texto dentro de un recinto -sus textos viven en la línea de
+    cota, fuera de cualquier estancia- así que nunca entra aquí.
+    """
+    capas = {capa_recintos}
+    for polygon in polygons:
+        for _texto, x, y, capa in labels:
+            if capa not in capas and polygon.contains(Point(x, y)):
+                capas.add(capa)
+    return capas
+
+# Cuánto tiene que ganarle el candidato más cercano al segundo más cercano
+# para no ser ambiguo. Mismo criterio y mismo valor que `VENTAJA_MINIMA` en
+# `capas_candidatas`: dos candidatos casi empatados en distancia no se
+# resuelven eligiendo el que está un poco más cerca -- eso es adivinar con
+# pasos extra. Sin este margen, un rótulo real y una cota ambos "cerca" de
+# una estancia pequeña ganan o pierden por centímetros según el redondeo del
+# dibujo, no por ninguna razón que el arquitecto reconocería.
+MARGEN_DESAMBIGUACION_ETIQUETA = 1.5
+
+# Un texto que es solo una cifra -una cota, una superficie suelta escrita
+# aparte- no es nombre de estancia, tenga o no coma/punto decimal.
+# «SALON 12.00 m2» no cae aquí porque lleva letras; «7.00» y «3,20» sí.
+_PATRON_SOLO_NUMERO = re.compile(r"^[+-]?\d+([.,]\d+)?\s*$")
+
+
+def _es_solo_numero(texto: str) -> bool:
+    return bool(_PATRON_SOLO_NUMERO.match(texto.strip()))
+
+
+def match_label_to_room(
+    polygon: Polygon,
+    labels: List[Tuple[str, float, float, str]],
+    capas_validas=None,
+) -> Optional[str]:
     """Asocia el rótulo más adecuado a un polígono, o `None` si no hay ninguno
-    que pueda ser suyo.
+    que pueda serlo **con fundamento**. `labels` son cuádruplas
+    `(texto, x, y, capa)` -- ver `extract_labels(doc, con_capa=True)`.
 
-    Primero busca rótulos cuyo punto de inserción caiga dentro del polígono
-    (caso habitual: el texto está dentro de la habitación). Como `extract_labels`
-    devuelve los MTEXT antes que los TEXT, un MTEXT gana a un TEXT que esté
-    dentro de la misma estancia.
+    Antes de buscar nada, se descartan dos clases de candidato que nunca son
+    un rótulo de estancia, aunque caigan cerca o incluso dentro del polígono:
 
-    Si no hay ninguno dentro, se recurre al más cercano **pero solo si está lo
-    bastante cerca**. Antes no había límite: el rótulo más próximo de todo el
-    plano se adjudicaba a la habitación aunque estuviera a la otra punta, así
-    que en un plano con varias viviendas separadas una estancia podía heredar
-    el nombre de otra vivienda, y todas las estancias sin rótulo del plano
-    acababan llamándose igual. Verificado con un caso reproducible al escribir
-    `tests/test_etiquetas.py`.
+    1. **Texto de una capa sin ningún rótulo confirmado.** `capas_validas` es
+       el conjunto de capas de las que sí puede salir un nombre de estancia
+       en ESTE plano -- ver `_capas_de_rotulo` para cómo se calcula. **No es
+       "la misma capa que la geometría del recinto"**: más de un estudio
+       dibuja las estancias en una capa y sus nombres en otra dedicada a
+       texto (`00 areas` / `00 TEXTO` es la convención real del propio
+       plano de referencia del proyecto), y exigir coincidencia exacta
+       perdería todos los rótulos de un plano así. Lo que sí se descarta es
+       un texto de una capa que en TODO el plano nunca ha puesto un nombre
+       dentro de un recinto -una cota, un cajetín, una marca de mobiliario-,
+       porque no hay ninguna razón para que el nombre de una estancia esté
+       ahí. Si `capas_validas` es `None` (llamador que no sabe o no le
+       importa la capa), no se filtra -- mantiene el comportamiento anterior.
+    2. **Texto que es solo una cifra.** Una cota como «7.00» tiene toda la
+       pinta de una superficie cuando cae cerca de una estancia pequeña, pero
+       no es un nombre.
+
+    Sobre lo que queda, primero busca rótulos cuyo punto de inserción caiga
+    dentro del polígono (caso habitual: el texto está dentro de la
+    habitación). Como `extract_labels` devuelve los MTEXT antes que los TEXT,
+    un MTEXT gana a un TEXT que esté dentro de la misma estancia.
+
+    Si no hay ninguno dentro, se recurre al más cercano **pero solo si está
+    lo bastante cerca** (`TOLERANCIA_ETIQUETA`) **y solo si no hay un segundo
+    candidato casi tan cerca** (`MARGEN_DESAMBIGUACION_ETIQUETA`): elegir
+    entre dos casi empatados en distancia sería tan adivinar como elegir el
+    primero de la lista.
 
     Preferir `None` a un nombre ajeno no es una pérdida: una habitación sin
-    nombre se evalúa por lo que se puede medir de ella, mientras que una
-    habitación con el nombre equivocado se evalúa contra las reglas de otro
-    tipo de estancia — un salón juzgado como dormitorio, o al revés.
+    nombre se evalúa por lo que se puede medir de ella y aparece en el
+    informe como pieza sin rotular (`recinto_sin_etiqueta`), mientras que una
+    habitación con el nombre equivocado se evalúa en silencio contra las
+    reglas de otro tipo de estancia -un salón juzgado como dormitorio, o al
+    revés- o, peor, hereda una cifra que no es la suya.
     """
-    inside = [text for text, x, y in labels if polygon.contains(Point(x, y))]
+    candidatos = [
+        (texto, x, y) for texto, x, y, capa in labels
+        if (capas_validas is None or capa in capas_validas) and not _es_solo_numero(texto)
+    ]
+
+    inside = [texto for texto, x, y in candidatos if polygon.contains(Point(x, y))]
     if inside:
         return inside[0]
 
-    if not labels or polygon.is_empty or polygon.area <= 0:
+    if not candidatos or polygon.is_empty or polygon.area <= 0:
         return None
 
     # Distancia al BORDE, no al centroide: lo que interesa es cuánto se aleja
     # el rótulo de la habitación, no cuánto mide la habitación.
-    texto, x, y = min(labels, key=lambda item: polygon.distance(Point(item[1], item[2])))
+    distancias = sorted(
+        ((polygon.distance(Point(x, y)), texto) for texto, x, y in candidatos),
+        key=lambda item: item[0],
+    )
+    distancia, texto = distancias[0]
+
     limite = TOLERANCIA_ETIQUETA * math.sqrt(polygon.area)
-    if polygon.distance(Point(x, y)) > limite:
+    if distancia > limite:
         return None
+
+    if len(distancias) > 1:
+        segunda_distancia = distancias[1][0]
+        if segunda_distancia < distancia * MARGEN_DESAMBIGUACION_ETIQUETA:
+            return None
+
     return texto
 
 
@@ -681,11 +802,12 @@ def build_rooms_from_document(
     `descartes`: ver `_closed_polygons_with_color`.
     """
     polygons = extract_room_polygons(doc, layer, descartes=descartes)
-    labels = extract_labels(doc)
+    labels = extract_labels(doc, con_capa=True)
+    capas_validas = _capas_de_rotulo(polygons, labels, layer)
 
     rooms: List[Room] = []
     for polygon in polygons:
-        label = match_label_to_room(polygon, labels)
+        label = match_label_to_room(polygon, labels, capas_validas=capas_validas)
         rooms.append(Room(label=label, polygon=polygon, layer=layer))
 
     return rooms
@@ -740,6 +862,29 @@ def _leer_capa_am(doc: Drawing, capa: str) -> Tuple[List[Polygon], List[EntidadD
             continue
         poligonos.append(polygon)
     return poligonos, descartes
+
+
+def _capas_ignoradas(doc: Drawing, capas_miradas) -> List[CapaIgnorada]:
+    """Capas del plano que no son ninguna de `capas_miradas`, con cuántas
+    entidades tiene cada una.
+
+    Recorre el plano entero una vez más (bloques incluidos, vía
+    `_recorrer_plano`) sólo para contar por capa -- barato frente al resto
+    del pipeline y necesario porque nada más agrega por capa sobre el DXF
+    completo: cada lector existente (`_leer_capa_am`, `_closed_polygons_with_color`)
+    filtra por UNA capa conocida de antemano, que es justo lo que aquí no se
+    tiene. Ordenadas por número de entidades, de más a menos: lo que más
+    llama la atención primero.
+    """
+    recuento: Dict[str, int] = {}
+    for _entity, capa in _recorrer_plano(doc):
+        if capa in capas_miradas:
+            continue
+        recuento[capa] = recuento.get(capa, 0) + 1
+    return [
+        CapaIgnorada(capa=nombre, entidades=n)
+        for nombre, n in sorted(recuento.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
 
 
 def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optional[float] = None) -> PlanoLeido:
@@ -808,15 +953,18 @@ def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optiona
 
     usa_capa_am = bool(poligonos_util_int) or bool(descartes_util)
     if usa_capa_am:
-        labels = extract_labels(doc)
+        labels = extract_labels(doc, con_capa=True)
+        capas_validas = _capas_de_rotulo(poligonos_util_int, labels, CAPA_UTIL_INTERIOR)
         rooms = [
-            Room(label=match_label_to_room(polygon, labels), polygon=polygon, layer=CAPA_UTIL_INTERIOR)
+            Room(label=match_label_to_room(polygon, labels, capas_validas=capas_validas),
+                 polygon=polygon, layer=CAPA_UTIL_INTERIOR)
             for polygon in poligonos_util_int
         ]
         capa = None
         nombre_capa = CAPA_UTIL_INTERIOR
+        capa_por_heuristico = False
     else:
-        capa = _resolver_capa(doc, layer)
+        capa, capa_por_heuristico = _resolver_capa(doc, layer)
         nombre_capa = capa.nombre
         rooms = build_rooms_from_document(doc, capa.nombre, descartes=geometria_no_leida)
 
@@ -855,12 +1003,18 @@ def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optiona
             escalar_geometria(p, xfact=factor, yfact=factor, origin=(0, 0)) for p in poligonos_cons_ext
         ]
 
+    capas_miradas = {nombre_capa, CAPA_UTIL_INTERIOR, CAPA_CONSTRUIDA_CERRADA,
+                     CAPA_UTIL_EXTERIOR, CAPA_CONSTRUIDA_EXTERIOR}
+    capas_ignoradas = _capas_ignoradas(doc, capas_miradas)
+
     return PlanoLeido(
         rooms=rooms, unit_labels=unit_labels, escala=deteccion, layer=nombre_capa, capa=capa,
         envolventes_cerradas=poligonos_cons_cer,
         superficies_utiles_exteriores=poligonos_util_ext,
         envolventes_exteriores=poligonos_cons_ext,
-        geometria_no_leida=geometria_no_leida)
+        geometria_no_leida=geometria_no_leida,
+        capas_ignoradas=capas_ignoradas,
+        capa_elegida_por_heuristico=capa_por_heuristico)
 
 
 
@@ -1080,7 +1234,7 @@ def elegir_capa(doc: Drawing, preferida: Optional[str] = None):
     return _decidir_capa(candidatas), candidatas
 
 
-def _resolver_capa(doc: Drawing, pedida: Optional[str]) -> CapaCandidata:
+def _resolver_capa(doc: Drawing, pedida: Optional[str]) -> Tuple[CapaCandidata, bool]:
     """La capa con la que leer el plano, o `CapaIndeterminada` si hay que
     preguntar. Calcula las candidatas una sola vez.
 
@@ -1089,6 +1243,14 @@ def _resolver_capa(doc: Drawing, pedida: Optional[str]) -> CapaCandidata:
     cualquier otra—, sino porque un nombre que el arquitecto ya usa es una
     respuesta suya anterior, y respetarla evita cambiarle el resultado por una
     heurística nueva.
+
+    Devuelve `(capa, por_heuristico)`. `por_heuristico` es `True` únicamente
+    cuando la capa sale de `_decidir_capa` -elegida por parecido entre varias
+    candidatas, sin que nadie la haya nombrado-: es una inferencia, y una
+    inferencia declara su hipótesis en cualquier documento que la use (ver
+    `PlanoLeido.capa_elegida_por_heuristico`). Cuando el arquitecto la ha
+    confirmado (`pedida`) o cuando `AREA_LAYER` gana por sí sola, es un hecho
+    declarado -una respuesta o un nombre que ya existía-, no una inferencia.
     """
     candidatas = capas_candidatas(doc)
 
@@ -1096,13 +1258,13 @@ def _resolver_capa(doc: Drawing, pedida: Optional[str]) -> CapaCandidata:
         elegida = _buscar_capa(candidatas, pedida)
         if elegida is None:
             raise CapaIndeterminada(candidatas, pedida=pedida)
-        return elegida
+        return elegida, False
 
     por_defecto = _buscar_capa(candidatas, AREA_LAYER)
     if por_defecto is not None and por_defecto.puntuacion >= UMBRAL_CAPA_ACEPTABLE:
-        return por_defecto
+        return por_defecto, False
 
     elegida = _decidir_capa(candidatas)
     if elegida is None:
         raise CapaIndeterminada(candidatas)
-    return elegida
+    return elegida, True

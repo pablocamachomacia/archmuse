@@ -54,3 +54,12 @@ Thumbs.db
 # una decision aparte.
 MOAT_ANALYSIS.md
 DESTROY_ARCHMUSE.md
+
+# --- Planos CAD ---
+# Ningún DXF/DWG entra al repositorio por defecto: un plano de cliente
+# commiteado por descuido es una fuga de datos que el historial no olvida.
+# La ÚNICA excepción son los bancos sintéticos de tests/fixtures/ (tortura y
+# plausibles), generados por generar_dxf_*.py — nada de ahí es un plano real.
+*.dxf
+*.dwg
+!tests/fixtures/**/*.dxf
