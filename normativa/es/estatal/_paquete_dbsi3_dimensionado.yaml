@@ -1,0 +1,137 @@
+# Paquete DB-SI 3 evacuación (Residencial Vivienda) — bloque 4: dimensionado
+# de los medios de evacuación (tabla 4.1), anchuras mínimas geométricas.
+#
+# BORRADOR del paquete de curación 2026-08-25 (PRD
+# docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md).
+#
+# ALCANCE DELIBERADO: este fichero transcribe solo los MÍNIMOS geométricos de
+# la tabla 4.1 (0,80 m puertas, 1,00 m pasillos, hoja 0,60-1,23 m). Las
+# FÓRMULAS de capacidad (A ≥ P/200, A ≥ P/160, E ≤ 3S+160AS…) no encajan en
+# ninguno de los 5 patrones del catálogo (comparan contra una expresión, no
+# contra un valor) y quedan en la lista de dudas del paquete como decisión de
+# gobernanza — ficha §3: la reacción a una norma incómoda nunca es un sexto
+# patrón improvisado.
+#
+# PROCEDENCIA DEL LITERAL: `tests/fixtures/codigotecnico/DB-SI.pdf`
+# (sha256 en fuente.documento_sha256), pdfminer.six, columnas recompuestas.
+version: 1
+
+norma:
+  concept_id: es.rd_314_2006.dbsi3_dimensionado.norma
+  instance_id: es.rd_314_2006.dbsi3_dimensionado.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 314/2006
+    titulo: >-
+      Real Decreto 314/2006, de 17 de marzo, por el que se aprueba el Código
+      Técnico de la Edificación
+    boletin: BOE-A-2006-5515
+    url_oficial: https://www.boe.es/eli/es/rd/2006/03/17/314/con
+    documento_sha256: 0a2e78cd62471d9cc5cfe2efbc6aa39fdbad73c124aea7b039f9de96c141e105
+    hash_texto: b674ec7cc67a979b0c14f4d583e04dbf44cdaa57b329661eaa5d97cef037dabf
+  articulo:
+    documento_basico: DB-SI
+    seccion: SI 3
+    apartado: "4.2"
+    tabla: "4.1"
+  literal: |-
+    4.2 Cálculo
+
+    1 El dimensionado de los elementos de evacuación debe realizarse conforme
+    a lo que se indica en la tabla 4.1.
+
+    Tabla 4.1 Dimensionado de los elementos de la evacuación (extracto de las
+    filas transcritas)
+
+    Puertas y pasos: A ≥ P / 200(1) ≥ 0,80 m(2). La anchura de toda hoja de
+    puerta no debe ser menor que 0,60 m, ni exceder de 1,23 m.
+
+    Pasillos y rampas: A ≥ P / 200 ≥ 1,00 m(3)(4)(5)
+
+    A = Anchura del elemento, [m]
+    P = Número total de personas cuyo paso está previsto por el punto cuya
+    anchura se dimensiona.
+
+    (5) La anchura mínima es 0,80 m en pasillos previstos para 10 personas,
+    como máximo, y estas sean usuarios habituales.
+  vigencia:
+    vigencia_desde: 2006-03-29
+
+reglas:
+  - concept_id: es.rd_314_2006.seguridad_incendio.anchura_minima_elementos_evacuacion
+    instance_id: es.rd_314_2006.seguridad_incendio.anchura_minima_elementos_evacuacion@1
+    nombre: Anchura mínima de puertas, pasos, pasillos y rampas en recorridos de evacuación
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_CON_EXCEPCION
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      ejes: [elemento]
+      unidad: m
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 0.80
+          elemento: puertas_y_pasos
+        - valor: 1.00
+          elemento: pasillos_y_rampas
+        - valor: 0.80
+          elemento: pasillos_hasta_10_personas_usuarios_habituales
+    mensaje: >-
+      Un elemento del recorrido de evacuación no alcanza la anchura mínima de
+      la tabla 4.1. Amplía el paso o redistribuye la evacuación.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 4.2, tabla 4.1. Anchura mínima geométrica: 0,80 m en
+      puertas y pasos; 1,00 m en pasillos y rampas (0,80 m en pasillos
+      previstos para 10 personas como máximo que sean usuarios habituales,
+      nota 5). Además A ≥ P/200: el dimensionado por ocupación puede exigir
+      más que el mínimo geométrico — esa comprobación por fórmula no está
+      cubierta por esta regla (ver dudas del paquete).
+    explicacion_cliente: >-
+      Las puertas y pasillos por los que se evacúa tienen anchos mínimos
+      obligatorios: 80 cm las puertas y 1 m los pasillos, como regla general.
+    tags: [evacuacion, dbsi3, tabla_4_1, dimensionado, anchura]
+    vigencia:
+      vigencia_desde: 2006-03-29
+
+  - concept_id: es.rd_314_2006.seguridad_incendio.anchura_hoja_puerta_evacuacion
+    instance_id: es.rd_314_2006.seguridad_incendio.anchura_hoja_puerta_evacuacion@1
+    nombre: Anchura admisible de la hoja de puerta en recorridos de evacuación
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_CON_EXCEPCION
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      # Dos filas porque son dos límites de la misma magnitud: la hoja no
+      # puede bajar de 0,60 m ni exceder de 1,23 m.
+      ejes: [limite]
+      unidad: m
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 0.60
+          limite: minimo
+        - valor: 1.23
+          limite: maximo
+    mensaje: >-
+      La hoja de la puerta está fuera del rango admisible (0,60 m a 1,23 m)
+      para un recorrido de evacuación.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 4.2, tabla 4.1. La anchura de toda hoja de puerta no
+      debe ser menor que 0,60 m ni exceder de 1,23 m.
+    explicacion_cliente: >-
+      Una hoja de puerta demasiado estrecha no deja pasar, y una demasiado
+      ancha se vuelve lenta y pesada en una evacuación: la norma acota ambas.
+    tags: [evacuacion, dbsi3, tabla_4_1, dimensionado, puertas]
+    vigencia:
+      vigencia_desde: 2006-03-29

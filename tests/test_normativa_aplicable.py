@@ -590,6 +590,21 @@ CORPUS_PRODUCCION_ESPERADO = {
     "estatal/_verificada_db_sua_1_2_discontinuidades_en_el_pavimento.yaml",
     "estatal/_verificada_db_sua_4_1_alumbrado_normal_en_zonas_de_circulacion.yaml",
     "estatal/_verificada_db_sua_5_1_ambito_de_aplicacion.yaml",
+    # Borradores del paquete de curación DB-SI 3 evacuación (transcripción
+    # manual con la ficha, 2026-08-22; PRD
+    # docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md). Prefijo `_` +
+    # `estado: BORRADOR`: invisibles al loader y descartados por
+    # resolucion.py. La sesión de validación en papel es el lunes 25; el
+    # volcado (`curacion/volcar_acta.py firmar`) del martes 26 añadirá aquí
+    # los `dbsi3_evacuacion_*.yaml` firmados y el `_superseded_*` de la
+    # piloto.
+    "estatal/_paquete_dbsi3_definiciones_anejo_a.yaml",
+    "estatal/_paquete_dbsi3_dimensionado.yaml",
+    "estatal/_paquete_dbsi3_numero_salidas.yaml",
+    "estatal/_paquete_dbsi3_ocupacion.yaml",
+    "estatal/_paquete_dbsi3_proteccion_escaleras.yaml",
+    "estatal/_paquete_dbsi3_puertas_evacuacion.yaml",
+    "estatal/_paquete_dbsi3_recorridos.yaml",
 }
 
 #: Etiqueta que toda regla del corpus de producción lleva mientras no la haya

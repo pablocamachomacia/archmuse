@@ -349,17 +349,62 @@ def validar_perfil(doc: dict) -> List[str]:
 
 
 def validar_sin_contradiccion(docs: List[dict]) -> List[str]:
-    """14. No hay dos reglas de igual materia, ámbito y perfil compitiendo.
+    """14. No hay dos reglas de igual materia, ámbito, perfil Y EXIGENCIA
+    compitiendo.
 
-    Si dos reglas del mismo nivel y materia se solapan, el resolver tendría
-    que desempatar — y cualquier desempate no declarado (orden de carga,
-    alfabético por id) es un criterio oculto disfrazado de determinismo, el
-    riesgo que `CONFLICT_ENGINE.md` §2 nombra como el más probable bajo
-    presión de entrega. Se prohíbe en carga en vez de resolverse en ejecución.
+    Si dos reglas del mismo nivel y materia se solapan sobre la MISMA
+    exigencia, el resolver tendría que desempatar — y cualquier desempate no
+    declarado (orden de carga, alfabético por id) es un criterio oculto
+    disfrazado de determinismo, el riesgo que `CONFLICT_ENGINE.md` §2 nombra
+    como el más probable bajo presión de entrega. Se prohíbe en carga en vez
+    de resolverse en ejecución.
+
+    **Corregido 2026-08-21** (`docs/design/2026-08-21-limite-aplicabilidad-
+    generica-verificada-automatica.md`, cerrado por este cambio): la clave
+    original —(materia, ámbito, usos, tipologías, tipos_de_intervención,
+    patrón), SIN nada que identifique de qué exigencia concreta se trata—
+    asumía que solo puede haber un valor por materia+ámbito+perfil. Es cierto
+    para materias de valor único (`habitabilidad_superficies`: una superficie
+    mínima), pero falso para materias tipo lista-de-comprobación
+    (`seguridad_utilizacion`, `seguridad_incendio`: decenas de exigencias
+    independientes bajo la misma materia, ninguna de las cuales compite con
+    las demás — `normativa/resolucion.py::_paso6_composicion` ya lo sabe:
+    ningún modo de composición asume valor único por materia, ni siquiera
+    `exclusivo`/`suelo`). Con la clave vieja, firmar la SEGUNDA regla real de
+    `seguridad_utilizacion` con patrón `UMBRAL_SIMPLE` y `aplicabilidad`
+    genérica ya rompía la carga del corpus COMPLETO — no era un problema de
+    volumen, era determinista al firmar la 2ª regla de cualquier
+    materia+patrón repetidos.
+
+    La clave añade dos campos, ninguno inventado — ya estaban en el propio
+    documento: la cita del artículo (`norma.articulo`: qué Documento Básico,
+    sección, apartado, punto y tabla, si los hay) y `nombre` de la regla.
+    Dos reglas de DISTINTO artículo (p. ej. DB-SUA 1.2 y DB-SUA 3.1) nunca son
+    la misma exigencia, aunque compartan materia/ámbito/perfil/patrón — ya no
+    compiten. Dos reglas del MISMO artículo con el MISMO nombre sí siguen
+    compitiendo: es el caso real que este validador existe para atrapar (una
+    transcripción duplicada por error, o dos valores distintos para la misma
+    cifra). `nombre` hace falta ADEMÁS de la cita porque un artículo puede
+    producir varias sub-candidatas atómicas (p. ej. DB-SUA 1.4, con ~40
+    exigencias dimensionales bajo el mismo apartado) que comparten cita pero
+    no exigencia — se distinguen por su `nombre` (que ya incluye el parámetro
+    concreto vía `sufijo_desambiguador`, ver
+    `scripts/generar_borrador_corpus.py::_construir_documento`). NO se usa
+    `concept_id` para esto a propósito: `test_14_dos_reglas_compitiendo_
+    fallan_en_carga` depende de que dos reglas con la MISMA cita y el MISMO
+    nombre pero `concept_id` deliberadamente distinto (el error real que este
+    validador atrapa: alguien las transcribió dos veces con ids distintos)
+    sigan colisionando — usar concept_id en la clave habría vuelto ese caso
+    invisible.
     """
     vistos: Dict[tuple, str] = {}
     fallos = []
     for doc in docs:
+        articulo = (doc.get("norma") or {}).get("articulo") or {}
+        cita = (
+            articulo.get("documento_basico"), articulo.get("seccion"),
+            articulo.get("apartado"), articulo.get("punto"), articulo.get("tabla"),
+        )
         for r in doc.get("reglas") or []:
             ap = r.get("aplicabilidad") or {}
             clave = (
@@ -369,11 +414,14 @@ def validar_sin_contradiccion(docs: List[dict]) -> List[str]:
                 tuple(sorted(ap.get("tipologias") or [])),
                 tuple(sorted(ap.get("tipos_de_intervencion") or [])),
                 r.get("patron"),
+                cita,
+                r.get("nombre"),
             )
             if clave in vistos and vistos[clave] != r.get("concept_id"):
                 fallos.append(
                     f"[14] {r.get('concept_id')} y {vistos[clave]} compiten por la misma "
-                    f"materia, ámbito y perfil: el resolver tendría que desempatar en silencio"
+                    f"materia, ámbito, perfil y exigencia: el resolver tendría que "
+                    f"desempatar en silencio"
                 )
             vistos[clave] = r.get("concept_id")
     return fallos
@@ -423,6 +471,77 @@ def validar_aristas(docs: List[dict]) -> List[str]:
     for n in list(derogaciones):
         if color.get(n, BLANCO) == BLANCO:
             visitar(n, [])
+    return fallos
+
+
+def validar_firma_de_regla_firmada(doc: dict) -> List[str]:
+    """19. Toda regla `estado: FIRMADA` lleva su bloque `firma` (curador +
+    fecha), completo y con una fecha ISO real.
+
+    `--curador` es obligatorio en `scripts/curar_corpus.py firmar`
+    (docs/prd/2026-08-21-curacion-y-firma-del-corpus-db-sua.md), pero esa
+    obligatoriedad solo protege el camino feliz de la herramienta — nada
+    impide, por lo demás, que alguien escriba un YAML a mano con
+    `estado: FIRMADA` y sin `firma`. Esta validación es la que lo hace
+    imposible también en ese caso, mismo patrón de defensa en profundidad
+    que ya usan `_borrador_*.yaml` (prefijo de nombre + guardarraíl de
+    `normativa/resolucion.py`) para `BORRADOR`.
+    """
+    fallos = []
+    for r in doc.get("reglas") or []:
+        if r.get("estado") != "FIRMADA":
+            continue
+        firma = r.get("firma")
+        cid = r.get("concept_id")
+        if not firma:
+            fallos.append(f"[19] {cid}: estado FIRMADA sin bloque «firma» (curador + fecha)")
+            continue
+        if not firma.get("curador"):
+            fallos.append(f"[19] {cid}: «firma» sin curador")
+        fecha = firma.get("fecha")
+        if not fecha:
+            fallos.append(f"[19] {cid}: «firma» sin fecha")
+        else:
+            try:
+                date.fromisoformat(str(fecha))
+            except ValueError:
+                fallos.append(f"[19] {cid}: firma.fecha «{fecha}» no es una fecha ISO (AAAA-MM-DD)")
+    return fallos
+
+
+def validar_integridad_de_firma(doc: dict) -> List[str]:
+    """20. El contenido de una regla FIRMADA coincide con el hash que se firmó.
+
+    La 19 comprueba que la firma exista; esta comprueba que siga firmando LO
+    MISMO. `firma.hash_contenido` es el SHA-256 de la serialización canónica
+    de {norma, regla sin `firma`} (`normativa/firma.py`); se recomputa aquí en
+    cada carga y una discrepancia rechaza el fichero entero — fail-closed: la
+    materia cae a `sin_cobertura` en vez de servirse alterada.
+
+    **Fase 1 (2026-08-22)**: una FIRMADA SIN `hash_contenido` se tolera —
+    compatibilidad con las firmas del PRD cerrado del 21-08 y con los tests
+    del `scripts/curar_corpus.py` congelado hasta el jueves. **Fase 2 (jueves
+    2026-08-28)**: la ausencia también falla, y el esquema hace el campo
+    obligatorio. No habrá backfill: ninguna FIRMADA sin hash habrá entrado
+    nunca en el corpus de producción.
+    """
+    from .firma import hash_de_contenido_firmado
+
+    fallos = []
+    norma = doc.get("norma") or {}
+    for r in doc.get("reglas") or []:
+        if r.get("estado") != "FIRMADA":
+            continue
+        declarado = (r.get("firma") or {}).get("hash_contenido")
+        if not declarado:
+            continue  # fase 1: tolerado; la fase 2 convierte esto en fallo
+        real = hash_de_contenido_firmado(norma, r)
+        if declarado != real:
+            fallos.append(
+                f"[20] {r.get('concept_id')}: el contenido no coincide con el hash "
+                f"firmado (declarado {declarado[:12]}…, real {real[:12]}…) — "
+                "manipulación posterior a la firma o edición de una regla inmutable"
+            )
     return fallos
 
 
@@ -545,6 +664,8 @@ VALIDACIONES_POR_FICHERO = (
     validar_db_coherente,
     validar_perfil,
     validar_nivel_conocimiento,
+    validar_firma_de_regla_firmada,
+    validar_integridad_de_firma,
 )
 
 VALIDACIONES_GLOBALES = (validar_sin_contradiccion, validar_aristas)

@@ -475,7 +475,8 @@ def _decidir(cand: dict) -> Optional[tuple[str, str]]:
 # --- Construcción de la regla ---------------------------------------------
 
 def _construir_documento(cand: dict, nivel_confianza: str, sufijo_desambiguador: Optional[str] = None,
-                         estado: str = "BORRADOR", documento_sha256: Optional[str] = None) -> dict:
+                         estado: str = "BORRADOR", documento_sha256: Optional[str] = None,
+                         firma: Optional[dict] = None) -> dict:
     """`sufijo_desambiguador` solo se pasa cuando la descomposición produjo
     más de una sub-candidata atómica del mismo artículo padre (p. ej. DB-SUA
     1.2 da 3 conversiones limpias) — sin él, las tres competirían por el
@@ -487,7 +488,14 @@ def _construir_documento(cand: dict, nivel_confianza: str, sufijo_desambiguador:
     (docs/prd/2026-08-21-verificacion-doble-del-corpus.md): por defecto
     siguen produciendo exactamente el `BORRADOR` de siempre —
     `scripts/verificar_doble_ruta.py` es el único llamante que pasa
-    `estado="VERIFICADA_AUTOMATICA"` con su hash."""
+    `estado="VERIFICADA_AUTOMATICA"` con su hash.
+
+    `firma` (`{"curador": str, "fecha": "AAAA-MM-DD"}`) es del PRD de
+    curación y firma (docs/prd/2026-08-21-curacion-y-firma-del-corpus-db-sua.md):
+    solo `scripts/curar_corpus.py firmar` lo pasa, junto con
+    `estado="FIRMADA"`. `normativa/validacion.py` exige este bloque siempre
+    que `estado == "FIRMADA"` — pasar el estado sin la firma produce un
+    documento que no valida, a propósito."""
     doc_id = cand["documento_identificador"]
     fuente = FUENTES_OFICIALES_CONOCIDAS[doc_id]
     materia = cand["materia_sugerida"]
@@ -525,7 +533,11 @@ def _construir_documento(cand: dict, nivel_confianza: str, sufijo_desambiguador:
 
     nombre = nombre_corto if not sufijo_desambiguador else f"{nombre_corto} — {sufijo_desambiguador.replace('_', ' ')}"
 
-    etiqueta_procedencia = "borrador_automatico" if estado == "BORRADOR" else "verificado_doble_ruta"
+    etiqueta_procedencia = {
+        "BORRADOR": "borrador_automatico",
+        "VERIFICADA_AUTOMATICA": "verificado_doble_ruta",
+        "FIRMADA": "firmado_por_curador",
+    }.get(estado, "verificado_doble_ruta")
 
     regla = {
         "concept_id": concept_id,
@@ -551,6 +563,8 @@ def _construir_documento(cand: dict, nivel_confianza: str, sufijo_desambiguador:
         ],
         "vigencia": {"vigencia_desde": fecha},
     }
+    if firma:
+        regla["firma"] = firma
 
     fuente_norma = {k: v for k, v in fuente.items() if k != "prefijo_concepto"}
     if documento_sha256:

@@ -1,6 +1,6 @@
 # Ficha de transcripción normativa — procedimiento del curador
 
-**Fecha:** 2026-08-18 · **Estado:** propuesta, no aprobada · **Cierra:** tarea V0-5 del plan de migración v2
+**Fecha:** 2026-08-18 · **Estado:** aprobada (Pablo, 2026-08-22, vía `docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md` §11.1 tarea 1) · **Cierra:** tarea V0-5 del plan de migración v2
 **Destinatario:** el arquitecto colegiado que transcribe. No hace falta saber programar.
 
 ---

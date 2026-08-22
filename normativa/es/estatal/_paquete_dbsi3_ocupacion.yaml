@@ -1,0 +1,102 @@
+# Paquete DB-SI 3 evacuación (Residencial Vivienda) — bloque 1: cálculo de la ocupación.
+#
+# BORRADOR del paquete de curación 2026-08-25 (PRD
+# docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md). Prefijo `_` +
+# estado BORRADOR: invisible al loader y descartado por resolucion.py hasta
+# que la sesión de validación lo firme y `curacion/volcar_acta.py` escriba la
+# versión FIRMADA sin prefijo.
+#
+# PROCEDENCIA DEL LITERAL: copiado del PDF oficial
+# `tests/fixtures/codigotecnico/DB-SI.pdf` (sha256 en fuente.documento_sha256),
+# extraído con pdfminer.six y recompuesto el troceado de columnas de la tabla;
+# ninguna cifra procede de otra fuente.
+version: 1
+
+norma:
+  concept_id: es.rd_314_2006.dbsi3_ocupacion.norma
+  instance_id: es.rd_314_2006.dbsi3_ocupacion.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 314/2006
+    titulo: >-
+      Real Decreto 314/2006, de 17 de marzo, por el que se aprueba el Código
+      Técnico de la Edificación
+    boletin: BOE-A-2006-5515
+    url_oficial: https://www.boe.es/eli/es/rd/2006/03/17/314/con
+    documento_sha256: 0a2e78cd62471d9cc5cfe2efbc6aa39fdbad73c124aea7b039f9de96c141e105
+    hash_texto: 716b6d02a562557a898eef1c38c514d7b29967a424a91552c7d60d42bba34b9e
+  articulo:
+    documento_basico: DB-SI
+    seccion: SI 3
+    apartado: "2"
+    tabla: "2.1"
+  literal: |-
+    2 Cálculo de la ocupación
+
+    1 Para calcular la ocupación deben tomarse los valores de densidad de
+    ocupación que se indican en la tabla 2.1 en función de la superficie útil
+    de cada zona, salvo cuando sea previsible una ocupación mayor o bien
+    cuando sea exigible una ocupación menor en aplicación de alguna
+    disposición legal de obligado cumplimiento, como puede ser en el caso de
+    establecimientos hoteleros, docentes, hospitales, etc. En aquellos
+    recintos o zonas no incluidos en la tabla se deben aplicar los valores
+    correspondientes a los que sean más asimilables.
+
+    2 A efectos de determinar la ocupación, se debe tener en cuenta el
+    carácter simultáneo o alternativo de las diferentes zonas de un edificio,
+    considerando el régimen de actividad y de uso previsto para el mismo.
+
+    Tabla 2.1. Densidades de ocupación (extracto de las filas transcritas)
+
+    Cualquiera — Zonas de ocupación ocasional y accesibles únicamente a
+    efectos de mantenimiento: salas de máquinas, locales para material de
+    limpieza, etc.: Ocupación nula. Aseos de planta: 3 m2/persona.
+
+    Residencial Vivienda — Plantas de vivienda: 20 m2/persona.
+  vigencia:
+    vigencia_desde: 2006-03-29
+
+reglas:
+  - concept_id: es.rd_314_2006.seguridad_incendio.densidad_ocupacion_evacuacion
+    instance_id: es.rd_314_2006.seguridad_incendio.densidad_ocupacion_evacuacion@1
+    nombre: Densidad de ocupación para el cálculo de la evacuación (tabla 2.1)
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_CON_EXCEPCION
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      # La unidad es m2 POR PERSONA: a más metros por persona, MENOS ocupación
+      # calculada. No es un umbral de cumplimiento sino el dato de entrada del
+      # que dependen nº de salidas (tabla 3.1) y dimensionado (tabla 4.1).
+      ejes: [zona]
+      unidad: m2_por_persona
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 20
+          zona: plantas_de_vivienda
+        - valor: 3
+          zona: aseos_de_planta
+    mensaje: >-
+      La ocupación de cálculo de la zona no está tomada de la tabla 2.1 del
+      DB-SI 3. Revisa la densidad aplicada antes de dimensionar la evacuación.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 2, tabla 2.1. En uso Residencial Vivienda la densidad
+      de ocupación de las plantas de vivienda es 20 m2/persona sobre
+      superficie útil; los aseos de planta, 3 m2/persona. Las zonas de
+      ocupación ocasional accesibles solo para mantenimiento computan
+      ocupación nula (fila transcrita en el literal; sin valor numérico aquí
+      porque «nula» no es una densidad — ver lista de dudas del paquete).
+    explicacion_cliente: >-
+      La normativa fija cuántas personas se supone que ocupan cada zona para
+      dimensionar las salidas. En vivienda se cuenta una persona por cada
+      20 m² útiles.
+    tags: [evacuacion, dbsi3, tabla_2_1, ocupacion]
+    vigencia:
+      vigencia_desde: 2006-03-29

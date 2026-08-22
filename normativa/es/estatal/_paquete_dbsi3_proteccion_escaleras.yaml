@@ -1,0 +1,150 @@
+# Paquete DB-SI 3 evacuación (Residencial Vivienda) — bloque 5: protección de
+# las escaleras (tabla 5.1), filas de uso Residencial Vivienda y evacuación
+# ascendente de uso distinto de Aparcamiento.
+#
+# BORRADOR del paquete de curación 2026-08-25 (PRD
+# docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md).
+#
+# «Se admite en todo caso» (escalera especialmente protegida, y protegida en
+# ascendente) no es un umbral: no genera fila. La regla transcribe los LÍMITES
+# numéricos; la ausencia de límite queda dicha en la explicación técnica.
+#
+# PROCEDENCIA DEL LITERAL: `tests/fixtures/codigotecnico/DB-SI.pdf`
+# (sha256 en fuente.documento_sha256), pdfminer.six, columnas recompuestas.
+version: 1
+
+norma:
+  concept_id: es.rd_314_2006.dbsi3_escaleras.norma
+  instance_id: es.rd_314_2006.dbsi3_escaleras.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 314/2006
+    titulo: >-
+      Real Decreto 314/2006, de 17 de marzo, por el que se aprueba el Código
+      Técnico de la Edificación
+    boletin: BOE-A-2006-5515
+    url_oficial: https://www.boe.es/eli/es/rd/2006/03/17/314/con
+    documento_sha256: 0a2e78cd62471d9cc5cfe2efbc6aa39fdbad73c124aea7b039f9de96c141e105
+    hash_texto: ab2328e3a17039069c2da525fed23a203e56fc1e8891e9014d8c2fc61132b90f
+  articulo:
+    documento_basico: DB-SI
+    seccion: SI 3
+    apartado: "5"
+    tabla: "5.1"
+  literal: |-
+    5 Protección de las escaleras
+
+    1 En la tabla 5.1 se indican las condiciones de protección que deben
+    cumplir las escaleras previstas para evacuación.
+
+    Tabla 5.1. Protección de las escaleras (extracto de las filas transcritas)
+
+    h = altura de evacuación de la escalera
+    P = número de personas a las que sirve en el conjunto de plantas
+
+    Escaleras para evacuación descendente
+
+    Residencial Vivienda — No protegida: h ≤ 14 m. Protegida(2): h ≤ 28 m.
+    Especialmente protegida: Se admite en todo caso.
+
+    Escaleras para evacuación ascendente
+
+    Otro uso [distinto de Aparcamiento]:
+      h ≤ 2,80 m — No protegida: Se admite en todo caso.
+      2,80 < h ≤ 6,00 m — No protegida: P ≤ 100 personas.
+      h > 6,00 m — No protegida: No se admite.
+      Protegida(2): Se admite en todo caso.
+      Especialmente protegida: Se admite en todo caso.
+
+    (2) Las escaleras que comuniquen sectores de incendio diferentes pero cuya
+    altura de evacuación no exceda de la admitida para las escaleras no
+    protegidas, no precisan cumplir las condiciones de las escaleras
+    protegidas, sino únicamente estar compartimentadas de tal forma que a
+    través de ellas se mantenga la compartimentación exigible entre sectores
+    de incendio, siendo admisible la opción de incorporar el ámbito de la
+    propia escalera a uno de los sectores a los que sirve.
+  vigencia:
+    vigencia_desde: 2006-03-29
+
+reglas:
+  - concept_id: es.rd_314_2006.seguridad_incendio.altura_maxima_escalera_descendente_por_proteccion
+    instance_id: es.rd_314_2006.seguridad_incendio.altura_maxima_escalera_descendente_por_proteccion@1
+    nombre: Altura de evacuación máxima de la escalera descendente según su protección (Residencial Vivienda)
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_CON_EXCEPCION
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      ejes: [tipo_de_proteccion]
+      unidad: m
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 14
+          tipo_de_proteccion: no_protegida
+        - valor: 28
+          tipo_de_proteccion: protegida
+    mensaje: >-
+      La altura de evacuación de la escalera exige un grado de protección
+      mayor del que tiene. Protege la escalera o reduce la altura servida.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 5, tabla 5.1, fila Residencial Vivienda (evacuación
+      descendente). Escalera no protegida hasta h ≤ 14 m; protegida hasta
+      h ≤ 28 m; especialmente protegida se admite en todo caso (sin límite
+      numérico: por eso no genera fila de parámetro).
+    explicacion_cliente: >-
+      Cuanto más alto evacúa una escalera, más protegida contra el fuego debe
+      estar: sin proteger vale hasta 14 m de altura de evacuación, protegida
+      hasta 28 m.
+    tags: [evacuacion, dbsi3, tabla_5_1, escaleras, proteccion]
+    vigencia:
+      vigencia_desde: 2006-03-29
+
+  - concept_id: es.rd_314_2006.seguridad_incendio.escalera_ascendente_no_protegida
+    instance_id: es.rd_314_2006.seguridad_incendio.escalera_ascendente_no_protegida@1
+    nombre: Límites de la escalera no protegida en evacuación ascendente
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_CON_EXCEPCION
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      # Dos magnitudes acopladas de la misma fila: hasta 2,80 m sin límite de
+      # personas; entre 2,80 y 6,00 m solo hasta 100 personas; por encima de
+      # 6,00 m no se admite no protegida.
+      ejes: [magnitud]
+      unidad: null
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 2.80
+          magnitud: altura_maxima_sin_limite_de_personas_m
+        - valor: 6.00
+          magnitud: altura_maxima_con_maximo_100_personas_m
+        - valor: 100
+          magnitud: personas_maximas_entre_2_80_y_6_00_m
+    mensaje: >-
+      La escalera ascendente no protegida excede lo admisible (altura o
+      personas servidas). Protege la escalera o reduce lo que sirve.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 5, tabla 5.1 (evacuación ascendente, uso distinto de
+      Aparcamiento). Escalera no protegida: se admite en todo caso hasta
+      h ≤ 2,80 m; entre 2,80 y 6,00 m solo si sirve a P ≤ 100 personas; no se
+      admite con h > 6,00 m. Protegida y especialmente protegida se admiten en
+      todo caso.
+    explicacion_cliente: >-
+      Evacuar hacia arriba es más lento y peligroso: una escalera sin
+      protección solo vale para poca altura y, entre 2,80 y 6 m, para 100
+      personas como máximo.
+    tags: [evacuacion, dbsi3, tabla_5_1, escaleras, ascendente]
+    vigencia:
+      vigencia_desde: 2006-03-29

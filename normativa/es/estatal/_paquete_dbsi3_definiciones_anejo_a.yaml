@@ -1,0 +1,185 @@
+# Paquete DB-SI 3 evacuación (Residencial Vivienda) — bloque 7: definiciones
+# del Anejo SI A de las que dependen las reglas de evacuación del paquete.
+#
+# BORRADOR del paquete de curación 2026-08-25 (PRD
+# docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md).
+#
+# SOLO las 4 definiciones que NO están ya en el glosario
+# `normativa/terminologia/dbsi_anejo_a.yaml` (que cubre «Origen de
+# evacuación», «Altura de evacuación», «Superficie útil», usos…): espacio
+# exterior seguro, recorrido de evacuación, salida de planta y salida de
+# edificio. La ficha §6 dejó dicho que estas definiciones entran como
+# `tipo: definicion` para que las filas de la tabla 3.1 que dependen de ellas
+# sean interpretables; no duplicamos lo que el glosario ya tiene.
+#
+# `tipo: definicion` no es evaluable: sin patrón ni parámetro (validación 3).
+# `prioridad` es obligatoria en el esquema aunque una definición no se
+# incumple: se declara `recomendable` como valor neutro documentado.
+#
+# PROCEDENCIA DEL LITERAL: `tests/fixtures/codigotecnico/DB-SI.pdf`
+# (sha256 en fuente.documento_sha256), pdfminer.six, columnas recompuestas.
+version: 1
+
+norma:
+  concept_id: es.rd_314_2006.dbsi_anejo_a.norma
+  instance_id: es.rd_314_2006.dbsi_anejo_a.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 314/2006
+    titulo: >-
+      Real Decreto 314/2006, de 17 de marzo, por el que se aprueba el Código
+      Técnico de la Edificación
+    boletin: BOE-A-2006-5515
+    url_oficial: https://www.boe.es/eli/es/rd/2006/03/17/314/con
+    documento_sha256: 0a2e78cd62471d9cc5cfe2efbc6aa39fdbad73c124aea7b039f9de96c141e105
+    hash_texto: 347069a65eb9b521b00f6d8219c51ce504fa22017165e3b4a21531e7a53da7f3
+  articulo:
+    documento_basico: DB-SI
+    seccion: Anejo SI A
+  literal: |-
+    Anejo SI A. Terminología
+
+    Espacio exterior seguro
+
+    Es aquel en el que se puede dar por finalizada la evacuación de los
+    ocupantes del edificio, debido a que cumple las siguientes condiciones:
+
+    1 Permite la dispersión de los ocupantes que abandonan el edificio, en
+    condiciones de seguridad.
+
+    2 Se puede considerar que dicha condición se cumple cuando el espacio
+    exterior tiene, delante de cada salida de edificio que comunique con él,
+    una superficie de al menos 0,5P m² dentro de la zona delimitada con un
+    radio 0,1P m de distancia desde la salida de edificio, siendo P el número
+    de ocupantes cuya evacuación esté prevista por dicha salida. Cuando P no
+    exceda de 50 personas no es necesario comprobar dicha condición.
+
+    3 Si el espacio considerado no está comunicado con la red viaria o con
+    otros espacios abiertos no puede considerarse ninguna zona situada a menos
+    de 15 m de cualquier parte del edificio, excepto cuando está dividido en
+    sectores de incendio estructuralmente independientes entre sí y con
+    salidas también independientes al espacio exterior, en cuyo caso dicha
+    distancia se podrá aplicar únicamente respecto del sector afectado por un
+    posible incendio.
+
+    4 Permite una amplia disipación del calor, del humo y de los gases
+    producidos por el incendio.
+
+    5 Permite el acceso de los efectivos de bomberos y de los medios de ayuda
+    a los ocupantes que, en cada caso, se consideren necesarios.
+
+    Recorrido de evacuación
+
+    Recorrido que conduce desde un origen de evacuación hasta una salida de
+    planta, situada en la misma planta considerada o en otra, o hasta una
+    salida de edificio. Conforme a ello, una vez alcanzada una salida de
+    planta, la longitud del recorrido posterior no computa a efectos del
+    cumplimiento de los límites a los recorridos de evacuación.
+
+    La longitud de los recorridos por pasillos, escaleras y rampas, se medirá
+    sobre el eje de los mismos. No se consideran válidos los recorridos por
+    escaleras mecánicas, ni aquellos en los que existan tornos u otros
+    elementos que puedan dificultar el paso.
+
+    Salida de edificio
+
+    Puerta o hueco de salida a un espacio exterior seguro. En el caso de
+    salidas previstas para un máximo de 500 personas puede admitirse como
+    salida de edificio aquella que comunique con un espacio exterior que
+    disponga de dos recorridos alternativos hasta dos espacios exteriores
+    seguros, uno de los cuales no exceda de 50 m.
+
+    Salida de planta
+
+    Es alguno de los siguientes elementos, pudiendo estar situada bien en la
+    planta considerada o bien en otra planta diferente:
+
+    1 El arranque de una escalera compartimentada como los sectores de
+    incendio, o una puerta de acceso a una escalera protegida, a un pasillo
+    protegido o al vestíbulo de independencia de una escalera especialmente
+    protegida.
+  vigencia:
+    vigencia_desde: 2006-03-29
+
+reglas:
+  - concept_id: es.rd_314_2006.seguridad_incendio.def_espacio_exterior_seguro
+    instance_id: es.rd_314_2006.seguridad_incendio.def_espacio_exterior_seguro@1
+    nombre: "Definición: espacio exterior seguro"
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: definicion
+    prioridad: recomendable
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    explicacion_tecnica: >-
+      Anejo SI A. Espacio donde puede darse por finalizada la evacuación:
+      permite la dispersión (0,5P m² dentro de un radio 0,1P m desde la salida
+      cuando P > 50), disipación de calor y humo, y acceso de bomberos. La
+      fila «50 m con salida directa a espacio exterior seguro» de la tabla 3.1
+      depende de esta definición.
+    tags: [evacuacion, anejo_a, definicion]
+    vigencia:
+      vigencia_desde: 2006-03-29
+
+  - concept_id: es.rd_314_2006.seguridad_incendio.def_recorrido_de_evacuacion
+    instance_id: es.rd_314_2006.seguridad_incendio.def_recorrido_de_evacuacion@1
+    nombre: "Definición: recorrido de evacuación y cómo se mide"
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: definicion
+    prioridad: recomendable
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    explicacion_tecnica: >-
+      Anejo SI A. Del origen de evacuación a una salida de planta o de
+      edificio; alcanzada una salida de planta, el resto no computa. Se mide
+      sobre el eje de pasillos, escaleras y rampas; no valen escaleras
+      mecánicas ni pasos con tornos. Es la definición que fija QUÉ longitud
+      compara la regla de la tabla 3.1.
+    tags: [evacuacion, anejo_a, definicion]
+    vigencia:
+      vigencia_desde: 2006-03-29
+
+  - concept_id: es.rd_314_2006.seguridad_incendio.def_salida_de_edificio
+    instance_id: es.rd_314_2006.seguridad_incendio.def_salida_de_edificio@1
+    nombre: "Definición: salida de edificio"
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: definicion
+    prioridad: recomendable
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    explicacion_tecnica: >-
+      Anejo SI A. Puerta o hueco de salida a un espacio exterior seguro; hasta
+      500 personas se admite la que comunique con un exterior con dos
+      recorridos alternativos a dos espacios exteriores seguros, uno de ellos
+      de 50 m como máximo.
+    tags: [evacuacion, anejo_a, definicion]
+    vigencia:
+      vigencia_desde: 2006-03-29
+
+  - concept_id: es.rd_314_2006.seguridad_incendio.def_salida_de_planta
+    instance_id: es.rd_314_2006.seguridad_incendio.def_salida_de_planta@1
+    nombre: "Definición: salida de planta (caso 1, escaleras protegidas)"
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: definicion
+    prioridad: recomendable
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+    explicacion_tecnica: >-
+      Anejo SI A. Transcrito el caso 1 (arranque de escalera compartimentada
+      como los sectores, o puerta a escalera protegida, pasillo protegido o
+      vestíbulo de independencia de una especialmente protegida). Los casos 2
+      y siguientes (paso a sector alternativo, condiciones de superficie)
+      quedan en la lista de dudas del paquete: son composiciones con
+      condiciones propias y no deben firmarse a medias.
+    tags: [evacuacion, anejo_a, definicion]
+    vigencia:
+      vigencia_desde: 2006-03-29

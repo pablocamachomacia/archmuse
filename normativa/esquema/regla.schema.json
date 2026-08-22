@@ -76,7 +76,7 @@
           "instance_id": { "type": "string", "minLength": 1 },
           "nombre": { "type": "string", "minLength": 1 },
           "estado": {
-            "description": "Procedencia de la regla, NO su aplicabilidad a un proyecto (eso es `_Candidata.estado` en normativa/resolucion.py, un concepto distinto). Ausente = regla histórica anterior a este campo (p. ej. seguridad_incendio.yaml), gobernada por el tag `pendiente_firma_colegiado`. `BORRADOR` = una sola ruta de extracción, sin verificar: normativa/resolucion.py::_paso1_candidatas la descarta siempre, nunca llega a una afirmación de cumplimiento. `VERIFICADA_AUTOMATICA` = dos rutas de extracción independientes (motor de texto PDF distinto cada una) coinciden en valor y unidad, o Pablo resolvió una discrepancia a mano con `scripts/revisar_pendientes.py` — es la primera evaluable (docs/prd/2026-08-21-verificacion-doble-del-corpus.md). `FIRMADA` reservado, sin lógica todavía, para si algún día hay firma de colegiado. Catálogo cerrado.",
+            "description": "Procedencia de la regla, NO su aplicabilidad a un proyecto (eso es `_Candidata.estado` en normativa/resolucion.py, un concepto distinto). Ausente = regla histórica anterior a este campo (p. ej. seguridad_incendio.yaml), gobernada por el tag `pendiente_firma_colegiado`. `BORRADOR` = una sola ruta de extracción o transcripción manual sin validar: normativa/resolucion.py::_paso1_candidatas la descarta siempre, nunca llega a una afirmación de cumplimiento. `VERIFICADA_AUTOMATICA` = dos rutas de extracción independientes (motor de texto PDF distinto cada una) coinciden en valor y unidad, o Pablo resolvió una discrepancia a mano con `scripts/revisar_pendientes.py` — es la primera evaluable (docs/prd/2026-08-21-verificacion-doble-del-corpus.md). `FIRMADA` = aprobada nominalmente por el curador (bloque `firma`, validaciones 19 y 20, `scripts/curar_corpus.py firmar` o `curacion/volcar_acta.py firmar`; docs/prd/2026-08-21-curacion-y-firma-del-corpus-db-sua.md y docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md). Catálogo cerrado.",
             "type": ["string", "null"],
             "enum": ["BORRADOR", "VERIFICADA_AUTOMATICA", "FIRMADA", null]
           },
@@ -133,6 +133,40 @@
             }
           },
           "condiciones": { "type": ["object", "null"] },
+          "firma": {
+            "description": "Presente SOLO cuando `estado == \"FIRMADA\"` (docs/prd/2026-08-21-curacion-y-firma-del-corpus-db-sua.md). Quién aprobó explícitamente esta regla y cuándo — distinto de `documento_sha256` (identifica el PDF fuente) y de `vigencia` (cuándo rige la norma en sí). `normativa/validacion.py` exige este bloque para toda regla FIRMADA; el esquema solo fija su forma, la obligatoriedad condicionada al estado no es expresable aquí sin duplicar el catálogo de estados. `hash_contenido` y `validado_por` se añadieron el 2026-08-22 (PRD corpus-firmado-dbsi3): opcionales en fase 1 por compatibilidad con las firmas del PRD cerrado del 21-08; `hash_contenido` pasa a obligatorio para FIRMADA en la fase 2 (jueves 2026-08-28), junto con la inversión de la validación 20.",
+            "type": ["object", "null"],
+            "required": ["curador", "fecha"],
+            "additionalProperties": false,
+            "properties": {
+              "curador": { "type": "string", "minLength": 1 },
+              "fecha": { "type": "string", "format": "date" },
+              "hash_contenido": {
+                "description": "SHA-256 de la serialización canónica de {norma, regla sin `firma`} — `normativa/firma.py::hash_de_contenido_firmado`. Es lo que ata la firma a QUÉ se aprobó: la validación 20 lo recomputa en cada carga y una discrepancia tumba el fichero (fail-closed). Computable en fase BORRADOR (el bloque `firma` se excluye del hash), que es lo que permite imprimirlo en la hoja de revisión y anclar el acta en papel.",
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "validado_por": {
+                "description": "Registro nominal de la validación humana externa sobre papel (acta escaneada en docs/curacion/actas/). NO revierte la decisión del 21-08 (nadie externo opera herramientas ni firma digitalmente): documenta quién cotejó la transcripción contra el texto oficial y dónde está su firma manuscrita.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["nombre", "rol", "fecha", "acta"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "nombre": { "type": "string", "minLength": 1 },
+                    "rol": {
+                      "type": "string",
+                      "enum": ["arquitecto_colegiado", "experto_normativo", "curador_interno"]
+                    },
+                    "colegiatura": { "type": "string" },
+                    "fecha": { "type": "string", "format": "date" },
+                    "acta": { "type": "string", "minLength": 1 }
+                  }
+                }
+              }
+            }
+          },
           "mensaje": { "type": "string" },
           "explicacion_tecnica": { "type": "string" },
           "explicacion_cliente": { "type": "string" },

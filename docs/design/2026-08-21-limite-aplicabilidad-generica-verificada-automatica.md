@@ -1,6 +1,20 @@
 # Límite real: `aplicabilidad` genérica choca al hacer VERIFICADA_AUTOMATICA descubrible
 
-**Fecha:** 2026-08-21 · **Encontrado en:** Prompt 2, tarea 8 (ejecución real) · **Estado:** sin resolver, anotado para no perderlo
+**Fecha:** 2026-08-21 · **Encontrado en:** Prompt 2, tarea 8 (ejecución real) · **Estado:** RESUELTO el 2026-08-21 (misma tarde) — ver `docs/prd/2026-08-21-curacion-y-firma-del-corpus-db-sua.md`, adenda de cierre.
+
+**RESUELTO — 2026-08-21.** Pablo preguntó por el alcance real de este límite antes
+de dar por cerrada la herramienta de curación/firma, y resultó ser bloqueante de
+verdad para su volumen real (la colisión ocurría al firmar la 2ª-3ª regla, no en un
+caso extremo de volumen). Se arregló ampliando la clave de
+`normativa/validacion.py::validar_sin_contradiccion` (validación 14) para incluir
+también la cita del artículo (`norma.articulo`) y el `nombre` de la regla — ninguno
+inventado, los dos ya estaban en el documento — en vez de la solución que este
+documento anticipaba (derivar `usos`/`tipologias` reales por regla, que sí habría
+exigido criterio no disponible sin más trabajo de interpretación). Verificado con las
+20 candidatas reales de DB-SUA: 39 reglas `FIRMADA` cargan sin colisión. Este
+documento se conserva sin editar el resto —congelado, no eliminado— porque describe
+correctamente el hallazgo original y el razonamiento que llevó a la solución elegida;
+no es una limitación pendiente.
 
 ---
 

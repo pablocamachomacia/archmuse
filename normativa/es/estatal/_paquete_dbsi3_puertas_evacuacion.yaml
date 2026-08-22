@@ -1,0 +1,90 @@
+# Paquete DB-SI 3 evacuación (Residencial Vivienda) — bloque 6: puertas
+# situadas en recorridos de evacuación (apartado 6), sentido de apertura.
+#
+# BORRADOR del paquete de curación 2026-08-25 (PRD
+# docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md).
+#
+# El apartado 6 contiene además condiciones cualitativas (dispositivos de
+# apertura, puertas automáticas, giratorias) que son exigencia_cualitativa o
+# remisión a normas UNE: quedan fuera de este bloque y anotadas en la lista de
+# dudas — este paquete firma lo cuantitativo evaluable.
+#
+# PROCEDENCIA DEL LITERAL: `tests/fixtures/codigotecnico/DB-SI.pdf`
+# (sha256 en fuente.documento_sha256), pdfminer.six, columnas recompuestas.
+version: 1
+
+norma:
+  concept_id: es.rd_314_2006.dbsi3_puertas.norma
+  instance_id: es.rd_314_2006.dbsi3_puertas.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 314/2006
+    titulo: >-
+      Real Decreto 314/2006, de 17 de marzo, por el que se aprueba el Código
+      Técnico de la Edificación
+    boletin: BOE-A-2006-5515
+    url_oficial: https://www.boe.es/eli/es/rd/2006/03/17/314/con
+    documento_sha256: 0a2e78cd62471d9cc5cfe2efbc6aa39fdbad73c124aea7b039f9de96c141e105
+    hash_texto: 9344542578b16d0e1f9b7cc0a46589c83985feaccba129d4f3f8d1369a00ff4d
+  articulo:
+    documento_basico: DB-SI
+    seccion: SI 3
+    apartado: "6"
+    punto: "3"
+  literal: |-
+    6 Puertas situadas en recorridos de evacuación
+
+    3 Abrirá en el sentido de la evacuación toda puerta de salida:
+
+    a) prevista para el paso de más de 200 personas en edificios de uso
+    Residencial Vivienda o de 100 personas en los demás casos, o bien.
+
+    b) prevista para más de 50 ocupantes del recinto o espacio en el que esté
+    situada.
+
+    Para la determinación del número de personas que se indica en a) y b) se
+    deberán tener en cuenta los criterios de asignación de los ocupantes
+    establecidos en el apartado 4.1 de esta Sección.
+  vigencia:
+    vigencia_desde: 2006-03-29
+
+reglas:
+  - concept_id: es.rd_314_2006.seguridad_incendio.apertura_sentido_evacuacion
+    instance_id: es.rd_314_2006.seguridad_incendio.apertura_sentido_evacuacion@1
+    nombre: Ocupación a partir de la cual la puerta debe abrir en el sentido de la evacuación
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_CON_EXCEPCION
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      ejes: [ambito_de_la_puerta]
+      unidad: personas
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 200
+          ambito_de_la_puerta: paso_previsto_en_edificio_residencial_vivienda
+        - valor: 50
+          ambito_de_la_puerta: ocupantes_del_recinto_o_espacio
+    mensaje: >-
+      La puerta sirve a más ocupantes de los admisibles sin abrir en el
+      sentido de la evacuación. Invierte el sentido de apertura.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 6, punto 3. Abre en el sentido de la evacuación toda
+      puerta de salida prevista para el paso de más de 200 personas en
+      edificios de uso Residencial Vivienda (a), o prevista para más de 50
+      ocupantes del recinto o espacio en el que esté situada (b). El cómputo
+      de personas sigue los criterios de asignación del apartado 4.1.
+    explicacion_cliente: >-
+      Si por una puerta pueden llegar a salir muchas personas a la vez, debe
+      abrir hacia fuera (en el sentido de la huida) para no bloquearse con la
+      presión de la gente.
+    tags: [evacuacion, dbsi3, apartado_6, puertas, sentido_apertura]
+    vigencia:
+      vigencia_desde: 2006-03-29

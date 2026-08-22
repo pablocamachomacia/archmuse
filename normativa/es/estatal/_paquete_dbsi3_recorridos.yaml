@@ -1,0 +1,182 @@
+# Paquete DB-SI 3 evacuación (Residencial Vivienda) — bloque 3:
+# retranscripción de la regla piloto (longitud de recorridos, tabla 3.1).
+#
+# BORRADOR del paquete de curación 2026-08-25 (PRD
+# docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md). MISMO concept_id
+# que `seguridad_incendio.yaml` (la piloto del 2026-08-18), instance_id @2:
+# cuando esta versión se firme, la piloto queda superseded (registro_hasta
+# cerrado, fichero renombrado a `_superseded_*`) y la constante CID de
+# `agente/skills/evacuacion.py` sigue resolviendo sin tocar la skill.
+#
+# Cambios respecto de @1: se añade al literal la nota (1) de la tabla (el
+# +25% con instalación automática de extinción, transcrita como regla propia)
+# y la aplicabilidad se restringe a usos [residencial] — los valores de
+# Aparcamiento/Hospitalario del literal se conservan como texto pero este
+# paquete solo firma su lectura para Residencial Vivienda.
+#
+# PROCEDENCIA DEL LITERAL: `tests/fixtures/codigotecnico/DB-SI.pdf`
+# (sha256 en fuente.documento_sha256), pdfminer.six, columnas recompuestas.
+version: 1
+
+norma:
+  concept_id: es.rd_314_2006.dbsi.norma
+  instance_id: es.rd_314_2006.dbsi.norma@2
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 314/2006
+    titulo: >-
+      Real Decreto 314/2006, de 17 de marzo, por el que se aprueba el Código
+      Técnico de la Edificación
+    boletin: BOE-A-2006-5515
+    url_oficial: https://www.boe.es/eli/es/rd/2006/03/17/314/con
+    documento_sha256: 0a2e78cd62471d9cc5cfe2efbc6aa39fdbad73c124aea7b039f9de96c141e105
+    hash_texto: 4f27020168bb55cdd840a2b7dbf17d6e35cdc4648d22d07c2403b8f87ce2a3fe
+  articulo:
+    documento_basico: DB-SI
+    seccion: SI 3
+    apartado: "3"
+    tabla: "3.1"
+  literal: |-
+    3 Número de salidas y longitud de los recorridos de evacuación
+
+    1 En la tabla 3.1 se indica el número de salidas que debe haber en cada
+    caso, como mínimo, así como la longitud de los recorridos de evacuación
+    hasta ellas.
+
+    Tabla 3.1. Número de salidas de planta y longitud de los recorridos de
+    evacuación(1)
+
+    Plantas o recintos que disponen de una única salida de planta o salida de
+    recinto respectivamente:
+      La longitud de los recorridos de evacuación hasta una salida de planta no
+      excede de 25 m, excepto en los casos que se indican a continuación:
+      - 35 m en uso Aparcamiento;
+      - 50 m si se trata de una planta, incluso de uso Aparcamiento, que tiene
+        una salida directa al espacio exterior seguro y la ocupación no excede
+        de 25 personas, o bien de un espacio al aire libre en el que el riesgo
+        de incendio sea irrelevante, por ejemplo, una cubierta de edificio, una
+        terraza, etc.
+
+    Plantas o recintos que disponen de más de una salida de planta o salida de
+    recinto respectivamente:
+      La longitud de los recorridos de evacuación hasta alguna salida de planta
+      no excede de 50 m, excepto en los casos que se indican a continuación:
+      - 35 m en zonas en las que se prevea la presencia de ocupantes que
+        duermen, o en plantas de hospitalización o de tratamiento intensivo en
+        uso Hospitalario y en plantas de escuela infantil o de enseñanza
+        primaria.
+      - 75 m en espacios al aire libre en los que el riesgo de declaración de
+        un incendio sea irrelevante, por ejemplo, una cubierta de edificio, una
+        terraza, etc.
+
+    (1) La longitud de los recorridos de evacuación que se indican se puede
+    aumentar un 25% cuando se trate de sectores de incendio protegidos con una
+    instalación automática de extinción.
+  vigencia:
+    vigencia_desde: 2006-03-29
+
+reglas:
+  - concept_id: es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion
+    instance_id: es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion@2
+    nombre: Longitud máxima de los recorridos de evacuación hasta una salida de planta
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    # UMBRAL_CON_EXCEPCION y no UMBRAL_SIMPLE: el valor general (25 m con una
+    # salida, 50 m con varias) tiene excepciones declaradas por uso y por
+    # características de la planta (decisión heredada de @1).
+    patron: UMBRAL_CON_EXCEPCION
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      ejes: [numero_salidas, condicion]
+      unidad: m
+      # `todos` exige coincidir en los dos ejes; `ninguno` cierra la cadena:
+      # sin fila exacta no hay valor y el motor declara UNKNOWN con motivo
+      # (corrección documentada en @1, se conserva).
+      repliegue: [todos, ninguno]
+      valores:
+        # --- Plantas o recintos con UNA ÚNICA salida ---
+        - valor: 25
+          numero_salidas: una
+          condicion: general
+        - valor: 35
+          numero_salidas: una
+          condicion: uso_aparcamiento
+        - valor: 50
+          numero_salidas: una
+          condicion: salida_directa_exterior_seguro_ocupacion_max_25
+        # --- Plantas o recintos con MÁS DE UNA salida ---
+        - valor: 50
+          numero_salidas: varias
+          condicion: general
+        - valor: 35
+          numero_salidas: varias
+          condicion: ocupantes_que_duermen_u_hospitalario_o_escuela
+        - valor: 75
+          numero_salidas: varias
+          condicion: espacio_al_aire_libre_riesgo_irrelevante
+    mensaje: >-
+      El recorrido de evacuación supera la longitud máxima admisible hasta una
+      salida de planta. Revisa el trazado o añade una salida.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 3, tabla 3.1. Con una única salida de planta el
+      recorrido no puede exceder de 25 m (35 m en uso Aparcamiento; 50 m si la
+      planta tiene salida directa a espacio exterior seguro y la ocupación no
+      excede de 25 personas). Con más de una salida el límite general es 50 m
+      (35 m donde se prevean ocupantes que duermen, en hospitalización o
+      tratamiento intensivo y en escuela infantil o enseñanza primaria; 75 m en
+      espacios al aire libre con riesgo de incendio irrelevante). La nota (1)
+      permite aumentar estas longitudes un 25% con instalación automática de
+      extinción — regla aparte en este mismo fichero.
+    explicacion_cliente: >-
+      La distancia que hay que recorrer desde cualquier punto hasta la salida
+      está limitada por normativa contra incendios. Superarla obliga a
+      rediseñar el recorrido o a añadir otra salida, y es motivo de reparo en
+      visado.
+    tags: [evacuacion, dbsi3, tabla_3_1]
+    vigencia:
+      vigencia_desde: 2006-03-29
+
+  - concept_id: es.rd_314_2006.seguridad_incendio.incremento_recorridos_extincion_automatica
+    instance_id: es.rd_314_2006.seguridad_incendio.incremento_recorridos_extincion_automatica@1
+    nombre: Incremento admisible de la longitud de recorridos con instalación automática de extinción
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: riesgo_variable
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      ejes: [condicion]
+      unidad: por_ciento
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 25
+          condicion: sector_protegido_con_instalacion_automatica_de_extincion
+    mensaje: >-
+      El aumento aplicado a la longitud de recorridos solo es admisible si el
+      sector está protegido con instalación automática de extinción, y como
+      máximo un 25%.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 3, tabla 3.1, nota (1). Las longitudes de recorridos
+      de evacuación de la tabla pueden aumentarse un 25% cuando se trate de
+      sectores de incendio protegidos con una instalación automática de
+      extinción.
+    explicacion_cliente: >-
+      Con rociadores automáticos la normativa permite recorridos de evacuación
+      un 25% más largos.
+    tags: [evacuacion, dbsi3, tabla_3_1, extincion_automatica]
+    aristas:
+      - tipo: modifica
+        destino: es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion
+    vigencia:
+      vigencia_desde: 2006-03-29

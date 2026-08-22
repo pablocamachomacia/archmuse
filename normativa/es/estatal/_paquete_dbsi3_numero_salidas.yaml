@@ -1,0 +1,176 @@
+# Paquete DB-SI 3 evacuación (Residencial Vivienda) — bloque 2: número de
+# salidas de planta (condiciones de la tabla 3.1 distintas de la longitud).
+#
+# BORRADOR del paquete de curación 2026-08-25 (PRD
+# docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md). La longitud de los
+# recorridos de la misma tabla vive en `_paquete_dbsi3_recorridos.yaml`
+# (retranscripción @2 de la regla piloto), no aquí: una regla por exigencia
+# distinguible, como pide la ficha.
+#
+# PROCEDENCIA DEL LITERAL: `tests/fixtures/codigotecnico/DB-SI.pdf`
+# (sha256 en fuente.documento_sha256), pdfminer.six, columnas recompuestas.
+version: 1
+
+norma:
+  concept_id: es.rd_314_2006.dbsi3_salidas.norma
+  instance_id: es.rd_314_2006.dbsi3_salidas.norma@1
+  ambito: es
+  fuente:
+    rango: Real Decreto
+    organismo: Ministerio de Vivienda
+    identificador_oficial: RD 314/2006
+    titulo: >-
+      Real Decreto 314/2006, de 17 de marzo, por el que se aprueba el Código
+      Técnico de la Edificación
+    boletin: BOE-A-2006-5515
+    url_oficial: https://www.boe.es/eli/es/rd/2006/03/17/314/con
+    documento_sha256: 0a2e78cd62471d9cc5cfe2efbc6aa39fdbad73c124aea7b039f9de96c141e105
+    hash_texto: 59f52ef1ba1577c01081e9b71db74f1d5f370491d1b96cfd1996143285bc4f7e
+  articulo:
+    documento_basico: DB-SI
+    seccion: SI 3
+    apartado: "3"
+    tabla: "3.1"
+  literal: |-
+    Tabla 3.1. Número de salidas de planta y longitud de los recorridos de
+    evacuación
+
+    Plantas o recintos que disponen de una única salida de planta o salida de
+    recinto respectivamente:
+
+      La ocupación no excede de 100 personas, excepto en los casos que se
+      indican a continuación:
+      - 500 personas en el conjunto del edificio, en el caso de salida de un
+        edificio de viviendas;
+      - 50 personas en zonas desde las que la evacuación hasta una salida de
+        planta deba salvar una altura mayor que 2 m en sentido ascendente;
+      - 50 alumnos en escuelas infantiles, o de enseñanza primaria o
+        secundaria.
+
+      La altura de evacuación descendente de la planta considerada no excede
+      de 28 m, excepto en uso Residencial Público, en cuyo caso es, como
+      máximo, la segunda planta por encima de la de salida de edificio(2), o
+      de 10 m cuando la evacuación sea ascendente.
+
+    (3) La planta de salida del edificio debe contar con más de una salida:
+      - en el caso de edificios de Uso Residencial Vivienda, cuando la
+        ocupación total del edificio exceda de 500 personas.
+      - en el resto de los usos, cuando le sea exigible considerando
+        únicamente la ocupación de dicha planta, o bien cuando el edificio
+        esté obligado a tener más de una escalera para la evacuación
+        descendente o más de una para evacuación ascendente.
+  vigencia:
+    vigencia_desde: 2006-03-29
+
+reglas:
+  - concept_id: es.rd_314_2006.seguridad_incendio.ocupacion_maxima_salida_unica
+    instance_id: es.rd_314_2006.seguridad_incendio.ocupacion_maxima_salida_unica@1
+    nombre: Ocupación máxima admisible con una única salida de planta o de recinto
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_CON_EXCEPCION
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      ejes: [caso]
+      unidad: personas
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 100
+          caso: general
+        - valor: 500
+          caso: salida_de_edificio_de_viviendas_conjunto_del_edificio
+        - valor: 50
+          caso: evacuacion_ascendente_salva_mas_de_2_m
+    mensaje: >-
+      La ocupación servida por una única salida supera lo admisible. Añade una
+      salida de planta o reduce la ocupación asignada.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 3, tabla 3.1. Con una única salida de planta o de
+      recinto la ocupación no puede exceder de 100 personas; 500 en el
+      conjunto del edificio cuando se trata de la salida de un edificio de
+      viviendas; 50 en zonas cuya evacuación hasta la salida de planta salve
+      más de 2 m en sentido ascendente. (La excepción de 50 alumnos es de uso
+      Docente y queda fuera de la aplicabilidad de esta regla.)
+    explicacion_cliente: >-
+      Una sola salida solo es admisible hasta cierto número de personas. Por
+      encima, la normativa obliga a disponer más salidas.
+    tags: [evacuacion, dbsi3, tabla_3_1, numero_salidas]
+    vigencia:
+      vigencia_desde: 2006-03-29
+
+  - concept_id: es.rd_314_2006.seguridad_incendio.altura_evacuacion_maxima_salida_unica
+    instance_id: es.rd_314_2006.seguridad_incendio.altura_evacuacion_maxima_salida_unica@1
+    nombre: Altura de evacuación máxima de la planta con una única salida
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_CON_EXCEPCION
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      ejes: [sentido]
+      unidad: m
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 28
+          sentido: descendente
+        - valor: 10
+          sentido: ascendente
+    mensaje: >-
+      La altura de evacuación de la planta excede lo admisible con una única
+      salida. Hace falta más de una salida de planta.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 3, tabla 3.1. Con una única salida de planta, la
+      altura de evacuación descendente de la planta considerada no puede
+      exceder de 28 m, ni de 10 m cuando la evacuación sea ascendente. (La
+      excepción por planta relativa es de uso Residencial Público y queda
+      fuera de la aplicabilidad de esta regla.)
+    explicacion_cliente: >-
+      Si la planta está demasiado alta (o demasiado baja, evacuando hacia
+      arriba) respecto de la salida del edificio, una única salida de planta
+      no basta.
+    tags: [evacuacion, dbsi3, tabla_3_1, altura_evacuacion, numero_salidas]
+    vigencia:
+      vigencia_desde: 2006-03-29
+
+  - concept_id: es.rd_314_2006.seguridad_incendio.salidas_planta_salida_edificio_viviendas
+    instance_id: es.rd_314_2006.seguridad_incendio.salidas_planta_salida_edificio_viviendas@1
+    nombre: Ocupación a partir de la cual la planta de salida del edificio de viviendas exige más de una salida
+    estado: BORRADOR
+    materia: seguridad_incendio
+    tipo: exigencia_cuantitativa
+    patron: UMBRAL_SIMPLE
+    prioridad: bloqueante
+    nivel_de_conocimiento: 2
+    aplicabilidad:
+      ambito: es
+      usos: [residencial]
+    parametro:
+      ejes: [caso]
+      unidad: personas
+      repliegue: [todos, ninguno]
+      valores:
+        - valor: 500
+          caso: ocupacion_total_del_edificio
+    mensaje: >-
+      La ocupación total del edificio obliga a que la planta de salida cuente
+      con más de una salida de edificio.
+    explicacion_tecnica: >-
+      DB-SI 3, apartado 3, tabla 3.1, nota (3). En edificios de uso
+      Residencial Vivienda, la planta de salida del edificio debe contar con
+      más de una salida cuando la ocupación total del edificio exceda de 500
+      personas.
+    explicacion_cliente: >-
+      A partir de 500 ocupantes en todo el edificio, la planta baja necesita
+      más de una salida al exterior.
+    tags: [evacuacion, dbsi3, tabla_3_1, numero_salidas, planta_de_salida]
+    vigencia:
+      vigencia_desde: 2006-03-29
