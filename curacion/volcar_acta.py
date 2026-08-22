@@ -42,7 +42,8 @@ from normativa import loader, validacion  # noqa: E402
 from normativa.firma import hash_de_contenido_firmado  # noqa: E402
 
 from curacion.paquete import (  # noqa: E402
-    CARPETA_CORPUS, PREFIJO_POR_DEFECTO, cargar_paquete, exigencia_resumida,
+    CARPETA_CORPUS, PREFIJO_POR_DEFECTO, SELECCION_P1, cargar_paquete,
+    exigencia_resumida, seleccionar,
 )
 
 LEDGER_POR_DEFECTO = RAIZ / "extraccion" / "estado" / "curacion" / "actas_papel.jsonl"
@@ -126,11 +127,15 @@ def _preguntar_validadores(acta: str) -> List[Dict[str, Any]]:
 
 
 def transcribir(acta: str, prefijo: str = PREFIJO_POR_DEFECTO,
-                ledger: Path = LEDGER_POR_DEFECTO) -> int:
+                ledger: Path = LEDGER_POR_DEFECTO, seleccion=None) -> int:
+    """`seleccion` debe ser LA MISMA con la que se generó la hoja impresa
+    (para la sesión p1, `SELECCION_P1`): así el R-01 de la pantalla es el
+    R-01 del papel. Las filas fuera de la selección no se preguntan — no
+    estaban en la hoja, así que no hay decisión que transcribir."""
     if not (RAIZ / acta).is_file():
         raise SystemExit("El acta escaneada «%s» no existe. Escanéala y comítela antes "
                          "de transcribir: el ledger apunta a ella." % acta)
-    filas = cargar_paquete(prefijo)
+    filas = seleccionar(cargar_paquete(prefijo), seleccion)
     ya = {(e.get("acta"), e.get("concept_id")) for e in _leer_ledger(ledger)
           if e.get("tipo") == "decision"}
     validadores = _preguntar_validadores(acta)
@@ -293,7 +298,7 @@ def main(argv: List[str]) -> int:
     args = parser.parse_args(argv[1:])
 
     if args.orden == "transcribir":
-        return transcribir(args.acta, args.paquete)
+        return transcribir(args.acta, args.paquete, seleccion=SELECCION_P1)
 
     resultado = firmar_desde_ledger(args.curador, args.paquete)
     for clave in ("firmadas", "conflictos", "rechazadas", "derivadas"):

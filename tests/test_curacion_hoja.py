@@ -181,10 +181,55 @@ def test_hoja_contiene_todas_las_filas_y_huellas(tmp_path, monkeypatch):
 
     for fila in filas:
         assert fila.numero in html
+        # Las huellas están en la hoja (anclan el papel al volcado) pero fuera
+        # de la vista del validador: en la línea de anclaje técnico.
         assert fila.huella_corta in html
+        assert html.index("Anclaje técnico") < html.index(fila.huella_corta)
     assert "DB-SI, SI 3, §3, tabla 3.1" in html
     assert html.count('class="checkbox"') == 3 * len(filas)  # F · L · M por fila
-    assert "Anexo de literales" in html
+    assert "el texto oficial, regla a regla" in html
     assert "La longitud no excede de 25 m." in html
     assert _paquete.huella_del_paquete(filas) in html
     assert "BORRADOR" in html
+
+
+# --- La hoja real de la sesión p1 es presentable a un arquitecto -------------
+
+def test_hoja_p1_es_presentable():
+    """Criterios de Pablo (2026-08-22): 6 reglas, español de arquitecto, casos
+    tabulados, sin claves del YAML ni hex en la vista del validador, F·L·M
+    explicadas en la cabecera. Corre contra el paquete REAL."""
+    from curacion import hoja_de_revision
+    from curacion.paquete import SELECCION_P1
+
+    html = hoja_de_revision.generar_hoja(seleccion=SELECCION_P1)
+
+    # Exactamente 6 filas, numeradas de nuevo, y la de la skill primero.
+    assert html.count('class="checkbox"') == 3 * 6
+    assert "R-06" in html and "R-07" not in html
+    assert html.index("Longitud máxima de los recorridos") < html.index("R-02")
+
+    # Prohibido volcar claves del YAML o nombres de fichero.
+    for prohibida in ("condicion:", "por_ciento", "numero_salidas",
+                      "magnitud:", "_paquete_", ".yaml", "m2_por_persona"):
+        assert prohibida not in html, prohibida
+
+    # Toda cifra visible sale del YAML: si están, es porque el parámetro casó.
+    for cifra in ("25 m", "35 m", "50 m", "75 m", "100 personas",
+                  "500 personas", "0,80 m", "1,00 m", "0,60 m", "1,23 m",
+                  "28 m", "10 m", "25%"):
+        assert cifra in html, cifra
+
+    # F · L · M explicadas EN la cabecera de la columna.
+    cabecera = html[html.index("<thead"):html.index("</thead>")]
+    for explicacion in ("fiel al literal", "referencia es exacta", "la entiende"):
+        assert explicacion in cabecera, explicacion
+
+    # Las huellas hexadecimales viven en el anclaje y el anexo, no en la tabla.
+    tabla = html[html.index("<tbody"):html.index("</tbody>")]
+    import re
+    assert not re.search(r"[0-9a-f]{10}", tabla), "hex en la vista del validador"
+
+    # El anexo cita fragmentos, no apartados enteros: el literal completo de
+    # recorridos incluye el encabezado del apartado 3, que NO debe aparecer.
+    assert "Número de salidas y longitud de los recorridos" not in html

@@ -23,6 +23,23 @@ RAIZ = Path(__file__).resolve().parent.parent
 CARPETA_CORPUS = RAIZ / "normativa" / "es" / "estatal"
 PREFIJO_POR_DEFECTO = "_paquete_dbsi3_"
 
+_CID = "es.rd_314_2006.seguridad_incendio."
+
+#: La selección de la sesión p1 (lunes 25), decidida por Pablo el 22-08: solo
+#: lo evaluable que la skill de recorridos consume o va a consumir de
+#: inmediato. Fuera las definiciones (no evaluables) y el resto de reglas
+#: transcritas, que quedan en borrador. El ORDEN de esta tupla es el orden de
+#: la hoja: la regla que la skill usa hoy va primera. La numeración R-01… se
+#: deriva de aquí, así que hoja y volcado hablan de la misma fila.
+SELECCION_P1 = (
+    _CID + "longitud_recorrido_evacuacion",
+    _CID + "incremento_recorridos_extincion_automatica",
+    _CID + "ocupacion_maxima_salida_unica",
+    _CID + "altura_evacuacion_maxima_salida_unica",
+    _CID + "anchura_minima_elementos_evacuacion",
+    _CID + "anchura_hoja_puerta_evacuacion",
+)
+
 
 @dataclass(frozen=True)
 class Fila:
@@ -59,6 +76,23 @@ def cargar_paquete(prefijo: str = PREFIJO_POR_DEFECTO,
                 huella=hash_de_contenido_firmado(norma, regla),
             ))
     return filas
+
+
+def seleccionar(filas: List[Fila], seleccion) -> List[Fila]:
+    """Las filas de una selección, renumeradas R-01… en el orden de la
+    selección. Un concept_id de la selección que no esté en el paquete falla
+    con KeyError, a propósito: una hoja con una fila de menos en silencio es
+    peor que un error."""
+    if not seleccion:
+        return list(filas)
+    por_cid = {f.concept_id: f for f in filas}
+    resultado: List[Fila] = []
+    for cid in seleccion:
+        f = por_cid[cid]
+        resultado.append(Fila(numero="R-%02d" % (len(resultado) + 1),
+                              fichero=f.fichero, norma=f.norma,
+                              regla=f.regla, huella=f.huella))
+    return resultado
 
 
 def huella_del_paquete(filas: List[Fila]) -> str:

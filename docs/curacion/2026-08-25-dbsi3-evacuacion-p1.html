@@ -1,285 +1,80 @@
 <!doctype html><html><head><meta charset='utf-8'><title>Hoja de revisión — DB-SI 3 evacuación</title><style>
-@page { size: A4; margin: 14mm 12mm 16mm 16mm; }
+@page { size: A4; margin: 13mm 12mm 14mm 16mm; }
 * { box-sizing: border-box; }
-body { font-family: Helvetica, Arial, sans-serif; font-size: 8.2pt; color: #111;
+body { font-family: Helvetica, Arial, sans-serif; font-size: 8.4pt; color: #111;
        margin: 0; }
 h1 { font-size: 13pt; margin: 0 0 2mm 0; }
-h2 { font-size: 10pt; margin: 6mm 0 2mm 0; }
+h2 { font-size: 9.5pt; margin: 5mm 0 1.5mm 0; }
 .cajetin { width: 100%; border: 1.2px solid #111; border-collapse: collapse;
-           margin-bottom: 3mm; }
-.cajetin td { border: 0.4px solid #999; padding: 1.2mm 2mm; vertical-align: middle; }
+           margin-bottom: 2.5mm; }
+.cajetin td { border: 0.4px solid #999; padding: 1.1mm 2mm; vertical-align: middle; }
 .cajetin .etiqueta { font-size: 6.2pt; font-weight: bold; color: #555;
                      width: 30mm; text-transform: uppercase; }
 .borrador { color: #8A2A2A; border: 1.2px solid #8A2A2A; font-weight: bold;
             padding: 1mm 3mm; float: right; font-size: 8.5pt; }
 table.decisiones { width: 100%; border-collapse: collapse; }
 table.decisiones th { background: #E9E9E9; border: 0.5px solid #888;
-                      padding: 1.2mm 1.5mm; font-size: 6.8pt; text-align: left; }
-table.decisiones td { border: 0.5px solid #888; padding: 1.2mm 1.5mm;
+                      padding: 1.1mm 1.5mm; font-size: 6.6pt; text-align: left;
                       vertical-align: top; }
-table.decisiones tr:nth-child(even) td { background: #F6F6F6; }
-.num { white-space: nowrap; font-weight: bold; }
-.loc { width: 26mm; font-size: 7pt; }
-.exi { font-size: 7.4pt; }
-.flm { white-space: nowrap; font-size: 8.5pt; width: 17mm; }
-.hue { font-family: "Courier New", monospace; font-size: 6.6pt; width: 15mm; }
-.margen { width: 30mm; }
-.convenciones { font-size: 7pt; color: #333; margin-top: 3mm; }
-.firmas { width: 100%; margin-top: 5mm; border-collapse: collapse; }
-.firmas td { border: 0.8px solid #111; height: 24mm; width: 50%;
+table.decisiones > tbody > tr > td { border: 0.5px solid #888;
+                      padding: 1.2mm 1.5mm; vertical-align: top; }
+.num { white-space: nowrap; font-weight: bold; width: 8mm; }
+.loc { width: 23mm; font-size: 7.2pt; }
+.intro { font-size: 8pt; margin: 0 0 1mm 0; }
+table.casos { border-collapse: collapse; margin: 0.5mm 0 0 0; width: 100%; }
+table.casos td { border: 0.3px solid #bbb; padding: 0.7mm 1.5mm;
+                 font-size: 7.6pt; }
+table.casos td.v { text-align: right; white-space: nowrap; width: 17mm;
+                   font-weight: bold; }
+.flm { white-space: nowrap; font-size: 9pt; width: 21mm; text-align: center; }
+.margen { width: 27mm; }
+.convenciones { font-size: 6.9pt; color: #333; margin-top: 2.5mm; }
+.firmas { width: 100%; margin-top: 3.5mm; border-collapse: collapse; }
+.firmas td { border: 0.8px solid #111; height: 21mm; width: 50%;
              vertical-align: top; padding: 1.5mm 2mm; font-size: 7pt; }
-.pie { font-size: 6.4pt; color: #555; margin-top: 3mm; }
+.anclaje { font-size: 5.6pt; color: #777; margin-top: 2.5mm;
+           font-family: "Courier New", monospace; }
 .salto { page-break-before: always; }
-pre.literal { font-family: Helvetica, Arial, sans-serif; font-size: 7.6pt;
-              white-space: pre-wrap; border: 0.5px solid #bbb; padding: 2mm;
-              background: #FAFAFA; }
-.checkbox { display: inline-block; width: 3.2mm; height: 3.2mm;
-            border: 0.7px solid #111; margin: 0 0.8mm -0.6mm 1.5mm; }
+blockquote.literal { font-size: 8pt; border-left: 2px solid #999;
+                     margin: 1mm 0 3mm 0; padding: 1mm 3mm; background: #FAFAFA; }
+.pie { font-size: 6.4pt; color: #555; margin-top: 3mm; }
+.checkbox { display: inline-block; width: 3.4mm; height: 3.4mm;
+            border: 0.7px solid #111; margin: 0 0.6mm -0.7mm 1.2mm; }
 </style></head><body><div class="borrador">BORRADOR — PENDIENTE DE VALIDACIÓN</div>
 <h1>Hoja de revisión del corpus normativo</h1>
 <table class="cajetin">
-<tr><td class="etiqueta">Paquete</td><td>DB-SI 3 · Evacuación · uso Residencial Vivienda (_paquete_dbsi3_*)</td></tr>
+<tr><td class="etiqueta">Paquete</td><td>DB-SI 3 · Evacuación de ocupantes · uso Residencial Vivienda — sesión p1 (6 reglas; el resto de lo transcrito queda en borrador)</td></tr>
 <tr><td class="etiqueta">Sesión de validación</td><td>2026-08-25</td></tr>
-<tr><td class="etiqueta">Fuente</td><td>RD 314/2006 · BOE-A-2006-5515 — PDF oficial 0a2e78cd6247… (15 regla(s))</td></tr>
-<tr><td class="etiqueta">Huella del paquete</td><td>38ea20215fca58ebf67433b276cd327affa1b1decb2e7f1a0d6e787f83dc0d3b</td></tr>
+<tr><td class="etiqueta">Fuente</td><td>RD 314/2006 — Documento Básico SI (BOE-A-2006-5515), texto oficial de codigotecnico.org</td></tr>
+<tr><td class="etiqueta">Qué se valida</td><td>Que cada exigencia de la tabla dice lo mismo que el fragmento oficial del anexo adjunto — ni un número ni una condición de más o de menos.</td></tr>
 </table>
-<table class="decisiones"><tr><th>Nº</th><th>Localización</th><th>Exigencia transcrita</th><th>F · L · M</th><th>Huella</th><th>Corrección al margen</th></tr>
-<tr><td class="num">R-01</td><td class="loc">DB-SI, Anejo SI A</td><td class="exi">Definición (no evaluable). Anejo SI A. Espacio donde puede darse por finalizada la evacuación: permite la dispersión (0,5P m² dentro de un radio 0,1P m desde la salida cuando P &gt; 50), disipación de calor y humo, y acceso de bomberos. La fila «50 m con salida directa a espacio exterior seguro» de la tabla 3.1 depende de esta definición.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">715bd141c3</td><td class="margen"></td></tr>
-<tr><td class="num">R-02</td><td class="loc">DB-SI, Anejo SI A</td><td class="exi">Definición (no evaluable). Anejo SI A. Del origen de evacuación a una salida de planta o de edificio; alcanzada una salida de planta, el resto no computa. Se mide sobre el eje de pasillos, escaleras y rampas; no valen escaleras mecánicas ni pasos con tornos. Es la definición que fija QUÉ longitud compara la regla de la tabla 3.1.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">4e56ee88cb</td><td class="margen"></td></tr>
-<tr><td class="num">R-03</td><td class="loc">DB-SI, Anejo SI A</td><td class="exi">Definición (no evaluable). Anejo SI A. Puerta o hueco de salida a un espacio exterior seguro; hasta 500 personas se admite la que comunique con un exterior con dos recorridos alternativos a dos espacios exteriores seguros, uno de ellos de 50 m como máximo.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">63d464c16a</td><td class="margen"></td></tr>
-<tr><td class="num">R-04</td><td class="loc">DB-SI, Anejo SI A</td><td class="exi">Definición (no evaluable). Anejo SI A. Transcrito el caso 1 (arranque de escalera compartimentada como los sectores, o puerta a escalera protegida, pasillo protegido o vestíbulo de independencia de una especialmente protegida). Los casos 2 y siguientes (paso a sector alternativo, condiciones de superficie) quedan en la lista de dudas del paquete: son composiciones con condiciones propias y no deben firmarse a medias.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">f48b2b35eb</td><td class="margen"></td></tr>
-<tr><td class="num">R-05</td><td class="loc">DB-SI, SI 3, §4.2, tabla 4.1</td><td class="exi">Anchura mínima de puertas, pasos, pasillos y rampas en recorridos de evacuación — 0,8 m (elemento: puertas y pasos) · 1,0 m (elemento: pasillos y rampas) · 0,8 m (elemento: pasillos hasta 10 personas usuarios habituales). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">fc1ff6d4b5</td><td class="margen"></td></tr>
-<tr><td class="num">R-06</td><td class="loc">DB-SI, SI 3, §4.2, tabla 4.1</td><td class="exi">Anchura admisible de la hoja de puerta en recorridos de evacuación — 0,6 m (limite: minimo) · 1,23 m (limite: maximo). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">708d0673e1</td><td class="margen"></td></tr>
-<tr><td class="num">R-07</td><td class="loc">DB-SI, SI 3, §3, tabla 3.1</td><td class="exi">Ocupación máxima admisible con una única salida de planta o de recinto — 100 personas (caso: general) · 500 personas (caso: salida de edificio de viviendas conjunto del edificio) · 50 personas (caso: evacuacion ascendente salva mas de 2 m). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">4d24973d46</td><td class="margen"></td></tr>
-<tr><td class="num">R-08</td><td class="loc">DB-SI, SI 3, §3, tabla 3.1</td><td class="exi">Altura de evacuación máxima de la planta con una única salida — 28 m (sentido: descendente) · 10 m (sentido: ascendente). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">28d0c632dc</td><td class="margen"></td></tr>
-<tr><td class="num">R-09</td><td class="loc">DB-SI, SI 3, §3, tabla 3.1</td><td class="exi">Ocupación a partir de la cual la planta de salida del edificio de viviendas exige más de una salida — 500 personas (caso: ocupacion total del edificio). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">ca70e09fd4</td><td class="margen"></td></tr>
-<tr><td class="num">R-10</td><td class="loc">DB-SI, SI 3, §2, tabla 2.1</td><td class="exi">Densidad de ocupación para el cálculo de la evacuación (tabla 2.1) — 20 m2_por_persona (zona: plantas de vivienda) · 3 m2_por_persona (zona: aseos de planta). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">72189251ba</td><td class="margen"></td></tr>
-<tr><td class="num">R-11</td><td class="loc">DB-SI, SI 3, §5, tabla 5.1</td><td class="exi">Altura de evacuación máxima de la escalera descendente según su protección (Residencial Vivienda) — 14 m (tipo de proteccion: no protegida) · 28 m (tipo de proteccion: protegida). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">e2012bd430</td><td class="margen"></td></tr>
-<tr><td class="num">R-12</td><td class="loc">DB-SI, SI 3, §5, tabla 5.1</td><td class="exi">Límites de la escalera no protegida en evacuación ascendente — 2,8  (magnitud: altura maxima sin limite de personas m) · 6,0  (magnitud: altura maxima con maximo 100 personas m) · 100  (magnitud: personas maximas entre 2 80 y 6 00 m). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">d7522b5591</td><td class="margen"></td></tr>
-<tr><td class="num">R-13</td><td class="loc">DB-SI, SI 3, §6, punto 3</td><td class="exi">Ocupación a partir de la cual la puerta debe abrir en el sentido de la evacuación — 200 personas (ambito de la puerta: paso previsto en edificio residencial vivienda) · 50 personas (ambito de la puerta: ocupantes del recinto o espacio). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">5bfc27c80c</td><td class="margen"></td></tr>
-<tr><td class="num">R-14</td><td class="loc">DB-SI, SI 3, §3, tabla 3.1</td><td class="exi">Longitud máxima de los recorridos de evacuación hasta una salida de planta — 25 m (numero salidas: una; condicion: general) · 35 m (numero salidas: una; condicion: uso aparcamiento) · 50 m (numero salidas: una; condicion: salida directa exterior seguro ocupacion max 25) · 50 m (numero salidas: varias; condicion: general) · 35 m (numero salidas: varias; condicion: ocupantes que duermen u hospitalario o escuela) · 75 m (numero salidas: varias; condicion: espacio al aire libre riesgo irrelevante). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">3c024d6021</td><td class="margen"></td></tr>
-<tr><td class="num">R-15</td><td class="loc">DB-SI, SI 3, §3, tabla 3.1</td><td class="exi">Incremento admisible de la longitud de recorridos con instalación automática de extinción — 25 por_ciento (condicion: sector protegido con instalacion automatica de extincion). Aplica a: residencial.</td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="hue">1aac09e628</td><td class="margen"></td></tr>
-</table>
-<p class="convenciones"><b>Convención de marcado.</b> Conforme = las tres casillas marcadas (F fidelidad al literal · L localización exacta · M mensaje útil). Corrección = texto al margen con la inicial del validador: la regla se firmará con el valor corregido y el registro conservará ambos. Fila tachada = excluida: vuelve a borrador y no se firma. Lo que genere discusión va a la lista de dudas, no se marca a medias.</p>
-<p class="convenciones"><b>Declaración.</b> «He cotejado cada fila marcada conforme contra el texto oficial del DB-SI referido en la cabecera, sobre el anexo de literales que acompaña a esta hoja.»</p>
+<table class="decisiones"><thead><tr><th>Nº</th><th>Dónde está<br/>en el DB-SI</th><th>Exigencia transcrita (revisar contra el fragmento del anexo)</th><th>Conforme — marcar las tres:<br/><b>F</b> fiel al literal oficial<br/><b>L</b> la referencia es exacta<br/><b>M</b> un arquitecto la entiende</th><th>Corrección al margen<br/>(con su inicial)</th></tr></thead><tbody>
+<tr><td class="num">R-01</td><td class="loc">DB-SI, SI 3, §3, tabla 3.1</td><td><p class="intro">Longitud máxima de los recorridos de evacuación hasta una salida de planta, según el número de salidas de la planta o recinto y el caso que concurra.</p><table class="casos"><tr><td>Una única salida — caso general</td><td class="v">25 m</td></tr><tr><td>Una única salida — uso Aparcamiento</td><td class="v">35 m</td></tr><tr><td>Una única salida — salida directa a espacio exterior seguro y ocupación de 25 personas como máximo</td><td class="v">50 m</td></tr><tr><td>Más de una salida — caso general</td><td class="v">50 m</td></tr><tr><td>Más de una salida — zonas con ocupantes que duermen; hospitalización o tratamiento intensivo; escuela infantil o enseñanza primaria</td><td class="v">35 m</td></tr><tr><td>Más de una salida — espacios al aire libre con riesgo de incendio irrelevante</td><td class="v">75 m</td></tr></table></td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="margen"></td></tr>
+<tr><td class="num">R-02</td><td class="loc">DB-SI, SI 3, §3, tabla 3.1</td><td><p class="intro">La longitud máxima admisible de los recorridos se puede aumentar un 25% cuando el sector de incendio está protegido con una instalación automática de extinción.</p></td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="margen"></td></tr>
+<tr><td class="num">R-03</td><td class="loc">DB-SI, SI 3, §3, tabla 3.1</td><td><p class="intro">Ocupación máxima que admite una planta o recinto con una única salida.</p><table class="casos"><tr><td>Caso general</td><td class="v">100 personas</td></tr><tr><td>Salida de un edificio de viviendas, contando el conjunto del edificio</td><td class="v">500 personas</td></tr><tr><td>Zonas cuya evacuación hasta la salida de planta salva más de 2 m en sentido ascendente</td><td class="v">50 personas</td></tr></table></td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="margen"></td></tr>
+<tr><td class="num">R-04</td><td class="loc">DB-SI, SI 3, §3, tabla 3.1</td><td><p class="intro">Altura de evacuación máxima de la planta para poder disponer una única salida.</p><table class="casos"><tr><td>Evacuación descendente</td><td class="v">28 m</td></tr><tr><td>Evacuación ascendente</td><td class="v">10 m</td></tr></table></td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="margen"></td></tr>
+<tr><td class="num">R-05</td><td class="loc">DB-SI, SI 3, §4.2, tabla 4.1</td><td><p class="intro">Anchura mínima libre de los elementos de un recorrido de evacuación.</p><table class="casos"><tr><td>Puertas y pasos</td><td class="v">0,80 m</td></tr><tr><td>Pasillos y rampas</td><td class="v">1 m</td></tr><tr><td>Pasillos previstos para 10 personas como máximo, usuarios habituales</td><td class="v">0,80 m</td></tr></table></td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="margen"></td></tr>
+<tr><td class="num">R-06</td><td class="loc">DB-SI, SI 3, §4.2, tabla 4.1</td><td><p class="intro">Anchura admisible de cada hoja de puerta en un recorrido de evacuación.</p><table class="casos"><tr><td>Anchura mínima de la hoja</td><td class="v">0,60 m</td></tr><tr><td>Anchura máxima de la hoja</td><td class="v">1,23 m</td></tr></table></td><td class="flm">F<span class="checkbox"></span> L<span class="checkbox"></span> M<span class="checkbox"></span></td><td class="margen"></td></tr>
+</tbody></table>
+<p class="convenciones"><b>Convención.</b> Conforme = las tres casillas. Corrección = el valor o el texto correcto escrito al margen con la inicial del validador: la regla se registrará con la corrección y quedará constancia de ambos valores. Fila tachada = excluida, vuelve a borrador. Lo dudoso no se marca a medias: va a la lista de dudas de la sesión. <b>Declaración:</b> «He cotejado cada fila marcada conforme contra el fragmento del texto oficial que la acompaña en el anexo.»</p>
 <table class="firmas"><tr><td>Nombre y colegiatura / cargo:<br/><br/>Fecha:<br/><br/>Firma:</td><td>Nombre y colegiatura / cargo:<br/><br/>Fecha:<br/><br/>Firma:</td></tr></table>
-<p class="pie">Esta página de decisiones es la única que se firma. El volcado al corpus exige que la huella de cada fila coincida con la del borrador en el momento de firmar digitalmente (curacion/volcar_acta.py): si el borrador cambia después de imprimir, el volcado se niega. Huella del paquete: 38ea20215fca58ebf67433b276cd327affa1b1decb2e7f1a0d6e787f83dc0d3b.</p>
+<p class="anclaje">Anclaje técnico del volcado (no requiere revisión): PDF fuente 0a2e78cd6247… · R-01 3c024d6021 · R-02 1aac09e628 · R-03 4d24973d46 · R-04 28d0c632dc · R-05 fc1ff6d4b5 · R-06 708d0673e1 · paquete 270ee7b32786…</p>
 <div class="salto"></div>
-<h1>Anexo de literales — solo lectura</h1>
-<p class="convenciones">El texto oficial, tal como está transcrito en el corpus, para cotejar cada fila. No se firma: la página de decisiones manda.</p>
-<h2>DB-SI, Anejo SI A (_paquete_dbsi3_definiciones_anejo_a.yaml) — filas R-01, R-02, R-03, R-04</h2>
-<pre class="literal">Anejo SI A. Terminología
-
-Espacio exterior seguro
-
-Es aquel en el que se puede dar por finalizada la evacuación de los
-ocupantes del edificio, debido a que cumple las siguientes condiciones:
-
-1 Permite la dispersión de los ocupantes que abandonan el edificio, en
-condiciones de seguridad.
-
-2 Se puede considerar que dicha condición se cumple cuando el espacio
-exterior tiene, delante de cada salida de edificio que comunique con él,
-una superficie de al menos 0,5P m² dentro de la zona delimitada con un
-radio 0,1P m de distancia desde la salida de edificio, siendo P el número
-de ocupantes cuya evacuación esté prevista por dicha salida. Cuando P no
-exceda de 50 personas no es necesario comprobar dicha condición.
-
-3 Si el espacio considerado no está comunicado con la red viaria o con
-otros espacios abiertos no puede considerarse ninguna zona situada a menos
-de 15 m de cualquier parte del edificio, excepto cuando está dividido en
-sectores de incendio estructuralmente independientes entre sí y con
-salidas también independientes al espacio exterior, en cuyo caso dicha
-distancia se podrá aplicar únicamente respecto del sector afectado por un
-posible incendio.
-
-4 Permite una amplia disipación del calor, del humo y de los gases
-producidos por el incendio.
-
-5 Permite el acceso de los efectivos de bomberos y de los medios de ayuda
-a los ocupantes que, en cada caso, se consideren necesarios.
-
-Recorrido de evacuación
-
-Recorrido que conduce desde un origen de evacuación hasta una salida de
-planta, situada en la misma planta considerada o en otra, o hasta una
-salida de edificio. Conforme a ello, una vez alcanzada una salida de
-planta, la longitud del recorrido posterior no computa a efectos del
-cumplimiento de los límites a los recorridos de evacuación.
-
-La longitud de los recorridos por pasillos, escaleras y rampas, se medirá
-sobre el eje de los mismos. No se consideran válidos los recorridos por
-escaleras mecánicas, ni aquellos en los que existan tornos u otros
-elementos que puedan dificultar el paso.
-
-Salida de edificio
-
-Puerta o hueco de salida a un espacio exterior seguro. En el caso de
-salidas previstas para un máximo de 500 personas puede admitirse como
-salida de edificio aquella que comunique con un espacio exterior que
-disponga de dos recorridos alternativos hasta dos espacios exteriores
-seguros, uno de los cuales no exceda de 50 m.
-
-Salida de planta
-
-Es alguno de los siguientes elementos, pudiendo estar situada bien en la
-planta considerada o bien en otra planta diferente:
-
-1 El arranque de una escalera compartimentada como los sectores de
-incendio, o una puerta de acceso a una escalera protegida, a un pasillo
-protegido o al vestíbulo de independencia de una escalera especialmente
-protegida.</pre>
-<h2>DB-SI, SI 3, §4.2, tabla 4.1 (_paquete_dbsi3_dimensionado.yaml) — filas R-05, R-06</h2>
-<pre class="literal">4.2 Cálculo
-
-1 El dimensionado de los elementos de evacuación debe realizarse conforme
-a lo que se indica en la tabla 4.1.
-
-Tabla 4.1 Dimensionado de los elementos de la evacuación (extracto de las
-filas transcritas)
-
-Puertas y pasos: A ≥ P / 200(1) ≥ 0,80 m(2). La anchura de toda hoja de
-puerta no debe ser menor que 0,60 m, ni exceder de 1,23 m.
-
-Pasillos y rampas: A ≥ P / 200 ≥ 1,00 m(3)(4)(5)
-
-A = Anchura del elemento, [m]
-P = Número total de personas cuyo paso está previsto por el punto cuya
-anchura se dimensiona.
-
-(5) La anchura mínima es 0,80 m en pasillos previstos para 10 personas,
-como máximo, y estas sean usuarios habituales.</pre>
-<h2>DB-SI, SI 3, §3, tabla 3.1 (_paquete_dbsi3_numero_salidas.yaml) — filas R-07, R-08, R-09</h2>
-<pre class="literal">Tabla 3.1. Número de salidas de planta y longitud de los recorridos de
-evacuación
-
-Plantas o recintos que disponen de una única salida de planta o salida de
-recinto respectivamente:
-
-  La ocupación no excede de 100 personas, excepto en los casos que se
-  indican a continuación:
-  - 500 personas en el conjunto del edificio, en el caso de salida de un
-    edificio de viviendas;
-  - 50 personas en zonas desde las que la evacuación hasta una salida de
-    planta deba salvar una altura mayor que 2 m en sentido ascendente;
-  - 50 alumnos en escuelas infantiles, o de enseñanza primaria o
-    secundaria.
-
-  La altura de evacuación descendente de la planta considerada no excede
-  de 28 m, excepto en uso Residencial Público, en cuyo caso es, como
-  máximo, la segunda planta por encima de la de salida de edificio(2), o
-  de 10 m cuando la evacuación sea ascendente.
-
-(3) La planta de salida del edificio debe contar con más de una salida:
-  - en el caso de edificios de Uso Residencial Vivienda, cuando la
-    ocupación total del edificio exceda de 500 personas.
-  - en el resto de los usos, cuando le sea exigible considerando
-    únicamente la ocupación de dicha planta, o bien cuando el edificio
-    esté obligado a tener más de una escalera para la evacuación
-    descendente o más de una para evacuación ascendente.</pre>
-<h2>DB-SI, SI 3, §2, tabla 2.1 (_paquete_dbsi3_ocupacion.yaml) — filas R-10</h2>
-<pre class="literal">2 Cálculo de la ocupación
-
-1 Para calcular la ocupación deben tomarse los valores de densidad de
-ocupación que se indican en la tabla 2.1 en función de la superficie útil
-de cada zona, salvo cuando sea previsible una ocupación mayor o bien
-cuando sea exigible una ocupación menor en aplicación de alguna
-disposición legal de obligado cumplimiento, como puede ser en el caso de
-establecimientos hoteleros, docentes, hospitales, etc. En aquellos
-recintos o zonas no incluidos en la tabla se deben aplicar los valores
-correspondientes a los que sean más asimilables.
-
-2 A efectos de determinar la ocupación, se debe tener en cuenta el
-carácter simultáneo o alternativo de las diferentes zonas de un edificio,
-considerando el régimen de actividad y de uso previsto para el mismo.
-
-Tabla 2.1. Densidades de ocupación (extracto de las filas transcritas)
-
-Cualquiera — Zonas de ocupación ocasional y accesibles únicamente a
-efectos de mantenimiento: salas de máquinas, locales para material de
-limpieza, etc.: Ocupación nula. Aseos de planta: 3 m2/persona.
-
-Residencial Vivienda — Plantas de vivienda: 20 m2/persona.</pre>
-<h2>DB-SI, SI 3, §5, tabla 5.1 (_paquete_dbsi3_proteccion_escaleras.yaml) — filas R-11, R-12</h2>
-<pre class="literal">5 Protección de las escaleras
-
-1 En la tabla 5.1 se indican las condiciones de protección que deben
-cumplir las escaleras previstas para evacuación.
-
-Tabla 5.1. Protección de las escaleras (extracto de las filas transcritas)
-
-h = altura de evacuación de la escalera
-P = número de personas a las que sirve en el conjunto de plantas
-
-Escaleras para evacuación descendente
-
-Residencial Vivienda — No protegida: h ≤ 14 m. Protegida(2): h ≤ 28 m.
-Especialmente protegida: Se admite en todo caso.
-
-Escaleras para evacuación ascendente
-
-Otro uso [distinto de Aparcamiento]:
-  h ≤ 2,80 m — No protegida: Se admite en todo caso.
-  2,80 &lt; h ≤ 6,00 m — No protegida: P ≤ 100 personas.
-  h &gt; 6,00 m — No protegida: No se admite.
-  Protegida(2): Se admite en todo caso.
-  Especialmente protegida: Se admite en todo caso.
-
-(2) Las escaleras que comuniquen sectores de incendio diferentes pero cuya
-altura de evacuación no exceda de la admitida para las escaleras no
-protegidas, no precisan cumplir las condiciones de las escaleras
-protegidas, sino únicamente estar compartimentadas de tal forma que a
-través de ellas se mantenga la compartimentación exigible entre sectores
-de incendio, siendo admisible la opción de incorporar el ámbito de la
-propia escalera a uno de los sectores a los que sirve.</pre>
-<h2>DB-SI, SI 3, §6, punto 3 (_paquete_dbsi3_puertas_evacuacion.yaml) — filas R-13</h2>
-<pre class="literal">6 Puertas situadas en recorridos de evacuación
-
-3 Abrirá en el sentido de la evacuación toda puerta de salida:
-
-a) prevista para el paso de más de 200 personas en edificios de uso
-Residencial Vivienda o de 100 personas en los demás casos, o bien.
-
-b) prevista para más de 50 ocupantes del recinto o espacio en el que esté
-situada.
-
-Para la determinación del número de personas que se indica en a) y b) se
-deberán tener en cuenta los criterios de asignación de los ocupantes
-establecidos en el apartado 4.1 de esta Sección.</pre>
-<h2>DB-SI, SI 3, §3, tabla 3.1 (_paquete_dbsi3_recorridos.yaml) — filas R-14, R-15</h2>
-<pre class="literal">3 Número de salidas y longitud de los recorridos de evacuación
-
-1 En la tabla 3.1 se indica el número de salidas que debe haber en cada
-caso, como mínimo, así como la longitud de los recorridos de evacuación
-hasta ellas.
-
-Tabla 3.1. Número de salidas de planta y longitud de los recorridos de
-evacuación(1)
-
-Plantas o recintos que disponen de una única salida de planta o salida de
-recinto respectivamente:
-  La longitud de los recorridos de evacuación hasta una salida de planta no
-  excede de 25 m, excepto en los casos que se indican a continuación:
-  - 35 m en uso Aparcamiento;
-  - 50 m si se trata de una planta, incluso de uso Aparcamiento, que tiene
-    una salida directa al espacio exterior seguro y la ocupación no excede
-    de 25 personas, o bien de un espacio al aire libre en el que el riesgo
-    de incendio sea irrelevante, por ejemplo, una cubierta de edificio, una
-    terraza, etc.
-
-Plantas o recintos que disponen de más de una salida de planta o salida de
-recinto respectivamente:
-  La longitud de los recorridos de evacuación hasta alguna salida de planta
-  no excede de 50 m, excepto en los casos que se indican a continuación:
-  - 35 m en zonas en las que se prevea la presencia de ocupantes que
-    duermen, o en plantas de hospitalización o de tratamiento intensivo en
-    uso Hospitalario y en plantas de escuela infantil o de enseñanza
-    primaria.
-  - 75 m en espacios al aire libre en los que el riesgo de declaración de
-    un incendio sea irrelevante, por ejemplo, una cubierta de edificio, una
-    terraza, etc.
-
-(1) La longitud de los recorridos de evacuación que se indican se puede
-aumentar un 25% cuando se trate de sectores de incendio protegidos con una
-instalación automática de extinción.</pre>
-<p class="pie">Anexo del paquete con huella 38ea20215fca58ebf67433b276cd327affa1b1decb2e7f1a0d6e787f83dc0d3b — emitido el 22/08/2026.</p></body></html>
+<h1>Anexo — el texto oficial, regla a regla</h1>
+<p class="convenciones">Para cada fila, el fragmento exacto del DB-SI del que sale. Solo lectura: las marcas van en la página de decisiones, que es la que se firma.</p>
+<h2>R-01 — DB-SI, SI 3, §3, tabla 3.1</h2>
+<blockquote class="literal">La longitud de los recorridos de evacuación hasta una salida de planta no excede de 25 m, excepto en los casos que se indican a continuación: - 35 m en uso Aparcamiento; - 50 m si se trata de una planta, incluso de uso Aparcamiento, que tiene una salida directa al espacio exterior seguro y la ocupación no excede de 25 personas, o bien de un espacio al aire libre en el que el riesgo de incendio sea irrelevante, por ejemplo, una cubierta de edificio, una terraza, etc.</blockquote>
+<blockquote class="literal">La longitud de los recorridos de evacuación hasta alguna salida de planta no excede de 50 m, excepto en los casos que se indican a continuación: - 35 m en zonas en las que se prevea la presencia de ocupantes que duermen, o en plantas de hospitalización o de tratamiento intensivo en uso Hospitalario y en plantas de escuela infantil o de enseñanza primaria. - 75 m en espacios al aire libre en los que el riesgo de declaración de un incendio sea irrelevante, por ejemplo, una cubierta de edificio, una terraza, etc.</blockquote>
+<h2>R-02 — DB-SI, SI 3, §3, tabla 3.1</h2>
+<blockquote class="literal">(1) La longitud de los recorridos de evacuación que se indican se puede aumentar un 25% cuando se trate de sectores de incendio protegidos con una instalación automática de extinción.</blockquote>
+<h2>R-03 — DB-SI, SI 3, §3, tabla 3.1</h2>
+<blockquote class="literal">La ocupación no excede de 100 personas, excepto en los casos que se indican a continuación: - 500 personas en el conjunto del edificio, en el caso de salida de un edificio de viviendas; - 50 personas en zonas desde las que la evacuación hasta una salida de planta deba salvar una altura mayor que 2 m en sentido ascendente;</blockquote>
+<h2>R-04 — DB-SI, SI 3, §3, tabla 3.1</h2>
+<blockquote class="literal">La altura de evacuación descendente de la planta considerada no excede de 28 m, excepto en uso Residencial Público, en cuyo caso es, como máximo, la segunda planta por encima de la de salida de edificio(2), o de 10 m cuando la evacuación sea ascendente.</blockquote>
+<h2>R-05 — DB-SI, SI 3, §4.2, tabla 4.1</h2>
+<blockquote class="literal">Puertas y pasos: A ≥ P / 200(1) ≥ 0,80 m(2).</blockquote>
+<blockquote class="literal">Pasillos y rampas: A ≥ P / 200 ≥ 1,00 m(3)(4)(5)</blockquote>
+<blockquote class="literal">(5) La anchura mínima es 0,80 m en pasillos previstos para 10 personas, como máximo, y estas sean usuarios habituales.</blockquote>
+<h2>R-06 — DB-SI, SI 3, §4.2, tabla 4.1</h2>
+<blockquote class="literal">La anchura de toda hoja de puerta no debe ser menor que 0,60 m, ni exceder de 1,23 m.</blockquote>
+<p class="pie">Huella completa del paquete: 270ee7b327865687900bc559f8c9af4693ea2f4e9fbb7367917cfc42a4a2055f · SHA-256 del PDF fuente: 0a2e78cd62471d9cc5cfe2efbc6aa39fdbad73c124aea7b039f9de96c141e105</p></body></html>
