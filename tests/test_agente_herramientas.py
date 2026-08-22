@@ -245,7 +245,13 @@ def test_el_umbral_sale_de_la_tabla_3_1_del_db_si(ejes, esperado):
     assert r["valor"] == esperado
     assert r["unidad"] == "m"
     assert r["traza"][-1].startswith("coincidencia exacta")
-    assert r["cita"] == "RD 314/2006, DB-SI, SI 3, apartado 3, tabla 3.1 (BOE-A-2006-5515)"
+    assert r["cita"].startswith(
+        "RD 314/2006, DB-SI, SI 3, apartado 3, tabla 3.1 (BOE-A-2006-5515)")
+    # La fecha/estado de validación va JUNTO a la cita, visible, no
+    # escondida (encargo de Pablo, 2026-08-22) — y el enlace, aparte.
+    assert "pendiente de validación profesional" in r["cita"]
+    assert r["validacion"]["estado"] == "pendiente"
+    assert r["fuente_url"] == "https://www.boe.es/eli/es/rd/2006/03/17/314/con"
     assert r["pendiente_de_firma_colegiada"] is True
 
 

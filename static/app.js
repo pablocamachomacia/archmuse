@@ -454,6 +454,38 @@
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   }
 
+  // Presentación única de toda cita normativa (encargo de Pablo, 2026-08-22):
+  // la fecha de validación VISIBLE junto a la cita, el enlace a la fuente
+  // oficial siempre a un clic, y el identificador de la norma como distintivo.
+  // NO decide normativa: pinta lo que el backend trae en el texto de la cita
+  // (la fecha la compone `agente/herramientas/reglas.py::_validacion_de`) y
+  // en `fuente_url`. Sin cita no inventa nada.
+  function normativaCitaHtml(cita, fuenteUrl) {
+    var texto = String(cita || "");
+    if (!texto && !fuenteUrl) return "";
+    // El enlace puede venir aparte (fuente_url) o embebido en el texto.
+    var url = fuenteUrl || (texto.match(/https?:\/\/\S+/) || [null])[0];
+    var visible = texto.replace(/\s*Texto oficial:\s*https?:\/\/\S+/, "").trim();
+    var chip = "";
+    var mValidada = visible.match(/validada el (\d{2}\/\d{2}\/\d{4})/);
+    if (mValidada) {
+      chip = '<span class="norm-chip norm-chip-ok">Validada ' + mValidada[1] + "</span>";
+    } else if (/verificada automáticamente/.test(visible)) {
+      chip = '<span class="norm-chip norm-chip-auto">Verificación automática</span>';
+    } else if (/pendiente de validación|pendiente de firma/i.test(visible)) {
+      chip = '<span class="norm-chip norm-chip-pend">Pendiente de validación</span>';
+    }
+    var mNorma = visible.match(/\b(RD|Real Decreto|Ley|Orden|Ordenanza|Decreto)\s+[\d\/]+\b/);
+    var badge = mNorma
+      ? '<span class="norm-badge">' + escapeHtml(mNorma[0]) + "</span>" : "";
+    var enlace = url
+      ? '<a class="norm-fuente" href="' + escapeHtml(url) +
+        '" target="_blank" rel="noopener">Texto oficial ↗</a>' : "";
+    return '<div class="norm-cita">' +
+      '<div class="norm-cita-cab">' + badge + chip + enlace + "</div>" +
+      '<div class="norm-cita-texto">' + escapeHtml(visible) + "</div></div>";
+  }
+
   function fadeSwap(el, updateFn) {
     if (!el) { updateFn(); return; }
     el.style.opacity = "0";
@@ -2370,7 +2402,8 @@
       '<span style="color:' + ISSUE_SEVERITY_COLOR[it.severity] + '">' + escapeHtml(ISSUE_SEVERITY_LABEL[it.severity]) + "</span>" +
       " · " + escapeHtml(it.disciplina) + (it.room_label ? " · " + escapeHtml(it.room_label) : "") + "</p>" +
       detailBlock("Normativa afectada",
-        escapeHtml(it.referencia_normativa || "") +
+        (normativaCitaHtml(it.referencia_normativa) ||
+          '<p class="inspector-empty">Sin referencia normativa.</p>') +
         (state.data.normativa_aviso
           ? '<p class="inspector-note">' + escapeHtml(state.data.normativa_aviso) + "</p>"
           : "")) +
@@ -2609,7 +2642,8 @@
       html += detailBlock(escapeHtml(r.nombre),
         '<span style="color:' + (ok ? "var(--color-success)" : "var(--color-critical)") + '">' +
         escapeHtml(r.valor) + " · " + (ok ? "cumple" : "no cumple") + "</span>") +
-        '<p class="inspector-note">' + escapeHtml(r.base) + "</p>";
+        (normativaCitaHtml(r.base, r.fuente_url) ||
+          '<p class="inspector-note">' + escapeHtml(r.base) + "</p>");
     });
     if (n.aviso) html += '<p class="inspector-note">' + escapeHtml(n.aviso) + "</p>";
     return html;
@@ -6298,7 +6332,13 @@
     fila.className = "conv-fila conv-fila-asistente";
     var envoltorio = document.createElement("div");
     envoltorio.className = "conv-respuesta";
-    envoltorio.innerHTML = htmlTarjeta;
+    // Toda conversación sobre normativa da el enlace (encargo de Pablo,
+    // 2026-08-22): si el backend trae «Texto oficial: https://…» como texto
+    // (las citas del corpus viajan así), aquí se vuelve clicable. Solo se
+    // toca ese patrón concreto; el resto del HTML queda tal cual.
+    envoltorio.innerHTML = String(htmlTarjeta).replace(
+      /(Texto oficial:\s*)(https?:\/\/[^\s<"']+)/g,
+      '$1<a class="norm-fuente" href="$2" target="_blank" rel="noopener">$2</a>');
     fila.appendChild(envoltorio);
     log.appendChild(fila);
     log.scrollTop = log.scrollHeight;

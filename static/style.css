@@ -3402,3 +3402,37 @@ body::before {
   .conv-entrada { flex-wrap: wrap; }
   .conv-entrada .conv-campo-pregunta { flex-basis: 100%; }
 }
+
+/* --- Citas normativas (encargo 2026-08-22): fecha de validación visible,
+   fuente oficial a un clic. Pinta lo que trae el backend, no decide nada. --- */
+.norm-cita {
+  border: 1px solid var(--border, #333);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  background: var(--accent-soft);
+}
+.norm-cita-cab {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.norm-badge {
+  font-weight: 700; font-size: 12px; letter-spacing: 0.3px;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--accent); color: var(--on-accent);
+}
+.norm-chip {
+  font-size: 11.5px; font-weight: 600; padding: 2px 8px;
+  border-radius: 999px; border: 1px solid transparent;
+}
+.norm-chip-ok   { color: #23c483; border-color: #23c483; background: rgba(35,196,131,.12); }
+.norm-chip-auto { color: #d9a441; border-color: #d9a441; background: rgba(217,164,65,.12); }
+.norm-chip-pend { color: #d9a441; border-color: #d9a441; background: rgba(217,164,65,.12); }
+.norm-fuente {
+  margin-left: auto; font-size: 12.5px; font-weight: 600;
+  color: var(--accent-hover); text-decoration: none;
+  border: 1px solid var(--accent); border-radius: 8px; padding: 3px 10px;
+}
+.norm-fuente:hover { background: var(--accent); color: var(--on-accent); }
+.norm-cita-texto { font-size: 12.5px; opacity: .85; line-height: 1.5; }

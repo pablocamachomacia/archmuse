@@ -666,7 +666,7 @@ def test_el_acta_dice_de_donde_sale_cada_numero_y_que_no_se_comprobo(memoria, sk
     texto = documento.a_texto()
     assert "BORRADOR PARA REVISIÓN DE UN COLEGIADO" in texto
     assert "revision.recorridos_de_evacuacion@1.0.0" in texto
-    assert "normativa.umbral_de_regla@1.0.0" in texto      # la capacidad concreta
+    assert "normativa.umbral_de_regla@1.1.0" in texto      # la capacidad concreta
     assert "QUÉ NO SE HA COMPROBADO" in texto
 
     # La lista de «no comprobado» se DERIVA de los manifiestos: si mañana se

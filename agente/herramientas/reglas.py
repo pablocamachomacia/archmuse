@@ -52,6 +52,41 @@ def _cita(norma: dict) -> str:
     return "%s (%s)" % (cita, boletin) if boletin else cita
 
 
+#: La línea de límites que Pablo fijó el 22-08, palabra por palabra: viaja en
+#: toda respuesta normativa y en las limitaciones declaradas, para que llegue
+#: al acta y a los informes sin depender de que nadie se acuerde.
+AVISO_VIGILANCIA = (
+    "ArchMuse no vigila cambios normativos. Comprueba la fecha de validación "
+    "de cada regla y contrasta con el texto vigente."
+)
+
+
+def _validacion_de(regla: dict) -> Dict[str, Any]:
+    """La fecha de validación de la regla, dicha claramente — no escondida.
+
+    Tres estados honestos, y solo tres (no hay sistema de avisos de caducidad:
+    se hace visible lo que ya se sabe): `validada` (FIRMADA, con la fecha de
+    la firma), `verificada_automatica` (doble extracción coincidente, sin
+    validación profesional aún) y `pendiente` (todo lo demás que el loader
+    deja pasar, hoy la piloto con su tag)."""
+    firma = regla.get("firma") or {}
+    if regla.get("estado") == "FIRMADA" and firma.get("fecha"):
+        fecha = str(firma["fecha"])
+        try:
+            legible = date.fromisoformat(fecha).strftime("%d/%m/%Y")
+        except ValueError:
+            legible = fecha
+        return {"estado": "validada", "fecha": fecha,
+                "texto": "regla validada el %s contra el texto consolidado "
+                         "de esa fecha" % legible}
+    if regla.get("estado") == "VERIFICADA_AUTOMATICA":
+        return {"estado": "verificada_automatica", "fecha": None,
+                "texto": "regla verificada automáticamente por doble "
+                         "extracción; pendiente de validación profesional"}
+    return {"estado": "pendiente", "fecha": None,
+            "texto": "regla pendiente de validación profesional"}
+
+
 # --- Capacidad 1: qué normativa rige ----------------------------------------
 
 def reglas_aplicables(
@@ -123,6 +158,9 @@ def reglas_aplicables(
                 "valor_parametro": n.valor_parametro,
                 "unidad": n.unidad,
                 "cita": str(n.fuente),
+                # El enlace SIEMPRE presente: toda conversación sobre
+                # normativa tiene que poder llevar al texto oficial.
+                "fuente_url": getattr(n.fuente, "url_oficial", None),
                 "preguntas_pendientes": list(n.preguntas_pendientes),
             }
             for n in conjunto.normas
@@ -133,7 +171,8 @@ def reglas_aplicables(
         "aviso_de_corpus": (
             "El corpus normativo de ArchMuse está en transcripción. Las materias "
             "listadas en `materias_sin_cobertura` NO se han comprobado: sobre ellas "
-            "no se puede afirmar ni cumplimiento ni incumplimiento."
+            "no se puede afirmar ni cumplimiento ni incumplimiento. "
+            + AVISO_VIGILANCIA
         ),
     }
 
@@ -186,6 +225,10 @@ def _resolver(regla: dict, norma: dict, ejes: Dict[str, str]) -> Dict[str, Any]:
         vistos = [str(v[eje]) for v in parametro.valores if eje in v]
         admitidos[eje] = sorted(dict.fromkeys(vistos))
 
+    # La fecha de validación va JUNTO a la cita, no escondida en un campo:
+    # «DB-SI, SI 3, tabla 3.1 (RD 314/2006, BOE-…) — regla validada el
+    # 25/08/2026 contra el texto consolidado de esa fecha.»
+    validacion = _validacion_de(regla)
     respuesta: Dict[str, Any] = {
         "ok": True,
         "concept_id": regla.get("concept_id"),
@@ -196,7 +239,9 @@ def _resolver(regla: dict, norma: dict, ejes: Dict[str, str]) -> Dict[str, Any]:
         "ejes_de_la_regla": list(parametro.ejes),
         "valores_admitidos_por_eje": admitidos,
         "traza": list(traza),
-        "cita": _cita(norma),
+        "cita": "%s — %s." % (_cita(norma), validacion["texto"]),
+        "validacion": validacion,
+        "fuente_url": (norma.get("fuente") or {}).get("url_oficial"),
         "pendiente_de_firma_colegiada": (
             "pendiente_firma_colegiado" in (regla.get("tags") or [])
         ),
@@ -226,7 +271,9 @@ _ESQUEMA_EJES = {
 CAPACIDADES = (
     Capacidad(
         id="normativa.reglas_aplicables",
-        version="1.0.0",
+        # 1.1.0 (2026-08-22): limitación nueva (aviso de vigilancia normativa)
+        # y salida enriquecida con `fuente_url`; cambio MENOR según CAD-2.
+        version="1.1.0",
         dominio="territorial",
         naturaleza="determinista",
         descripcion=(
@@ -266,11 +313,15 @@ CAPACIDADES = (
             "el corpus normativo está en transcripción: solo cubre las materias que "
             "no aparecen en `materias_sin_cobertura`",
             "no evalúa el proyecto contra las reglas: dice qué rige, no si se cumple",
+            AVISO_VIGILANCIA,
         ),
     ),
     Capacidad(
         id="normativa.umbral_de_regla",
-        version="1.0.0",
+        # 1.1.0 (2026-08-22): limitación nueva (aviso de vigilancia normativa)
+        # y salida enriquecida (`validacion`, `fuente_url`, cita con fecha de
+        # validación visible); cambio MENOR según CAD-2.
+        version="1.1.0",
         dominio="territorial",
         naturaleza="determinista",
         descripcion=(
@@ -305,6 +356,7 @@ CAPACIDADES = (
             "no comprueba si el proyecto respeta el umbral: devuelve el umbral",
             "una regla marcada `pendiente_de_firma_colegiada` es un ejemplo trabajado, "
             "no corpus de producción validado",
+            AVISO_VIGILANCIA,
         ),
         referencia_normativa="según la regla consultada; viaja en el campo `cita`",
     ),

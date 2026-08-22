@@ -29,6 +29,7 @@ from typing import List
 from analyzer.hechos import Motivo
 
 from ..afirmacion import Afirmacion, calculo
+from ..herramientas.reglas import AVISO_VIGILANCIA
 from ..skill import Requisito, ResultadoDeSkill, Skill
 from ..verificacion import Verificacion, valor_dentro_de
 from ._comun import sin_producir
@@ -117,7 +118,12 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
                       "hay comprobación posible y NO se coge un valor parecido",),
         )
 
+    # La cita viaja con su fecha de validación visible (la compone la
+    # capacidad) y SIEMPRE con el enlace al texto oficial: cualquier informe
+    # o conversación que muestre esta afirmación lleva la fuente al lado.
     cita = umbral["cita"]
+    if umbral.get("fuente_url"):
+        cita = "%s Texto oficial: %s" % (cita, umbral["fuente_url"])
     limite = float(umbral["valor"])
     medida = float(ctx.valor(CLAVE_LONGITUD))
 
@@ -233,6 +239,7 @@ SKILLS = (
             "ni ocupación",
             "la regla del corpus está pendiente de firma colegiada",
             "no distingue recorridos alternativos ni el más desfavorable entre varios",
+            AVISO_VIGILANCIA,
         ),
         referencia_normativa="CTE DB-SI 3, apartado 3, tabla 3.1",
     ),
