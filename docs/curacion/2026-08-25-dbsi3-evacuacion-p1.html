@@ -1,95 +1,114 @@
-<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Revisión del corpus — DB-SI 3 evacuación</title><style>
+<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Revisión de normativa — DB-SI 3 evacuación</title><style>
 * { box-sizing: border-box; }
 body { font-family: Georgia, "Times New Roman", serif; background: #fff;
        color: #1a1a1a; margin: 0; font-size: 17px; line-height: 1.55; }
-.envoltura { max-width: 860px; margin: 0 auto; padding: 40px 28px 80px; }
-header h1 { font-family: Helvetica, Arial, sans-serif; font-size: 26px;
+.envoltura { max-width: 840px; margin: 0 auto; padding: 36px 26px 90px; }
+header h1 { font-family: Helvetica, Arial, sans-serif; font-size: 25px;
             margin: 0 0 6px; }
 .chip { display: inline-block; color: #8A2A2A; border: 1.5px solid #8A2A2A;
         font-family: Helvetica, Arial, sans-serif; font-weight: bold;
-        font-size: 13px; padding: 3px 10px; border-radius: 3px;
-        margin-bottom: 14px; }
-.resumen { color: #444; font-size: 15.5px; margin: 0 0 6px; }
-.leyenda { background: #F6F4EF; border-radius: 8px; padding: 14px 18px;
-           font-size: 15px; margin: 22px 0 30px; }
-.leyenda b { font-family: Helvetica, Arial, sans-serif; }
-section.regla { border-top: 1px solid #ddd; padding: 26px 0 30px; }
-.regla-cabecera { display: flex; justify-content: space-between;
-                  align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.regla-cabecera .numero { font-family: Helvetica, Arial, sans-serif;
-                          font-weight: bold; font-size: 15px; color: #666; }
-.regla-cabecera .donde { font-family: Helvetica, Arial, sans-serif;
-                         font-size: 14px; color: #666; }
-p.intro { margin: 10px 0 12px; }
+        font-size: 12.5px; padding: 3px 10px; border-radius: 3px;
+        margin-bottom: 12px; }
+.resumen { color: #444; font-size: 15px; margin: 0; }
+.fuentes { font-family: Helvetica, Arial, sans-serif; font-size: 14.5px;
+           margin: 10px 0 0; }
+.fuentes a { color: #0B57D0; }
+.guia { background: #F3F6FB; border-radius: 10px; padding: 16px 20px;
+        font-size: 15.5px; margin: 24px 0 8px; }
+.guia ol { margin: 6px 0 0; padding-left: 22px; }
+.guia li { margin: 4px 0; }
+section.regla { border: 1px solid #e2e2e2; border-radius: 12px;
+                padding: 20px 22px; margin: 22px 0; }
+.regla-cabecera { font-family: Helvetica, Arial, sans-serif;
+                  display: flex; justify-content: space-between;
+                  align-items: baseline; gap: 12px; flex-wrap: wrap;
+                  margin-bottom: 6px; }
+.regla-cabecera .numero { font-weight: bold; font-size: 14px; color: #0B57D0; }
+.regla-cabecera .donde { font-size: 13.5px; color: #666; }
+p.intro { margin: 8px 0 10px; font-weight: bold; font-size: 17px; }
 .caso { display: flex; justify-content: space-between; gap: 16px;
-        padding: 6px 2px; border-bottom: 1px dotted #ddd; font-size: 16px; }
+        padding: 5px 2px; border-bottom: 1px dotted #ddd; font-size: 15.5px; }
 .caso:last-of-type { border-bottom: none; }
 .caso .v { font-family: Helvetica, Arial, sans-serif; font-weight: bold;
            white-space: nowrap; }
-details { margin: 12px 0 0; font-size: 15px; }
-details summary { cursor: pointer; color: #555;
-                  font-family: Helvetica, Arial, sans-serif; font-size: 14px; }
-blockquote.literal { border-left: 3px solid #bbb; background: #FAFAF7;
-                     margin: 8px 0; padding: 8px 14px; font-size: 15.5px; }
-.controles { margin-top: 16px; font-family: Helvetica, Arial, sans-serif;
-             font-size: 15px; display: flex; flex-wrap: wrap; gap: 14px 26px;
-             align-items: center; }
-.controles label { cursor: pointer; }
-.controles input[type=checkbox] { width: 17px; height: 17px;
-                                  vertical-align: -3px; margin-right: 5px; }
-.excluir { color: #8A2A2A; }
-textarea.correccion { width: 100%; margin-top: 10px; min-height: 52px;
-                      font: inherit; font-size: 15.5px; padding: 8px 10px;
-                      border: 1px solid #ccc; border-radius: 6px; }
-#panel { border-top: 2px solid #1a1a1a; margin-top: 10px; padding-top: 26px;
-         font-family: Helvetica, Arial, sans-serif; }
-#panel h2 { font-size: 19px; margin: 0 0 12px; }
+.oficial { margin-top: 14px; }
+.oficial .titulo-oficial { font-family: Helvetica, Arial, sans-serif;
+                           font-size: 13.5px; color: #555; font-weight: bold;
+                           text-transform: uppercase; letter-spacing: 0.4px; }
+blockquote.literal { border-left: 3px solid #C9A227; background: #FBF8EF;
+                     margin: 6px 0; padding: 8px 14px; font-size: 15px; }
+.comprobar { font-family: Helvetica, Arial, sans-serif; font-size: 14.5px; }
+.comprobar a { color: #0B57D0; font-weight: bold; }
+.decision { margin-top: 14px; font-family: Helvetica, Arial, sans-serif;
+            font-size: 15.5px; display: flex; flex-wrap: wrap;
+            gap: 10px 22px; }
+.decision label { cursor: pointer; padding: 7px 12px; border: 1px solid #ccc;
+                  border-radius: 8px; }
+.decision input { margin-right: 6px; }
+.decision label:has(input:checked) { border-color: #1B5E20;
+                                     background: #EDF6EE; }
+.decision label.excluir:has(input:checked) { border-color: #8A2A2A;
+                                             background: #FBEFEF; }
+textarea.correccion { display: none; width: 100%; margin-top: 10px;
+                      min-height: 56px; font: inherit; font-size: 15.5px;
+                      padding: 8px 10px; border: 1px solid #C9A227;
+                      border-radius: 8px; background: #FFFDF5; }
+section.regla.con-correccion textarea.correccion { display: block; }
+#panel { border: 1px solid #e2e2e2; border-radius: 12px; padding: 20px 22px;
+         margin-top: 30px; font-family: Helvetica, Arial, sans-serif; }
+#panel h2 { font-size: 19px; margin: 0 0 4px; }
+#progreso { font-size: 15px; color: #555; margin: 0 0 14px; }
 .campos { display: flex; flex-wrap: wrap; gap: 12px 18px; margin: 0 0 14px; }
 .campos label { display: flex; flex-direction: column; font-size: 13.5px;
                 color: #555; gap: 4px; }
 .campos input, .campos select { font-size: 15.5px; padding: 7px 9px;
                                 border: 1px solid #ccc; border-radius: 6px;
-                                min-width: 210px; }
+                                min-width: 200px; }
 .declaracion { font-size: 15px; margin: 6px 0 18px; }
 #guardar { font-size: 16.5px; font-weight: bold; padding: 12px 26px;
            border-radius: 8px; border: none; background: #1B5E20; color: #fff;
            cursor: pointer; }
 #guardar:disabled { background: #bbb; cursor: not-allowed; }
+#autoguardado { font-size: 13px; color: #777; margin-left: 12px; }
 #resultado { display: none; background: #EDF6EE; border: 1px solid #1B5E20;
              border-radius: 8px; padding: 14px 18px; margin-top: 18px;
              font-size: 15.5px; }
 #resultado code { font-size: 17px; font-weight: bold; }
-footer { color: #888; font-size: 13px; margin-top: 40px;
+footer { color: #888; font-size: 13px; margin-top: 34px;
          font-family: Helvetica, Arial, sans-serif; }
 </style></head><body><div class="envoltura">
 <header>
 <div class="chip">BORRADOR — PENDIENTE DE VALIDACIÓN</div>
-<h1>Revisión del corpus normativo — DB-SI 3, evacuación</h1>
-<p class="resumen">Uso Residencial Vivienda · 6 reglas · sesión del 2026-08-25 · fuente: RD 314/2006 — Documento Básico SI (BOE-A-2006-5515), texto oficial de codigotecnico.org.</p>
+<h1>Revisión de normativa — evacuación (DB-SI 3)</h1>
+<p class="resumen">ArchMuse ha transcrito 6 reglas de evacuación del Código Técnico para edificios de viviendas. Antes de usarlas necesita que un profesional confirme que dicen exactamente lo que dice la norma. Sesión del 2026-08-25.</p>
+<p class="fuentes">Fuente oficial para comprobar: <a href="https://www.codigotecnico.org/pdf/Documentos/SI/DBSI.pdf" target="_blank" rel="noopener">PDF del Documento Básico SI (codigotecnico.org)</a> · <a href="https://www.boe.es/eli/es/rd/2006/03/17/314/con" target="_blank" rel="noopener">Real Decreto 314/2006 en el BOE</a></p>
 </header>
-<div class="leyenda">Para cada regla, compruebe que la exigencia dice lo mismo que el texto oficial («Ver el texto oficial», bajo cada una) y marque las tres casillas: <b>F</b> es fiel al literal oficial · <b>L</b> la referencia (sección, apartado, tabla) es exacta · <b>M</b> un arquitecto la entiende y le sirve. Si algo no está bien, escriba la corrección en el campo de texto de la regla. Si una regla no debe entrar, márquela como excluida. Lo dudoso, a la corrección: mejor una nota que una casilla a medias.</div>
-<section class="regla" data-numero="R-01" data-concept="es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion"><div class="regla-cabecera"><span class="numero">R-01</span><span class="donde">DB-SI, SI 3, §3, tabla 3.1</span></div><p class="intro">Longitud máxima de los recorridos de evacuación hasta una salida de planta, según el número de salidas de la planta o recinto y el caso que concurra.</p><div class="caso"><span>Una única salida — caso general</span><span class="v">25 m</span></div><div class="caso"><span>Una única salida — uso Aparcamiento</span><span class="v">35 m</span></div><div class="caso"><span>Una única salida — salida directa a espacio exterior seguro y ocupación de 25 personas como máximo</span><span class="v">50 m</span></div><div class="caso"><span>Más de una salida — caso general</span><span class="v">50 m</span></div><div class="caso"><span>Más de una salida — zonas con ocupantes que duermen; hospitalización o tratamiento intensivo; escuela infantil o enseñanza primaria</span><span class="v">35 m</span></div><div class="caso"><span>Más de una salida — espacios al aire libre con riesgo de incendio irrelevante</span><span class="v">75 m</span></div><details><summary>Ver el texto oficial</summary><blockquote class="literal">La longitud de los recorridos de evacuación hasta una salida de planta no excede de 25 m, excepto en los casos que se indican a continuación: - 35 m en uso Aparcamiento; - 50 m si se trata de una planta, incluso de uso Aparcamiento, que tiene una salida directa al espacio exterior seguro y la ocupación no excede de 25 personas, o bien de un espacio al aire libre en el que el riesgo de incendio sea irrelevante, por ejemplo, una cubierta de edificio, una terraza, etc.</blockquote><blockquote class="literal">La longitud de los recorridos de evacuación hasta alguna salida de planta no excede de 50 m, excepto en los casos que se indican a continuación: - 35 m en zonas en las que se prevea la presencia de ocupantes que duermen, o en plantas de hospitalización o de tratamiento intensivo en uso Hospitalario y en plantas de escuela infantil o de enseñanza primaria. - 75 m en espacios al aire libre en los que el riesgo de declaración de un incendio sea irrelevante, por ejemplo, una cubierta de edificio, una terraza, etc.</blockquote></details><div class="controles"><label><input type="checkbox" data-criterio="f"/>F · fiel al literal</label><label><input type="checkbox" data-criterio="l"/>L · referencia exacta</label><label><input type="checkbox" data-criterio="m"/>M · se entiende y sirve</label><label class="excluir"><input type="checkbox" data-criterio="x"/>Excluir esta regla</label></div><textarea class="correccion" placeholder="Corrección o nota (si la hay): escriba aquí el valor o el texto correcto."></textarea></section>
-<section class="regla" data-numero="R-02" data-concept="es.rd_314_2006.seguridad_incendio.incremento_recorridos_extincion_automatica"><div class="regla-cabecera"><span class="numero">R-02</span><span class="donde">DB-SI, SI 3, §3, tabla 3.1</span></div><p class="intro">La longitud máxima admisible de los recorridos se puede aumentar un 25% cuando el sector de incendio está protegido con una instalación automática de extinción.</p><details><summary>Ver el texto oficial</summary><blockquote class="literal">(1) La longitud de los recorridos de evacuación que se indican se puede aumentar un 25% cuando se trate de sectores de incendio protegidos con una instalación automática de extinción.</blockquote></details><div class="controles"><label><input type="checkbox" data-criterio="f"/>F · fiel al literal</label><label><input type="checkbox" data-criterio="l"/>L · referencia exacta</label><label><input type="checkbox" data-criterio="m"/>M · se entiende y sirve</label><label class="excluir"><input type="checkbox" data-criterio="x"/>Excluir esta regla</label></div><textarea class="correccion" placeholder="Corrección o nota (si la hay): escriba aquí el valor o el texto correcto."></textarea></section>
-<section class="regla" data-numero="R-03" data-concept="es.rd_314_2006.seguridad_incendio.ocupacion_maxima_salida_unica"><div class="regla-cabecera"><span class="numero">R-03</span><span class="donde">DB-SI, SI 3, §3, tabla 3.1</span></div><p class="intro">Ocupación máxima que admite una planta o recinto con una única salida.</p><div class="caso"><span>Caso general</span><span class="v">100 personas</span></div><div class="caso"><span>Salida de un edificio de viviendas, contando el conjunto del edificio</span><span class="v">500 personas</span></div><div class="caso"><span>Zonas cuya evacuación hasta la salida de planta salva más de 2 m en sentido ascendente</span><span class="v">50 personas</span></div><details><summary>Ver el texto oficial</summary><blockquote class="literal">La ocupación no excede de 100 personas, excepto en los casos que se indican a continuación: - 500 personas en el conjunto del edificio, en el caso de salida de un edificio de viviendas; - 50 personas en zonas desde las que la evacuación hasta una salida de planta deba salvar una altura mayor que 2 m en sentido ascendente;</blockquote></details><div class="controles"><label><input type="checkbox" data-criterio="f"/>F · fiel al literal</label><label><input type="checkbox" data-criterio="l"/>L · referencia exacta</label><label><input type="checkbox" data-criterio="m"/>M · se entiende y sirve</label><label class="excluir"><input type="checkbox" data-criterio="x"/>Excluir esta regla</label></div><textarea class="correccion" placeholder="Corrección o nota (si la hay): escriba aquí el valor o el texto correcto."></textarea></section>
-<section class="regla" data-numero="R-04" data-concept="es.rd_314_2006.seguridad_incendio.altura_evacuacion_maxima_salida_unica"><div class="regla-cabecera"><span class="numero">R-04</span><span class="donde">DB-SI, SI 3, §3, tabla 3.1</span></div><p class="intro">Altura de evacuación máxima de la planta para poder disponer una única salida.</p><div class="caso"><span>Evacuación descendente</span><span class="v">28 m</span></div><div class="caso"><span>Evacuación ascendente</span><span class="v">10 m</span></div><details><summary>Ver el texto oficial</summary><blockquote class="literal">La altura de evacuación descendente de la planta considerada no excede de 28 m, excepto en uso Residencial Público, en cuyo caso es, como máximo, la segunda planta por encima de la de salida de edificio(2), o de 10 m cuando la evacuación sea ascendente.</blockquote></details><div class="controles"><label><input type="checkbox" data-criterio="f"/>F · fiel al literal</label><label><input type="checkbox" data-criterio="l"/>L · referencia exacta</label><label><input type="checkbox" data-criterio="m"/>M · se entiende y sirve</label><label class="excluir"><input type="checkbox" data-criterio="x"/>Excluir esta regla</label></div><textarea class="correccion" placeholder="Corrección o nota (si la hay): escriba aquí el valor o el texto correcto."></textarea></section>
-<section class="regla" data-numero="R-05" data-concept="es.rd_314_2006.seguridad_incendio.anchura_minima_elementos_evacuacion"><div class="regla-cabecera"><span class="numero">R-05</span><span class="donde">DB-SI, SI 3, §4.2, tabla 4.1</span></div><p class="intro">Anchura mínima libre de los elementos de un recorrido de evacuación.</p><div class="caso"><span>Puertas y pasos</span><span class="v">0,80 m</span></div><div class="caso"><span>Pasillos y rampas</span><span class="v">1 m</span></div><div class="caso"><span>Pasillos previstos para 10 personas como máximo, usuarios habituales</span><span class="v">0,80 m</span></div><details><summary>Ver el texto oficial</summary><blockquote class="literal">Puertas y pasos: A ≥ P / 200(1) ≥ 0,80 m(2).</blockquote><blockquote class="literal">Pasillos y rampas: A ≥ P / 200 ≥ 1,00 m(3)(4)(5)</blockquote><blockquote class="literal">(5) La anchura mínima es 0,80 m en pasillos previstos para 10 personas, como máximo, y estas sean usuarios habituales.</blockquote></details><div class="controles"><label><input type="checkbox" data-criterio="f"/>F · fiel al literal</label><label><input type="checkbox" data-criterio="l"/>L · referencia exacta</label><label><input type="checkbox" data-criterio="m"/>M · se entiende y sirve</label><label class="excluir"><input type="checkbox" data-criterio="x"/>Excluir esta regla</label></div><textarea class="correccion" placeholder="Corrección o nota (si la hay): escriba aquí el valor o el texto correcto."></textarea></section>
-<section class="regla" data-numero="R-06" data-concept="es.rd_314_2006.seguridad_incendio.anchura_hoja_puerta_evacuacion"><div class="regla-cabecera"><span class="numero">R-06</span><span class="donde">DB-SI, SI 3, §4.2, tabla 4.1</span></div><p class="intro">Anchura admisible de cada hoja de puerta en un recorrido de evacuación.</p><div class="caso"><span>Anchura mínima de la hoja</span><span class="v">0,60 m</span></div><div class="caso"><span>Anchura máxima de la hoja</span><span class="v">1,23 m</span></div><details><summary>Ver el texto oficial</summary><blockquote class="literal">La anchura de toda hoja de puerta no debe ser menor que 0,60 m, ni exceder de 1,23 m.</blockquote></details><div class="controles"><label><input type="checkbox" data-criterio="f"/>F · fiel al literal</label><label><input type="checkbox" data-criterio="l"/>L · referencia exacta</label><label><input type="checkbox" data-criterio="m"/>M · se entiende y sirve</label><label class="excluir"><input type="checkbox" data-criterio="x"/>Excluir esta regla</label></div><textarea class="correccion" placeholder="Corrección o nota (si la hay): escriba aquí el valor o el texto correcto."></textarea></section>
+<div class="guia"><b>Cómo se revisa (20 minutos):</b><ol><li>Lea cada regla. Debajo tiene, en amarillo, <b>lo que dice el texto oficial</b>, y un enlace que abre el PDF oficial por la página exacta para comprobarlo.</li><li>Marque <b>«Correcta»</b> si la regla dice lo mismo que la norma (los valores, los casos y la referencia son exactos y se entiende). Si algo está mal, marque <b>«Necesita corrección»</b> y escriba qué corregir. Si una regla no debería estar, <b>«Excluir»</b>.</li><li>Al final, escriba su nombre y colegiatura y pulse <b>«Guardar revisión»</b>. Sus marcas se van guardando solas en este navegador: puede cerrar y seguir más tarde.</li></ol></div>
+<section class="regla" data-numero="R-01" data-concept="es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion"><div class="regla-cabecera"><span class="numero">Regla 1 de 6</span><span class="donde">DB-SI, SI 3, §3, tabla 3.1</span></div><p class="intro">Longitud máxima de los recorridos de evacuación hasta una salida de planta, según el número de salidas de la planta o recinto y el caso que concurra.</p><div class="caso"><span>Una única salida — caso general</span><span class="v">25 m</span></div><div class="caso"><span>Una única salida — uso Aparcamiento</span><span class="v">35 m</span></div><div class="caso"><span>Una única salida — salida directa a espacio exterior seguro y ocupación de 25 personas como máximo</span><span class="v">50 m</span></div><div class="caso"><span>Más de una salida — caso general</span><span class="v">50 m</span></div><div class="caso"><span>Más de una salida — zonas con ocupantes que duermen; hospitalización o tratamiento intensivo; escuela infantil o enseñanza primaria</span><span class="v">35 m</span></div><div class="caso"><span>Más de una salida — espacios al aire libre con riesgo de incendio irrelevante</span><span class="v">75 m</span></div><div class="oficial"><div class="titulo-oficial">Lo que dice el texto oficial</div><blockquote class="literal">La longitud de los recorridos de evacuación hasta una salida de planta no excede de 25 m, excepto en los casos que se indican a continuación: - 35 m en uso Aparcamiento; - 50 m si se trata de una planta, incluso de uso Aparcamiento, que tiene una salida directa al espacio exterior seguro y la ocupación no excede de 25 personas, o bien de un espacio al aire libre en el que el riesgo de incendio sea irrelevante, por ejemplo, una cubierta de edificio, una terraza, etc.</blockquote><blockquote class="literal">La longitud de los recorridos de evacuación hasta alguna salida de planta no excede de 50 m, excepto en los casos que se indican a continuación: - 35 m en zonas en las que se prevea la presencia de ocupantes que duermen, o en plantas de hospitalización o de tratamiento intensivo en uso Hospitalario y en plantas de escuela infantil o de enseñanza primaria. - 75 m en espacios al aire libre en los que el riesgo de declaración de un incendio sea irrelevante, por ejemplo, una cubierta de edificio, una terraza, etc.</blockquote><p class="comprobar"><a href="https://www.codigotecnico.org/pdf/Documentos/SI/DBSI.pdf#page=25" target="_blank" rel="noopener">Comprobar en el PDF oficial (se abre por la página 25)</a></p></div><div class="decision"><label><input type="radio" name="d-1" value="correcta"/>Correcta — dice lo mismo que la norma</label><label><input type="radio" name="d-1" value="corregir"/>Necesita corrección</label><label class="excluir"><input type="radio" name="d-1" value="excluir"/>Excluir</label></div><textarea class="correccion" placeholder="Escriba aquí qué hay que corregir (el valor o el texto correcto)."></textarea></section>
+<section class="regla" data-numero="R-02" data-concept="es.rd_314_2006.seguridad_incendio.incremento_recorridos_extincion_automatica"><div class="regla-cabecera"><span class="numero">Regla 2 de 6</span><span class="donde">DB-SI, SI 3, §3, tabla 3.1</span></div><p class="intro">La longitud máxima admisible de los recorridos se puede aumentar un 25% cuando el sector de incendio está protegido con una instalación automática de extinción.</p><div class="oficial"><div class="titulo-oficial">Lo que dice el texto oficial</div><blockquote class="literal">(1) La longitud de los recorridos de evacuación que se indican se puede aumentar un 25% cuando se trate de sectores de incendio protegidos con una instalación automática de extinción.</blockquote><p class="comprobar"><a href="https://www.codigotecnico.org/pdf/Documentos/SI/DBSI.pdf#page=25" target="_blank" rel="noopener">Comprobar en el PDF oficial (se abre por la página 25)</a></p></div><div class="decision"><label><input type="radio" name="d-2" value="correcta"/>Correcta — dice lo mismo que la norma</label><label><input type="radio" name="d-2" value="corregir"/>Necesita corrección</label><label class="excluir"><input type="radio" name="d-2" value="excluir"/>Excluir</label></div><textarea class="correccion" placeholder="Escriba aquí qué hay que corregir (el valor o el texto correcto)."></textarea></section>
+<section class="regla" data-numero="R-03" data-concept="es.rd_314_2006.seguridad_incendio.ocupacion_maxima_salida_unica"><div class="regla-cabecera"><span class="numero">Regla 3 de 6</span><span class="donde">DB-SI, SI 3, §3, tabla 3.1</span></div><p class="intro">Ocupación máxima que admite una planta o recinto con una única salida.</p><div class="caso"><span>Caso general</span><span class="v">100 personas</span></div><div class="caso"><span>Salida de un edificio de viviendas, contando el conjunto del edificio</span><span class="v">500 personas</span></div><div class="caso"><span>Zonas cuya evacuación hasta la salida de planta salva más de 2 m en sentido ascendente</span><span class="v">50 personas</span></div><div class="oficial"><div class="titulo-oficial">Lo que dice el texto oficial</div><blockquote class="literal">La ocupación no excede de 100 personas, excepto en los casos que se indican a continuación: - 500 personas en el conjunto del edificio, en el caso de salida de un edificio de viviendas; - 50 personas en zonas desde las que la evacuación hasta una salida de planta deba salvar una altura mayor que 2 m en sentido ascendente;</blockquote><p class="comprobar"><a href="https://www.codigotecnico.org/pdf/Documentos/SI/DBSI.pdf#page=24" target="_blank" rel="noopener">Comprobar en el PDF oficial (se abre por la página 24)</a></p></div><div class="decision"><label><input type="radio" name="d-3" value="correcta"/>Correcta — dice lo mismo que la norma</label><label><input type="radio" name="d-3" value="corregir"/>Necesita corrección</label><label class="excluir"><input type="radio" name="d-3" value="excluir"/>Excluir</label></div><textarea class="correccion" placeholder="Escriba aquí qué hay que corregir (el valor o el texto correcto)."></textarea></section>
+<section class="regla" data-numero="R-04" data-concept="es.rd_314_2006.seguridad_incendio.altura_evacuacion_maxima_salida_unica"><div class="regla-cabecera"><span class="numero">Regla 4 de 6</span><span class="donde">DB-SI, SI 3, §3, tabla 3.1</span></div><p class="intro">Altura de evacuación máxima de la planta para poder disponer una única salida.</p><div class="caso"><span>Evacuación descendente</span><span class="v">28 m</span></div><div class="caso"><span>Evacuación ascendente</span><span class="v">10 m</span></div><div class="oficial"><div class="titulo-oficial">Lo que dice el texto oficial</div><blockquote class="literal">La altura de evacuación descendente de la planta considerada no excede de 28 m, excepto en uso Residencial Público, en cuyo caso es, como máximo, la segunda planta por encima de la de salida de edificio(2), o de 10 m cuando la evacuación sea ascendente.</blockquote><p class="comprobar"><a href="https://www.codigotecnico.org/pdf/Documentos/SI/DBSI.pdf#page=25" target="_blank" rel="noopener">Comprobar en el PDF oficial (se abre por la página 25)</a></p></div><div class="decision"><label><input type="radio" name="d-4" value="correcta"/>Correcta — dice lo mismo que la norma</label><label><input type="radio" name="d-4" value="corregir"/>Necesita corrección</label><label class="excluir"><input type="radio" name="d-4" value="excluir"/>Excluir</label></div><textarea class="correccion" placeholder="Escriba aquí qué hay que corregir (el valor o el texto correcto)."></textarea></section>
+<section class="regla" data-numero="R-05" data-concept="es.rd_314_2006.seguridad_incendio.anchura_minima_elementos_evacuacion"><div class="regla-cabecera"><span class="numero">Regla 5 de 6</span><span class="donde">DB-SI, SI 3, §4.2, tabla 4.1</span></div><p class="intro">Anchura mínima libre de los elementos de un recorrido de evacuación.</p><div class="caso"><span>Puertas y pasos</span><span class="v">0,80 m</span></div><div class="caso"><span>Pasillos y rampas</span><span class="v">1 m</span></div><div class="caso"><span>Pasillos previstos para 10 personas como máximo, usuarios habituales</span><span class="v">0,80 m</span></div><div class="oficial"><div class="titulo-oficial">Lo que dice el texto oficial</div><blockquote class="literal">Puertas y pasos: A ≥ P / 200(1) ≥ 0,80 m(2).</blockquote><blockquote class="literal">Pasillos y rampas: A ≥ P / 200 ≥ 1,00 m(3)(4)(5)</blockquote><blockquote class="literal">(5) La anchura mínima es 0,80 m en pasillos previstos para 10 personas, como máximo, y estas sean usuarios habituales.</blockquote><p class="comprobar"><a href="https://www.codigotecnico.org/pdf/Documentos/SI/DBSI.pdf#page=26" target="_blank" rel="noopener">Comprobar en el PDF oficial (se abre por la página 26)</a></p></div><div class="decision"><label><input type="radio" name="d-5" value="correcta"/>Correcta — dice lo mismo que la norma</label><label><input type="radio" name="d-5" value="corregir"/>Necesita corrección</label><label class="excluir"><input type="radio" name="d-5" value="excluir"/>Excluir</label></div><textarea class="correccion" placeholder="Escriba aquí qué hay que corregir (el valor o el texto correcto)."></textarea></section>
+<section class="regla" data-numero="R-06" data-concept="es.rd_314_2006.seguridad_incendio.anchura_hoja_puerta_evacuacion"><div class="regla-cabecera"><span class="numero">Regla 6 de 6</span><span class="donde">DB-SI, SI 3, §4.2, tabla 4.1</span></div><p class="intro">Anchura admisible de cada hoja de puerta en un recorrido de evacuación.</p><div class="caso"><span>Anchura mínima de la hoja</span><span class="v">0,60 m</span></div><div class="caso"><span>Anchura máxima de la hoja</span><span class="v">1,23 m</span></div><div class="oficial"><div class="titulo-oficial">Lo que dice el texto oficial</div><blockquote class="literal">La anchura de toda hoja de puerta no debe ser menor que 0,60 m, ni exceder de 1,23 m.</blockquote><p class="comprobar"><a href="https://www.codigotecnico.org/pdf/Documentos/SI/DBSI.pdf#page=26" target="_blank" rel="noopener">Comprobar en el PDF oficial (se abre por la página 26)</a></p></div><div class="decision"><label><input type="radio" name="d-6" value="correcta"/>Correcta — dice lo mismo que la norma</label><label><input type="radio" name="d-6" value="corregir"/>Necesita corrección</label><label class="excluir"><input type="radio" name="d-6" value="excluir"/>Excluir</label></div><textarea class="correccion" placeholder="Escriba aquí qué hay que corregir (el valor o el texto correcto)."></textarea></section>
 <div id="panel">
 <h2>Cierre de la revisión</h2>
+<p id="progreso"></p>
 <div class="campos"><label>Nombre y apellidos<input id="v-nombre" type="text"/></label><label>Colegiatura / cargo<input id="v-colegiatura" type="text"/></label><label>Rol<select id="v-rol"><option value="arquitecto_colegiado">Arquitecto colegiado</option><option value="experto_normativo">Experto normativo</option></select></label><label>Fecha<input id="v-fecha" type="date"/></label></div>
-<p class="declaracion"><label><input type="checkbox" id="v-declaracion"/> Declaro que he cotejado cada regla marcada conforme contra el fragmento del texto oficial que la acompaña.</label></p>
-<button id="guardar" disabled>Guardar revisión</button>
+<p class="declaracion"><label><input type="checkbox" id="v-declaracion"/> He comprobado estas reglas contra el texto oficial del DB-SI.</label></p>
+<button id="guardar" disabled>Guardar revisión</button><span id="autoguardado"></span>
 <div id="resultado"></div>
-<footer>Al guardar se descarga un fichero JSON con sus marcas, sus correcciones y su identidad; envíelo desde su correo citando el código de revisión que aparecerá arriba. Ese fichero es el acta de esta sesión: ArchMuse no incorpora nada al corpus que no esté en él.</footer>
+<footer>Al guardar se descarga un fichero con sus respuestas y su identidad; envíelo desde su correo citando el código de revisión que aparecerá arriba. Ese fichero es el acta de esta sesión: ArchMuse no incorpora nada que no esté en él. Sus marcas se guardan además automáticamente en este navegador.</footer>
 </div></div><script id='datos-paquete' type='application/json'>{"paquete": "dbsi3_evacuacion_p1", "generada": "2026-08-22", "hoy": "2026-08-22", "documento_sha256": "0a2e78cd62471d9cc5cfe2efbc6aa39fdbad73c124aea7b039f9de96c141e105", "huella_paquete": "270ee7b327865687900bc559f8c9af4693ea2f4e9fbb7367917cfc42a4a2055f", "filas": [{"numero": "R-01", "concept_id": "es.rd_314_2006.seguridad_incendio.longitud_recorrido_evacuacion", "huella_fila": "3c024d6021ca4b962bba10a2bed374a8d343c2e6a9eec81882df902824724e0e"}, {"numero": "R-02", "concept_id": "es.rd_314_2006.seguridad_incendio.incremento_recorridos_extincion_automatica", "huella_fila": "1aac09e62852f21d918fa9167232d3531c2f6e7c8d823cfd48df4a783654d43c"}, {"numero": "R-03", "concept_id": "es.rd_314_2006.seguridad_incendio.ocupacion_maxima_salida_unica", "huella_fila": "4d24973d463d2fd00fe7ad807c863ed4e06b474ff2f1917c3c085e577f439684"}, {"numero": "R-04", "concept_id": "es.rd_314_2006.seguridad_incendio.altura_evacuacion_maxima_salida_unica", "huella_fila": "28d0c632dc275e6e3f819f7f321f05404310c472bd5ff76506523e9548f5c963"}, {"numero": "R-05", "concept_id": "es.rd_314_2006.seguridad_incendio.anchura_minima_elementos_evacuacion", "huella_fila": "fc1ff6d4b5c12b6513558b9a525a417481379c02e5e298ec96ec9ffa259df659"}, {"numero": "R-06", "concept_id": "es.rd_314_2006.seguridad_incendio.anchura_hoja_puerta_evacuacion", "huella_fila": "708d0673e131df25051eced7f214d2b4b97596404777f7f3e3d9131409520dee"}]}</script><script>
 'use strict';
 const DATOS = JSON.parse(document.getElementById('datos-paquete').textContent);
+const HUELLAS = Object.fromEntries(
+  DATOS.filas.map(f => [f.concept_id, f.huella_fila]));
+const CLAVE_LOCAL = 'archmuse-revision-' + DATOS.paquete;
 
 function serializacionCanonica(v) {
   // La MISMA forma que json.dumps(sort_keys=True, separators=(',',':'),
-  // ensure_ascii=False) en volcar_acta.py: claves ordenadas, sin espacios,
-  // unicode sin escapar. Si las dos implementaciones divergen, el volcado
-  // rechaza el acta — mejor un rechazo ruidoso que un acta inverificable.
+  // ensure_ascii=False) en volcar_acta.py. Si divergen, el volcado rechaza
+  // el acta — mejor un rechazo ruidoso que un acta inverificable.
   if (v === null || typeof v === 'number' || typeof v === 'boolean')
     return JSON.stringify(v);
   if (typeof v === 'string') return JSON.stringify(v);
@@ -107,31 +126,94 @@ async function sha256Hex(texto) {
     .map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-const HUELLAS = Object.fromEntries(
-  DATOS.filas.map(f => [f.concept_id, f.huella_fila]));
+function decisionDe(sec) {
+  const elegido = sec.querySelector('input[type=radio]:checked');
+  return elegido ? elegido.value : 'sin_responder';
+}
 
 function estadoDeFila(sec) {
-  const marca = c => sec.querySelector('input[data-criterio=' + c + ']').checked;
+  const decision = decisionDe(sec);
+  const texto = sec.querySelector('textarea').value.trim();
   return {
     numero: sec.dataset.numero,
     concept_id: sec.dataset.concept,
     huella_fila: HUELLAS[sec.dataset.concept],
-    f: marca('f'), l: marca('l'), m: marca('m'),
-    conforme: marca('f') && marca('l') && marca('m'),
-    correccion: sec.querySelector('textarea').value.trim(),
-    excluida: sec.querySelector('input[data-criterio=x]').checked,
+    decision: decision,
+    conforme: decision === 'correcta',
+    correccion: decision === 'corregir' ? texto : '',
+    excluida: decision === 'excluir',
   };
 }
 
-function validarPanel() {
+// --- Guardado automático en este navegador: nada se pierde al cerrar. ------
+function guardarLocal() {
+  try {
+    const estado = {campos: {}, filas: {}};
+    for (const id of ['v-nombre', 'v-colegiatura', 'v-rol', 'v-fecha'])
+      estado.campos[id] = document.getElementById(id).value;
+    estado.campos['v-declaracion'] =
+      document.getElementById('v-declaracion').checked;
+    document.querySelectorAll('section.regla').forEach(sec => {
+      estado.filas[sec.dataset.concept] = {
+        decision: decisionDe(sec),
+        correccion: sec.querySelector('textarea').value,
+      };
+    });
+    localStorage.setItem(CLAVE_LOCAL, JSON.stringify(estado));
+    document.getElementById('autoguardado').textContent =
+      'Cambios guardados en este navegador.';
+  } catch (e) { /* sin almacenamiento local: la descarga sigue funcionando */ }
+}
+
+function restaurarLocal() {
+  try {
+    const crudo = localStorage.getItem(CLAVE_LOCAL);
+    if (!crudo) return;
+    const estado = JSON.parse(crudo);
+    for (const [id, valor] of Object.entries(estado.campos || {})) {
+      const campo = document.getElementById(id);
+      if (!campo) continue;
+      if (campo.type === 'checkbox') campo.checked = !!valor;
+      else if (valor) campo.value = valor;
+    }
+    document.querySelectorAll('section.regla').forEach(sec => {
+      const fila = (estado.filas || {})[sec.dataset.concept];
+      if (!fila) return;
+      if (fila.decision && fila.decision !== 'sin_responder') {
+        const radio = sec.querySelector(
+          'input[type=radio][value=' + fila.decision + ']');
+        if (radio) radio.checked = true;
+      }
+      sec.querySelector('textarea').value = fila.correccion || '';
+    });
+  } catch (e) { /* nada que restaurar */ }
+}
+
+function refrescar() {
+  document.querySelectorAll('section.regla').forEach(sec => {
+    sec.classList.toggle('con-correccion', decisionDe(sec) === 'corregir');
+  });
+  const filas = Array.from(document.querySelectorAll('section.regla'));
+  const listas = filas.filter(sec => {
+    const d = decisionDe(sec);
+    if (d === 'sin_responder') return false;
+    if (d === 'corregir')
+      return sec.querySelector('textarea').value.trim() !== '';
+    return true;
+  }).length;
+  document.getElementById('progreso').textContent =
+    'Revisadas ' + listas + ' de ' + filas.length + ' reglas.' +
+    (listas < filas.length
+      ? ' El botón se activa al responderlas todas.' : '');
   const nombre = document.getElementById('v-nombre').value.trim();
   const coleg = document.getElementById('v-colegiatura').value.trim();
   const decl = document.getElementById('v-declaracion').checked;
-  document.getElementById('guardar').disabled = !(nombre && coleg && decl);
+  document.getElementById('guardar').disabled =
+    !(listas === filas.length && nombre && coleg && decl);
 }
 
-document.addEventListener('input', validarPanel);
-document.addEventListener('change', validarPanel);
+document.addEventListener('input', () => { refrescar(); guardarLocal(); });
+document.addEventListener('change', () => { refrescar(); guardarLocal(); });
 
 document.getElementById('guardar').addEventListener('click', async () => {
   const filas = Array.from(document.querySelectorAll('section.regla'))
@@ -163,13 +245,14 @@ document.getElementById('guardar').addEventListener('click', async () => {
   enlace.href = URL.createObjectURL(blob);
   enlace.download = nombreFichero;
   enlace.click();
+  guardarLocal();
 
   const res = document.getElementById('resultado');
   res.style.display = 'block';
-  const conformes = filas.filter(f => f.conforme && !f.excluida).length;
+  const conformes = filas.filter(f => f.conforme).length;
   res.innerHTML =
-    'Revisión guardada como <b>' + nombreFichero + '</b> — ' + conformes +
-    ' de ' + filas.length + ' reglas conformes.<br/>' +
+    'Revisión guardada y descargada como <b>' + nombreFichero + '</b> — ' +
+    conformes + ' de ' + filas.length + ' reglas correctas.<br/>' +
     (hash
       ? 'Código de revisión: <code>' + hash.slice(0, 12) + '</code>. ' +
         'Envíe el fichero descargado desde su propio correo citando este ' +
@@ -179,6 +262,8 @@ document.getElementById('guardar').addEventListener('click', async () => {
         'incorporarlo.');
 });
 
-document.getElementById('v-fecha').value = DATOS.hoy;
-validarPanel();
+if (!document.getElementById('v-fecha').value)
+  document.getElementById('v-fecha').value = DATOS.hoy;
+restaurarLocal();
+refrescar();
 </script></body></html>

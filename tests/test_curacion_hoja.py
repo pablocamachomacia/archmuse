@@ -269,10 +269,13 @@ def test_hoja_interactiva_completa(tmp_path, monkeypatch):
     html = hoja_de_revision.generar_hoja("_paquete_dbsi3_")
 
     assert html.count("<section") == len(filas)
-    # 4 casillas por regla (F, L, M, excluir) + 1 de la declaración.
-    assert html.count('type="checkbox"') == 4 * len(filas) + 1
+    # Una decisión de tres opciones por regla + la casilla de la declaración.
+    assert html.count('type="radio"') == 3 * len(filas)
+    assert html.count('type="checkbox"') == 1
     assert html.count("<textarea") == len(filas)
     assert 'id="guardar"' in html and "Guardar revisión" in html
+    # El estado se guarda solo en el navegador (localStorage).
+    assert "localStorage" in html and "restaurarLocal" in html
     # La huella viaja en el bloque de datos, no en la vista.
     assert filas[0].huella in html
     import re
@@ -282,9 +285,11 @@ def test_hoja_interactiva_completa(tmp_path, monkeypatch):
 
 
 def test_hoja_p1_es_presentable():
-    """Los criterios de Pablo del 22-08 siguen vigentes con el medio nuevo:
-    6 reglas, español de arquitecto, casos tabulados, sin claves del YAML ni
-    hex a la vista, F·L·M explicadas donde se marcan. Contra el paquete REAL."""
+    """Los criterios de Pablo del 22-08 (tercera iteración): 6 reglas,
+    español de arquitecto, una sola pregunta clara por regla (sin siglas),
+    el texto oficial visible con enlace al PDF por su página, guardado
+    automático, sin claves del YAML ni hex a la vista. Contra el paquete
+    REAL."""
     import re
 
     from curacion import hoja_de_revision
@@ -292,13 +297,16 @@ def test_hoja_p1_es_presentable():
 
     html = hoja_de_revision.generar_hoja(seleccion=SELECCION_P1)
 
+    # 6 reglas numeradas en lenguaje llano, la de la skill primero.
     assert html.count("<section") == 6
-    assert "R-06" in html and "R-07" not in html
-    assert html.index("Longitud máxima de los recorridos") < html.index("R-02")
+    assert "Regla 1 de 6" in html and "Regla 6 de 6" in html
+    assert html.index("Longitud máxima de los recorridos") \
+        < html.index("Regla 2 de 6")
 
     visible = re.sub(r"<script.*?</script>", "", html, flags=re.S)
     for prohibida in ("condicion:", "por_ciento", "numero_salidas",
-                      "magnitud:", "_paquete_", ".yaml", "m2_por_persona"):
+                      "magnitud:", "_paquete_", ".yaml", "m2_por_persona",
+                      "F · L · M", "F·L·M"):
         assert prohibida not in visible, prohibida
     assert not re.search(r"[0-9a-f]{10}", visible), "hex en la vista"
 
@@ -307,11 +315,24 @@ def test_hoja_p1_es_presentable():
                   "28 m", "10 m", "25%"):
         assert cifra in html, cifra
 
-    # F · L · M explicadas junto a las casillas y en la leyenda.
-    for explicacion in ("fiel al literal", "referencia exacta",
-                        "se entiende y sirve"):
-        assert explicacion in visible, explicacion
+    # Una pregunta clara por regla, sin siglas.
+    assert html.count("Correcta — dice lo mismo que la norma") == 6
+    assert "Necesita corrección" in html
+    assert html.count('value="corregir"') == 6
+    assert html.count('value="excluir"') == 6
+
+    # Comprobación a un clic: texto oficial visible + enlace al PDF por
+    # página + fuentes generales en cabecera.
+    assert html.count("Lo que dice el texto oficial") == 6
+    assert html.count("#page=") == 6
+    assert "codigotecnico.org/pdf/Documentos/SI/DBSI.pdf" in html
+    assert "boe.es" in html
+
+    # Guardado automático y guía de tres pasos.
+    assert "localStorage" in html
+    assert "guardando solas en este navegador" in visible
+    assert "Cómo se revisa" in visible
+
     # El texto oficial va por regla, como fragmento: los encabezados de
     # apartado del CTE no aparecen.
-    assert "Ver el texto oficial" in html
     assert "Número de salidas y longitud de los recorridos" not in html
