@@ -113,6 +113,11 @@ def escribir_informe(ruta: str, ruta_destino: str, capa: Optional[str] = None,
     datos = dict(revision)
     datos["plano"] = os.path.basename(ruta)
     datos["sello_origen_sha256"] = sello_antes
+    # Para el cajetín del PDF: la herramienta que de verdad produjo el dato.
+    # La versión de la Skill que orquesta no llega hasta aquí (y meterla
+    # exigiría cambiar el contrato de la capacidad, congelado en
+    # `tests/fixtures/contratos_de_capacidad.json`): se declara la capacidad.
+    datos["herramienta"] = "ArchMuse — capacidad plano.coherencia v1.0.0"
     try:
         escribir_informe_pdf(datos, ruta_destino)
     except OSError as exc:

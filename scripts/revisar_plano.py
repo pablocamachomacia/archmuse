@@ -192,9 +192,9 @@ def main(argv: list) -> int:
             for h in grupo:
                 print("    · %s" % h.get("descripcion", ""))
                 magnitud = h.get("magnitud")
-                sufijo = ("  [%g %s]" % (magnitud, h.get("unidad") or "")).rstrip()
-                print("      dónde: %s%s" % (h.get("entidad", ""),
-                                             "" if magnitud is None else sufijo))
+                sufijo = "" if magnitud is None else (
+                    "  [%g %s]" % (magnitud, h.get("unidad") or "")).rstrip()
+                print("      dónde: %s%s" % (h.get("entidad", ""), sufijo))
 
     _titulo("LO QUE TE LLEVAS")
     print("  PDF  %s" % destino)

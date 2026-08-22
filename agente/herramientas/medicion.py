@@ -66,6 +66,23 @@ def _medir(ruta: str, capa: Optional[str],
     salida["ruta"] = os.path.abspath(ruta)
     salida["capa_de_recintos"] = plano.layer
     salida["escala"] = getattr(plano.escala, "unidad", "")
+    # C3/D-7 no aplican aqui: esto no es criterio, es procedencia. Cuando la
+    # capa de recintos se ha elegido por parecido entre varias candidatas
+    # (`capa_elegida_por_heuristico`), es una inferencia y declara su
+    # hipotesis -- el motivo ya calculado por `capas_candidatas`, no uno
+    # redactado a mano aqui.
+    if getattr(plano, "capa_elegida_por_heuristico", False) and plano.capa is not None:
+        salida["capa_criterio"] = (
+            "Los recintos se han tomado de la capa «%s» por parecido con una planta "
+            "de vivienda, entre las capas candidatas del plano: %s."
+            % (plano.layer, plano.capa.motivo)
+        )
+    else:
+        salida["capa_criterio"] = None
+    salida["capas_ignoradas"] = [
+        {"capa": c.capa, "entidades": c.entidades, "motivo": c.motivo}
+        for c in (getattr(plano, "capas_ignoradas", None) or ())
+    ]
     return salida
 
 
@@ -106,6 +123,11 @@ def medicion_en_pdf(ruta: str, ruta_destino: str, capa: Optional[str] = None,
     datos = dict(medicion)
     datos["plano"] = os.path.basename(ruta)
     datos["sello_origen_sha256"] = sello_antes
+    # Para el cajetín del PDF: la herramienta que de verdad produjo el dato.
+    # La versión de la Skill que orquesta no llega hasta aquí (y meterla
+    # exigiría cambiar el contrato de la capacidad, congelado en
+    # `tests/fixtures/contratos_de_capacidad.json`): se declara la capacidad.
+    datos["herramienta"] = "ArchMuse — capacidad plano.medicion_de_la_planta v1.0.0"
     # Lo que NO se comprueba sale de los manifiestos de las capacidades que se
     # han ejecutado, no de una lista escrita a mano ni de un argumento: si
     # mañana alguien añade una limitación a una de ellas, entra sola en el

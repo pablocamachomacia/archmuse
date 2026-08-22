@@ -5,6 +5,88 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-08-21 · Curación y firma humana del corpus DB-SUA
+
+Ver `docs/prd/2026-08-21-curacion-y-firma-del-corpus-db-sua.md` (**Cerrado**,
+Aprobado por Pablo el mismo día). No es una reversión de la decisión de la
+mañana de no contratar curador colegiado externo: es Pablo mismo aprobando o
+rechazando explícitamente cada regla, formalizado en el estado `FIRMADA` que
+el esquema ya reservaba desde el cierre del Prompt 2.
+
+**Hecho:**
+- `scripts/curar_corpus.py` (nuevo), dos subcomandos en dos actos separados
+  a propósito, nunca fusionados en una tecla:
+  - `resolver <verificacion_doble.jsonl>` — decisión campo a campo
+    (`[a]probar / [r]echazar con motivo / [e]ditar y aprobar / [s]altar`),
+    ledger append-only y reanudable en
+    `extraccion/estado/curacion/resoluciones.jsonl`. Nunca escribe en
+    `normativa/es/` — ni siquiera recibe un directorio de salida.
+  - `firmar --curador NOMBRE --sha256-pdf HASH <candidatas_a.jsonl>` — única
+    acción que escribe en `normativa/es/`: genera la regla `estado: FIRMADA`
+    (bloque `firma: {curador, fecha}`, hash del documento, cita literal),
+    la valida, y la escribe SIN prefijo `_` (descubrible por el loader).
+    Regla firmada = inmutable: si el fichero ya existe, no lo toca.
+- `normativa/esquema/regla.schema.json`: bloque `firma` nuevo (aditivo).
+- `normativa/validacion.py`: validación 19, `firma` obligatoria para toda
+  regla `FIRMADA` — defensa en profundidad, no depende de pasar por la
+  herramienta.
+- `scripts/generar_borrador_corpus.py::_construir_documento`: extendido con
+  el parámetro opcional `firma`, reusado (no duplicado).
+- `tests/test_curar_corpus.py` (nuevo, 26 tests): las cuatro opciones,
+  reanudabilidad de los dos actos por separado, inmutabilidad de una regla
+  firmada, integración real contra el loader (patrón de
+  `test_normativa_borrador_no_afirma.py`), y dos tests contra el fichero
+  REAL de 101 entradas (recorrerlas todas sin excepción, saltando y
+  aprobando).
+
+**Hallazgo no anticipado:** ninguna de las 101 entradas reales del Prompt 2
+tiene `lectura_a` y `lectura_b` pobladas a la vez — siempre exactamente una.
+El camino de "elegir entre A y B" que pedía la tarea original sigue
+implementado y probado, pero no lo ejerce ninguna de las 101 reales.
+
+**Dejado fuera, explícitamente, por decisión de Pablo:** el golden set de
+preguntas (`tests/golden/dbsua_preguntas.jsonl`) — posterior a una sesión
+real de curación, con preguntas aportadas por Pablo, no una plantilla
+rellenada antes de tener corpus real que preguntar.
+
+**Limitación conocida — RESUELTA en la misma sesión, a petición explícita de
+Pablo antes de cerrar la tarea.** Firmar más de una regla de la misma
+materia+patrón con `aplicabilidad` genérica chocaba con la validación 14
+(aplicabilidad genérica) y tumbaba la carga del corpus COMPLETO — verificado
+que ocurría al firmar la 2ª-3ª regla, no en un caso extremo de volumen: con
+el ritmo real de esta semana (~90-100 reglas DB-SUA) era seguro, no
+probable. Arreglado ampliando la clave de
+`normativa/validacion.py::validar_sin_contradiccion` con la cita del
+artículo + el nombre de la regla (ninguno inventado, los dos ya estaban en
+el documento), en vez de la alternativa que exigía inventar
+`usos`/`tipologias` por regla. De paso, dos bugs relacionados en
+`scripts/curar_corpus.py::_generar_regla_firmada`: no aplicaba el
+`patron_override` de la cláusula atómica (heredaba el patrón del artículo
+padre) y no aplicaba `sufijo_desambiguador` (varias sub-candidatas del
+mismo artículo habrían compartido `concept_id`). Detalle completo y las
+cifras de la verificación en la adenda de cierre del PRD y en
+`docs/design/2026-08-21-limite-aplicabilidad-generica-verificada-automatica.md`
+(marcado RESUELTO). Verificado con las 20 candidatas reales de DB-SUA: 39
+reglas `FIRMADA` cargan sin colisión — test permanente
+`tests/test_curar_corpus.py::test_loader_carga_sin_colision_al_firmar_todo_el_corpus_real_de_db_sua`.
+
+**Tests:** suite completa, `1264 passed, 18 skipped, 1 xfailed, 0 failed`
+(575s) — arrancado desde el verde de 1237 declarado al cierre del Prompt 2;
+las 27 pruebas de más son de esta tarea (26 de la implementación inicial +
+1 del arreglo de la validación 14). Los 2 warnings del resumen
+(`ifcopenshell`, `tests/test_bim_lector.py`) son preexistentes y ajenos.
+
+**Cierre de sesión (2026-08-21, tarde).** Todo lo pedido hoy sobre este PRD
+está hecho y verificado, nada quedó a medias ni interrumpido. Primer paso
+de mañana: Pablo ejecuta `python scripts/curar_corpus.py resolver
+extraccion/estado/pendientes/codigotecnico__DB-SUA__3cfb5bbb135e.verificacion_doble.jsonl`
+sobre las 101 entradas reales, y después `firmar` con su `--curador`. El
+golden set (`tests/golden/dbsua_preguntas.jsonl`) es tarea posterior a esa
+sesión de curación real, con preguntas que aporta Pablo — no se empieza
+antes de tener corpus real que preguntar, y no se ha tocado hoy.
+
+---
+
 ## 2026-08-20 (tarde/noche) · Paso 3 del roadmap: lectura BIM real -- en curso
 
 **Modelo confirmado Sonnet** (Sonnet 5). Trabajo autónomo de 2h sobre
@@ -1738,3 +1820,83 @@ error esperada en `#conv-log`.
 
 **Tests:** suite completa, `1065 passed, 2 failed (los dos guardianes de
 C4, esperados), 18 skipped, 1 xfailed` -- sin regresiones.
+
+## 2026-08-22 · Corpus firmado DB-SI 3 (viernes/sábado del PRD) + rediseño de los PDF de medición y revisión
+
+Dos encargos de Pablo en la misma sesión. Calendario vinculante: sesión de
+validación con el arquitecto colegiado y la coordinadora de AENOR el **lunes
+25**; volcado el **martes 26**; `analyzer/`, `scripts/` y `tests/fixtures/`
+congelados hasta el **jueves 28** (el rediseño de PDF fue excepción puntual
+confirmada por Pablo para tres ficheros de presentación, nada más).
+
+**Corpus firmado (PRD `docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md`,
+aprobado por Pablo con 3 decisiones explícitas -- §11.0):**
+- La fase de firma ya existía del PRD cerrado del 21-08 y nunca se había
+  ejecutado en producción; esta fase la ejecuta y cierra sus dos huecos: la
+  firma no estaba atada al contenido, y los modelos A (tag colegiado) y B
+  (firma nominal) convivían sin hablarse. Resolución: `curador`=Pablo +
+  `firma.validado_por` (registro nominal de la validación externa en papel).
+- 7 borradores `normativa/es/estatal/_paquete_dbsi3_*.yaml` (15 reglas: 11
+  exigencias + 4 definiciones del Anejo A que el glosario no cubre),
+  transcritos a mano con la ficha (promovida a **aprobada**) desde el PDF
+  oficial de fixtures, con `hash_texto` y `documento_sha256`. El pipeline
+  automático NO podía producirlos (fuentes solo-DB-SUA y prefijo hardcodeado
+  en scripts congelados; tablas multi-eje inconvertibles por diseño).
+- `normativa/firma.py` (nuevo): `hash_de_contenido_firmado` sobre
+  serialización canónica JSON que excluye `{firma, estado, tags}`
+  (CLAVES_DE_FLUJO) -- por eso la huella impresa en la hoja (borrador) y la de
+  la regla firmada son LA MISMA, y el acta en papel ancla el corpus.
+- Validación 20 (`validar_integridad_de_firma`, en VALIDACIONES_POR_FICHERO):
+  manipular una regla firmada tumba su fichero en la siguiente carga
+  (fail-closed). Fase 1 tolera FIRMADA sin hash (compatibilidad con el
+  formato del 21-08); la fase 2 del jueves lo hace obligatorio (invertir T4).
+- Esquema: `firma.hash_contenido` + `firma.validado_por` (aditivo, opcional);
+  comentario obsoleto de `FIRMADA` corregido.
+- Paquete nuevo `curacion/` (fuera del congelado `scripts/`, herramienta
+  permanente): `comprobar_borradores`, `hoja_de_revision` (HTML A4: página de
+  decisiones única que se firma, con F·L·M, huella por fila y huella de
+  paquete; anexo de literales solo lectura) y `volcar_acta`
+  (`transcribir`→ledger append-only `extraccion/estado/curacion/
+  actas_papel.jsonl`; `firmar --curador` exige huella==ledger --el papel
+  manda--, escribe `dbsi3_evacuacion_*.yaml` visible e inmutable).
+- Hoja generada e imprimible: `docs/curacion/2026-08-25-dbsi3-evacuacion-p1.html`
+  + lista de dudas (10, entregable de la ficha) en
+  `docs/curacion/2026-08-25-dbsi3-evacuacion-dudas.md`.
+- Tests nuevos: `test_firma_integridad.py` (hash canónico/manipulación/
+  tolerancia fase 1), `test_curacion_hoja.py` (volcado: papel manda,
+  inmutable+reanudable, corrección al margen, hoja completa),
+  `test_politica_corpus_produccion.py` (toda regla de producción FIRMADA con
+  hash válido o marcada con el tag; el flag `pendiente_de_firma_colegiada`
+  de la capacidad cae solo al firmar -- G11 intacto). Whitelist de
+  `test_normativa_aplicable.py` ampliada con los 7 borradores.
+- **Pendiente y calendarizado**: martes 26 volcado + supersede de la piloto +
+  manifiesto a `parcial` (en ese orden) + reescritura de los dos tests de
+  producción; jueves 28 fase 2 del hash + `curar_corpus.py` + validación 14
+  bitemporal. El legacy D4 (`evaluator.py:1785`) NO se toca sin PRD propio.
+
+**Rediseño de PDF (medición y revisión), opción A elegida por Pablo:**
+- `marca_borrador.py` crece a módulo de mobiliario de página: `chip_borrador`
+  (franja discreta de cabecera), `pie_tecnico` (filete, referencia del
+  documento, huella SHA-256 del plano al pie -- ya no en cabecera) y
+  `lienzo_numerado` («Página X de Y»). La firma de `estampar` y la leyenda
+  DOC-3 intactas (sus tests lo exigen).
+- `medicion_pdf.py`: cajetín en bloque (documento/plano/fecha/herramienta),
+  criterio de medición dicho UNA vez, cuadro por vivienda con columna
+  estrecha «Referencia» (rótulo · capa), cifras a la derecha con coma decimal
+  y unidad en la cabecera de columna, filas alternas, TOTAL con filete,
+  notas por familia, descartes agrupados por motivo (el motivo encabeza, las
+  líneas solo capa + entidades).
+- `coherencia_pdf.py`: misma retícula; `_magnitud` en formato de medición
+  («4,00 m²»), sin repetir la cifra cuando la descripción ya la dice, y
+  «-1 piezas de diferencia» dicho en legible («falta 1 pieza» / «sobran N»)
+  -- traducción de PRESENTACIÓN, `coherencia.py` sin tocar.
+- `agente/herramientas/{medicion,coherencia}.py`: clave `herramienta` para el
+  cajetín (la versión de la Skill no llega ahí sin romper el contrato de la
+  capacidad, congelado en fixtures: se declara la capacidad).
+- PDFs de `v2s.dxf` regenerados en `Desktop/ArchMuse_ejemplos_pdf/` (los
+  anteriores conservados como `*.anterior.pdf`); verificado en el texto
+  extraído: cajetín, huella al pie, «Página X de Y», sin «m2» crudo,
+  falta/sobra en legible.
+
+**Tests:** suite completa, `1324 passed, 18 skipped, 1 xfailed` -- cero
+fallos, sin regresiones.

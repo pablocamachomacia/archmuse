@@ -372,7 +372,9 @@
   },
   "plano.medicion_de_la_planta": {
     "agrupacion": "rótulos de vivienda del plano",
+    "capa_criterio": null,
     "capa_de_recintos": "00 areas",
+    "capas_ignoradas": [],
     "escala": "metros",
     "geometria_no_leida": [],
     "ok": true,

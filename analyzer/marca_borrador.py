@@ -56,9 +56,18 @@ ALTURA_DXF = 0.25
 #: Tamaño y color: legible sin competir con el contenido. Un gris demasiado
 #: claro sería una marca que técnicamente está y nadie lee, que es lo mismo que
 #: no ponerla.
-_TAMANO_PT = 7.5
+_TAMANO_PT = 6.8
 _COLOR = colors.HexColor("#8A2A2A")
-_MARGEN_INFERIOR_CM = 0.9
+_GRIS_PIE = colors.HexColor("#555555")
+_MARGEN_INFERIOR_CM = 0.45
+
+#: Geometría compartida del pie técnico (rediseño 2026-08-22): la marca es la
+#: última línea de un pie ordenado, no un párrafo suelto. Las cotas viven aquí
+#: para que los dos PDF y la numeración de páginas dibujen sobre la misma
+#: retícula sin duplicar números mágicos.
+Y_FILETE_CM = 1.42
+Y_REFERENCIA_CM = 1.08
+Y_HUELLA_CM = 0.76
 
 
 def _pintar(lienzo: Any, documento: Any) -> None:
@@ -68,6 +77,92 @@ def _pintar(lienzo: Any, documento: Any) -> None:
     lienzo.setFillColor(_COLOR)
     lienzo.drawCentredString(ancho / 2.0, _MARGEN_INFERIOR_CM * cm, LEYENDA)
     lienzo.restoreState()
+
+
+def chip_borrador(lienzo: Any, documento: Any) -> None:
+    """La franja de borrador de cabecera: discreta pero inequívoca.
+
+    Un recuadro pequeño arriba a la derecha en TODAS las páginas. No sustituye
+    a la leyenda del pie (esa es la marca vinculante de `DOC-3` y no se toca):
+    la duplica donde el ojo entra en la página.
+    """
+    ancho, alto = documento.pagesize
+    caja_ancho, caja_alto = 2.35 * cm, 0.52 * cm
+    x = ancho - 1.6 * cm - caja_ancho
+    y = alto - 1.12 * cm
+    lienzo.saveState()
+    lienzo.setStrokeColor(_COLOR)
+    lienzo.setLineWidth(0.9)
+    lienzo.rect(x, y, caja_ancho, caja_alto, stroke=1, fill=0)
+    lienzo.setFont("Helvetica-Bold", 8)
+    lienzo.setFillColor(_COLOR)
+    lienzo.drawCentredString(x + caja_ancho / 2.0, y + 0.15 * cm, "BORRADOR")
+    lienzo.restoreState()
+
+
+def pie_tecnico(referencia: str, huella: Any = None) -> Callable[[Any, Any], None]:
+    """El pie fijo de un documento técnico: filete, referencia y huella.
+
+    `referencia` identifica el documento («Medición · v2s.dxf · 22/08/2026»);
+    `huella` es el SHA-256 del plano de origen, si lo hay — va aquí, al pie y
+    en cuerpo pequeño, no en la cabecera. La numeración «Página X de Y» la
+    añade `lienzo_numerado()` en la misma retícula, porque el total de páginas
+    no se conoce hasta el final.
+    """
+    def pintar(lienzo: Any, documento: Any) -> None:
+        ancho, _alto = documento.pagesize
+        izquierda, derecha = 1.9 * cm, ancho - 1.6 * cm
+        lienzo.saveState()
+        lienzo.setStrokeColor(colors.HexColor("#999999"))
+        lienzo.setLineWidth(0.5)
+        lienzo.line(izquierda, Y_FILETE_CM * cm, derecha, Y_FILETE_CM * cm)
+        lienzo.setFont("Helvetica", 7)
+        lienzo.setFillColor(_GRIS_PIE)
+        lienzo.drawString(izquierda, Y_REFERENCIA_CM * cm, referencia)
+        if huella:
+            lienzo.setFont("Helvetica", 6)
+            lienzo.drawString(
+                izquierda, Y_HUELLA_CM * cm,
+                "Huella de integridad del plano de origen (SHA-256): %s" % huella)
+        lienzo.restoreState()
+        chip_borrador(lienzo, documento)
+
+    return pintar
+
+
+def lienzo_numerado():
+    """Un lienzo que escribe «Página X de Y» en el pie de cada página.
+
+    El total de páginas solo se conoce al terminar, así que el lienzo guarda el
+    estado de cada página y numera al guardar. Se usa como
+    `doc.build(..., canvasmaker=lienzo_numerado())`.
+    """
+    from reportlab.pdfgen import canvas as _canvas
+
+    class _LienzoNumerado(_canvas.Canvas):
+        def __init__(self, *args, **kwargs):
+            _canvas.Canvas.__init__(self, *args, **kwargs)
+            self._estados = []
+
+        def showPage(self):
+            self._estados.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self):
+            total = len(self._estados)
+            for estado in self._estados:
+                self.__dict__.update(estado)
+                ancho = self._pagesize[0]
+                self.saveState()
+                self.setFont("Helvetica", 7)
+                self.setFillColor(_GRIS_PIE)
+                self.drawRightString(ancho - 1.6 * cm, Y_REFERENCIA_CM * cm,
+                                     "Página %d de %d" % (self._pageNumber, total))
+                self.restoreState()
+                _canvas.Canvas.showPage(self)
+            _canvas.Canvas.save(self)
+
+    return _LienzoNumerado
 
 
 def estampar(previo: Optional[Callable[[Any, Any], None]] = None) -> Callable[[Any, Any], None]:
