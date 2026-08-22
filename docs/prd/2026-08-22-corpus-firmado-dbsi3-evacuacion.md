@@ -131,4 +131,12 @@ Existentes: `:143` de `test_corpus_sin_firmar.py` se pone rojo **por diseño** y
 
 ---
 
-**Decisión:** Aprobado por Pablo el 2026-08-22 (aprobación del plan en sesión, con las 3 decisiones de §11.0 respondidas explícitamente).
+## Adéndum (2026-08-22, tarde): la revisión se hace EN PANTALLA
+
+Cambio de medio decidido por Pablo el mismo día: la hoja de revisión (§3.2) es una página interactiva que se revisa en pantalla, no en papel. La sesión sigue siendo el lunes 25 y el volcado el martes 26; la selección de la sesión p1 son 6 reglas (`curacion/paquete.py::SELECCION_P1`), no las 15 transcritas — fuera las definiciones no evaluables y lo que la skill no consume.
+
+**Trazabilidad sin firma manuscrita (opción A, elegida por Pablo entre tres):** el acta escaneada se sustituye por el **JSON de revisión** que descarga el botón «Guardar revisión»: lleva las marcas F·L·M, las correcciones tecleadas, la identidad del validador (nombre, colegiatura, rol, fecha), la declaración aceptada, la huella de contenido de cada fila y un `hash_revision` (SHA-256 del contenido canónico, calculado en el navegador). La atestación de identidad es la declaración en pantalla + el reenvío del JSON **desde el correo del propio validador** citando el código de revisión (12 primeros hex del hash); la referencia queda en el ledger. `firma.curador` sigue siendo Pablo — la decisión del 21-08 no se reabre.
+
+**Qué cambia en el flujo (§3.3):** `curacion/volcar_acta.py transcribir` ingiere el/los actas JSON (verifica `hash_revision` con la misma serialización canónica que el JS; un acta editada tras guardarse se rechaza) y el curador traduce cada corrección de texto libre a campo=valor (el ledger conserva el texto del validador, el valor original y el corregido). `firmar` fusiona las revisiones de varios validadores por regla (una exclusión veta; conforme exige serlo en todos; correcciones contradictorias o sin traducir bloquean la fila) y mantiene intactas las reglas de siempre: huella del borrador == huella del acta («el acta manda»), destino inmutable, validación previa, ledger append-only. Las cinco capas de «una regla sin firmar nunca se usa» no cambian.
+
+**Decisión:** Aprobado por Pablo el 2026-08-22 (aprobación del plan en sesión, con las 3 decisiones de §11.0 respondidas explícitamente; adéndum de pantalla y opción A de trazabilidad aprobados el mismo día).

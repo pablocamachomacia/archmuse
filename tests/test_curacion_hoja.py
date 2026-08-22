@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
-"""El flujo papel → ledger → YAML de `curacion/`: hoja, huellas y volcado.
+"""El flujo de revisión EN PANTALLA de `curacion/`: hoja, acta JSON y volcado.
 
 Ejecutar:  pytest tests/test_curacion_hoja.py
 
-PRD: `docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md` §3 y §4
-(T8, T9, T10). Corpus de prueba en tmp_path — nada nuevo en `tests/fixtures/`.
+PRD: `docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md` §3 y §4, con el
+cambio de medio del 22-08 (revisión en pantalla, opción A de trazabilidad):
+el acta es el JSON que descarga «Guardar revisión», su integridad la sella
+`hash_revision` (SHA-256 del contenido canónico) y la regla «el acta manda»
+se conserva: firmar exige que la huella del borrador coincida con la del acta.
+
+Corpus de prueba en tmp_path — nada nuevo en `tests/fixtures/`.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -18,7 +24,9 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 from curacion import paquete as _paquete  # noqa: E402
-from curacion.volcar_acta import firmar_desde_ledger  # noqa: E402
+from curacion.volcar_acta import (  # noqa: E402
+    firmar_desde_ledger, ingerir_acta, serializacion_canonica_acta,
+)
 from normativa.firma import hash_de_contenido_firmado  # noqa: E402
 
 
@@ -55,13 +63,34 @@ def _doc_borrador() -> dict:
             "parametro": {"ejes": ["caso"], "unidad": "m",
                           "repliegue": ["todos", "ninguno"],
                           "valores": [{"valor": 25, "caso": "general"}]},
+            "explicacion_tecnica": "La longitud no excede de 25 m.",
             "vigencia": {"vigencia_desde": "2006-03-29"},
         }],
     }
 
 
-def _montar(tmp_path: Path) -> tuple:
-    """Un paquete de un borrador + su ledger con la decisión conforme."""
+def _acta(filas, validador=None, con_hash=True) -> dict:
+    carga = {
+        "tipo": "revision_corpus",
+        "paquete": "dbsi3_evacuacion_p1",
+        "generada": "2026-08-23",
+        "documento_sha256": None,
+        "huella_paquete": "irrelevante-para-estas-pruebas",
+        "validador": validador or {"nombre": "V. Prueba",
+                                   "colegiatura": "COA 0000",
+                                   "rol": "arquitecto_colegiado",
+                                   "fecha": "2026-08-25"},
+        "declaracion_aceptada": True,
+        "filas": filas,
+    }
+    if con_hash:
+        carga["hash_revision"] = hashlib.sha256(
+            serializacion_canonica_acta(carga).encode("utf-8")).hexdigest()
+    return carga
+
+
+def _montar(tmp_path: Path, fila_extra=None):
+    """Un paquete de un borrador + su acta JSON con la fila conforme."""
     carpeta = tmp_path / "estatal"
     carpeta.mkdir()
     (carpeta / "_paquete_dbsi3_prueba.yaml").write_text(
@@ -69,25 +98,26 @@ def _montar(tmp_path: Path) -> tuple:
         encoding="utf-8")
     filas = _paquete.cargar_paquete("_paquete_dbsi3_", carpeta)
     assert len(filas) == 1
+    fila_acta = {"numero": "R-01", "concept_id": filas[0].concept_id,
+                 "huella_fila": filas[0].huella, "f": True, "l": True,
+                 "m": True, "conforme": True, "correccion": "",
+                 "excluida": False}
+    if fila_extra:
+        fila_acta.update(fila_extra)
+    ruta_acta = tmp_path / "dbsi3_evacuacion_p1.prueba.acta.json"
+    ruta_acta.write_text(json.dumps(_acta([fila_acta]), ensure_ascii=False,
+                                    indent=2), encoding="utf-8")
     ledger = tmp_path / "actas_papel.jsonl"
-    ledger.write_text(json.dumps({
-        "tipo": "decision", "acta": "docs/curacion/actas/prueba.pdf",
-        "paquete": "_paquete_dbsi3_", "regla_id": "R-01",
-        "concept_id": filas[0].concept_id,
-        "fichero": "_paquete_dbsi3_prueba.yaml",
-        "huella_fila": filas[0].huella, "decision": "conforme",
-        "correcciones": [],
-        "validadores": [{"nombre": "V. Prueba", "rol": "arquitecto_colegiado",
-                         "fecha": "2026-08-25",
-                         "acta": "docs/curacion/actas/prueba.pdf"}],
-    }, ensure_ascii=False) + "\n", encoding="utf-8")
-    return carpeta, ledger, filas
+    return carpeta, ledger, filas, ruta_acta
 
 
-# --- El camino feliz: se firma, con hash y validado_por ----------------------
+# --- El camino feliz: acta JSON → ledger → firma con validado_por ------------
 
-def test_volcar_firma_con_hash_y_validadores(tmp_path):
-    carpeta, ledger, filas = _montar(tmp_path)
+def test_flujo_completo_desde_acta_json(tmp_path):
+    carpeta, ledger, filas, ruta_acta = _montar(tmp_path)
+    recuento = ingerir_acta(ruta_acta, "_paquete_dbsi3_", ledger)
+    assert recuento["conforme"] == 1
+
     resultado = firmar_desde_ledger("Pablo Camacho", "_paquete_dbsi3_",
                                     ledger, carpeta, fecha="2026-08-26")
     assert resultado["firmadas"] == ["dbsi3_evacuacion_prueba.yaml"]
@@ -97,37 +127,56 @@ def test_volcar_firma_con_hash_y_validadores(tmp_path):
     assert regla["estado"] == "FIRMADA"
     firma = regla["firma"]
     assert firma["curador"] == "Pablo Camacho"
-    assert firma["validado_por"][0]["rol"] == "arquitecto_colegiado"
-    # La huella firmada coincide con la del borrador impreso: los metadatos de
-    # flujo (estado, firma, tags) no entran en el hash, así que el papel y el
-    # corpus hablan del mismo contenido.
+    assert firma["validado_por"][0]["nombre"] == "V. Prueba"
+    assert firma["validado_por"][0]["acta"].endswith(".acta.json")
+    # La huella firmada coincide con la del borrador que la hoja embebió: los
+    # metadatos de flujo no entran en el hash, así que el acta y el corpus
+    # hablan del mismo contenido.
     assert firma["hash_contenido"] == filas[0].huella
     assert firma["hash_contenido"] == hash_de_contenido_firmado(doc["norma"], regla)
 
 
-# --- T8: si el borrador cambió tras imprimir, el volcado se niega ------------
+# --- Un acta editada tras guardarse se rechaza -------------------------------
 
-def test_volcar_acta_rechaza_borrador_derivado(tmp_path):
-    carpeta, ledger, _ = _montar(tmp_path)
+def test_acta_editada_se_rechaza(tmp_path):
+    import pytest
+
+    _carpeta, ledger, _filas, ruta_acta = _montar(tmp_path)
+    carga = json.loads(ruta_acta.read_text(encoding="utf-8"))
+    carga["filas"][0]["conforme"] = False  # edición posterior al guardado
+    ruta_acta.write_text(json.dumps(carga, ensure_ascii=False), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="hash_revision no coincide"):
+        ingerir_acta(ruta_acta, "_paquete_dbsi3_", ledger)
+
+
+# --- T8: si el borrador cambió tras generar la hoja, firmar se niega ---------
+
+def test_firmar_rechaza_borrador_derivado(tmp_path):
+    carpeta, ledger, _filas, ruta_acta = _montar(tmp_path)
+    ingerir_acta(ruta_acta, "_paquete_dbsi3_", ledger)
+
     ruta = carpeta / "_paquete_dbsi3_prueba.yaml"
     doc = yaml.safe_load(ruta.read_text(encoding="utf-8"))
-    doc["reglas"][0]["parametro"]["valores"][0]["valor"] = 26  # tras imprimir
+    doc["reglas"][0]["parametro"]["valores"][0]["valor"] = 26  # tras la hoja
     ruta.write_text(yaml.safe_dump(doc, allow_unicode=True, sort_keys=False),
                     encoding="utf-8")
 
     resultado = firmar_desde_ledger("Pablo Camacho", "_paquete_dbsi3_",
                                     ledger, carpeta, fecha="2026-08-26")
     assert resultado["firmadas"] == []
-    assert resultado["derivadas"], "el borrador derivado tenía que detectarse"
-    assert "el papel manda" in resultado["derivadas"][0]
-    assert not list(carpeta.glob("dbsi3_evacuacion_*.yaml")), \
-        "no puede haberse escrito nada"
+    assert resultado["derivadas"] and "el acta manda" in resultado["derivadas"][0]
+    assert not list(carpeta.glob("dbsi3_evacuacion_*.yaml"))
 
 
 # --- T9: inmutable y reanudable ----------------------------------------------
 
-def test_volcar_acta_es_inmutable_y_reanudable(tmp_path):
-    carpeta, ledger, _ = _montar(tmp_path)
+def test_volcado_inmutable_y_reanudable(tmp_path):
+    carpeta, ledger, _filas, ruta_acta = _montar(tmp_path)
+    assert ingerir_acta(ruta_acta, "_paquete_dbsi3_", ledger)["conforme"] == 1
+    # Reingerir el mismo acta no duplica decisiones.
+    assert ingerir_acta(ruta_acta, "_paquete_dbsi3_", ledger)["ya_ingeridas"] == 1
+
     primero = firmar_desde_ledger("Pablo Camacho", "_paquete_dbsi3_",
                                   ledger, carpeta, fecha="2026-08-26")
     assert primero["firmadas"] == ["dbsi3_evacuacion_prueba.yaml"]
@@ -137,18 +186,24 @@ def test_volcar_acta_es_inmutable_y_reanudable(tmp_path):
                                   ledger, carpeta, fecha="2026-08-26")
     assert segundo["firmadas"] == []
     assert segundo["conflictos"] and "inmutable" in segundo["conflictos"][0]
-    assert (carpeta / "dbsi3_evacuacion_prueba.yaml").read_bytes() == contenido, \
-        "el fichero firmado no puede cambiar ni un byte"
+    assert (carpeta / "dbsi3_evacuacion_prueba.yaml").read_bytes() == contenido
 
 
-# --- Corrección al margen: se firma el valor corregido, ledger con ambos -----
+# --- Corrección en pantalla: texto libre → traducción → valor corregido ------
 
-def test_correccion_al_margen_firma_el_valor_corregido(tmp_path):
-    carpeta, ledger, filas = _montar(tmp_path)
-    entrada = json.loads(ledger.read_text(encoding="utf-8"))
-    entrada["decision"] = "corregida"
-    entrada["correcciones"] = [{"campo": "parametro.valores[0].valor", "despues": 30}]
-    ledger.write_text(json.dumps(entrada, ensure_ascii=False) + "\n", encoding="utf-8")
+def test_correccion_en_pantalla_se_traduce_y_firma(tmp_path):
+    carpeta, ledger, filas, ruta_acta = _montar(
+        tmp_path, {"conforme": False, "f": True, "l": True, "m": False,
+                   "correccion": "El valor general debe ser 30 m, no 25 m."})
+    traducciones = []
+
+    def traducir(concept_id, texto):
+        traducciones.append((concept_id, texto))
+        return [{"campo": "parametro.valores[0].valor", "despues": 30}]
+
+    assert ingerir_acta(ruta_acta, "_paquete_dbsi3_", ledger,
+                        traducir=traducir)["corregida"] == 1
+    assert traducciones and "30 m" in traducciones[0][1]
 
     resultado = firmar_desde_ledger("Pablo Camacho", "_paquete_dbsi3_",
                                     ledger, carpeta, fecha="2026-08-26")
@@ -157,79 +212,106 @@ def test_correccion_al_margen_firma_el_valor_corregido(tmp_path):
                          .read_text(encoding="utf-8"))
     regla = doc["reglas"][0]
     assert regla["parametro"]["valores"][0]["valor"] == 30
-    # El hash firmado es el del contenido CORREGIDO (ya no el del borrador)...
     assert regla["firma"]["hash_contenido"] == hash_de_contenido_firmado(
         doc["norma"], regla)
     assert regla["firma"]["hash_contenido"] != filas[0].huella
-    # ...y el ledger conserva ambos valores (decisión de Pablo, 2026-08-22).
+    # El ledger conserva el texto del validador Y ambos valores.
     lineas = [json.loads(l) for l in ledger.read_text(encoding="utf-8").splitlines()]
-    aplicadas = [l for l in lineas if l.get("tipo") == "correccion_aplicada"]
-    assert aplicadas and aplicadas[0]["antes"] == 25 and aplicadas[0]["despues"] == 30
+    decision = next(l for l in lineas if l.get("tipo") == "decision")
+    assert "30 m" in decision["correccion_texto"]
+    aplicada = next(l for l in lineas if l.get("tipo") == "correccion_aplicada")
+    assert aplicada["antes"] == 25 and aplicada["despues"] == 30
 
 
-# --- T10: la hoja contiene todas las filas, con huella y F/L/M ---------------
+def test_correccion_sin_traducir_bloquea_la_firma(tmp_path):
+    carpeta, ledger, _filas, ruta_acta = _montar(
+        tmp_path, {"conforme": False, "correccion": "Revisar este valor."})
+    ingerir_acta(ruta_acta, "_paquete_dbsi3_", ledger)  # sin traducir
 
-def test_hoja_contiene_todas_las_filas_y_huellas(tmp_path, monkeypatch):
-    carpeta, _, filas = _montar(tmp_path)
+    resultado = firmar_desde_ledger("Pablo Camacho", "_paquete_dbsi3_",
+                                    ledger, carpeta, fecha="2026-08-26")
+    assert resultado["firmadas"] == []
+    assert resultado["bloqueadas"] and "sin traducir" in resultado["bloqueadas"][0]
+
+
+# --- Fusión de dos validadores: una exclusión veta ---------------------------
+
+def test_exclusion_de_un_validador_veta_la_firma(tmp_path):
+    carpeta, ledger, filas, ruta_acta = _montar(tmp_path)
+    ingerir_acta(ruta_acta, "_paquete_dbsi3_", ledger)
+
+    segunda = _acta([{"numero": "R-01", "concept_id": filas[0].concept_id,
+                      "huella_fila": filas[0].huella, "f": False, "l": False,
+                      "m": False, "conforme": False, "correccion": "",
+                      "excluida": True}],
+                    validador={"nombre": "Otra Validadora",
+                               "rol": "experto_normativo",
+                               "fecha": "2026-08-25"})
+    ruta2 = tmp_path / "dbsi3_evacuacion_p1.otra.acta.json"
+    ruta2.write_text(json.dumps(segunda, ensure_ascii=False), encoding="utf-8")
+    ingerir_acta(ruta2, "_paquete_dbsi3_", ledger)
+
+    resultado = firmar_desde_ledger("Pablo Camacho", "_paquete_dbsi3_",
+                                    ledger, carpeta, fecha="2026-08-26")
+    assert resultado["firmadas"] == []
+    assert resultado["bloqueadas"] and "excluida" in resultado["bloqueadas"][0]
+
+
+# --- T10: la hoja en pantalla es interactiva y no enseña la maquinaria -------
+
+def test_hoja_interactiva_completa(tmp_path, monkeypatch):
+    carpeta, _ledger, filas, _acta_ = _montar(tmp_path)
     from curacion import hoja_de_revision
 
-    monkeypatch.setattr(_paquete, "CARPETA_CORPUS", carpeta)
     monkeypatch.setattr(hoja_de_revision, "cargar_paquete",
                         lambda prefijo=_paquete.PREFIJO_POR_DEFECTO:
                         _paquete.cargar_paquete(prefijo, carpeta))
     html = hoja_de_revision.generar_hoja("_paquete_dbsi3_")
 
-    for fila in filas:
-        assert fila.numero in html
-        # Las huellas están en la hoja (anclan el papel al volcado) pero fuera
-        # de la vista del validador: en la línea de anclaje técnico.
-        assert fila.huella_corta in html
-        assert html.index("Anclaje técnico") < html.index(fila.huella_corta)
-    assert "DB-SI, SI 3, §3, tabla 3.1" in html
-    assert html.count('class="checkbox"') == 3 * len(filas)  # F · L · M por fila
-    assert "el texto oficial, regla a regla" in html
-    assert "La longitud no excede de 25 m." in html
-    assert _paquete.huella_del_paquete(filas) in html
-    assert "BORRADOR" in html
+    assert html.count("<section") == len(filas)
+    # 4 casillas por regla (F, L, M, excluir) + 1 de la declaración.
+    assert html.count('type="checkbox"') == 4 * len(filas) + 1
+    assert html.count("<textarea") == len(filas)
+    assert 'id="guardar"' in html and "Guardar revisión" in html
+    # La huella viaja en el bloque de datos, no en la vista.
+    assert filas[0].huella in html
+    import re
+    visible = re.sub(r"<script.*?</script>", "", html, flags=re.S)
+    assert not re.search(r"[0-9a-f]{10}", visible), "hex en la vista"
+    assert "el acta de esta sesión" in html
 
-
-# --- La hoja real de la sesión p1 es presentable a un arquitecto -------------
 
 def test_hoja_p1_es_presentable():
-    """Criterios de Pablo (2026-08-22): 6 reglas, español de arquitecto, casos
-    tabulados, sin claves del YAML ni hex en la vista del validador, F·L·M
-    explicadas en la cabecera. Corre contra el paquete REAL."""
+    """Los criterios de Pablo del 22-08 siguen vigentes con el medio nuevo:
+    6 reglas, español de arquitecto, casos tabulados, sin claves del YAML ni
+    hex a la vista, F·L·M explicadas donde se marcan. Contra el paquete REAL."""
+    import re
+
     from curacion import hoja_de_revision
     from curacion.paquete import SELECCION_P1
 
     html = hoja_de_revision.generar_hoja(seleccion=SELECCION_P1)
 
-    # Exactamente 6 filas, numeradas de nuevo, y la de la skill primero.
-    assert html.count('class="checkbox"') == 3 * 6
+    assert html.count("<section") == 6
     assert "R-06" in html and "R-07" not in html
     assert html.index("Longitud máxima de los recorridos") < html.index("R-02")
 
-    # Prohibido volcar claves del YAML o nombres de fichero.
+    visible = re.sub(r"<script.*?</script>", "", html, flags=re.S)
     for prohibida in ("condicion:", "por_ciento", "numero_salidas",
                       "magnitud:", "_paquete_", ".yaml", "m2_por_persona"):
-        assert prohibida not in html, prohibida
+        assert prohibida not in visible, prohibida
+    assert not re.search(r"[0-9a-f]{10}", visible), "hex en la vista"
 
-    # Toda cifra visible sale del YAML: si están, es porque el parámetro casó.
     for cifra in ("25 m", "35 m", "50 m", "75 m", "100 personas",
                   "500 personas", "0,80 m", "1,00 m", "0,60 m", "1,23 m",
                   "28 m", "10 m", "25%"):
         assert cifra in html, cifra
 
-    # F · L · M explicadas EN la cabecera de la columna.
-    cabecera = html[html.index("<thead"):html.index("</thead>")]
-    for explicacion in ("fiel al literal", "referencia es exacta", "la entiende"):
-        assert explicacion in cabecera, explicacion
-
-    # Las huellas hexadecimales viven en el anclaje y el anexo, no en la tabla.
-    tabla = html[html.index("<tbody"):html.index("</tbody>")]
-    import re
-    assert not re.search(r"[0-9a-f]{10}", tabla), "hex en la vista del validador"
-
-    # El anexo cita fragmentos, no apartados enteros: el literal completo de
-    # recorridos incluye el encabezado del apartado 3, que NO debe aparecer.
+    # F · L · M explicadas junto a las casillas y en la leyenda.
+    for explicacion in ("fiel al literal", "referencia exacta",
+                        "se entiende y sirve"):
+        assert explicacion in visible, explicacion
+    # El texto oficial va por regla, como fragmento: los encabezados de
+    # apartado del CTE no aparecen.
+    assert "Ver el texto oficial" in html
     assert "Número de salidas y longitud de los recorridos" not in html

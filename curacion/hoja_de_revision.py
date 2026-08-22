@@ -1,41 +1,43 @@
 # -*- coding: utf-8 -*-
-"""La hoja de revisión de un paquete de curación: el artefacto que se firma.
+"""La hoja de revisión de un paquete de curación — EN PANTALLA.
 
     python -m curacion.hoja_de_revision [prefijo] [ruta_salida.html]
 
-PRD: `docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md` §3.2, rehecha el
-22-08 con los criterios de presentación de Pablo: la hoja la lee un arquitecto
-que no conoce ArchMuse y la revisa en veinte minutos. Eso manda sobre todo lo
-demás:
+PRD: `docs/prd/2026-08-22-corpus-firmado-dbsi3-evacuacion.md` §3.2; rehecha el
+22-08 dos veces por encargo directo de Pablo: primero la redacción (español de
+arquitecto, cifras siempre del YAML) y después el medio — la revisión se hace
+en pantalla, no en papel. Decisión de trazabilidad (opción A, aprobada por
+Pablo): el acta escaneada se sustituye por el **JSON de revisión** que
+descarga el botón «Guardar revisión», y la atestación del validador es su
+declaración en pantalla + el reenvío del JSON desde su propio correo citando
+el código de revisión.
 
-- **Solo la selección de la sesión** (`SELECCION_P1`): lo evaluable que la
-  skill consume. Ni definiciones ni el resto del paquete, que sigue en
-  borrador.
-- **La exigencia se escribe como la escribiría un arquitecto.** La redacción
-  de cada regla está curada aquí (`CONTENIDO`), pero **cada cifra sale del
-  YAML del borrador, nunca de la prosa**: los casos se resuelven contra
-  `parametro.valores` y un caso que no encuentre su fila hace fallar la
-  generación en vez de imprimir otra cosa. Prohibido volcar claves del YAML
-  («condicion:», «por_ciento», nombres de fichero) — hay un test que lo
-  comprueba sobre la hoja real.
-- **Casos tabulados**, no frases con puntos medios.
-- **Sin huellas hexadecimales en la vista del validador**: el anclaje técnico
-  (huella por fila, huella del paquete, hash del PDF) baja a una línea de
-  letra pequeña al pie de la MISMA página firmada — la firma manuscrita tiene
-  que cubrir el ancla, o el ancla no vale — y al anexo técnico.
-- **El anexo trae solo el fragmento literal de cada regla**, no apartados
-  enteros del CTE. Cada fragmento se comprueba mecánicamente como subcadena
-  del literal transcrito (normalizando espacios): un fragmento que no esté en
-  el literal no se imprime, revienta.
+Cómo se sostiene la trazabilidad sin papel:
 
-El volcado (`volcar_acta.py`) exige que la huella de cada fila coincida con la
-del ledger: si el borrador cambia después de imprimir, se niega — el papel
-manda.
+- **Qué se validó**: la huella de contenido de cada fila viaja embebida en los
+  datos de la página (invisible en la vista) y el JSON la copia;
+  `volcar_acta.py firmar` recomputa la huella del borrador y se niega si no
+  coincide — «el acta manda», igual que mandaba el papel.
+- **Integridad del acta**: la página calcula al guardar un SHA-256 del
+  contenido canónico del JSON (WebCrypto) y lo incrusta como `hash_revision`;
+  `volcar_acta.py transcribir` lo recomputa y rechaza un JSON editado. La
+  serialización canónica es la MISMA que `json.dumps(sort_keys=True,
+  separators=(",", ":"), ensure_ascii=False)` — el JS de esta página la
+  replica y hay un contrato: claves ASCII, texto unicode sin escapar.
+- **Atestación**: el botón no se habilita sin la declaración marcada y la
+  identidad rellena; tras guardar, la página muestra el código de revisión
+  (12 hex) que el validador cita en su correo.
+
+La redacción NO cambió en este rediseño: `CONTENIDO` es la misma del papel, y
+cada cifra sigue saliendo de `parametro.valores` del YAML — un caso que no
+casa revienta la generación. Prohibido volcar claves del YAML; hay un test.
 """
 from __future__ import annotations
 
 import html
+import json
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -55,10 +57,10 @@ _CID = "es.rd_314_2006.seguridad_incendio."
 _UNIDADES = {"m": "m", "personas": "personas", "por_ciento": "%",
              "m2_por_persona": "m²/persona"}
 
-#: Redacción curada por regla: la frase de entrada y la etiqueta humana de
-#: cada caso (el VALOR de cada caso se busca en `parametro.valores` del
-#: borrador, nunca se escribe aquí). `fragmentos` son las subcadenas exactas
-#: del literal que el anexo muestra — se verifican contra el literal.
+#: Redacción curada por regla (idéntica a la versión en papel): la frase de
+#: entrada y la etiqueta humana de cada caso. El VALOR de cada caso se busca
+#: en `parametro.valores` del borrador, nunca se escribe aquí. `fragmentos`
+#: son las subcadenas exactas del literal que muestra «Ver el texto oficial».
 CONTENIDO: Dict[str, Dict[str, Any]] = {
     _CID + "longitud_recorrido_evacuacion": {
         "intro": ("Longitud máxima de los recorridos de evacuación hasta una "
@@ -184,47 +186,170 @@ CONTENIDO: Dict[str, Dict[str, Any]] = {
 }
 
 _CSS = """
-@page { size: A4; margin: 13mm 12mm 14mm 16mm; }
 * { box-sizing: border-box; }
-body { font-family: Helvetica, Arial, sans-serif; font-size: 8.4pt; color: #111;
-       margin: 0; }
-h1 { font-size: 13pt; margin: 0 0 2mm 0; }
-h2 { font-size: 9.5pt; margin: 5mm 0 1.5mm 0; }
-.cajetin { width: 100%; border: 1.2px solid #111; border-collapse: collapse;
-           margin-bottom: 2.5mm; }
-.cajetin td { border: 0.4px solid #999; padding: 1.1mm 2mm; vertical-align: middle; }
-.cajetin .etiqueta { font-size: 6.2pt; font-weight: bold; color: #555;
-                     width: 30mm; text-transform: uppercase; }
-.borrador { color: #8A2A2A; border: 1.2px solid #8A2A2A; font-weight: bold;
-            padding: 1mm 3mm; float: right; font-size: 8.5pt; }
-table.decisiones { width: 100%; border-collapse: collapse; }
-table.decisiones th { background: #E9E9E9; border: 0.5px solid #888;
-                      padding: 1.1mm 1.5mm; font-size: 6.6pt; text-align: left;
-                      vertical-align: top; }
-table.decisiones > tbody > tr > td { border: 0.5px solid #888;
-                      padding: 1.2mm 1.5mm; vertical-align: top; }
-.num { white-space: nowrap; font-weight: bold; width: 8mm; }
-.loc { width: 23mm; font-size: 7.2pt; }
-.intro { font-size: 8pt; margin: 0 0 1mm 0; }
-table.casos { border-collapse: collapse; margin: 0.5mm 0 0 0; width: 100%; }
-table.casos td { border: 0.3px solid #bbb; padding: 0.7mm 1.5mm;
-                 font-size: 7.6pt; }
-table.casos td.v { text-align: right; white-space: nowrap; width: 17mm;
-                   font-weight: bold; }
-.flm { white-space: nowrap; font-size: 9pt; width: 21mm; text-align: center; }
-.margen { width: 27mm; }
-.convenciones { font-size: 6.9pt; color: #333; margin-top: 2.5mm; }
-.firmas { width: 100%; margin-top: 3.5mm; border-collapse: collapse; }
-.firmas td { border: 0.8px solid #111; height: 21mm; width: 50%;
-             vertical-align: top; padding: 1.5mm 2mm; font-size: 7pt; }
-.anclaje { font-size: 5.6pt; color: #777; margin-top: 2.5mm;
-           font-family: "Courier New", monospace; }
-.salto { page-break-before: always; }
-blockquote.literal { font-size: 8pt; border-left: 2px solid #999;
-                     margin: 1mm 0 3mm 0; padding: 1mm 3mm; background: #FAFAFA; }
-.pie { font-size: 6.4pt; color: #555; margin-top: 3mm; }
-.checkbox { display: inline-block; width: 3.4mm; height: 3.4mm;
-            border: 0.7px solid #111; margin: 0 0.6mm -0.7mm 1.2mm; }
+body { font-family: Georgia, "Times New Roman", serif; background: #fff;
+       color: #1a1a1a; margin: 0; font-size: 17px; line-height: 1.55; }
+.envoltura { max-width: 860px; margin: 0 auto; padding: 40px 28px 80px; }
+header h1 { font-family: Helvetica, Arial, sans-serif; font-size: 26px;
+            margin: 0 0 6px; }
+.chip { display: inline-block; color: #8A2A2A; border: 1.5px solid #8A2A2A;
+        font-family: Helvetica, Arial, sans-serif; font-weight: bold;
+        font-size: 13px; padding: 3px 10px; border-radius: 3px;
+        margin-bottom: 14px; }
+.resumen { color: #444; font-size: 15.5px; margin: 0 0 6px; }
+.leyenda { background: #F6F4EF; border-radius: 8px; padding: 14px 18px;
+           font-size: 15px; margin: 22px 0 30px; }
+.leyenda b { font-family: Helvetica, Arial, sans-serif; }
+section.regla { border-top: 1px solid #ddd; padding: 26px 0 30px; }
+.regla-cabecera { display: flex; justify-content: space-between;
+                  align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.regla-cabecera .numero { font-family: Helvetica, Arial, sans-serif;
+                          font-weight: bold; font-size: 15px; color: #666; }
+.regla-cabecera .donde { font-family: Helvetica, Arial, sans-serif;
+                         font-size: 14px; color: #666; }
+p.intro { margin: 10px 0 12px; }
+.caso { display: flex; justify-content: space-between; gap: 16px;
+        padding: 6px 2px; border-bottom: 1px dotted #ddd; font-size: 16px; }
+.caso:last-of-type { border-bottom: none; }
+.caso .v { font-family: Helvetica, Arial, sans-serif; font-weight: bold;
+           white-space: nowrap; }
+details { margin: 12px 0 0; font-size: 15px; }
+details summary { cursor: pointer; color: #555;
+                  font-family: Helvetica, Arial, sans-serif; font-size: 14px; }
+blockquote.literal { border-left: 3px solid #bbb; background: #FAFAF7;
+                     margin: 8px 0; padding: 8px 14px; font-size: 15.5px; }
+.controles { margin-top: 16px; font-family: Helvetica, Arial, sans-serif;
+             font-size: 15px; display: flex; flex-wrap: wrap; gap: 14px 26px;
+             align-items: center; }
+.controles label { cursor: pointer; }
+.controles input[type=checkbox] { width: 17px; height: 17px;
+                                  vertical-align: -3px; margin-right: 5px; }
+.excluir { color: #8A2A2A; }
+textarea.correccion { width: 100%; margin-top: 10px; min-height: 52px;
+                      font: inherit; font-size: 15.5px; padding: 8px 10px;
+                      border: 1px solid #ccc; border-radius: 6px; }
+#panel { border-top: 2px solid #1a1a1a; margin-top: 10px; padding-top: 26px;
+         font-family: Helvetica, Arial, sans-serif; }
+#panel h2 { font-size: 19px; margin: 0 0 12px; }
+.campos { display: flex; flex-wrap: wrap; gap: 12px 18px; margin: 0 0 14px; }
+.campos label { display: flex; flex-direction: column; font-size: 13.5px;
+                color: #555; gap: 4px; }
+.campos input, .campos select { font-size: 15.5px; padding: 7px 9px;
+                                border: 1px solid #ccc; border-radius: 6px;
+                                min-width: 210px; }
+.declaracion { font-size: 15px; margin: 6px 0 18px; }
+#guardar { font-size: 16.5px; font-weight: bold; padding: 12px 26px;
+           border-radius: 8px; border: none; background: #1B5E20; color: #fff;
+           cursor: pointer; }
+#guardar:disabled { background: #bbb; cursor: not-allowed; }
+#resultado { display: none; background: #EDF6EE; border: 1px solid #1B5E20;
+             border-radius: 8px; padding: 14px 18px; margin-top: 18px;
+             font-size: 15.5px; }
+#resultado code { font-size: 17px; font-weight: bold; }
+footer { color: #888; font-size: 13px; margin-top: 40px;
+         font-family: Helvetica, Arial, sans-serif; }
+"""
+
+_JS = """
+'use strict';
+const DATOS = JSON.parse(document.getElementById('datos-paquete').textContent);
+
+function serializacionCanonica(v) {
+  // La MISMA forma que json.dumps(sort_keys=True, separators=(',',':'),
+  // ensure_ascii=False) en volcar_acta.py: claves ordenadas, sin espacios,
+  // unicode sin escapar. Si las dos implementaciones divergen, el volcado
+  // rechaza el acta — mejor un rechazo ruidoso que un acta inverificable.
+  if (v === null || typeof v === 'number' || typeof v === 'boolean')
+    return JSON.stringify(v);
+  if (typeof v === 'string') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(serializacionCanonica).join(',') + ']';
+  const claves = Object.keys(v).sort();
+  return '{' + claves.map(k =>
+    JSON.stringify(k) + ':' + serializacionCanonica(v[k])).join(',') + '}';
+}
+
+async function sha256Hex(texto) {
+  if (!(window.crypto && crypto.subtle)) return null;
+  const datos = new TextEncoder().encode(texto);
+  const hash = await crypto.subtle.digest('SHA-256', datos);
+  return Array.from(new Uint8Array(hash))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+const HUELLAS = Object.fromEntries(
+  DATOS.filas.map(f => [f.concept_id, f.huella_fila]));
+
+function estadoDeFila(sec) {
+  const marca = c => sec.querySelector('input[data-criterio=' + c + ']').checked;
+  return {
+    numero: sec.dataset.numero,
+    concept_id: sec.dataset.concept,
+    huella_fila: HUELLAS[sec.dataset.concept],
+    f: marca('f'), l: marca('l'), m: marca('m'),
+    conforme: marca('f') && marca('l') && marca('m'),
+    correccion: sec.querySelector('textarea').value.trim(),
+    excluida: sec.querySelector('input[data-criterio=x]').checked,
+  };
+}
+
+function validarPanel() {
+  const nombre = document.getElementById('v-nombre').value.trim();
+  const coleg = document.getElementById('v-colegiatura').value.trim();
+  const decl = document.getElementById('v-declaracion').checked;
+  document.getElementById('guardar').disabled = !(nombre && coleg && decl);
+}
+
+document.addEventListener('input', validarPanel);
+document.addEventListener('change', validarPanel);
+
+document.getElementById('guardar').addEventListener('click', async () => {
+  const filas = Array.from(document.querySelectorAll('section.regla'))
+    .map(estadoDeFila);
+  const carga = {
+    tipo: 'revision_corpus',
+    paquete: DATOS.paquete,
+    generada: DATOS.generada,
+    documento_sha256: DATOS.documento_sha256,
+    huella_paquete: DATOS.huella_paquete,
+    validador: {
+      nombre: document.getElementById('v-nombre').value.trim(),
+      colegiatura: document.getElementById('v-colegiatura').value.trim(),
+      rol: document.getElementById('v-rol').value,
+      fecha: document.getElementById('v-fecha').value,
+    },
+    declaracion_aceptada: true,
+    filas: filas,
+  };
+  const hash = await sha256Hex(serializacionCanonica(carga));
+  carga.hash_revision = hash;
+
+  const nombreFichero = DATOS.paquete + '.' +
+    carga.validador.nombre.toLowerCase().normalize('NFD')
+      .replace(/[^a-z ]/g, '').trim().split(/ +/).slice(-1)[0] + '.acta.json';
+  const blob = new Blob([JSON.stringify(carga, null, 2)],
+                        {type: 'application/json'});
+  const enlace = document.createElement('a');
+  enlace.href = URL.createObjectURL(blob);
+  enlace.download = nombreFichero;
+  enlace.click();
+
+  const res = document.getElementById('resultado');
+  res.style.display = 'block';
+  const conformes = filas.filter(f => f.conforme && !f.excluida).length;
+  res.innerHTML =
+    'Revisión guardada como <b>' + nombreFichero + '</b> — ' + conformes +
+    ' de ' + filas.length + ' reglas conformes.<br/>' +
+    (hash
+      ? 'Código de revisión: <code>' + hash.slice(0, 12) + '</code>. ' +
+        'Envíe el fichero descargado desde su propio correo citando este ' +
+        'código: es lo que ata su identidad al contenido exacto.'
+      : 'Este navegador no permite calcular el código de revisión; envíe ' +
+        'igualmente el fichero desde su correo y el código se calculará al ' +
+        'incorporarlo.');
+});
+
+document.getElementById('v-fecha').value = DATOS.hoy;
+validarPanel();
 """
 
 
@@ -257,7 +382,7 @@ def _valor_de_caso(fila: Fila, filtro: Dict[str, str]) -> str:
                       % (fila.concept_id, filtro))
 
 
-def _celda_exigencia(fila: Fila) -> str:
+def _cuerpo_exigencia(fila: Fila) -> str:
     contenido = CONTENIDO.get(fila.concept_id)
     if contenido is None:
         # Regla sin redacción curada (paquetes futuros): se usa la explicación
@@ -272,18 +397,17 @@ def _celda_exigencia(fila: Fila) -> str:
     else:
         intro = contenido["intro"]
     piezas = ['<p class="intro">%s</p>' % _c(intro)]
-    if contenido["casos"]:
-        piezas.append('<table class="casos">')
-        for etiqueta, filtro in contenido["casos"]:
-            piezas.append('<tr><td>%s</td><td class="v">%s</td></tr>'
-                          % (_c(etiqueta), _c(_valor_de_caso(fila, filtro))))
-        piezas.append("</table>")
+    for etiqueta, filtro in contenido["casos"]:
+        piezas.append('<div class="caso"><span>%s</span><span class="v">%s'
+                      "</span></div>"
+                      % (_c(etiqueta), _c(_valor_de_caso(fila, filtro))))
     return "".join(piezas)
 
 
 def _fragmentos(fila: Fila) -> List[str]:
-    """Los fragmentos del literal que el anexo muestra, verificados como
-    subcadena del literal transcrito (espacios normalizados)."""
+    """Los fragmentos del literal que muestra «Ver el texto oficial»,
+    verificados como subcadena del literal transcrito (espacios
+    normalizados)."""
     contenido = CONTENIDO.get(fila.concept_id)
     literal = _normalizar(fila.norma.get("literal") or "")
     if contenido is None:
@@ -291,8 +415,8 @@ def _fragmentos(fila: Fila) -> List[str]:
     for fragmento in contenido["fragmentos"]:
         if _normalizar(fragmento) not in literal:
             raise AssertionError(
-                "%s: el fragmento del anexo no está en el literal transcrito — "
-                "no se imprime un anexo que no sea cita: %r"
+                "%s: el fragmento no está en el literal transcrito — no se "
+                "muestra una cita que no lo sea: %r"
                 % (fila.concept_id, fragmento[:80]))
     return list(contenido["fragmentos"])
 
@@ -302,87 +426,100 @@ def generar_hoja(prefijo: str = PREFIJO_POR_DEFECTO,
                  fecha_sesion: str = "2026-08-25") -> str:
     filas = seleccionar(cargar_paquete(prefijo), seleccion)
     if not filas:
-        raise SystemExit("No hay borradores «%s*» que imprimir." % prefijo)
+        raise SystemExit("No hay borradores «%s*» que revisar." % prefijo)
     huella_paquete = huella_del_paquete(filas)
     fuente = filas[0].norma.get("fuente") or {}
 
+    # Los datos que la vista no enseña pero el acta necesita: las huellas
+    # viajan aquí, no en el texto visible.
+    datos = {
+        "paquete": "dbsi3_evacuacion_p1",
+        "generada": date.today().isoformat(),
+        "hoy": date.today().isoformat(),
+        "documento_sha256": fuente.get("documento_sha256"),
+        "huella_paquete": huella_paquete,
+        "filas": [{"numero": f.numero, "concept_id": f.concept_id,
+                   "huella_fila": f.huella} for f in filas],
+    }
+
     cuerpo = []
-    cuerpo.append('<div class="borrador">BORRADOR — PENDIENTE DE VALIDACIÓN</div>')
-    cuerpo.append("<h1>Hoja de revisión del corpus normativo</h1>")
-    cuerpo.append('<table class="cajetin">')
-    for etiqueta, valor in (
-        ("Paquete", "DB-SI 3 · Evacuación de ocupantes · uso Residencial "
-                    "Vivienda — sesión p1 (%d reglas; el resto de lo "
-                    "transcrito queda en borrador)" % len(filas)),
-        ("Sesión de validación", fecha_sesion),
-        ("Fuente", "%s — Documento Básico SI (%s), texto oficial de "
-                   "codigotecnico.org" % (fuente.get("identificador_oficial", "—"),
-                                          fuente.get("boletin", "—"))),
-        ("Qué se valida", "Que cada exigencia de la tabla dice lo mismo que "
-                          "el fragmento oficial del anexo adjunto — ni un "
-                          "número ni una condición de más o de menos."),
-    ):
-        cuerpo.append('<tr><td class="etiqueta">%s</td><td>%s</td></tr>'
-                      % (_c(etiqueta), _c(str(valor))))
-    cuerpo.append("</table>")
-
+    cuerpo.append('<div class="envoltura">')
+    cuerpo.append("<header>")
+    cuerpo.append('<div class="chip">BORRADOR — PENDIENTE DE VALIDACIÓN</div>')
+    cuerpo.append("<h1>Revisión del corpus normativo — DB-SI 3, evacuación</h1>")
+    cuerpo.append('<p class="resumen">Uso Residencial Vivienda · %d reglas · '
+                  "sesión del %s · fuente: %s — Documento Básico SI (%s), "
+                  "texto oficial de codigotecnico.org.</p>"
+                  % (len(filas), fecha_sesion,
+                     fuente.get("identificador_oficial", "—"),
+                     fuente.get("boletin", "—")))
+    cuerpo.append("</header>")
     cuerpo.append(
-        '<table class="decisiones"><thead><tr>'
-        "<th>Nº</th><th>Dónde está<br/>en el DB-SI</th>"
-        "<th>Exigencia transcrita (revisar contra el fragmento del anexo)</th>"
-        "<th>Conforme — marcar las tres:<br/>"
-        "<b>F</b> fiel al literal oficial<br/>"
-        "<b>L</b> la referencia es exacta<br/>"
-        "<b>M</b> un arquitecto la entiende</th>"
-        "<th>Corrección al margen<br/>(con su inicial)</th></tr></thead><tbody>")
+        '<div class="leyenda">Para cada regla, compruebe que la exigencia dice '
+        "lo mismo que el texto oficial («Ver el texto oficial», bajo cada una) "
+        "y marque las tres casillas: <b>F</b> es fiel al literal oficial · "
+        "<b>L</b> la referencia (sección, apartado, tabla) es exacta · "
+        "<b>M</b> un arquitecto la entiende y le sirve. Si algo no está bien, "
+        "escriba la corrección en el campo de texto de la regla. Si una regla "
+        "no debe entrar, márquela como excluida. Lo dudoso, a la corrección: "
+        "mejor una nota que una casilla a medias.</div>")
+
     for fila in filas:
+        contenido_html = _cuerpo_exigencia(fila)
+        citas = "".join('<blockquote class="literal">%s</blockquote>'
+                        % _c(_normalizar(f)) for f in _fragmentos(fila))
         cuerpo.append(
-            '<tr><td class="num">%s</td><td class="loc">%s</td>'
-            "<td>%s</td>"
-            '<td class="flm">F<span class="checkbox"></span> '
-            'L<span class="checkbox"></span> M<span class="checkbox"></span></td>'
-            '<td class="margen"></td></tr>'
-            % (fila.numero, _c(localizacion(fila)), _celda_exigencia(fila)))
-    cuerpo.append("</tbody></table>")
+            '<section class="regla" data-numero="%s" data-concept="%s">'
+            '<div class="regla-cabecera"><span class="numero">%s</span>'
+            '<span class="donde">%s</span></div>'
+            "%s"
+            "<details><summary>Ver el texto oficial</summary>%s</details>"
+            '<div class="controles">'
+            '<label><input type="checkbox" data-criterio="f"/>F · fiel al literal</label>'
+            '<label><input type="checkbox" data-criterio="l"/>L · referencia exacta</label>'
+            '<label><input type="checkbox" data-criterio="m"/>M · se entiende y sirve</label>'
+            '<label class="excluir"><input type="checkbox" data-criterio="x"/>'
+            "Excluir esta regla</label></div>"
+            '<textarea class="correccion" placeholder="Corrección o nota '
+            '(si la hay): escriba aquí el valor o el texto correcto."></textarea>'
+            "</section>"
+            % (fila.numero, _c(fila.concept_id), fila.numero,
+               _c(localizacion(fila)), contenido_html, citas))
 
+    cuerpo.append('<div id="panel">')
+    cuerpo.append("<h2>Cierre de la revisión</h2>")
     cuerpo.append(
-        '<p class="convenciones"><b>Convención.</b> Conforme = las tres casillas. '
-        "Corrección = el valor o el texto correcto escrito al margen con la inicial "
-        "del validador: la regla se registrará con la corrección y quedará constancia "
-        "de ambos valores. Fila tachada = excluida, vuelve a borrador. Lo dudoso no "
-        "se marca a medias: va a la lista de dudas de la sesión. "
-        "<b>Declaración:</b> «He cotejado cada fila marcada conforme contra el "
-        "fragmento del texto oficial que la acompaña en el anexo.»</p>")
-    cuerpo.append('<table class="firmas"><tr>'
-                  "<td>Nombre y colegiatura / cargo:<br/><br/>Fecha:<br/><br/>Firma:</td>"
-                  "<td>Nombre y colegiatura / cargo:<br/><br/>Fecha:<br/><br/>Firma:</td>"
-                  "</tr></table>")
+        '<div class="campos">'
+        '<label>Nombre y apellidos<input id="v-nombre" type="text"/></label>'
+        '<label>Colegiatura / cargo<input id="v-colegiatura" type="text"/></label>'
+        '<label>Rol<select id="v-rol">'
+        '<option value="arquitecto_colegiado">Arquitecto colegiado</option>'
+        '<option value="experto_normativo">Experto normativo</option>'
+        "</select></label>"
+        '<label>Fecha<input id="v-fecha" type="date"/></label></div>')
     cuerpo.append(
-        '<p class="anclaje">Anclaje técnico del volcado (no requiere revisión): '
-        "PDF fuente %s… · %s · paquete %s…</p>"
-        % ((fuente.get("documento_sha256") or "")[:12],
-           " · ".join("%s %s" % (f.numero, f.huella_corta) for f in filas),
-           huella_paquete[:12]))
+        '<p class="declaracion"><label><input type="checkbox" '
+        'id="v-declaracion"/> Declaro que he cotejado cada regla marcada '
+        "conforme contra el fragmento del texto oficial que la acompaña."
+        "</label></p>")
+    cuerpo.append('<button id="guardar" disabled>Guardar revisión</button>')
+    cuerpo.append('<div id="resultado"></div>')
+    cuerpo.append(
+        '<footer>Al guardar se descarga un fichero JSON con sus marcas, sus '
+        "correcciones y su identidad; envíelo desde su correo citando el "
+        "código de revisión que aparecerá arriba. Ese fichero es el acta de "
+        "esta sesión: ArchMuse no incorpora nada al corpus que no esté en él."
+        "</footer>")
+    cuerpo.append("</div></div>")
 
-    # ----- anexo: solo el fragmento exacto de cada regla -----
-    cuerpo.append('<div class="salto"></div>')
-    cuerpo.append("<h1>Anexo — el texto oficial, regla a regla</h1>")
-    cuerpo.append('<p class="convenciones">Para cada fila, el fragmento exacto del '
-                  "DB-SI del que sale. Solo lectura: las marcas van en la página de "
-                  "decisiones, que es la que se firma.</p>")
-    for fila in filas:
-        cuerpo.append("<h2>%s — %s</h2>" % (fila.numero, _c(localizacion(fila))))
-        for fragmento in _fragmentos(fila):
-            cuerpo.append('<blockquote class="literal">%s</blockquote>'
-                          % _c(_normalizar(fragmento)))
-    cuerpo.append('<p class="pie">Huella completa del paquete: %s · '
-                  "SHA-256 del PDF fuente: %s</p>"
-                  % (huella_paquete, fuente.get("documento_sha256") or "—"))
-
-    return ("<!doctype html><html><head><meta charset='utf-8'>"
-            "<title>Hoja de revisión — DB-SI 3 evacuación</title>"
-            "<style>%s</style></head><body>%s</body></html>"
-            % (_CSS, "\n".join(cuerpo)))
+    return ("<!doctype html><html lang='es'><head><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+            "<title>Revisión del corpus — DB-SI 3 evacuación</title>"
+            "<style>%s</style></head><body>%s"
+            "<script id='datos-paquete' type='application/json'>%s</script>"
+            "<script>%s</script></body></html>"
+            % (_CSS, "\n".join(cuerpo),
+               json.dumps(datos, ensure_ascii=False), _JS))
 
 
 def main(argv: list) -> int:
@@ -393,7 +530,8 @@ def main(argv: list) -> int:
     destino.write_text(generar_hoja(prefijo, seleccion=SELECCION_P1),
                        encoding="utf-8")
     print("Hoja escrita en %s" % destino)
-    print("Imprimir a A4 desde el navegador (la página de decisiones es la primera).")
+    print("Se revisa EN PANTALLA: abrir en el navegador; «Guardar revisión» "
+          "descarga el acta JSON que consume curacion/volcar_acta.py.")
     return 0
 
 
