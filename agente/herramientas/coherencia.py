@@ -41,7 +41,8 @@ from ..capacidad import Capacidad
 # —porque un plano de un cliente se pierda— tiene que endurecerse en un sitio y
 # no en tres, y una copia con la misma intención y distinto código es una copia
 # que nadie recuerda actualizar.
-from .plano import _con_sello_intacto, _destino_seguro, _falta_el_fichero, _sha256
+from .plano import (_con_sello_intacto, _destino_seguro, _fallo_de_lectura,
+                    _falta_el_fichero, _sha256)
 
 
 def revisar_coherencia(ruta: str, capa: Optional[str] = None,
@@ -59,20 +60,18 @@ def revisar_coherencia(ruta: str, capa: Optional[str] = None,
         doc = ezdxf.readfile(ruta)
         revision = coherencia.revisar(doc, layer=capa, factor_escala=factor_escala)
     except Exception as exc:                      # noqa: BLE001 - se traduce, no se traga
-        # Las dos negativas del parser traen ya redactado lo que hay que
-        # preguntar, y se usan tal cual: refrasearlas sólo puede empeorarlas.
-        # Y son negativas legítimas, no fallos: sin saber la unidad del dibujo,
+        # Son negativas legítimas, no fallos: sin saber la unidad del dibujo,
         # medir un solape en metros cuadrados daría una cifra de siete dígitos
         # presentada con toda seriedad.
-        from analyzer.parser import CapaIndeterminada, EscalaIndeterminada
-
-        if isinstance(exc, EscalaIndeterminada):
-            codigo = "escala_indeterminada"
-        elif isinstance(exc, CapaIndeterminada):
-            codigo = "capa_indeterminada"
-        else:
-            codigo = "dxf_ilegible"
-        return {"ok": False, "error": codigo, "detalle": str(exc), "pregunta": str(exc)}
+        #
+        # Se delega en `plano._fallo_de_lectura` en vez de repetir aquí la
+        # misma cadena de `isinstance`, que es lo que había: mantener dos
+        # copias hizo que el arreglo del 2026-08-23 (motivo corto en `detalle`,
+        # texto largo sólo en `pregunta`) tuviera que aplicarse dos veces, y
+        # una de las dos se habría quedado atrás tarde o temprano. Mismo
+        # criterio que ya siguen `_falta_el_fichero`, `_destino_seguro` y
+        # `_con_sello_intacto`, importados de ese módulo desde siempre.
+        return _fallo_de_lectura(exc)
 
     salida = revision.a_dict()
     salida["ok"] = True

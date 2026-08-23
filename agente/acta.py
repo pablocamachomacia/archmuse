@@ -101,7 +101,19 @@ class Acta:
         pide una página con el porqué a un clic, no un volcado exhaustivo. Lo
         exhaustivo está en `a_dict()`.
         """
+        # El veredicto abre el acta también aquí, con las mismas palabras que
+        # en la web y en el PDF: los tres soportes salen del mismo `_veredicto`
+        # para que un arquitecto que mire dos de ellos no lea dos respuestas
+        # distintas. Import local: `analyzer` es la capa de abajo y sólo se
+        # necesita al imprimir.
+        from analyzer.acta_legible import _veredicto
+
+        titular, explicacion, _plegado = _veredicto(self.a_dict())
+
         lineas: List[str] = [
+            titular.upper(),
+            explicacion,
+            "",
             "ACTA DE PROCEDENCIA — %s" % self.objetivo,
             "Proyecto %s · ejecución %s · %s" % (self.proyecto_id, self.ejecucion_id,
                                                  self.emitida_en),
@@ -111,21 +123,31 @@ class Acta:
         ]
         if not self.datos:
             lineas.append("  (nada)")
+
+        # Los no determinados se agrupan por motivo, igual que en
+        # `acta_legible._seccion_datos` y por el mismo defecto: cuando una
+        # Skill se corta, sus 5-6 afirmaciones comparten motivo y repetirlo
+        # una vez por campo convierte el acta en un muro (2026-08-23).
+        sin_determinar: dict = {}
         for d in self.datos:
             valor = d.get("valor")
             unidad = (" %s" % d["unidad"]) if d.get("unidad") else ""
             if valor is None:
                 motivo = (d.get("motivo") or {}).get("detalle", "sin motivo")
-                lineas.append("  - %s: NO DETERMINADO — %s" % (d["nombre"], motivo))
-            else:
-                lineas.append(
-                    "  - %s: %s%s  [%s · %s]"
-                    % (d["nombre"], valor, unidad, d["etiqueta"], d.get("fuente", "?"))
-                )
+                sin_determinar.setdefault(motivo, []).append(d["nombre"])
+                continue
+            lineas.append(
+                "  - %s: %s%s  [%s · %s]"
+                % (d["nombre"], valor, unidad, d["etiqueta"], d.get("fuente", "?"))
+            )
             if d.get("cita"):
                 lineas.append("      fuente oficial: %s" % d["cita"])
             for h in d.get("hipotesis") or ():
                 lineas.append("      hipótesis: %s" % h)
+
+        for motivo, nombres in sin_determinar.items():
+            lineas.append("  - NO DETERMINADO (%d): %s" % (len(nombres), ", ".join(nombres)))
+            lineas.append("      motivo: %s" % motivo)
 
         lineas += ["", "CÓMO SE HA HECHO"]
         for p in self.pasos:

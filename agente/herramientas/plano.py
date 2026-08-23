@@ -58,13 +58,38 @@ def _falta_el_fichero(ruta: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+#: Motivo corto y estable por código de fallo. **Corto a propósito**: este
+#: texto lo hereda CADA afirmación que la Skill no ha podido producir (6 en
+#: `revision`, 5 en `medicion`), así que meter aquí el párrafo largo lo
+#: multiplica por seis en el acta y en la pantalla. El párrafo largo va en
+#: `pregunta`, que se lee UNA vez. Ver `docs/` y la entrada de `PROGRESS.md`
+#: del 2026-08-23.
+_MOTIVO_CORTO = {
+    "escala_indeterminada": "no se sabe en qué unidad está dibujado el plano",
+    "capa_indeterminada": "no se sabe qué capa del DXF contiene las estancias",
+    "dxf_ilegible": "el DXF no se ha podido leer",
+}
+
+
 def _fallo_de_lectura(exc: Exception) -> Dict[str, Any]:
     """Traduce las dos negativas de `parser.leer_plano` a un `ok: false` útil.
 
-    Las dos excepciones —`EscalaIndeterminada` y `CapaIndeterminada`— traen ya
-    redactado lo que hay que preguntar, y por eso el mensaje se usa **tal
-    cual** en vez de reescribirlo aquí: son el trabajo de alguien que sabía qué
-    tenía que ver el arquitecto, y refrasearlo sólo puede empeorarlo.
+    **`detalle` y `pregunta` NO son el mismo texto**, y esa distinción es la
+    que arregla el defecto encontrado el 2026-08-23 (el mismo párrafo repetido
+    seis veces en la respuesta de coherencia sobre `cs_01.dxf`):
+
+    - `detalle` es el motivo **corto**, y es el que se propaga a todas las
+      afirmaciones que no se han podido producir. Por eso tiene que caber en
+      una línea: se va a leer tantas veces como afirmaciones haya.
+    - `pregunta` conserva **íntegro** el texto que redacta
+      `parser._mensaje_de_capa`/`_mensaje_de_escala` —con sus capas candidatas
+      y sus recuentos—, porque es el trabajo de alguien que sabía qué tenía
+      que ver el arquitecto y refrasearlo sólo puede empeorarlo. Se muestra
+      una vez.
+
+    Antes los dos campos eran `str(exc)`, que es justo lo que multiplicaba el
+    párrafo. El resto del repositorio ya usaba la convención correcta (ver
+    `_falta_el_fichero` aquí arriba, o `proyecto.py`); esto la restituye.
     """
     from analyzer.parser import CapaIndeterminada, EscalaIndeterminada
 
@@ -74,7 +99,12 @@ def _fallo_de_lectura(exc: Exception) -> Dict[str, Any]:
         codigo = "capa_indeterminada"
     else:
         codigo = "dxf_ilegible"
-    return {"ok": False, "error": codigo, "detalle": str(exc), "pregunta": str(exc)}
+    return {
+        "ok": False,
+        "error": codigo,
+        "detalle": _MOTIVO_CORTO.get(codigo, "el plano no se ha podido leer"),
+        "pregunta": str(exc),
+    }
 
 
 def _escala_a_dict(escala: Any) -> Dict[str, Any]:

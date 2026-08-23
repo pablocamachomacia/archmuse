@@ -5,6 +5,109 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-08-23 · El acta abre con un veredicto, y el motivo deja de repetirse
+
+**Defecto encontrado por Pablo**, probando la revisión de coherencia con un
+plano ajeno (`cs_01.dxf`): el mismo párrafo pegado cinco o seis veces
+seguidas, un muro de texto, y ninguna línea que dijera lo esencial.
+
+### La causa, medida y no supuesta
+
+Ocho copias del mismo texto en el objeto de resultado, por tres eslabones:
+
+1. `agente/herramientas/plano.py::_fallo_de_lectura` devolvía
+   `{"detalle": str(exc), "pregunta": str(exc)}` — **el mismo texto en los dos
+   campos**, rompiendo la convención que el resto del repositorio ya seguía
+   (`detalle` = qué ha pasado; `pregunta` = qué hay que contestar). Copias 1-2.
+   `agente/herramientas/coherencia.py` tenía además **su propia copia** de esa
+   cadena de `isinstance`, en vez de importarla.
+2. `agente/skills/coherencia.py::_sin_hacer` pasaba ese `detalle` a
+   `sin_producir(PRODUCE, ...)`, y `PRODUCE` tiene **6 entradas**: cada
+   afirmación no producida nacía con el párrafo entero como motivo. Copias
+   3-8. `agente/skills/medicion.py` igual, con 5.
+3. `analyzer/acta_legible.py::_seccion_datos` pintaba una línea por dato, sin
+   agrupar. Ahí se hacían visibles.
+
+**Medido antes de tocar nada**, sobre los ficheros reales: motivo de 326
+caracteres, repetido **7 veces** (coherencia) y **6** (medición) en el HTML;
+`cs_05.dxf` idéntico. Los planos buenos (`V5`, `v2s`) daban 0 repeticiones —
+el defecto vivía sólo en el camino de fallo. Después: motivo de 50 caracteres
+y el texto largo **una sola vez**.
+
+### Qué se hizo
+
+- **`detalle` corto, `pregunta` larga.** Tabla `_MOTIVO_CORTO` por código en
+  `plano.py`. `coherencia.py` deja de duplicar la lógica y **importa**
+  `_fallo_de_lectura` — mantener dos copias fue lo que obligó a arreglar lo
+  mismo dos veces.
+- **Agrupación por motivo idéntico**, con el mismo criterio exacto (no
+  aproximado) que `_seccion_limitaciones` usa desde el 21-08, en los dos
+  soportes de texto: `acta_legible._seccion_datos` (web/PDF) y
+  `agente/acta.py::a_texto` (CLI). Seis campos con el mismo motivo son una
+  frase que dice cuántos son, no seis frases.
+- **Veredicto en una línea** (`acta_legible._veredicto`), y los tres soportes
+  salen de él para que no digan cosas distintas: «Plano revisado · 22
+  recintos, 3 hallazgos», «Planta medida · 22 piezas en 3 viviendas», «Este
+  plano no trae las estancias como polilíneas cerradas». **No calcula nada**:
+  sólo lee cifras ya establecidas.
+- **Plegado**: la explicación visible son 2-3 frases; la enumeración de capas
+  candidatas y las dos secciones largas van detrás de `<details>`.
+  `_partir_explicacion` parte el mensaje del parser **sin perder un carácter**
+  (test propio).
+
+### Decisiones
+
+- **El titular nombra el hecho, no califica.** «Este plano no trae las
+  estancias como polilíneas cerradas» y no «plano incompleto»: calificar el
+  trabajo de otro arquitecto es justo lo que `D-7` prohíbe. Decisión de Pablo.
+- **Fallback honesto**: un código sin titular propio no se improvisa — sale
+  «No se ha podido completar la revisión» y el mensaje **dice qué código ha
+  llegado**.
+- **`PRODUCE` y el contrato de `Afirmacion` no se tocan.** Cada afirmación
+  sigue llevando su motivo; lo que cambia es que el motivo es corto, que es lo
+  que siempre debió ser.
+
+### Qué se dejó fuera
+
+- **El PDF no se tocó y no hacía falta**: `analyzer/coherencia_pdf.py` no pasa
+  por `acta_legible`. El riesgo que el plan anotaba sobre este punto era
+  parcialmente falso; verificado comparando el PDF de `V5` antes y después
+  (3701 bytes, idéntico).
+- El fallo preexistente de `tests/test_conversacion_menus_barra_entrada.py::test_el_cuerpo_de_la_respuesta_sigue_intacto`
+  (sobre `static/app.js`, que no se ha tocado). Comprobado que **también falla
+  en HEAD limpio**: no es de este cambio y queda para quien lo abriera.
+
+### Verificación
+
+`tests/test_veredicto_acta.py` — 12 casos nuevos, incluidos los tres que
+congelan la no-repetición. Suite completa y los tres soportes (web, PDF, CLI)
+comprobados. Guardián de regresión: las actas normalizadas de `V5` y `v2s`
+salen **byte a byte idénticas** a las de antes del cambio.
+
+### La congelación: excepción autorizada, y qué queda pendiente de comprobar
+
+`analyzer/` está congelado hasta el jueves 28
+(`docs/prd/2026-08-22-contraste-superficies-memoria-vs-plano.md` §R-3, por
+competencia de tiempo con la validación del corpus del 25-26), y
+`analyzer/acta_legible.py` cae dentro. **Pablo autorizó la excepción el
+2026-08-23**: hace falta para una demo y el trabajo es del día 23, así que no
+compite con lo que la congelación protege.
+
+**Pendiente, para cuando se haga la validación del corpus (25-26):**
+comprobar que este cambio no la afecta. El guardián ya está capturado y es
+suficiente — si las actas normalizadas de `V5` y `v2s` siguen saliendo
+idénticas, el cambio es ortogonal y no hay nada que revisar. El capturador
+vive fuera del repositorio (scratchpad de la sesión,
+`capturar_linea_base.py`): fija `emitida_en` y `ejecucion_id`, y **neutraliza
+`momento`, `sello_del_paso` y `sello`**, que cambian en cada ejecución aunque
+la entrada sea idéntica — `emitida_en` no controla el `momento` de cada paso,
+así que comparar sellos crudos no dice nada.
+
+*(Anotado también en la cabecera del PRD del 22-08, que es donde se mirará
+durante la validación.)*
+
+---
+
 ## 2026-08-21 · Curación y firma humana del corpus DB-SUA
 
 Ver `docs/prd/2026-08-21-curacion-y-firma-del-corpus-db-sua.md` (**Cerrado**,

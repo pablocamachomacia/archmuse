@@ -52,7 +52,7 @@ import html
 import os
 import re
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 #: TODO(DOC-1): en cuanto aparezca un caso real probado de una limitación
 #: distinta —normativa fuera de corpus, ordenanza sin validar, lo que sea—,
@@ -358,8 +358,33 @@ body {
   background: var(--fondo); color: var(--texto);
 }
 main { max-width: 760px; margin: 0 auto; }
-h1 { font-size: 19px; margin: 0 0 4px; }
+/* El titular es el veredicto, y por eso pesa: es lo único que un arquitecto
+   con prisa va a leer. Antes aquí iba el objetivo del plan, que repetía la
+   pregunta en vez de contestarla. */
+h1 { font-size: 24px; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 8px; }
+.veredicto-explicacion { font-size: 14px; line-height: 1.55; margin: 0 0 14px; max-width: 62ch; }
 .meta { font-size: 12.5px; color: var(--tenue); margin-bottom: 16px; }
+
+/* Las dos secciones largas, plegadas. Abiertas de golpe son el muro de texto
+   que motivó este cambio; plegadas siguen enteras, a un clic. */
+details.bloque-plegado {
+  border-top: 1px solid var(--borde);
+  padding: 10px 0 2px;
+  margin: 0;
+}
+details.bloque-plegado > summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 4px 0;
+}
+details.bloque-plegado > summary::-webkit-details-marker { display: none; }
+details.bloque-plegado > summary::before {
+  content: "▸ ";
+  color: var(--tenue);
+}
+details.bloque-plegado[open] > summary::before { content: "▾ "; }
 .leyenda {
   font-size: 12px; color: var(--aviso); border: 1px solid var(--aviso);
   border-radius: 6px; padding: 8px 12px; margin-bottom: 26px; background: rgba(214,166,53,.08);
@@ -412,18 +437,59 @@ def _e(valor) -> str:
     return html.escape("" if valor is None else str(valor), quote=True)
 
 
+def _nombre_legible(nombre: str) -> str:
+    """`revision.recuento_por_tipo` -> «recuento por tipo».
+
+    Sólo para agrupar en una frase los campos que comparten motivo. Si el
+    nombre no tiene la forma `familia.campo` se devuelve tal cual: inventar
+    una traducción sería exactamente lo que `_sin_prefijo_interno` impide.
+    """
+    trozo = nombre.split(".", 1)[-1] if "." in nombre else nombre
+    return trozo.replace("_", " ").strip() or nombre
+
+
 def _seccion_datos(datos) -> str:
+    """Los datos establecidos y, agrupados, los que no se han podido establecer.
+
+    **El defecto que la agrupación corrige (2026-08-23, hallazgo de Pablo sobre
+    `cs_01.dxf`).** Cuando una Skill se corta, TODAS sus afirmaciones nacen
+    `UNKNOWN` con el mismo motivo — 6 en `revision`, 5 en `medicion` —, y esta
+    función pintaba una línea por cada una. El resultado era el mismo texto
+    repetido seis veces seguidas. Ya se propaga un motivo corto desde
+    `agente/herramientas/plano.py`, así que la repetición no debería volver;
+    esto es la red de seguridad, con el mismo criterio de igualdad EXACTA que
+    `_seccion_limitaciones` usa desde el 2026-08-21 — dos motivos redactados
+    distinto no se fusionan, porque decidir cuál es el canónico no es trabajo
+    de la presentación.
+    """
     if not datos:
         return "<p class='meta'>(nada establecido en esta ejecución)</p>"
+
     filas = []
+    # Los no determinados se acumulan por motivo, conservando el orden de
+    # primera aparición, y se emiten juntos al final de la sección.
+    sin_determinar: "dict[str, list]" = {}
+
     for d in datos:
         valor = d.get("valor")
         if valor is None:
             motivo = (d.get("motivo") or {}).get("detalle", "sin motivo")
-            frase = "No determinado — %s" % motivo
+            sin_determinar.setdefault(motivo, []).append(d.get("nombre") or "")
+            continue
+        filas.append("<div class='dato'>%s</div>"
+                     % _e(_formatear_dato(d.get("nombre") or "", valor)))
+
+    for motivo, nombres in sin_determinar.items():
+        legibles = [_nombre_legible(n) for n in nombres if n]
+        if len(legibles) > 1:
+            campos = "%s y %s" % (", ".join(legibles[:-1]), legibles[-1])
+            frase = "No determinado (%d campos: %s) — %s" % (len(legibles), campos, motivo)
+        elif legibles:
+            frase = "No determinado (%s) — %s" % (legibles[0], motivo)
         else:
-            frase = _formatear_dato(d.get("nombre") or "", valor)
+            frase = "No determinado — %s" % motivo
         filas.append("<div class='dato'>%s</div>" % _e(frase))
+
     return "\n".join(filas)
 
 
@@ -554,6 +620,131 @@ def _seccion_limitaciones(no_comprobado, datos=()) -> str:
     return "\n".join(bloques)
 
 
+#: Titular por código de fallo. Nombra **el hecho comprobable del fichero**,
+#: sin culpar al autor del plano ni disculparse por ArchMuse (decisión de
+#: Pablo, 2026-08-23). Un titular que dijera «plano incompleto» calificaría el
+#: trabajo de otro arquitecto, que es justo lo que `D-7` prohíbe.
+_TITULAR_POR_CODIGO = {
+    "capa_indeterminada": "Este plano no trae las estancias como polilíneas cerradas",
+    "escala_indeterminada": "No se puede saber en qué unidad está dibujado este plano",
+    "dxf_ilegible": "Este DXF no se ha podido leer",
+    "fichero_no_encontrado": "No encuentro ese fichero",
+}
+
+
+def _plural(n: int, singular: str, plural: str) -> str:
+    return "%d %s" % (n, singular if n == 1 else plural)
+
+
+#: Por debajo de esto, lo que sigue a los dos puntos es una aclaración corta y
+#: se deja a la vista; por encima es una enumeración (las capas candidatas de
+#: `parser._mensaje_de_capa`, que en un plano ajeno son cuatro con sus
+#: recuentos) y se pliega.
+_LARGO_QUE_YA_ES_LISTA = 100
+
+
+def _partir_explicacion(texto: str) -> Tuple[str, str]:
+    """`(visible, plegado)` — la frase, y la enumeración detrás de un clic.
+
+    Los mensajes del parser tienen la forma `<frase>: <lista>. <instrucción>`.
+    Lo que un arquitecto necesita leer de un vistazo es la frase y la
+    instrucción; la lista de capas candidatas con sus recuentos es material de
+    consulta y ocupa la mitad del mensaje.
+
+    **No se pierde ni un carácter**: lo que sale de aquí, concatenado, contiene
+    todo el original. Y si el texto no tiene esa forma se devuelve entero como
+    visible — partirlo a la fuerza es peor que un mensaje largo.
+    """
+    cabeza, sep, resto = texto.partition(": ")
+    if not sep or len(resto) < _LARGO_QUE_YA_ES_LISTA:
+        return texto, ""
+
+    lista, punto, instruccion = resto.rpartition(". ")
+    if not punto:
+        # No hay instrucción final que rescatar: la frase sola queda visible.
+        return cabeza.rstrip(". ") + ".", resto
+
+    visible = "%s. %s" % (cabeza.rstrip(". "), instruccion.strip())
+    return visible, lista.strip()
+
+
+def _titular_de_exito(indice: dict) -> Optional[str]:
+    """El veredicto cuando sí ha habido resultado.
+
+    **Sólo lee cifras que la Skill ya ha establecido**; no suma, no deriva y no
+    redondea nada. Si una capacidad futura no encaja en ninguna de las dos
+    familias conocidas, devuelve `None` y el titular cae al genérico — que es
+    lo correcto: inventar un veredicto para datos que no se saben interpretar
+    es exactamente el fallo que este módulo existe para no cometer.
+    """
+    recintos = indice.get("revision.recintos")
+    if isinstance(recintos, int):
+        hallazgos = indice.get("revision.hallazgos")
+        if isinstance(hallazgos, list):
+            return "Plano revisado · %s, %s" % (
+                _plural(recintos, "recinto", "recintos"),
+                _plural(len(hallazgos), "hallazgo", "hallazgos"))
+        return "Plano revisado · %s" % _plural(recintos, "recinto", "recintos")
+
+    piezas = indice.get("medicion.piezas")
+    if isinstance(piezas, int):
+        viviendas = indice.get("medicion.viviendas")
+        if isinstance(viviendas, list):
+            return "Planta medida · %s en %s" % (
+                _plural(piezas, "pieza", "piezas"),
+                _plural(len(viviendas), "vivienda", "viviendas"))
+        return "Planta medida · %s" % _plural(piezas, "pieza", "piezas")
+
+    return None
+
+
+def _veredicto(acta: dict) -> Tuple[str, str, str]:
+    """`(titular, explicación, detalle_plegado)` — la respuesta en una línea.
+
+    Añadido el 2026-08-23. Hasta entonces el acta abría con el objetivo del
+    plan («Revisa la coherencia de cs_01.dxf»), que repite la pregunta en vez
+    de contestarla: había que leerse la lista entera para saber si el plano se
+    había podido medir.
+
+    **No calcula nada.** Todo sale de `acta["datos"]`, `acta["motivo"]` y
+    `acta["preguntas_abiertas"]`, que ya vienen establecidos.
+    """
+    datos = acta.get("datos") or ()
+    establecidos = [d for d in datos if d.get("valor") is not None]
+    sin_valor = [d for d in datos if d.get("valor") is None]
+
+    # Explicación: la pregunta abierta, que es el texto largo redactado por el
+    # parser. Se lee UNA vez, aquí, y en ningún otro sitio de la página.
+    preguntas = [p for p in (acta.get("preguntas_abiertas") or ()) if p]
+    explicacion = preguntas[0] if preguntas else ""
+
+    if datos and not establecidos:
+        codigos = [c for c in ((d.get("motivo") or {}).get("codigo") for d in sin_valor) if c]
+        codigo = codigos[0] if codigos else ""
+        titular = _TITULAR_POR_CODIGO.get(codigo)
+        if titular is None:
+            # Fallback honesto: **dice qué código ha llegado** en vez de
+            # inventarle un titular. Si esto aparece en pantalla, es que hay
+            # un código nuevo al que darle su frase, no un error del acta.
+            titular = "No se ha podido completar la revisión"
+            if codigo:
+                explicacion = ("%s (motivo declarado: «%s»)."
+                               % (explicacion.rstrip(". ") or "Sin explicación disponible",
+                                  codigo))
+        visible, plegado = _partir_explicacion(explicacion)
+        return titular, visible, plegado
+
+    titular = _titular_de_exito({d.get("nombre"): d.get("valor") for d in establecidos})
+    if titular is None:
+        titular = "Revisión terminada · %s" % _plural(
+            len(establecidos), "dato establecido", "datos establecidos")
+    if not explicacion:
+        explicacion = ("Cada cifra lleva debajo de qué pieza del DXF sale. "
+                       "Lo que no se ha comprobado va al final, siempre.")
+    visible, plegado = _partir_explicacion(explicacion)
+    return titular, visible, plegado
+
+
 def render(acta: dict) -> str:
     """El `dict` de `Acta.a_dict()` -> una página HTML autocontenida.
 
@@ -562,30 +753,50 @@ def render(acta: dict) -> str:
     convierta en un muro de texto, y con el porqué a un clic, que es
     literalmente lo que pide C2 del documento de alineación estratégica.
     """
-    titulo = _e(acta.get("objetivo") or "Acta de procedencia")
+    objetivo = _e(acta.get("objetivo") or "Acta de procedencia")
+    titular_txt, explicacion_txt, plegado_txt = _veredicto(acta)
+    titular = _e(titular_txt)
+    explicacion = _e(explicacion_txt)
+    # La enumeración larga (capas candidatas con sus recuentos) sólo si la hay.
+    detalle_plegado = ""
+    if plegado_txt:
+        detalle_plegado = (
+            "<details class='bloque-plegado'><summary>Ver las capas que he "
+            "encontrado</summary><div class='dato'>%s</div></details>" % _e(plegado_txt))
     meta = "Proyecto %s · ejecución %s · %s" % (
         _e(acta.get("proyecto_id")), _e(acta.get("ejecucion_id")), _e(acta.get("emitida_en")))
     leyenda = _e(acta.get("leyenda") or "")
     sello = _e(acta.get("sello") or "(sin sellar)")
     datos = acta.get("datos") or ()
 
+    # El cuerpo visible son el titular y una explicación. Todo lo demás —los
+    # datos campo a campo y la lista de lo no comprobado— queda a un clic:
+    # abierto de golpe es el muro de texto que Pablo encontró el 2026-08-23, y
+    # plegado sigue estando entero, que es lo que C2 exige.
     return """<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <title>%s — acta de procedencia</title>
 <style>%s</style></head><body><main>
 <h1>%s</h1>
-<div class="meta">%s</div>
+<p class="veredicto-explicacion">%s</p>
+%s
+<div class="meta">%s · %s</div>
 <div class="leyenda">%s</div>
 
-<h2>Qué se ha establecido</h2>
-%s
+<details class="bloque-plegado">
+  <summary>Qué se ha establecido</summary>
+  %s
+</details>
 
-<h2>Qué no se ha comprobado</h2>
-%s
+<details class="bloque-plegado">
+  <summary>Qué no se ha comprobado</summary>
+  %s
+</details>
 
 <div class="sello">Sello: %s</div>
 </main></body></html>""" % (
-        titulo, _ESTILO, titulo, meta, leyenda,
+        titular, _ESTILO, titular, explicacion, detalle_plegado,
+        objetivo, meta, leyenda,
         _seccion_datos(datos),
         _seccion_limitaciones(acta.get("no_comprobado") or (), datos),
         sello,
