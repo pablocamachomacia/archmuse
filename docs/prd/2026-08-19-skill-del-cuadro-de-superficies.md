@@ -136,4 +136,4 @@ Estimación: **2 jornadas**, que es lo que dice el backlog.
 
 ---
 
-**Decisión pendiente de Pablo.** Dos, en realidad: aprobar este PRD, y decir si la verificación de la suma arranca **bloqueante** o **informativa**. La recomendación es informativa hasta tener diez planos reales.
+**Decisión tomada (2026-08-19).** Pablo aprobó este PRD (ver cabecera) y resolvió la segunda pregunta: la verificación de la suma arranca **informativa, no bloqueante**, hasta disponer de al menos 10 proyectos reales — condición textual ya recogida en la cabecera. Ver `PROGRESS.md`, entrada "2026-08-19 (tarde) · Decisiones de Pablo aplicadas".

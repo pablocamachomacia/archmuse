@@ -148,4 +148,4 @@ Cuatro, y el tercero es serio:
 
 ---
 
-**Decisión pendiente de Pablo.** Este PRD no se implementa hasta que esté aprobado explícitamente. Si la respuesta es «adelante», la primera tarea es la 1 de §11, no la 2: el rechazo del destino inseguro antes que la escritura.
+**Decisión tomada (2026-08-19).** Pablo aprobó este PRD (ver cabecera). La Capacidad `plano.escribir_cuadro` (tareas de §11) está construida y probada — ver `PROGRESS.md`, entrada "2026-08-20 · `SEG-1` — la pantalla de autorización, y `DOC-1` cerrada en el backlog": deliberadamente **sin enchufar todavía a ningún endpoint HTTP** (solo la invocan scripts de CLI y tests), porque construir ese endpoint habría sido capacidad nueva sin PRD propio — descartado en esa misma sesión.

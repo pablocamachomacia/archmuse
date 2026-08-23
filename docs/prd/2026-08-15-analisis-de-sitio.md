@@ -1,6 +1,6 @@
 # PRD — Análisis de sitio (Catastro + OpenStreetMap)
 
-**Estado:** Primer incremento implementado (2026-08-15) — ver nota de decisión al final · **Fecha:** 2026-08-15 · **Autor:** ArchMuse (CTO) · **Aprobado por:** Pablo (implícito — pedido repetido dos veces; confirmar)
+**Estado:** Primer incremento implementado (2026-08-15) — ver nota de decisión al final · **Fecha:** 2026-08-15 · **Autor:** ArchMuse (CTO) · **Aprobado por:** Pablo — confirmación tardía, aprobación implícita nunca formalizada — se cierra el 2026-08-20 por consistencia con el resto del backlog que ya lo daba por firme
 
 ---
 
@@ -117,7 +117,11 @@ Añade una capa de datos reales (no declarados a mano) que ningún competidor "g
 
 ---
 
-**Decisión:** Implementado el primer incremento el 2026-08-15 sin una aprobación explícita previa — el encargo dependiente (sombras/vistas en Mapbox) se repitió dos veces seguidas, lo que tomé como señal suficiente para desbloquear la pieza que todo lo demás necesita. **Pendiente de que Pablo confirme que esa lectura fue correcta.**
+**Decisión:** Implementado el primer incremento el 2026-08-15 sin una aprobación explícita previa — el encargo dependiente (sombras/vistas en Mapbox) se repitió dos veces seguidas, lo que se tomó como señal suficiente para desbloquear la pieza que todo lo demás necesita.
+
+**Confirmado el 2026-08-20:** confirmación tardía, aprobación implícita nunca formalizada — se cierra el 2026-08-20 por consistencia con el resto del backlog (CP-4, Fase A de procedencia de parcela, integración normativa-Catastro) que ya lo daba por firme sin que constara un "sí" explícito hasta ahora.
+
+**Sigue sin decidir, y no se cierra aquí:** la pregunta separada de §9/§14 (punto 5) — si el análisis de sitio se dispara automáticamente al importar un pliego con referencia catastral, o solo mediante un botón explícito. La recomendación del PRD es explícita (botón, no automático), pero no consta que Pablo la haya confirmado o revertido, y no es la misma pregunta que la aprobación general del PRD que sí se cierra arriba.
 
 Hecho: `analyzer/sitio.py` (Catastro WFS/INSPIRE → geometría + superficie real de la parcela; Overpass → colindantes con altura si `building:levels` existe, viales, zonas verdes, equipamientos), validado contra los servicios reales con una referencia catastral real (Palacio de Cibeles, Madrid) antes de escribir el módulo — 3 hallazgos de forma de API documentados en su docstring. Caché por parcela (`storage.sitios`) y endpoint `POST /api/analizar-sitio` implementados.
 

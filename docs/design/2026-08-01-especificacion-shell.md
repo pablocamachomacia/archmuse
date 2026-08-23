@@ -1,6 +1,71 @@
 # Especificación de la Shell — ArchMuse
 
-**Estado:** v4 · Decisiones cerradas · **Fecha:** 2026-08-02 · **Autor:** ArchMuse (CTO) · **Aprobado por:** _pendiente_
+**Estado:** v5 **propuesta, no vigente** · sobre v4 · Decisiones cerradas · **Fecha:** 2026-08-23 · **Autor:** ArchMuse (CTO) · **Aprobado por:** _pendiente_
+
+> ## v5 (2026-08-23): páginas separadas y portada — PROPUESTA EN COLA
+>
+> **Esta versión NO está en vigor. Lo que hay en el código es la v4.** Se
+> escribe ahora para que no queden dos decisiones de navegación
+> contradictorias en el repositorio, pero Pablo la ha dejado **en cola detrás
+> de cerrar V1 y de la validación con arquitectos** (2026-08-23). Nada de esta
+> v5 se implementa sin su luz verde explícita. PRD:
+> `docs/prd/2026-08-23-reorganizacion-web-y-portada.md`.
+>
+> > **Excepción aprobada (2026-08-23, pendiente de arrancar): una barra de
+> > navegación mínima.** *(Este párrafo decía antes «a ejecutar el
+> > 2026-08-28». La congelación existe —`docs/prd/2026-08-22-contraste-superficies-memoria-vs-plano.md`,
+> > §R-3— pero alcanza sólo a `analyzer/`, `scripts/` y `tests/fixtures/`, y
+> > esta barra vive en `static/` y `app.py`. La fecha se retira porque no le
+> > aplicaba, no porque la congelación no exista.)* No es la v5: es una barra
+> > superior *añadida encima*
+> > de la shell v4, que enlaza las pantallas que ya existen (`/`, `/subir`,
+> > `/proyectos`, `/mvp`) para poder moverse en una demo sin escribir URLs.
+> > **El sidebar de la v3 y el workspace de la v4 siguen intactos y en vigor**;
+> > la barra no los sustituye, convive con ellos. Añade una ruta nueva,
+> > `/subir`, que abre directamente la pantalla de subir DXF (hoy sin URL
+> > propia). Alcance completo y criterios en el **§15** del PRD citado. Si la
+> > v5 nunca llega a aprobarse, esta barra se queda como está y no deja
+> > ninguna decisión a medias.
+>
+> **Qué propone cambiar.** La navegación deja de ser *una sola SPA con
+> sidebar* y pasa a ser **seis páginas con barra superior**, con la SPA
+> conservada íntegra detrás de dos de ellas:
+>
+> | Ruta | Página | Estado |
+> |---|---|---|
+> | `/` | **Inicio** — portada: qué es ArchMuse + zona de subida real | nueva |
+> | `/analizar` | DXF → medición → cuadro de superficies → acta | nueva |
+> | `/memoria` | Genera y descarga la memoria de superficies | nueva |
+> | `/proyectos` | La SPA de la v3/v4, **intacta** | existente |
+> | `/copiloto` | La conversación que hoy vive en `/` | existente, ruta nueva |
+> | `/mvp` | Vista de tres zonas, **intacta** | existente |
+>
+> **Qué deroga.** La decisión del 2026-08-19 de que **`/` abre el panel de
+> conversación** (petición directa de Pablo, documentada en el docstring de
+> `app.py::index`). Motivo del cambio: la conversación necesita
+> `ANTHROPIC_API_KEY`, así que sin clave la puerta de entrada del producto no
+> hace nada, y lo único que ArchMuse sabe hacer sin clave —medir un DXF— no
+> tenía página propia. **La conversación no se elimina: se muda a
+> `/copiloto`**, con etiqueta `requiere IA` en la navegación.
+>
+> **Qué NO cambia.** El sidebar de la v3 y el workspace tipo AutoCAD de la v4
+> siguen íntegros **dentro de la SPA** (`/proyectos`, `/mvp`): ribbon, línea
+> de órdenes, pestañas Modelo/3D, barra de estado, capas, y la jerarquía
+> modo ↔ capas. Las páginas nuevas *envuelven*, no reescriben. Las decisiones
+> cerradas 2, 3 y 4 del §1 siguen en vigor sin matices, y la dirección visual
+> se **hereda**: mismo `#0a0a0c`, mismo acento azul desaturado único, mismo
+> botón primario blanco, mismo vidrio esmerilado. Ninguna paleta nueva.
+>
+> **Objeción de proceso, repetida a propósito.** Éste es el **quinto**
+> paradigma de navegación del proyecto: v2 barra superior → v3 sidebar → v4
+> workspace AutoCAD → 2026-08-19 «/ es la conversación» → v5 páginas. El PRD
+> `2026-08-02-workspace-tipo-autocad.md` §14 ya dejó constancia cuando iba por
+> el tercero. Cada rehecho cuesta jornadas y no añade ninguna capacidad. Que
+> esta v5 nazca **en cola detrás de la validación con arquitectos** es
+> precisamente la respuesta correcta a esa objeción: se decide con usuarios
+> reales delante, no antes. Ver §14 del PRD.
+
+---
 
 > ## v4 (2026-08-02): workspace tipo AutoCAD
 >

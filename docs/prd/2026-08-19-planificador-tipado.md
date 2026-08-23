@@ -146,4 +146,4 @@ Estimación: **2 jornadas**, que es lo que dice el backlog.
 
 ---
 
-**Decisión pendiente de Pablo.** No se toca código de producto hasta que este PRD esté aprobado. Si se aprueba, conviene decidir a la vez si el bucle de `nucleo.py` se conserva indefinidamente o se le pone fecha.
+**Decisión tomada (2026-08-19).** Pablo aprobó este PRD (ver cabecera); `AG-1`/`AG-2`/`AG-4` (el ciclo `copiloto.proponer()`/`ejecutar_propuesta()`) ya están construidos y probados — ver `PROGRESS.md`, entrada "2026-08-20 · `SEG-1` — la pantalla de autorización, y `DOC-1` cerrada en el backlog". **Sigue sin decidir** (no encontrada en `PROGRESS.md`) la pregunta secundaria que este párrafo dejaba abierta: si el bucle de `nucleo.py` se conserva indefinidamente o se le pone fecha — no se cierra aquí por su cuenta.

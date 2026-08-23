@@ -1,6 +1,6 @@
 # PRD — Procedencia estructurada y fecha visible para los datos de parcela (Fase A)
 
-**Estado:** Borrador · **Fecha:** 2026-08-20 · **Autor:** ArchMuse (CTO) · **Aprobado por:** _pendiente_
+**Estado:** Aprobado e implementado (Fase A completa) · **Fecha:** 2026-08-20 · **Autor:** ArchMuse (CTO) · **Aprobado por:** Pablo (2026-08-20, con 3 notas incorporadas: §6 sin decidir la ubicación de `map-picker.js`, recorte del §14 descartado, cobertura de tests ampliada — ver `PROGRESS.md`, entrada "Fase A del PRD de procedencia de parcela")
 
 ---
 

@@ -2,6 +2,12 @@
 
 **Estado:** Borrador · **Fecha:** 2026-08-02 · **Autor:** ArchMuse (CTO) · **Aprobado por:** _pendiente_
 
+> **Remisión (2026-08-23):** el alcance restante de este PRD (tarea 2 —
+> medición sobre DXF ajenos — y tarea 10 — pantalla de confirmación) queda
+> absorbido por `2026-08-23-deteccion-asistida-de-convenciones-de-capas.md`,
+> escrito tras diagnosticar el primer DXF ajeno real (`cs_05.dxf`). Las
+> tareas 3–9 de aquí siguen siendo el registro de lo ya implementado.
+
 ---
 
 ## 1. Problema que resuelve
