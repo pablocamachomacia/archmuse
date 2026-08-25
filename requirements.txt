@@ -46,6 +46,15 @@ pypdf==6.15.0
 trimesh==5.0.0
 mapbox_earcut==2.0.0
 
+# extraccion/segmentador_pdf_b.py: ruta B de la doble verificacion del corpus
+# normativo. `pypdf` (arriba) es la ruta A; esta es la segunda lectura
+# independiente, con un motor distinto a proposito -- si las dos coinciden, la
+# lectura es fiable. Estaba como transitiva y el modulo lo daba por hecho, pero
+# al fijar las versiones con `==` esa ruta desaparecio y los dos tests del
+# segmentador empezaron a fallar con ModuleNotFoundError. Un import directo no
+# puede depender de una transitiva: se declara aqui.
+pdfminer.six==20260107
+
 # app.py (2026-08-18, REFACTOR_MASTERPLAN tarea 13): servidor WSGI con el que
 # ArchMuse arranca por defecto, en lugar del servidor de desarrollo de Flask
 # --que trae el depurador interactivo de Werkzeug, ejecución de código

@@ -198,10 +198,27 @@ def test_la_burbuja_del_usuario_no_se_ha_tocado():
 
 def test_el_cuerpo_de_la_respuesta_sigue_intacto():
     """Restricción explícita: "no tocar la lógica de qué se muestra dentro
-    de la burbuja, sólo el label superior" -- `envoltorio.innerHTML =
-    htmlTarjeta` sigue siendo la única fuente del contenido."""
+    de la burbuja, sólo el label superior" -- `envoltorio.innerHTML` sigue
+    siendo la única fuente del contenido, y ese contenido sigue saliendo de
+    `htmlTarjeta`.
+
+    Antes esto comparaba la línea literal `envoltorio.innerHTML =
+    htmlTarjeta;`. El 2026-08-22 se pasó a enlazar el patrón «Texto oficial:
+    https://…» dentro de esa misma asignación, así que la comparación literal
+    dejó de valer aunque el invariante que protegía se siguiera cumpliendo.
+    Ahora se comprueba el invariante y no la redacción: una sola asignación,
+    alimentada por `htmlTarjeta`.
+    """
     cuerpo = _extraer("function convAnadirRespuesta(htmlTarjeta) {", "\n  }") + "\n  }"
-    assert "envoltorio.innerHTML = htmlTarjeta;" in cuerpo
+    # `\+?=` para que un `innerHTML +=` cuente como segunda fuente: es
+    # justamente la regresión que este test existe para impedir.
+    asignaciones = re.findall(r"envoltorio\.innerHTML\s*\+?=", cuerpo)
+    assert len(asignaciones) == 1, (
+        "la burbuja debe tener una única fuente de contenido; encontradas %d"
+        % len(asignaciones)
+    )
+    tras_asignacion = cuerpo.split("envoltorio.innerHTML", 1)[1]
+    assert "htmlTarjeta" in tras_asignacion
 
 
 if __name__ == "__main__":  # pragma: no cover
