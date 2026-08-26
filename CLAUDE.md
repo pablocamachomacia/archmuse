@@ -54,7 +54,7 @@
 > (orden de trabajo) **se han eliminado de este documento: quedaron sin efecto**.
 > M0 y ese orden de trabajo describían arrancar de cero, y cuando se redactó
 > esta especificación el repositorio ya tenía ~950 tests y una arquitectura
-> propia (`agente/`, `analyzer/`, `normativa/`, `modelo/`). Ver `PROGRESS.md`.
+> propia (`agente/`, `analyzer/`, `normativa/`, `modelo/`). Ver `docs/PROGRESS.md`.
 
 
 ---
@@ -69,7 +69,7 @@ Reglas de trabajo obligatorias:
 2. **No implementes nada marcado como `NO CONSTRUIR`.** Si crees que hace falta, pregunta antes; no lo añadas por iniciativa propia.
 3. **Cada hito termina con sus tests en verde y su criterio de aceptación demostrado.** No avances con tests rojos.
 4. **Cuando dudes entre "hacerlo bien" y "hacerlo completo", elige hacerlo bien y más pequeño.**
-5. Al terminar cada hito, escribe en `PROGRESS.md` qué se hizo, qué se dejó fuera y qué decisiones se tomaron.
+5. Al terminar cada hito, escribe en `docs/PROGRESS.md` qué se hizo, qué se dejó fuera y qué decisiones se tomaron.
 
 ---
 
@@ -334,7 +334,7 @@ Un hito no está terminado hasta que:
 - [ ] Existe un test end-to-end que demuestra el criterio de aceptación del hito.
 - [ ] Toda tool nueva está registrada con su schema en `core/registry.py`.
 - [ ] Ninguna cifra del output carece de procedencia — hay un test que lo verifica automáticamente.
-- [ ] `PROGRESS.md` actualizado con decisiones y descartes.
+- [ ] `docs/PROGRESS.md` actualizado con decisiones y descartes.
 - [ ] No se ha implementado nada de la lista §8.
 
 ---
@@ -393,13 +393,13 @@ El PRD debe incluir, como mínimo, estas 14 secciones:
 
 Si una idea aporta poco valor, es prematura, o contradice la visión ya establecida del producto, decirlo explícitamente en el PRD (sección 14) y proponer una alternativa mejor — no implementar por implementar. Evaluar cada propuesta contra la visión y la estrategia ya documentadas en la raíz del proyecto:
 
-- `PROJECT_AUDIT.md` — qué es ArchMuse, arquitectura, estado real de cada módulo.
-- `TECH_REVIEW.md` — calidad técnica, deuda técnica, bugs conocidos. **Nota (2026-08-16):** el bug crítico de tipología/zona climática en `/api/analizar` que este documento describe como "sin corregir" ya está corregido — verificado leyendo `app.py`. Este documento tiene fecha de julio y el repositorio ha tenido 54 commits desde entonces (ver `ROADMAP_VISION_ARQUITECTONICA.md` §1); tratar sus hallazgos como orientativos, no como estado actual, hasta que se refresque.
-- `ROADMAP_VISION_ARQUITECTONICA.md` — brújula oficial (aprobada por Pablo, 2026-08-16) para todo lo relacionado con el visor 3D/entorno, asesor legal/urbanístico, sostenibilidad y navegación. Cualquier PRD nuevo en estas áreas debe evaluarse contra su §3 (análisis honesto por pilar) y su §6 (secuencia recomendada), no solo contra `NORTH_STAR_2031.md`.
-- `REFACTOR_MASTERPLAN.md` — plan de endurecimiento ya priorizado; cualquier PRD nuevo debe tener en cuenta si compite por el mismo tiempo de desarrollo que esas tareas, no asumir que empieza en un proyecto ya saneado.
+- `docs/PROJECT_AUDIT.md` — qué es ArchMuse, arquitectura, estado real de cada módulo.
+- `docs/TECH_REVIEW.md` — calidad técnica, deuda técnica, bugs conocidos. **Nota (2026-08-16):** el bug crítico de tipología/zona climática en `/api/analizar` que este documento describe como "sin corregir" ya está corregido — verificado leyendo `app.py`. Este documento tiene fecha de julio y el repositorio ha tenido 54 commits desde entonces (ver `docs/ROADMAP_VISION_ARQUITECTONICA.md` §1); tratar sus hallazgos como orientativos, no como estado actual, hasta que se refresque.
+- `docs/ROADMAP_VISION_ARQUITECTONICA.md` — brújula oficial (aprobada por Pablo, 2026-08-16) para todo lo relacionado con el visor 3D/entorno, asesor legal/urbanístico, sostenibilidad y navegación. Cualquier PRD nuevo en estas áreas debe evaluarse contra su §3 (análisis honesto por pilar) y su §6 (secuencia recomendada), no solo contra `docs/NORTH_STAR_2031.md`.
+- `docs/REFACTOR_MASTERPLAN.md` — plan de endurecimiento ya priorizado; cualquier PRD nuevo debe tener en cuenta si compite por el mismo tiempo de desarrollo que esas tareas, no asumir que empieza en un proyecto ya saneado.
 - `MOAT_ANALYSIS.md` — qué es defendible y qué no; qué funcionalidades actuales aportan complejidad sin foso real (ver especialmente el visor 3D y el percentil comparativo).
 - `DESTROY_ARCHMUSE.md` — los ataques más plausibles contra el producto tal como está; cualquier PRD que ignore estas debilidades conocidas debe justificar por qué.
-- `NORTH_STAR_2031.md` — la visión a la que debe acercar cada capacidad nueva, y los hitos de 1/3/6/12/24 meses ya definidos hacia ella.
-- `docs/design/2026-08-18-alineacion-estrategica-paso0.md` — **léelo antes que `NORTH_STAR_2031.md` y que el ADR del Cerebro Arquitecto.** Resuelve cuál manda sobre qué y fija cinco consecuencias vinculantes (C1-C5) que son criterios de aceptación de cualquier PRD nuevo.
+- `docs/NORTH_STAR_2031.md` — la visión a la que debe acercar cada capacidad nueva, y los hitos de 1/3/6/12/24 meses ya definidos hacia ella.
+- `docs/design/2026-08-18-alineacion-estrategica-paso0.md` — **léelo antes que `docs/NORTH_STAR_2031.md` y que el ADR del Cerebro Arquitecto.** Resuelve cuál manda sobre qué y fija cinco consecuencias vinculantes (C1-C5) que son criterios de aceptación de cualquier PRD nuevo.
 
-**Esta regla de proceso (PRD antes de implementar) aplica a capacidades nuevas del producto.** Las correcciones de bugs y las tareas de endurecimiento ya planificadas en `REFACTOR_MASTERPLAN.md` no son "capacidad nueva" — son arreglos sobre lo que ya existe — así que no requieren un PRD nuevo por defecto; si surge duda sobre si algo cuenta como "nuevo" o como "corrección", preguntar antes de asumir.
+**Esta regla de proceso (PRD antes de implementar) aplica a capacidades nuevas del producto.** Las correcciones de bugs y las tareas de endurecimiento ya planificadas en `docs/REFACTOR_MASTERPLAN.md` no son "capacidad nueva" — son arreglos sobre lo que ya existe — así que no requieren un PRD nuevo por defecto; si surge duda sobre si algo cuenta como "nuevo" o como "corrección", preguntar antes de asumir.

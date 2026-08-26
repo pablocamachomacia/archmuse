@@ -284,8 +284,8 @@ Not solid: the normative corpus, which is one unsigned rule. Until it grows, Arc
 building code — and is built to say so rather than to improvise.
 
 Product decisions and design records live in `docs/` — `docs/prd/` for product requirements,
-`docs/design/` for architecture decisions — along with the planning documents at the repository
-root. They are candid about what does not work, which is why they are worth keeping.
+`docs/design/` for architecture decisions, and the planning and strategy documents alongside them.
+They are candid about what does not work, which is why they are worth keeping.
 
 ## Licence
 
