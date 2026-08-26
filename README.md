@@ -289,5 +289,4 @@ They are candid about what does not work, which is why they are worth keeping.
 
 ## Licence
 
-**No licence has been chosen yet.** Until one is added, default copyright applies: all rights
-reserved by the author. The code is public so it can be read; it is not yet licensed for reuse.
+MIT — see [LICENSE](LICENSE).
