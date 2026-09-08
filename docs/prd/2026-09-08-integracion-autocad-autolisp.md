@@ -286,16 +286,16 @@ Consumidores indirectos afectados: **ninguno**. `/medir`, `/api/acta-legible`,
 
 ## 11. Plan de implementación
 
-| # | Tarea | ~ |
-|---|---|---|
-| 1 | Extraer de los dos DXF reales el payload que mandaría el script, y congelarlo como fixture | 1 h |
-| 2 | `/api/medicion-geometria`: JSON → DXF temporal (ezdxf) → camino existente | 2 h |
-| 3 | Test de integración: cifras idénticas a `/api/medicion` sobre ambos planos, al céntimo | 1,5 h |
-| 4 | Serializador s-expresión y su test | 1 h |
-| 5 | `archmuse.lsp`: selección, serialización, POST por COM | 2 h |
-| 6 | `archmuse.lsp`: tabla nativa (`vla-AddTable`), marca `C3`, motivos de bloqueo | 2 h |
-| 7 | Checklist de primera prueba | 1 h |
-| 8 | `PROGRESS.md` con lo no verificado | 0,5 h |
+| # | Tarea | ~ | Estado |
+|---|---|---|---|
+| 1 | Extraer de los dos DXF reales el payload que mandaría el script | 1 h | **HECHO** 2026-09-08 — `geometria_recibida.payload_desde_dxf()`, derivado de los dos fixtures anónimos y no escrito a mano |
+| 2 | `/api/medicion-geometria`: JSON → DXF temporal (ezdxf) → camino existente | 2 h | **HECHO** 2026-09-08 |
+| 3 | Test de integración: cifras idénticas a `/api/medicion` sobre ambos planos, al céntimo | 1,5 h | **HECHO** 2026-09-08 — 28 tests |
+| 4 | Serializador s-expresión y su test | 1 h | **HECHO** 2026-09-08 |
+| 5 | `archmuse.lsp`: selección, serialización, POST por COM | 2 h | pendiente del trial |
+| 6 | `archmuse.lsp`: tabla nativa (`vla-AddTable`), marca `C3`, motivos de bloqueo | 2 h | pendiente del trial |
+| 7 | Checklist de primera prueba | 1 h | **HECHO** 2026-09-08 |
+| 8 | `PROGRESS.md` con lo no verificado | 0,5 h | **HECHO** 2026-09-08 |
 
 **11 h.** Las tareas 5 y 6 son las únicas que **no se pueden probar** hasta el
 trial; 1-4 y 7-8 se cierran hoy con la suite en verde.

@@ -3484,6 +3484,84 @@ def medicion_endpoint():
     return jsonify(_medicion_a_json(acta, informe))
 
 
+@app.route("/api/medicion-geometria", methods=["POST"])
+def medicion_geometria_endpoint():
+    """Geometría en JSON -> la MISMA medición que `/api/medicion`, sin subir el DXF.
+
+    **La puerta para un cliente CAD** (`docs/prd/2026-09-08-integracion-autocad-autolisp.md`,
+    salida A de la §4.1). Un script de AutoCAD no puede subir el fichero del
+    arquitecto —20 MB por un `multipart` montado desde AutoLISP no es viable—,
+    pero sí puede mandar los vértices de lo que ha seleccionado.
+
+    **No hay motor nuevo detrás de esta ruta.** Lo recibido se materializa en un
+    DXF mínimo en el temporal (`analyzer/geometria_recibida.py`) y entra por
+    `_ejecutar_medicion_de_planta`, que es **la misma función** que usa
+    `/api/medicion`: misma Skill, misma acta de procedencia, mismo PDF, mismo
+    mecanismo de autorización de efectos (`SEG-1`) y mismo contrato congelado
+    (`CAD-2`). Cero capacidades nuevas en el registro, así que el guardián de
+    `C4` no se toca y `D-12` sigue sin gastarse.
+
+    El cliente manda polilíneas y textos **en crudo**: emparejar cada rótulo con
+    su recinto lo sigue haciendo `parser.match_label_to_room`, no el script.
+    Duplicar ese criterio en AutoLISP sería una segunda implementación de un
+    criterio profesional (`D-7`).
+
+    `?formato=lisp` devuelve lo mismo como s-expresión, porque AutoLISP no trae
+    parser JSON y escribir uno en el cliente sería la única pieza del prototipo
+    imposible de probar sin AutoCAD instalado.
+    """
+    from analyzer.geometria_recibida import (
+        PayloadInvalido, SubidaMaterializada, a_sexpresion, validar,
+    )
+
+    try:
+        cuerpo = request.get_json(silent=True)
+    except Exception:  # noqa: BLE001 - cuerpo de un cliente ajeno
+        cuerpo = None
+    if cuerpo is None:
+        return jsonify(error="Manda un cuerpo JSON con «recintos»."), 400
+
+    try:
+        geometria = validar(cuerpo)
+    except PayloadInvalido as exc:
+        return jsonify(error=str(exc)), 400
+
+    capa = (cuerpo.get("capa_de_recintos") or "").strip() or None
+    factor_escala = factor_de_unidad(cuerpo.get("escala") or "")
+
+    try:
+        acta, informe = _ejecutar_medicion_de_planta(
+            SubidaMaterializada(geometria), "geometria_recibida.dxf", capa,
+            factor_escala, quien="api:medicion-geometria",
+            # Mismo criterio que `/api/medicion`: el PDF se escribe en un
+            # temporal del servidor y se lo lleva el arquitecto, no toca ningún
+            # fichero suyo. Aquí la autorización la da haber lanzado el comando.
+            autorizar_efectos=True)
+    except _FalloDeMedicion as exc:
+        return jsonify(error=str(exc)), 400
+    except _ConfirmacionRequerida as exc:
+        return _respuesta_confirmacion_requerida(exc)
+
+    respuesta = _medicion_a_json(acta, informe)
+    # Las entidades del dibujo del arquitecto que han producido esta medición.
+    # NO es una correspondencia celda a celda —el DXF materializado no puede
+    # conservar los handles de AutoCAD— sino el inventario de dónde ir a mirar.
+    respuesta["entidades_de_origen"] = list(geometria.handles)
+    # Lo que llegó y no se pudo medir. Va siempre, aunque esté vacío: un
+    # descarte silencioso es superficie que falta sin que nadie lo sepa.
+    respuesta["geometria_descartada"] = [dict(d) for d in geometria.descartes]
+
+    if (request.args.get("formato") or "").lower() == "lisp":
+        # El PDF no cabe en una s-expresión que AutoLISP pueda leer de un
+        # tirón, y el cliente CAD no lo quiere: dibuja una tabla, no abre un
+        # documento. Se declara en vez de mandarlo troceado.
+        sin_pdf = {k: v for k, v in respuesta.items() if k != "informe_pdf_base64"}
+        sin_pdf["informe_pdf_base64"] = None
+        return Response(a_sexpresion(sin_pdf), mimetype="text/plain; charset=utf-8")
+
+    return jsonify(respuesta)
+
+
 @app.route("/api/coherencia-datos", methods=["POST"])
 def coherencia_datos_endpoint():
     """`docs/prd/2026-08-21-ubicacion-hallazgos-visor2d.md`, addendum Fase 2

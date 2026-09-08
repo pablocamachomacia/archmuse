@@ -96,6 +96,46 @@ borrador de `C3` estampada, y con el original intacto (sello SHA-256
 recalculado). `TOTAL SUP.UTIL INTERIOR: 58,78 m²`; `TOTAL S. ÚTIL: N/D` con su
 motivo. **Fuera del repositorio**, por lo mismo que los fixtures.
 
+### El punto 3, hecho después: la puerta para AutoCAD, sin `.lsp`
+
+Tareas 1-4 y 7-8 del PRD aprobado. **Sin capacidades nuevas y sin tocar el
+guardián de `C4`**, que era la condición.
+
+`/api/medicion-geometria` recibe JSON con las polilíneas y los textos en crudo,
+lo materializa en un DXF mínimo en el temporal y entra por
+`_ejecutar_medicion_de_planta` — **la misma función** que usa `/api/medicion`.
+Toda la costura es que esa función sólo le pide a lo que recibe un método
+`save(ruta)`: `SubidaMaterializada` se lo da, y por eso no hay que tocar ni una
+línea de la Skill, la capacidad, el acta, el PDF ni el motor.
+
+- **`C1` corrido de verdad, que era el criterio de éxito real** (§13.1 del PRD):
+  **cero líneas del motor reescritas** para servir a un cliente que no es la web.
+- El cliente **no empareja rótulos con recintos**: manda las dos cosas sueltas y
+  lo resuelve `parser.match_label_to_room`, donde ya estaba probado (`D-7`).
+- La escala la sigue decidiendo `analyzer/escala.py`. Comprobado: con un
+  `$INSUNITS` que miente (milímetros sobre geometría en metros), no mide — hace
+  la pregunta de siempre.
+- Nada se cae en silencio: una polilínea de dos vértices no se descarta callando,
+  sale en `geometria_descartada` con su motivo y su handle.
+- `?formato=lisp` devuelve lo mismo como s-expresión. AutoLISP no trae parser
+  JSON, y escribir uno en el cliente serían ~150 líneas imposibles de probar sin
+  AutoCAD: diez de Python con tests las sustituyen. Una superficie que no se
+  publica sale como `nil`, que es exactamente lo que significa.
+
+**Los payloads de los tests no están escritos a mano**: se derivan de los dos
+fixtures anónimos con `payload_desde_dxf()`, que simula lo que hace `ssget`. Por
+eso la comprobación central significa algo — las dos rutas dan **exactamente** la
+misma medición sobre los dos planos, al céntimo, vivienda a vivienda y pieza a
+pieza. Si eso se pone rojo, hay un segundo motor de medición y no se ajusta la
+tolerancia: se busca por qué.
+
+**Lo que sigue sin poderse verificar, y no se simula.** Todo `autocad/archmuse.lsp`,
+que ni siquiera está escrito: tareas 5 y 6, para el día del trial. Un *mock* de
+AutoCAD daría confianza falsa sobre lo único que el prototipo existe para
+averiguar. El checklist de `docs/design/checklist-primera-prueba-autocad.md` ya
+está escrito y separa, prueba a prueba, lo que sería fallo del flujo de lo que
+sería fallo del lenguaje.
+
 ### Qué NO se ha hecho, y por qué
 
 - **Los puntos 1b y 1c siguen bloqueados**: el fallo de duplicación del

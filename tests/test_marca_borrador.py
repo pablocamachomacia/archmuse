@@ -228,6 +228,7 @@ def test_ningun_modulo_guarda_un_dxf_sin_pasar_por_la_marca():
     este fichero.
     """
     culpables = []
+    exentos = []
     for fichero in sorted((RAIZ / "analyzer").rglob("*.py")):
         fuente = fichero.read_text(encoding="utf-8")
         # `.saveas(` dentro de una cadena de docstring no cuenta: se busca la
@@ -236,7 +237,66 @@ def test_ningun_modulo_guarda_un_dxf_sin_pasar_por_la_marca():
             continue
         if fichero.name == "marca_borrador.py":
             continue
+        # Única salida, y es ruidosa a propósito: un DXF que no se entrega a
+        # nadie (un buffer interno) no lleva marca, pero el módulo tiene que
+        # decirlo con esta constante y explicar por qué. Ver el añadido de abajo,
+        # que comprueba que la explicación existe de verdad.
+        if "DXF_INTERNO_SIN_MARCA_DE_BORRADOR" in fuente:
+            exentos.append(fichero.name)
+            continue
         if "marca_borrador" not in fuente:
             culpables.append(fichero.name)
     assert culpables == [], (
         "estos módulos guardan un DXF sin pasar por `marca_borrador`: %s" % culpables)
+    # La exención no puede ser una palabra suelta: si alguien la copia para
+    # desactivar el guardián, tiene que dejar escrito el motivo.
+    assert exentos == ["geometria_recibida.py"], (
+        "ha aparecido una exención nueva a la marca de borrador: %s. Si es un DXF "
+        "que se entrega a alguien, lleva marca; si no, añádelo aquí a mano y que "
+        "quede en el diff." % exentos)
+
+
+def test_la_exencion_del_dxf_interno_esta_justificada_por_escrito():
+    """Un guardián con una puerta trasera vale lo que valga su cerradura.
+
+    La constante que exime a `geometria_recibida.py` de la marca tiene que llevar
+    su motivo en el propio valor, no sólo en el nombre: así el motivo viaja al
+    `grep` de quien la encuentre dentro de dos años.
+    """
+    from analyzer.geometria_recibida import DXF_INTERNO_SIN_MARCA_DE_BORRADOR
+
+    assert len(DXF_INTERNO_SIN_MARCA_DE_BORRADOR) > 80
+    assert "no se entrega" in DXF_INTERNO_SIN_MARCA_DE_BORRADOR
+
+
+def test_el_dxf_materializado_no_mete_ni_un_texto_que_no_venga_del_cliente():
+    """La segunda razón de la exención, comprobada y no prometida.
+
+    Este DXF existe para que el parser lo lea, y el parser busca rótulos en los
+    `MTEXT`. Cualquier texto que ArchMuse añadiera aquí —la marca de borrador, un
+    cajetín, una nota— podría acabar siendo el rótulo de un recinto y falsear la
+    medición. Así que salen exactamente los textos que mandó el cliente, ni uno
+    más.
+    """
+    import ezdxf
+
+    from analyzer.geometria_recibida import escribir_dxf, validar
+
+    geometria = validar({
+        "insunits": 6,
+        "recintos": [{"handle": "A1", "capa": "00 areas",
+                      "vertices": [[0, 0], [6, 0], [6, 6], [0, 6]]}],
+        "textos": [{"handle": "B1", "capa": "00 areas", "texto": "Salón",
+                    "x": 3.0, "y": 3.0}],
+    })
+    import tempfile
+    import os
+
+    with tempfile.TemporaryDirectory() as tmp:
+        ruta = escribir_dxf(geometria, os.path.join(tmp, "materializado.dxf"))
+        doc = ezdxf.readfile(ruta)
+        textos = [e.plain_text().strip() for e in doc.modelspace()
+                  if e.dxftype() in ("MTEXT", "TEXT")]
+
+    assert textos == ["Salón"], (
+        "el DXF materializado lleva texto que no mandó el cliente: %r" % textos)
