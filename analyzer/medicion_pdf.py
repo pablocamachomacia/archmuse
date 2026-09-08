@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import io
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -123,6 +123,26 @@ def _m2(valor: Any) -> str:
     if valor is None:
         return "—"
     return _cifra(valor) + " m²"
+
+
+def _frase_del_total(datos: dict, viviendas: Sequence[dict]) -> str:
+    """El total de la planta en una frase, o por qué no lo hay.
+
+    Las dos ramas vienen decididas de `analyzer/medicion.py`: aquí no se suma,
+    no se redondea y no se rellena. El recuento va pegado a la cifra —«suma de
+    3 de 3 viviendas»— porque un total sin saber sobre cuántas viviendas se ha
+    calculado no se puede juzgar.
+    """
+    total = datos.get("total_util_m2")
+    con_total = sum(1 for v in viviendas if v.get("total_util_m2") is not None)
+    if total is None:
+        motivos = datos.get("impedimentos_del_total") or ()
+        return ("<b>Esta planta no lleva total de superficie útil.</b> %s"
+                % ("; ".join(motivos) if motivos
+                   else "No se ha podido totalizar."))
+    return ("<b>TOTAL SUPERFICIE ÚTIL DE LA PLANTA: %s.</b> Suma de las %d vivienda(s) "
+            "medida(s), %d de %d con total propio."
+            % (_m2(total), len(viviendas), con_total, len(viviendas)))
 
 
 def _referencia(pieza: Dict[str, Any]) -> str:
@@ -246,10 +266,25 @@ def _seccion_de_vivienda(vivienda: Dict[str, Any], estilos) -> List[Any]:
         bloque.append(_p(nota, estilos["nota"]))
     total = vivienda.get("total_util_m2")
     if total is not None and vivienda.get("superficie_por_union_m2") is not None:
+        # **Sin la cifra de la unión entre paréntesis, y ese paréntesis estuvo
+        # aquí.** Decía «El total coincide con la superficie que ocupan
+        # realmente las piezas (66,33 m²)» al lado de un TOTAL de 66,32: dos
+        # números distintos en líneas contiguas, en una frase que afirma que
+        # coinciden. Pasaba en 3 de las 5 viviendas con total de `ejemplo.dxf`
+        # (66,32/66,33 · 66,56/66,55 · 45,32/45,31), y es lo primero que ve un
+        # arquitecto en el documento cuya tesis es que aquí no se publica
+        # ningún número que no cuadre.
+        #
+        # No era un error de cálculo: el total es la suma de las piezas ya
+        # redondeadas y la unión se redondea por su cuenta, así que difieren
+        # hasta en un céntimo de metro. Lo que sobraba era el paréntesis. La
+        # afirmación se sostiene sola —`total_util_m2` sólo existe cuando
+        # `impedimentos` está vacío, y un solape es un impedimento—, y la
+        # magnitud de la unión sigue publicándose donde sí importa: en el
+        # motivo de las viviendas que NO llevan total.
         bloque.append(_p(
-            "El total coincide con la superficie que ocupan realmente las "
-            "piezas (%s): no hay nada dibujado dos veces."
-            % _m2(vivienda.get("superficie_por_union_m2")), estilos["nota"]))
+            "Las piezas no se pisan entre sí: el total es la superficie que "
+            "ocupan realmente.", estilos["nota"]))
     solapes = vivienda.get("solapes") or ()
     if solapes:
         bloque.append(_p("Piezas que se pisan entre sí, y cuánto:", estilos["nota"]))
@@ -341,6 +376,15 @@ def generar_medicion_pdf(datos: Dict[str, Any]) -> bytes:
             % (len(viviendas), datos.get("agrupacion") or "—", con_total,
                len(viviendas) - con_total),
             estilos["cuerpo"]))
+        # El total de la PLANTA, y con la misma disciplina que el de una
+        # vivienda: la cifra con su recuento al lado, o el hueco con la
+        # vivienda que lo bloquea. Un cuadro de superficies sin total de planta
+        # obliga a sumar la columna a mano, que es el trabajo que se delega;
+        # uno con un total al que le falta una vivienda es peor todavía.
+        # `medicion.py` decide cuál de los dos es: aquí no se suma nada.
+        story.append(_p(_frase_del_total(datos, viviendas), estilos["cuerpo"]))
+        for advertencia in datos.get("advertencias_del_total") or ():
+            story.append(_p(advertencia[0].upper() + advertencia[1:] + ".", estilos["nota"]))
         for vivienda in viviendas:
             story.append(KeepTogether(_seccion_de_vivienda(vivienda, estilos)))
 

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<!--
+  ArchMuse — medición de superficies. La herramienta mínima.
+
+  Encargo de Pablo del 2026-09-03: un experimento de validación de una semana.
+  Sube un DXF, mira las superficies, descarga el PDF. No es un dashboard, no
+  es una landing y no es la SPA: es una herramienta de un solo trabajo.
+
+  Sin dependencias, sin build, un fichero. La SPA de `/` sigue intacta y este
+  fichero no la toca ni comparte nada con ella a propósito — que este
+  experimento se pueda tirar a la basura sin arrastrar nada es parte del
+  diseño.
+-->
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ArchMuse · Medición de superficies</title>
+  <style>
+    :root {
+      --tinta: #1c1c1a;
+      --tinta-suave: #6b6a65;
+      --papel: #faf9f6;
+      --linea: #d9d6ce;
+      --acento: #2f5d50;
+      --alarma: #8a3b28;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--papel);
+      color: var(--tinta);
+      font: 15px/1.55 "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    }
+    main { max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; }
+    h1 { font-size: 25px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .subtitulo { color: var(--tinta-suave); margin: 0 0 36px; font-size: 15px; }
+
+    /* --- Zona de subida --- */
+    #zona {
+      border: 1.5px dashed var(--linea);
+      border-radius: 4px;
+      padding: 40px 24px;
+      text-align: center;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    #zona:hover, #zona.encima { border-color: var(--acento); background: #f4f7f5; }
+    #zona p { margin: 0; }
+    #zona .fichero { font-weight: 600; }
+    #zona .pista { color: var(--tinta-suave); font-size: 13.5px; margin-top: 6px; }
+
+    .opciones {
+      display: flex; gap: 20px; flex-wrap: wrap;
+      margin: 18px 0 0; align-items: flex-end;
+    }
+    .opciones label { display: block; font-size: 13px; color: var(--tinta-suave); }
+    .opciones input, .opciones select {
+      font: inherit; font-size: 14px; padding: 6px 8px;
+      border: 1px solid var(--linea); border-radius: 3px; background: #fff;
+      color: var(--tinta); min-width: 180px;
+    }
+    button {
+      font: inherit; font-size: 15px; padding: 9px 22px; border-radius: 3px;
+      border: 1px solid var(--acento); background: var(--acento); color: #fff;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .45; cursor: default; }
+    button.secundario { background: #fff; color: var(--acento); }
+
+    /* --- Estados --- */
+    #estado { margin-top: 24px; color: var(--tinta-suave); }
+    .error {
+      margin-top: 24px; padding: 14px 16px; background: #fdf4f1;
+      border-left: 3px solid var(--alarma); color: var(--alarma);
+    }
+    .error strong { display: block; margin-bottom: 4px; }
+
+    /* --- Resultado --- */
+    #resultado { margin-top: 40px; }
+    .cabecera-resultado {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .total-planta { display: flex; flex-direction: column; gap: 2px; }
+    .total-planta .cifra {
+      font-size: 26px; font-weight: 600; letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
+    }
+    .total-planta.sin .cifra { font-size: 20px; color: var(--alarma); }
+    .total-planta .recuento { font-size: 13.5px; color: var(--tinta-suave); max-width: 62ch; }
+    .aviso-total {
+      margin: 12px 0 0; padding: 10px 12px; background: #fdf9f1;
+      border-left: 3px solid #b8862b; font-size: 13.5px; color: #6b5220;
+    }
+    .recuento-piezas {
+      margin: 14px 0 28px; padding-bottom: 10px; font-size: 13.5px;
+      color: var(--tinta-suave); border-bottom: 1px solid var(--linea);
+    }
+    .vivienda { margin-bottom: 40px; }
+    .vivienda h2 {
+      font-size: 17px; font-weight: 600; margin: 0 0 10px;
+      display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    }
+    .vivienda h2 .total { font-variant-numeric: tabular-nums; }
+    .vivienda h2 .sin-total { color: var(--alarma); font-size: 14px; font-weight: 500; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eceae4; }
+    th {
+      font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--tinta-suave); font-weight: 600; border-bottom: 1px solid var(--linea);
+    }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.capa { color: var(--tinta-suave); font-size: 13px; }
+    tr.subtotal td { font-weight: 600; border-top: 1px solid var(--linea); border-bottom: none; }
+    tr.total td { font-weight: 700; border-top: 2px solid var(--tinta); border-bottom: none; }
+    .impedimento {
+      margin: 10px 0 0; padding: 10px 12px; background: #fdf4f1;
+      border-left: 3px solid var(--alarma); font-size: 13.5px; color: var(--alarma);
+    }
+    .nota {
+      margin-top: 8px; padding: 12px 14px; background: #f2f1ec;
+      font-size: 13.5px; color: var(--tinta-suave);
+    }
+    .nota ul { margin: 8px 0 0; padding-left: 18px; }
+    details.nota summary { cursor: pointer; }
+    details.nota[open] summary { margin-bottom: 4px; }
+    .pregunta {
+      padding: 16px 18px; background: #f4f7f5;
+      border-left: 3px solid var(--acento);
+    }
+    .pregunta strong { display: block; margin-bottom: 8px; }
+    .pregunta p { margin: 0 0 8px; }
+    .pregunta .pista-pregunta { color: var(--tinta-suave); font-size: 13.5px; margin: 0; }
+    .aviso-borrador {
+      margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--linea);
+      font-size: 13px; color: var(--tinta-suave);
+    }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Medición de superficies</h1>
+  <p class="subtitulo">
+    Sube la planta en DXF. ArchMuse mide cada recinto sobre su propio contorno y
+    entrega el PDF con la procedencia de cada cifra.
+  </p>
+
+  <div id="zona">
+    <p class="fichero" id="nombre-fichero">Arrastra aquí el DXF, o pulsa para elegirlo</p>
+    <p class="pista" id="pista">Solo se lee. El fichero no se guarda en ningún sitio.</p>
+    <input type="file" id="fichero" accept=".dxf" hidden>
+  </div>
+
+  <div class="opciones">
+    <div>
+      <label for="capa">Capa de recintos (opcional)</label>
+      <input type="text" id="capa" placeholder="ArchMuse la detecta solo">
+    </div>
+    <div>
+      <label for="escala">Unidad del dibujo (opcional)</label>
+      <select id="escala">
+        <option value="">Detectar</option>
+        <option value="metros">metros</option>
+        <option value="centímetros">centímetros</option>
+        <option value="milímetros">milímetros</option>
+        <option value="decímetros">decímetros</option>
+      </select>
+    </div>
+    <button id="medir" disabled>Medir</button>
+  </div>
+
+  <p id="estado" hidden></p>
+  <div id="error" class="error" hidden></div>
+  <div id="resultado" hidden></div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var elZona = document.getElementById("zona");
+  var elFichero = document.getElementById("fichero");
+  var elNombre = document.getElementById("nombre-fichero");
+  var elPista = document.getElementById("pista");
+  var elMedir = document.getElementById("medir");
+  var elEstado = document.getElementById("estado");
+  var elError = document.getElementById("error");
+  var elResultado = document.getElementById("resultado");
+
+  var fichero = null;
+  var pdfBase64 = null;
+
+  // --- Subida ---------------------------------------------------------
+  elZona.addEventListener("click", function () { elFichero.click(); });
+  elFichero.addEventListener("change", function () { aceptar(elFichero.files[0]); });
+
+  ["dragenter", "dragover"].forEach(function (e) {
+    elZona.addEventListener(e, function (ev) {
+      ev.preventDefault(); elZona.classList.add("encima");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (e) {
+    elZona.addEventListener(e, function (ev) {
+      ev.preventDefault(); elZona.classList.remove("encima");
+    });
+  });
+  elZona.addEventListener("drop", function (ev) {
+    aceptar(ev.dataTransfer.files && ev.dataTransfer.files[0]);
+  });
+
+  // Soltar el fichero FUERA del recuadro: sin esto, el navegador aplica su
+  // comportamiento por defecto y NAVEGA al fichero — la página desaparece y
+  // hay que volver atrás. Con un DXF de 19 MB delante de un cliente eso es la
+  // demo entera (auditoría del 2026-09-04: `drop_fuera_de_zona_prevenido:
+  // false`). Fallar el recuadro por veinte píxeles es lo normal, no el caso
+  // raro, así que se cancela en todo el documento.
+  //
+  // Dentro de la zona no se toca nada: sus propios listeners ya lo gestionan.
+  ["dragover", "drop"].forEach(function (evento) {
+    document.addEventListener(evento, function (ev) {
+      if (elZona.contains(ev.target)) return;
+      ev.preventDefault();
+      if (ev.dataTransfer) ev.dataTransfer.dropEffect = "none";
+    });
+  });
+
+  function aceptar(f) {
+    if (!f) return;
+    if (!/\.dxf$/i.test(f.name)) {
+      mostrarError("Ese fichero no es un DXF", "ArchMuse lee planos en DXF. «" + f.name + "» tiene otra extensión.");
+      return;
+    }
+    fichero = f;
+    pdfBase64 = null;
+    elNombre.textContent = f.name;
+    elPista.textContent = Math.round(f.size / 1024) + " KB · solo se lee, no se guarda";
+    elMedir.disabled = false;
+    elError.hidden = true;
+    elResultado.hidden = true;
+  }
+
+  // --- Medición -------------------------------------------------------
+  elMedir.addEventListener("click", function () {
+    if (!fichero) return;
+    var datos = new FormData();
+    datos.append("dxf", fichero);
+    datos.append("capa", document.getElementById("capa").value);
+    datos.append("escala", document.getElementById("escala").value);
+
+    elError.hidden = true;
+    elResultado.hidden = true;
+    elMedir.disabled = true;
+    elEstado.hidden = false;
+    elEstado.textContent = "Midiendo… (un plano de seis viviendas tarda unos 12 segundos)";
+
+    fetch("/api/medicion", { method: "POST", body: datos })
+      .then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, cuerpo: j }; });
+      })
+      .then(function (res) {
+        elEstado.hidden = true;
+        elMedir.disabled = false;
+        if (!res.ok) {
+          mostrarError("No se ha podido medir este plano", res.cuerpo.error || "Error desconocido.");
+          return;
+        }
+        pintar(res.cuerpo);
+      })
+      .catch(function (e) {
+        elEstado.hidden = true;
+        elMedir.disabled = false;
+        mostrarError("No se ha podido contactar con ArchMuse", String(e));
+      });
+  });
+
+  function mostrarError(titulo, detalle) {
+    elError.hidden = false;
+    elError.innerHTML = "<strong></strong><span></span>";
+    elError.querySelector("strong").textContent = titulo;
+    elError.querySelector("span").textContent = detalle;
+  }
+
+  // --- Pintado --------------------------------------------------------
+  function m2(v) {
+    if (v === null || v === undefined) return "—";
+    return Number(v).toFixed(2).replace(".", ",") + " m²";
+  }
+
+  function texto(t) {
+    var d = document.createElement("div");
+    d.textContent = t == null ? "" : String(t);
+    return d.innerHTML;
+  }
+
+  function pintar(datos) {
+    pdfBase64 = datos.informe_pdf_base64;
+    var viviendas = datos.viviendas || [];
+    var preguntas = datos.preguntas_abiertas || [];
+    var partes = [];
+
+    // El fichero no se ha podido abrir: es un ERROR, no una pregunta. Antes
+    // caía en el bloque de abajo y salía bajo el titular «ArchMuse necesita
+    // que decidas una cosa antes de medir», invitando a rellenar la capa y la
+    // unidad — dos campos que no pueden arreglar un fichero corrupto. El
+    // backend lo distingue con `lectura_fallida` (código `dxf_ilegible`), no
+    // por el texto del mensaje.
+    if (datos.lectura_fallida) {
+      mostrarError("No se ha podido leer este fichero",
+                   preguntas[0] || "El fichero no se ha podido abrir como DXF.");
+      elResultado.hidden = true;
+      return;
+    }
+
+    // Un plano que ArchMuse no puede medir todavía NO es un error: casi
+    // siempre es una pregunta con respuesta, y la respuesta cabe en los dos
+    // campos que ya están arriba (la capa de recintos y la unidad del dibujo).
+    // Verificado sobre tres planos reales de cliente: dos preguntaban por la
+    // capa y uno por la unidad, y los tres siguieron al contestar. Enterrar
+    // eso en una nota al pie —que es lo que pasaba— convierte una pregunta de
+    // diez segundos en «esto no funciona».
+    if (!viviendas.length && preguntas.length) {
+      partes.push(
+        '<div class="pregunta"><strong>ArchMuse necesita que decidas una cosa antes de medir</strong>' +
+        preguntas.map(function (p) { return "<p>" + texto(p) + "</p>"; }).join("") +
+        "<p class=\"pista-pregunta\">Contéstalo en los campos de arriba (capa de recintos / unidad " +
+        "del dibujo) y vuelve a pulsar Medir.</p></div>"
+      );
+      elResultado.innerHTML = partes.join("");
+      elResultado.hidden = false;
+      return;
+    }
+
+    partes.push(cabeceraHtml(datos, viviendas));
+
+    if (!viviendas.length) {
+      partes.push(
+        '<div class="pregunta"><strong>No se ha podido separar ninguna vivienda en este plano.</strong>' +
+        "<p>ArchMuse ha leído el fichero pero no ha encontrado recintos que medir en la capa " +
+        "que ha elegido. Prueba a indicar la capa de recintos en el campo de arriba.</p></div>"
+      );
+    }
+
+    viviendas.forEach(function (v) {
+      partes.push(pintarVivienda(v));
+    });
+
+    // La superficie construida: por qué no está. Va después de las cifras y
+    // no en un tooltip -- es la primera pregunta que hace un arquitecto.
+    if (datos.superficie_construida && !datos.superficie_construida.disponible) {
+      partes.push(
+        '<div class="nota"><strong>Superficie construida: no se calcula.</strong><br>' +
+        texto(datos.superficie_construida.motivo) + "</div>"
+      );
+    }
+
+    // Lo de ESTE plano, abierto: es media razón por la que alguien paga.
+    var hallazgos = (datos.hallazgos_del_plano || []).concat(datos.preguntas_abiertas || []);
+    if (hallazgos.length) {
+      partes.push(
+        '<div class="nota"><strong>Lo que ArchMuse no ha podido establecer de este plano</strong><ul>' +
+        hallazgos.map(function (l) { return "<li>" + texto(l) + "</li>"; }).join("") +
+        "</ul></div>"
+      );
+    }
+
+    // Lo genérico, plegado: son las mismas dieciséis líneas en cada ejecución,
+    // y un muro de avisos genéricos entrena a no leer ninguno —incluidos los
+    // de arriba, que sí son de este plano. Se entregan igual: la cobertura
+    // declarada es parte del producto.
+    var limites = datos.limites_de_la_herramienta || [];
+    if (limites.length) {
+      partes.push(
+        '<details class="nota"><summary>Lo que esta herramienta no comprueba nunca (' +
+        limites.length + ")</summary><ul>" +
+        limites.map(function (l) { return "<li>" + texto(l) + "</li>"; }).join("") +
+        "</ul></details>"
+      );
+    }
+
+    partes.push(
+      '<p class="aviso-borrador">BORRADOR para revisión de un colegiado. ArchMuse mide; ' +
+      "el proyecto lo firma el arquitecto que lo redacta. El DXF original no se ha " +
+      "modificado.</p>"
+    );
+
+    elResultado.innerHTML = partes.join("");
+    elResultado.hidden = false;
+
+    var boton = document.getElementById("descargar");
+    if (boton) boton.addEventListener("click", descargarPdf);
+  }
+
+  // La cabecera es donde un arquitecto mira primero, así que el total de la
+  // planta va ahí y **se explica ahí**: con el recuento pegado cuando lo hay
+  // ("3 de 3 viviendas"), y con la vivienda que lo bloquea cuando no lo hay.
+  // Un número suelto no se puede juzgar, y un hueco sin motivo obliga a bajar
+  // la vista para entender por qué falta.
+  function cabeceraHtml(datos, viviendas) {
+    var t = datos.total_del_plano || {};
+    var hayTotal = t.valor_m2 !== null && t.valor_m2 !== undefined;
+    var recuento = texto(t.viviendas_con_total) + " de " + texto(t.viviendas) + " viviendas";
+
+    var cifra = hayTotal
+      ? '<div class="total-planta"><span class="cifra">' + m2(t.valor_m2) + "</span>" +
+        '<span class="recuento">superficie útil de la planta · ' + recuento + "</span></div>"
+      : '<div class="total-planta sin"><span class="cifra">Sin total de planta</span>' +
+        '<span class="recuento">' + texto(t.motivo || (recuento + " medidas")) + "</span></div>";
+
+    // La advertencia va pegada al número porque es el número el que podría
+    // estar corto: un rótulo «VT…» sin recintos puede ser una vivienda de esta
+    // planta que no se ha medido, o una etiqueta de otra planta. No se decide.
+    var avisos = (t.advertencias || []).map(function (a) {
+      return '<p class="aviso-total">' + texto(a) + "</p>";
+    }).join("");
+
+    return (
+      '<div class="cabecera-resultado">' +
+        cifra +
+        (pdfBase64 ? '<button class="secundario" id="descargar">Descargar PDF</button>' : "") +
+      "</div>" + avisos +
+      '<p class="recuento-piezas">' + viviendas.length + " vivienda(s) · " +
+      texto(datos.piezas) + " piezas medidas</p>"
+    );
+  }
+
+  function pintarVivienda(v) {
+    var filas = (v.piezas || []).map(function (p) {
+      return (
+        "<tr>" +
+          "<td>" + texto(p.rotulo) + "</td>" +
+          "<td>" + texto(p.ambito === "sin_clasificar" ? "sin clasificar" : p.ambito) + "</td>" +
+          '<td class="capa">' + texto(p.capa) + "</td>" +
+          '<td class="num">' + m2(p.area_m2) + "</td>" +
+        "</tr>"
+      );
+    }).join("");
+
+    var cabeceraTotal = v.total_util_m2 === null || v.total_util_m2 === undefined
+      ? '<span class="sin-total">sin total</span>'
+      : '<span class="total">' + m2(v.total_util_m2) + "</span>";
+
+    var impedimentos = (v.impedimentos || []).map(function (m) {
+      return '<p class="impedimento">' + texto(m) + "</p>";
+    }).join("");
+
+    return (
+      '<section class="vivienda">' +
+        "<h2><span>" + texto(v.vivienda) + "</span>" + cabeceraTotal + "</h2>" +
+        "<table><thead><tr>" +
+          "<th>Recinto</th><th>Ámbito</th><th>Capa del DXF</th><th class=\"num\">Superficie</th>" +
+        "</tr></thead><tbody>" + filas +
+        '<tr class="subtotal"><td colspan="3">Superficie útil interior</td>' +
+          '<td class="num">' + m2(v.interior_m2) + "</td></tr>" +
+        '<tr class="subtotal"><td colspan="3">Superficie útil exterior</td>' +
+          '<td class="num">' + m2(v.exterior_m2) + "</td></tr>" +
+        '<tr class="total"><td colspan="3">TOTAL SUPERFICIE ÚTIL</td>' +
+          '<td class="num">' +
+            (v.total_util_m2 === null || v.total_util_m2 === undefined
+              ? "sin total" : m2(v.total_util_m2)) +
+          "</td></tr>" +
+        "</tbody></table>" + impedimentos +
+      "</section>"
+    );
+  }
+
+  function descargarPdf() {
+    if (!pdfBase64) return;
+    var binario = atob(pdfBase64);
+    var bytes = new Uint8Array(binario.length);
+    for (var i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = (fichero ? fichero.name.replace(/\.dxf$/i, "") : "plano") + "_ArchMuse_medicion.pdf";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+})();
+</script>
+</body>
+</html>

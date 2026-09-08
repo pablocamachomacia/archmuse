@@ -5,6 +5,181 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-03 · Los totales de superficie, y la herramienta mínima
+
+**Encargo de Pablo**: un experimento de validación de una semana. Un arquitecto
+entrega un DXF y recibe un informe de medición de superficies que le sirva.
+Nada más — sin XLSX, sin exportación DXF, sin IFC, sin normativa, sin
+autenticación, sin dashboard.
+
+### Auditoría: había tres caminos, no uno
+
+1. `/api/analizar` → `evaluator.evaluate_advanced` → SPA. Las 38 reglas, el
+   visor, la IA. Su cifra por vivienda (`superficie_total_m2`) es la suma de
+   estancias, no una medición auditada.
+2. **La Skill `superficies.medicion_de_planta`** (`analyzer/medicion.py` +
+   `medicion_pdf.py`): DXF → parser → medición pieza a pieza → PDF con
+   procedencia. Multi-vivienda, con la regla dura de los totales y auditoría de
+   solapes y de reparto. **Éste es el camino bueno, y ya existía.**
+3. `superficies.cuadro_de_vivienda`: rellena el `ACAD_TABLE` del propio DXF.
+   Sólo admite un DXF de una vivienda, y escribe en el plano — fuera del
+   alcance de este experimento.
+
+No se ha construido ningún motor de medición nuevo. Lo único que faltaba era la
+puerta: `_ejecutar_medicion_de_planta` escribía el PDF en un temporal y lo
+borraba, así que sólo se podía obtener por CLI.
+
+### Los totales que estaban mal
+
+- **`agente/skills/superficies.py::_suma_cuadra` sumaba magnitudes que no se
+  acumulan.** Decidía qué celdas del cuadro sumar por el nombre («si contiene
+  *total*, no lo sumes»), lo que deja fuera los totales y deja dentro las dos
+  celdas de **superficie construida** y el **`NUMERO UDS`**. Con el cuadro de
+  `ejemplo.dxf` («NUMERO UDS: 8») sumaba ocho metros cuadrados inexistentes, y
+  en cuanto el arquitecto declaraba la construida —el flujo que las
+  `Solicitud` numéricas le piden— le sumaba encima una vivienda medida por otro
+  criterio. Todo eso se cruzaba contra la superficie ÚTIL medida.
+  Su parseo, además, era propio y más laxo que el del cuadro: `"8"` colaba como
+  8 m² y `"21.90m2"` —el formato real de las celdas de `ejemplo.dxf`— no colaba
+  y se descartaba **en silencio**, dejando la suma corta sin decirlo.
+- **`plano.superficie_util_total_m2` publicaba un total al que le faltaba una
+  vivienda.** Sumaba sólo las medibles: sobre `ejemplo.dxf`, 295,10 m² con
+  VT6/2 (~66 m²) fuera y sin declararlo. La regla que `analyzer/medicion.py` ya
+  aplica vivienda a vivienda no se aplicaba un nivel más arriba.
+- **`plano.leer_dxf` llamaba `superficie_util_total_m2` a una suma cruda de
+  áreas**, con los solapes contados dos veces y los polígonos sin rótulo
+  dentro. Dos magnitudes distintas con el mismo nombre en el mismo registro.
+- **La SPA usaba superficie útil como superficie construida.**
+  `superficieConstruidaTotal()` sumaba `superficie_total_m2` de las viviendas
+  cuando no había urbanismo declarado. Falseaba el PEM, la repercusión de suelo
+  y el «Ratio de Eficiencia Útil/Construida», que salía ~0,9 y se pintaba sin
+  badge de estimación por estar declarado como el único dato REAL del bloque.
+
+### Qué se hizo
+
+- **Catálogo cerrado de magnitudes del cuadro** en `analyzer/cuadro_superficies.py`
+  (`CAMPOS_SUMANDOS_UTIL`, `CAMPOS_TOTAL_UTIL`, `CAMPOS_CONSTRUIDA`,
+  `CAMPOS_SIN_SUPERFICIE`), con un test que falla si un campo nuevo no queda
+  clasificado. De paso deduplica las dos listas de componentes que la cascada
+  de totales tenía copiadas.
+- **`superficie_en_m2` pública**, el parseo estricto único. Un sumando que no
+  se puede leer ya no se salta: la comprobación se declara «no se ha podido
+  comprobar», que es el tercer estado que ya existía.
+- **Sin total del plano si falta una vivienda**, con el nombre de la que falta.
+- **Renombrado** `leer_dxf.superficie_util_total_m2` →
+  `suma_de_areas_de_recintos_m2` (golden G11 recapturado a mano: mismo valor).
+- **`superficieConstruidaTotal()` devuelve `null`** sin dato declarado. El
+  panel ya pintaba `--` para todo lo que falta.
+- **`GET /medir` + `POST /api/medicion`**: la herramienta mínima. Un fichero
+  HTML sin dependencias y un endpoint que ejecuta la Skill **una vez** y
+  devuelve la medición y el PDF (base64, 11 KB sobre el plano de seis
+  viviendas) en la misma respuesta. Nada se guarda en el servidor.
+- **Las dos listas de «lo que no se ha comprobado», separadas**: los hallazgos
+  de ESTE plano abiertos; las 17 limitaciones genéricas plegadas. Mezcladas,
+  el único hallazgo real quedaba en la línea 9 de un muro.
+
+### Qué se dejó fuera, a propósito
+
+- No se ha tocado `/api/analizar`, `evaluator.py`, la SPA (salvo el `null` de
+  arriba) ni `superficies.cuadro_de_vivienda`.
+- **La superficie construida sigue sin calcularse**, y ahora se declara en el
+  payload y en la página con su motivo. No es un hueco pendiente: un DXF de
+  recintos no trae espesores de muro.
+- La página `/medir` no contesta las preguntas del plano por el arquitecto:
+  las enseña y le da los dos campos (capa, unidad) para contestarlas.
+
+### Segunda vuelta (mismo día): el total de la planta
+
+Pablo, al revisar: un cuadro de superficies sin total de planta obliga al
+arquitecto a sumar la columna a mano, que es el trabajo que viene a delegar.
+
+La regla vivía a medias: `analyzer/medicion.py` la aplicaba por vivienda y
+nadie la aplicaba a la planta. Ahora `Medicion` tiene `total_util_m2`,
+`impedimentos` y `advertencias`, con el mismo criterio que una vivienda —una
+planta a la que le falta una vivienda no se totaliza— y se publica como hecho
+con procedencia (`medicion.total_util_m2`), no se suma en la capa de
+presentación. Llega a la cabecera de `/medir` y al PDF:
+
+- **Con total**: la cifra con el recuento pegado («90,00 m² · 2 de 2 viviendas»).
+  Un total sin saber sobre cuántas viviendas se ha calculado no se puede juzgar.
+- **Sin total**: «Sin total de planta» con la vivienda que lo bloquea **en la
+  cabecera**, no sólo abajo en los hallazgos.
+- **Tercer estado, y no lo pidió nadie pero ocurre en los dos planos reales**:
+  un rótulo «VT…» sin ningún recinto asignado no bloquea el total (podría ser
+  una etiqueta de otra planta o de una leyenda) pero es la cifra del total la
+  que podría estar corta, así que la advertencia viaja **pegada al número**.
+
+### La superficie construida: cerrado con medida, no con suposición
+
+Se miró antes de dar por imposible el cálculo. Los tres planos reales
+(`ejemplo`, `v2s`, `V5`) traen una capa `00 MURO`, y en los tres contiene
+**los mismos 9 hatches de 0,36 m², 2,54 m² en total** — un bloque de detalle
+copiado, no los muros del proyecto. Contra 437,38 m² de recintos en
+`ejemplo.dxf`. No hay geometría de muro de la que derivar nada.
+
+Lo que sí existe y no está conectado a `/medir`: el contrato `AM_*`
+(`AM_CONS_CER`), que `parser.py` y `evaluator.asignar_envolvente_cerrada` ya
+leen y que hoy sólo consume `/api/analizar`. Comprobado sobre un DXF de prueba:
+útil 32,00 m² / construida 38,72 m² → ratio 0,826. Es lectura de una envolvente
+dibujada, no una aproximación.
+
+### Exactitud: lo que sí está contrastado, y contra qué
+
+Hasta aquí todo lo verificado era consistencia interna. Faltaba una comparación
+independiente, y estaba disponible sin esperar a ningún encargo: `ejemplo.dxf`
+trae el cuadro que el arquitecto rellenó a mano en su `ACAD_TABLE`, escrito en
+el fichero antes de que ArchMuse existiera. Contrastado pieza a pieza contra la
+medición geométrica, **sin redondear**, sobre VT1/3:
+
+| pieza | declarado | ArchMuse (crudo) | residuo |
+|---|---|---|---|
+| salón/cocina | 21,90 | 21,900338005 | +0,000338 |
+| dormitorio 1 | 12,72 | 12,724520145 | +0,004520 |
+| dormitorio 2 | 8,48 | 8,482579576 | +0,002580 |
+| dormitorio 3 | 8,53 | 8,534461408 | +0,004461 |
+| baño | 4,01 | 4,006022041 | −0,003978 |
+| aseo | 3,14 | 3,135805602 | −0,004194 |
+| tendedero | 4,22 | 4,220139826 | +0,000140 |
+| terraza 1 | 3,32 | 3,324818339 | +0,004818 |
+
+Las ocho por debajo del umbral de redondeo (0,005): la medición cruda redondea
+exactamente a lo que el arquitecto firmó. Los residuos son su redondeo, no
+error de ArchMuse.
+
+**Lo que NO prueba**, y es la limitación que importa: es el mismo dibujo, así
+que acredita que ArchMuse lee la geometría como la lee AutoCAD, no que el
+**criterio** (qué entra en útil, dónde se mide el borde, qué cuenta como
+exterior) sea el que firmaría un colegiado. Eso sólo lo contrasta el cuadro de
+la memoria, hecho con un criterio y posiblemente distinto. Es una muestra: las
+otras dos plantas no traen cuadro relleno.
+
+La segunda pata de exactitud ya existía y estaba mal contada en este documento:
+los 11 `tests/fixtures/dxf_plausibles/` tienen **verdad conocida por
+construcción** (36,00 m², tolerancia 0,01) y cubren robustez de lectura —
+milímetros con `$INSUNITS`, rótulos fuera con directriz, muros de doble línea,
+capas de ruido, capa opaca, cinco nomenclaturas de capa.
+
+### Defecto encontrado al cerrar, sin corregir
+
+`_celda_total` nunca mira `celda.texto_actual`. Un cuadro que declara «TOTAL
+SUP.UTIL INTERIOR: 70,00 m²» sobre piezas que miden 36,00 recibe 36,00 marcado
+como CALCULADO, se sobrescribe la cifra del arquitecto y **la discrepancia de
+34 m² no se declara**. Rompe la regla 4 del módulo y la regla 5 del §4 del
+`CLAUDE.md`, y pierde justo lo que el §1 llama la razón por la que alguien
+paga. No lo dispara ningún plano del banco (en `ejemplo.dxf` los totales están
+vacíos); lo dispara el plano de un arquitecto con la memoria redactada. Anotado
+en el docstring de la función, con el arreglo indicado (`_con_conflicto_o`).
+
+### Validación
+
+Suite completa: 1350 pasan, 41 se saltan (era 1321/41). Ocho DXF por el
+endpoint real: `ejemplo.dxf` (6 viviendas, 5 con total, 295,11 m², 10,3 s),
+`v2s.dxf`, `V5.dxf` (3/3, 191,32 m²), dos sintéticos, un fixture y dos planos
+ajenos que devuelven la pregunta de capa/unidad en vez de un número. Aritmética
+comprobada a mano sobre `ejemplo.dxf`: VT1/3 = 58,78 + 7,54 = 66,32 m².
+
+---
+
 ## 2026-08-23 · El acta abre con un veredicto, y el motivo deja de repetirse
 
 **Defecto encontrado por Pablo**, probando la revisión de coherencia con un

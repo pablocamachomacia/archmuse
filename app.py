@@ -134,7 +134,11 @@ from analyzer.interview import motor as interview_motor
 from analyzer.interview.claude_interprete import ClienteAnthropicInterprete, InterpretacionError
 
 app = Flask(__name__, static_folder="static", static_url_path="")
-app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024  # 25 MB
+# 60 MB, subido desde 25 el 2026-09-04. Los tres planos reales del cliente
+# pesan 18,2 / 18,6 / 19,2 MB -- el 75 % del límite anterior. Un plano con
+# mobiliario, o con una hoja más, lo cruzaba sin esfuerzo, y lo que veía el
+# arquitecto no era un aviso sino el `SyntaxError` de más abajo.
+app.config["MAX_CONTENT_LENGTH"] = 60 * 1024 * 1024  # 60 MB
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +148,40 @@ logger = logging.getLogger(__name__)
 cargar_dotenv()
 
 init_db()
+
+
+@app.errorhandler(413)
+def _subida_demasiado_grande(_error):
+    """El único punto de `app.py` donde un error del framework se convierte en
+    algo que un arquitecto puede leer.
+
+    **El defecto que cierra** (auditoría de demo, 2026-09-04): sin este
+    manejador, un DXF por encima del límite recibía la página HTML de Werkzeug
+    («413 Request Entity Too Large»). Todos los clientes de esta API esperan
+    JSON, así que `medir.html` hacía `r.json()`, reventaba, y lo que se leía en
+    pantalla era:
+
+        No se ha podido contactar con ArchMuse: SyntaxError: Unexpected token
+        '<', "<!doctype "... is not valid JSON
+
+    Que además es falso: el servidor había contestado perfectamente.
+
+    Se registra para toda la aplicación y no sólo para `/api/medicion` porque
+    un 413 sólo puede ocurrir en una subida, y todas las subidas de ArchMuse
+    son endpoints JSON.
+    """
+    limite_mb = app.config["MAX_CONTENT_LENGTH"] / (1024 * 1024)
+    pesa = request.content_length
+    if pesa:
+        cuanto = "Este plano pesa %.1f MB" % (pesa / (1024 * 1024))
+    else:
+        cuanto = "Este plano es demasiado grande"
+    return jsonify(
+        error=("%s y el límite son %.0f MB. Si el DXF trae más de una planta o "
+               "mucho mobiliario, exporta sólo la planta que quieras medir."
+               % (cuanto.replace(".", ","), limite_mb)),
+        limite_mb=limite_mb,
+    ), 413
 
 
 @app.after_request
@@ -2965,8 +3003,30 @@ class _ConfirmacionRequerida(Exception):
 def _medir_planta_y_levantar_acta(file, filename: str, capa: Optional[str],
                                    factor_escala, *, quien: str,
                                    autorizar_efectos: bool = False) -> dict:
-    """El DXF subido -> Skill real `superficies.medicion_de_planta` -> acta
-    de procedencia (`Acta.a_dict()`).
+    """El acta de `_ejecutar_medicion_de_planta`, sin el PDF.
+
+    La forma que ya usaban `/api/acta-legible`, `/api/preguntar` y
+    `/api/memoria-superficies`: ninguno de los tres quiere el documento, y no
+    tienen por qué desempaquetar una tupla para ignorar la mitad."""
+    acta, _informe = _ejecutar_medicion_de_planta(
+        file, filename, capa, factor_escala,
+        quien=quien, autorizar_efectos=autorizar_efectos)
+    return acta
+
+
+def _ejecutar_medicion_de_planta(file, filename: str, capa: Optional[str],
+                                  factor_escala, *, quien: str,
+                                  autorizar_efectos: bool = False):
+    """El DXF subido -> Skill real `superficies.medicion_de_planta` ->
+    `(acta de procedencia, PDF de medición)`.
+
+    El PDF es el documento que la Skill escribe en su propio directorio
+    temporal, leído en memoria antes de que ese directorio se borre; `None` si
+    la Skill no llegó a escribirlo. Hasta hoy se perdía siempre —los tres
+    consumidores del acta querían el acta, no el documento— y por eso el PDF de
+    medición sólo se podía obtener por CLI (`scripts/medir_planta.py`).
+    `/api/medicion` lo entrega sin ejecutar la Skill dos veces ni dejar
+    ficheros en el servidor.
 
     **Único sitio del backend que ejecuta esta Skill.** `/api/acta-legible`,
     `/api/preguntar` y `/api/memoria-superficies` llaman aquí (vía
@@ -3035,7 +3095,15 @@ def _medir_planta_y_levantar_acta(file, filename: str, capa: Optional[str],
             raise _ConfirmacionRequerida(quien, resultado.efectos_pendientes)
 
         documento = _acta.levantar(resultado, capacidades=capacidades, skills=skills)
-        return documento.a_dict()
+        acta = documento.a_dict()
+
+        # El PDF vive dentro de este directorio temporal y se borra al salir
+        # del `with`: se lee AQUÍ, no fuera.
+        informe = None
+        if os.path.isfile(ruta_informe):
+            with open(ruta_informe, "rb") as f:
+                informe = f.read()
+        return acta, informe
 
 
 def _medir_planta_y_renderizar_acta(file, filename: str, capa: Optional[str],
@@ -3202,6 +3270,213 @@ def acta_legible_endpoint():
         return _respuesta_confirmacion_requerida(exc)
 
     return Response(pagina, mimetype="text/html")
+
+
+# ---------------------------------------------------------------------------
+# La herramienta mínima: DXF -> superficies -> PDF
+# ---------------------------------------------------------------------------
+#
+# Encargo de Pablo del 2026-09-03: un experimento de validación de una semana.
+# Un arquitecto sube un DXF, obtiene superficies fiables, las ve, se descarga
+# el PDF y usa el resultado en un encargo real. Nada más.
+#
+# **No hay motor nuevo.** Todo lo de abajo es fontanería sobre la Skill
+# `superficies.medicion_de_planta`, que existe, está probada y es la misma que
+# ejecuta `scripts/medir_planta.py`. Lo único que faltaba era una puerta: el
+# PDF de medición se escribía y se tiraba (ver `_ejecutar_medicion_de_planta`),
+# así que hasta hoy sólo se podía conseguir por línea de comandos.
+#
+# **Por qué esta página y no la SPA.** La SPA entra por `/api/analizar`, que es
+# otro camino —las 38 reglas de `evaluator.py`, el visor, la IA— y cuya cifra
+# de superficie por vivienda (`superficie_total_m2`) es la suma de estancias,
+# no la medición auditada de `analyzer/medicion.py`. Enseñarle a un arquitecto
+# externo la SPA entera para que mire dos números es enseñarle veinte cosas que
+# no ha pedido. Esto es una herramienta, no un producto.
+
+
+#: La marca con la que `agente/acta.py` prefija cada limitación declarada de
+#: una Skill o de una capacidad. Ver `_hallazgos_del_plano`.
+_MARCA_LIMITACION = " no comprueba: "
+
+#: Código de fallo con el que «no se ha podido leer el fichero» se distingue de
+#: «hace falta que decidas la capa o la unidad». Lo pone
+#: `agente/herramientas/plano.py::_fallo_de_lectura` y viaja hasta el acta
+#: dentro del `Motivo` de cada afirmación no producida (`_comun.sin_producir`
+#: -> `afirmacion.desconocido`), así que aquí se lee el código, no el texto.
+#:
+#: **Por qué hacen falta dos pantallas distintas** (auditoría de demo,
+#: 2026-09-04): las dos situaciones salían bajo el mismo titular, «ArchMuse
+#: necesita que decidas una cosa antes de medir», seguido de la invitación a
+#: contestar en los campos de capa y unidad. Para un fichero corrupto eso es
+#: falso dos veces: no hay nada que decidir, y rellenar esos dos campos no lo
+#: puede arreglar.
+_CODIGO_DXF_ILEGIBLE = "dxf_ilegible"
+
+
+def _hallazgos_del_plano(acta: dict) -> list:
+    """Lo que no se ha podido establecer **de este plano**, sin las
+    limitaciones genéricas de la herramienta."""
+    return [n for n in (acta.get("no_comprobado") or ()) if _MARCA_LIMITACION not in n]
+
+
+def _limites_de_la_herramienta(acta: dict) -> list:
+    """Las limitaciones declaradas, sin el prefijo del id y sin repetir.
+
+    Se quita el `plano.medicion_de_la_planta no comprueba:` de delante porque
+    el id de la capacidad no le dice nada a un arquitecto, y se deduplica
+    porque la Skill y su capacidad declaran varias limitaciones idénticas
+    («es superficie útil, no construida» sale dos veces en toda medición).
+    """
+    fuera = []
+    for n in acta.get("no_comprobado") or ():
+        if _MARCA_LIMITACION not in n:
+            continue
+        limitacion = n.split(_MARCA_LIMITACION, 1)[1].strip()
+        if limitacion not in fuera:
+            fuera.append(limitacion)
+    return fuera
+
+
+def _medicion_a_json(acta: dict, informe: Optional[bytes]) -> dict:
+    """El acta de la Skill -> lo que la página necesita pintar. No calcula nada.
+
+    **Ni un número que no venga del acta.** Los totales, los subtotales por
+    ámbito y los impedimentos salen tal cual de `analyzer/medicion.py`; aquí no
+    se suma, no se redondea y no se rellena ningún hueco. Una vivienda sin total
+    llega sin total y con su motivo, que es como tiene que verse.
+    """
+    import base64
+
+    datos = acta.get("datos") or ()
+
+    def _dato(nombre):
+        for d in datos:
+            if d.get("nombre") == nombre:
+                return d
+        return None
+
+    viviendas_dato = _dato("medicion.viviendas")
+    viviendas = (viviendas_dato or {}).get("valor") or []
+
+    # El total de la planta, tal como lo publicó la Skill. `valor` es la cifra
+    # o `None`; cuando es `None`, `motivo` dice qué vivienda lo bloquea. Los
+    # dos van al MISMO sitio de la página —la cabecera—, porque quien mira la
+    # cabecera tiene que entender por qué no hay número sin bajar la vista.
+    #
+    # No se suma nada aquí. La cifra la calcula `analyzer/medicion.py`
+    # (`Medicion.total_util_m2`), que es donde vive la regla de que una planta
+    # a la que le falta una vivienda no se totaliza.
+    hecho_total = _dato("medicion.total_util_m2") or {}
+    total_del_plano = {
+        "valor_m2": hecho_total.get("valor"),
+        "motivo": ((hecho_total.get("motivo") or {}).get("detalle")
+                   if isinstance(hecho_total.get("motivo"), dict) else None),
+        "viviendas": len(viviendas),
+        "viviendas_con_total": ((_dato("medicion.viviendas_con_total") or {}).get("valor")),
+        # Advertencia que NO impide el total pero se lee pegada a él: un rótulo
+        # «VT…» sin ningún recinto asignado. Viene calculada de la medición, no
+        # se deduce aquí del texto de ningún otro campo.
+        "advertencias": ((_dato("medicion.advertencias_del_total") or {}).get("valor") or []),
+    }
+
+    return {
+        "viviendas": viviendas,
+        "total_del_plano": total_del_plano,
+        "piezas": ((_dato("medicion.piezas") or {}).get("valor")),
+        "viviendas_con_total": ((_dato("medicion.viviendas_con_total") or {}).get("valor")),
+        # Lo que NO se ha podido establecer, partido en dos, porque son dos
+        # cosas y el acta las lleva en la misma lista.
+        #
+        # `hallazgos_del_plano` son de ESTE plano: «VT6/2 no lleva total porque
+        # hay 8,47 m² dibujados dos veces», «el plano rotula VT22/1 y ningún
+        # recinto ha ido a parar ahí». Es la mitad del valor del producto y va
+        # abierta.
+        #
+        # `limites_de_la_herramienta` son las limitaciones declaradas de la
+        # Skill y de sus capacidades, idénticas en todas las ejecuciones (16
+        # líneas, varias sobre capacidades que no participan en una medición).
+        # Siguen entregándose —la cobertura declarada es parte del producto—,
+        # pero plegadas: un muro de dieciséis avisos genéricos entrena a no
+        # leer ninguno, incluidos los dos de arriba.
+        #
+        # El corte no es una heurística sobre el texto: la marca
+        # «<id> no comprueba: » la escribe `agente/acta.py` (`_limitaciones_de`)
+        # y sólo ahí, alrededor de `Skill.limitaciones` y
+        # `Capacidad.limitaciones`.
+        "hallazgos_del_plano": _hallazgos_del_plano(acta),
+        "limites_de_la_herramienta": _limites_de_la_herramienta(acta),
+        "preguntas_abiertas": list(acta.get("preguntas_abiertas") or ()),
+        "completa": acta.get("completa"),
+        # `True` cuando el fichero no se ha podido abrir siquiera. La página
+        # pinta entonces un error, no una pregunta: ver `_CODIGO_DXF_ILEGIBLE`.
+        "lectura_fallida": any(
+            (d.get("motivo") or {}).get("codigo") == _CODIGO_DXF_ILEGIBLE
+            for d in datos if isinstance(d.get("motivo"), dict)
+        ),
+        # **La superficie construida no se calcula, y se dice.** No es un hueco
+        # que ArchMuse aún no haya rellenado: es que no está en el dibujo. Un
+        # DXF de recintos no trae espesores de muro, y reconstruir la
+        # envolvente por casco convexo se midió con un error del -24% al +49%
+        # (`docs/design/DB-SI_FACT_MODEL.md` §3.3). Dar una cifra aquí sería
+        # dar la peor de todas: creíble y falsa.
+        "superficie_construida": {
+            "disponible": False,
+            "motivo": (
+                "ArchMuse mide superficie útil, a cara interior de muro. La superficie "
+                "construida necesita el espesor de los muros, que un DXF de recintos no "
+                "trae; deducirla del contorno se midió con un error de entre −24 % y "
+                "+49 %, así que no se aproxima."
+            ),
+        },
+        "informe_pdf_base64": base64.b64encode(informe).decode("ascii") if informe else None,
+        "sello": acta.get("sello"),
+    }
+
+
+@app.route("/medir")
+def medir():
+    """La herramienta mínima. Página suelta, sin SPA y sin dependencias."""
+    return app.send_static_file("medir.html")
+
+
+@app.route("/api/medicion", methods=["POST"])
+def medicion_endpoint():
+    """DXF -> medición de superficies útiles + PDF, en una sola llamada.
+
+    Devuelve JSON con las viviendas medidas pieza a pieza y el PDF en base64
+    (11 KB sobre el plano real de seis viviendas): una sola ejecución de la
+    Skill, una sola subida, y nada que guardar en el servidor entre las dos.
+
+    Mismo contrato de subida y los mismos tres errores que `/api/acta-legible`:
+    400 si el fichero no sirve o el plano no se puede medir, 428 si la Skill
+    necesita autorización para escribir su documento.
+    """
+    file = request.files.get("dxf")
+    if file is None or file.filename == "":
+        return jsonify(error="Selecciona un archivo DXF antes de medir."), 400
+    if not file.filename.lower().endswith(".dxf"):
+        return jsonify(error="El archivo debe tener extensión .dxf."), 400
+
+    filename = secure_filename(file.filename) or "plano.dxf"
+    capa = (request.form.get("capa") or "").strip() or None
+    factor_escala = factor_de_unidad(request.form.get("escala") or "")
+
+    try:
+        acta, informe = _ejecutar_medicion_de_planta(
+            file, filename, capa, factor_escala,
+            quien="api:medicion",
+            # La Skill escribe su PDF en un temporal del servidor y se lo lleva
+            # el arquitecto; no toca ningún fichero suyo. Pedirle que autorice
+            # una escritura que no le afecta es enseñarle a conceder permisos
+            # sin leerlos (mismo criterio que el docstring de `SEG-1`), así que
+            # aquí la autorización la da haber pulsado "Medir".
+            autorizar_efectos=True)
+    except _FalloDeMedicion as exc:
+        return jsonify(error=str(exc)), 400
+    except _ConfirmacionRequerida as exc:
+        return _respuesta_confirmacion_requerida(exc)
+
+    return jsonify(_medicion_a_json(acta, informe))
 
 
 @app.route("/api/coherencia-datos", methods=["POST"])

@@ -40,7 +40,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from ..afirmacion import Afirmacion, calculo
+from ..afirmacion import Afirmacion, calculo, desconocido
 from ..efectos import ESCRIBE_FICHERO
 from ..skill import Entregable, ResultadoDeSkill, Skill
 from ..verificacion import Verificacion
@@ -52,6 +52,17 @@ PRODUCE = (
     "medicion.piezas",
     "medicion.viviendas_con_total",
     "medicion.sin_total",
+    #: Superficie útil de la PLANTA entera, o UNKNOWN con el motivo. Lo calcula
+    #: `analyzer/medicion.py` (`Medicion.total_util_m2`), que es donde vive la
+    #: regla; aquí sólo se publica como hecho con su procedencia. Un total que
+    #: se calculara en la capa de presentación sería una cifra sin tool detrás,
+    #: y eso es la regla de oro del §1 de `ARCHMUSE_SPEC.md`.
+    "medicion.total_util_m2",
+    #: Lo que NO impide el total de la planta pero se lee pegado a él: un
+    #: rótulo «VT…» sin ningún recinto asignado. Hecho aparte y no una nota al
+    #: pie porque es la cifra del total la que podría estar corta, y el aviso
+    #: tiene que poder viajar hasta donde viaje la cifra.
+    "medicion.advertencias_del_total",
     "medicion.informe",
 )
 
@@ -81,6 +92,23 @@ def _sin_total(viviendas) -> List[Dict[str, Any]]:
     ]
 
 
+def _hecho_del_total(medicion: Dict[str, Any], firma: str) -> Afirmacion:
+    """El total de la planta como hecho: la cifra, o UNKNOWN con su motivo.
+
+    Las dos ramas salen de `analyzer/medicion.py`; aquí no se decide nada. Un
+    total ausente y sin motivo es indistinguible de un fallo del programa, así
+    que el `desconocido` lleva siempre el impedimento que lo explica.
+    """
+    total = medicion.get("total_util_m2")
+    if total is None:
+        motivos = medicion.get("impedimentos_del_total") or ()
+        return desconocido(
+            "medicion.total_util_m2", "planta_no_totalizable",
+            "; ".join(motivos) or "la planta no se ha podido totalizar",
+            fuente=firma)
+    return calculo("medicion.total_util_m2", total, fuente=firma, unidad="m2")
+
+
 def _ejecutar(ctx) -> ResultadoDeSkill:
     ruta = ctx.argumentos.get("ruta_dxf") or ""
     destino = ctx.argumentos.get("ruta_informe") or ""
@@ -107,6 +135,10 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
             fuente=ctx.firma),
         "medicion.sin_total": calculo("medicion.sin_total", _sin_total(viviendas),
                                       fuente=ctx.firma),
+        "medicion.total_util_m2": _hecho_del_total(medicion, ctx.firma),
+        "medicion.advertencias_del_total": calculo(
+            "medicion.advertencias_del_total",
+            list(medicion.get("advertencias_del_total") or ()), fuente=ctx.firma),
     }
 
     if not viviendas:

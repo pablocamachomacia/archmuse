@@ -372,21 +372,24 @@
       }
     ],
     "recintos_sin_etiqueta": 0,
-    "superficie_util_total_m2": 45.0,
+    "suma_de_areas_de_recintos_m2": 45.0,
     "viviendas_rotuladas": [
       "VT1/1"
     ]
   },
   "plano.medicion_de_la_planta": {
+    "advertencias_del_total": [],
     "agrupacion": "rótulos de vivienda del plano",
     "capa_criterio": null,
     "capa_de_recintos": "00 areas",
     "capas_ignoradas": [],
     "escala": "metros",
     "geometria_no_leida": [],
+    "impedimentos_del_total": [],
     "ok": true,
     "piezas": 8,
     "rotulos_sin_piezas": [],
+    "total_util_m2": 90.0,
     "viviendas": [
       {
         "exterior_m2": 9.0,
@@ -472,7 +475,8 @@
       }
     ],
     "viviendas_con_total": 2,
-    "viviendas_medidas": 2
+    "viviendas_medidas": 2,
+    "viviendas_sin_total": []
   },
   "plano.superficie_util": {
     "ok": true,

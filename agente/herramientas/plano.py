@@ -71,6 +71,39 @@ _MOTIVO_CORTO = {
 }
 
 
+def _pregunta_de_dxf_ilegible(exc: Exception) -> str:
+    """Qué se le dice al arquitecto cuando el fichero no se puede abrir.
+
+    **Por TIPO de excepción, y sin interpolar nunca `str(exc)`.** El mensaje de
+    `ezdxf` está en inglés y lleva dentro la ruta del fichero temporal del
+    servidor. En la auditoría de demo del 2026-09-04 esto apareció literalmente
+    en la pantalla que iba a ver un arquitecto:
+
+        File 'C:\\Users\\<usuario>\\AppData\\Local\\Temp\\archmuse_acta_9mpdjj7m\\
+        plano_del_cliente.dxf' is not a DXF file.
+
+    Dos casos, porque son dos problemas distintos con dos remedios distintos:
+    un fichero que no es un DXF (formato equivocado, extensión cambiada, copia
+    vacía) y un DXF de verdad que llegó a medias. El nombre de la clase de la
+    excepción tampoco sale: `DXFStructureError: missing ENDSEC tag` no es una
+    frase para nadie que no programe.
+    """
+    from ezdxf.lldxf.const import DXFStructureError
+
+    if isinstance(exc, DXFStructureError):
+        return (
+            "El DXF está incompleto o dañado: le falta parte de su estructura "
+            "interna, así que no se puede abrir entero. Suele pasar cuando la "
+            "copia o la descarga se interrumpió a medias. ¿Puedes volver a "
+            "exportarlo desde AutoCAD, o copiarlo otra vez?"
+        )
+    return (
+        "Este fichero no es un DXF que se pueda abrir. Puede que sea otro formato "
+        "con la extensión cambiada (un DWG, un PDF), o que la copia haya salido "
+        "vacía. ¿Es éste el fichero correcto?"
+    )
+
+
 def _fallo_de_lectura(exc: Exception) -> Dict[str, Any]:
     """Traduce las dos negativas de `parser.leer_plano` a un `ok: false` útil.
 
@@ -90,6 +123,14 @@ def _fallo_de_lectura(exc: Exception) -> Dict[str, Any]:
     Antes los dos campos eran `str(exc)`, que es justo lo que multiplicaba el
     párrafo. El resto del repositorio ya usaba la convención correcta (ver
     `_falta_el_fichero` aquí arriba, o `proyecto.py`); esto la restituye.
+
+    **`str(exc)` se conserva SÓLO en los dos casos en los que es bueno**
+    (`escala_indeterminada`, `capa_indeterminada`): ahí lo redacta
+    `parser._mensaje_de_capa`/`_mensaje_de_escala`, en castellano, con las
+    capas candidatas y sus recuentos, y refrasearlo sólo puede empeorarlo. En
+    el tercero (`dxf_ilegible`) el texto lo escribe `ezdxf`, en inglés y con la
+    ruta del temporal del servidor dentro, así que no se usa -- ver
+    `_pregunta_de_dxf_ilegible`.
     """
     from analyzer.parser import CapaIndeterminada, EscalaIndeterminada
 
@@ -103,7 +144,8 @@ def _fallo_de_lectura(exc: Exception) -> Dict[str, Any]:
         "ok": False,
         "error": codigo,
         "detalle": _MOTIVO_CORTO.get(codigo, "el plano no se ha podido leer"),
-        "pregunta": str(exc),
+        "pregunta": (_pregunta_de_dxf_ilegible(exc) if codigo == "dxf_ilegible"
+                     else str(exc)),
     }
 
 
@@ -152,7 +194,16 @@ def leer_dxf(ruta: str, capa: Optional[str] = None,
         "capa_de_recintos": plano.layer,
         "escala": _escala_a_dict(plano.escala),
         "recintos": recintos,
-        "superficie_util_total_m2": round(sum(r.area_m2 for r in plano.rooms), DECIMALES),
+        # **No se llama `superficie_util_total_m2`, y antes sí.** Esto es la
+        # suma cruda de las áreas de todo lo que se ha leído: cuenta dos veces
+        # lo que esté dibujado dos veces (sobre `ejemplo.dxf`, 8,47 m² de
+        # VT6/2) e incluye los polígonos sin rótulo, que pueden ser un contorno
+        # agrupador o un patio. La superficie útil es otra cosa y la calcula
+        # `plano.superficie_util` (unión geométrica, clasificación DB-SI, y
+        # UNKNOWN cuando hay solape). Dos magnitudes distintas con el mismo
+        # nombre en el mismo registro es exactamente cómo se acaba sumando lo
+        # que no se suma.
+        "suma_de_areas_de_recintos_m2": round(sum(r.area_m2 for r in plano.rooms), DECIMALES),
         "viviendas_rotuladas": [etiqueta for etiqueta, _x, _y in plano.unit_labels],
         "recintos_sin_etiqueta": sum(1 for r in plano.rooms if not r.label),
         # Lo que NO se ha leído se cuenta y se dice. Un descarte silencioso es

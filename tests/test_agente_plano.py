@@ -103,7 +103,7 @@ def test_dos_invocaciones_seguidas_dan_lo_mismo(dxf):
 def test_las_superficies_salen_en_metros_cuadrados(dxf):
     areas = {r["etiqueta"]: r["area_m2"] for r in plano.leer_dxf(str(dxf))["recintos"]}
     assert areas == {"Salón": 20.0, "Cocina": 9.0, "Dormitorio 1": 12.0, "Baño": 4.0}
-    assert plano.leer_dxf(str(dxf))["superficie_util_total_m2"] == 45.0
+    assert plano.leer_dxf(str(dxf))["suma_de_areas_de_recintos_m2"] == 45.0
 
 
 def test_la_superficie_util_trae_de_que_recintos_sale(dxf):
@@ -144,7 +144,7 @@ def test_una_unidad_deducible_sin_ambiguedad_no_interrumpe_al_arquitecto(tmp_pat
     resultado = plano.leer_dxf(str(ruta))
     assert resultado["ok"] is True
     assert resultado["escala"]["origen"] == "plausibilidad"
-    assert resultado["superficie_util_total_m2"] == 45.0
+    assert resultado["suma_de_areas_de_recintos_m2"] == 45.0
 
 
 def test_con_la_escala_confirmada_por_el_arquitecto_ya_se_puede_leer(tmp_path):
@@ -152,7 +152,7 @@ def test_con_la_escala_confirmada_por_el_arquitecto_ya_se_puede_leer(tmp_path):
     ruta = _construir_dxf(tmp_path / "ambiguo.dxf", insunits=0, escala=0.1)
     resultado = plano.leer_dxf(str(ruta), factor_escala=10.0)
     assert resultado["ok"] is True
-    assert resultado["superficie_util_total_m2"] == 45.0
+    assert resultado["suma_de_areas_de_recintos_m2"] == 45.0
 
 
 def test_un_fichero_que_no_existe_no_revienta_ni_miente():

@@ -3065,12 +3065,26 @@
     if (u && typeof u.superficie_total_construida_m2 === "number") {
       return u.superficie_total_construida_m2;
     }
-    // Proyecto analizado desde DXF (sin solar declarado): no hay dato de
-    // urbanismo -- se aproxima sumando la superficie de las viviendas ya
-    // presentes, el mismo dato que ya se muestra en otras partes de la UI.
-    var viviendas = (state.data && state.data.viviendas) || [];
-    if (!viviendas.length) return null;
-    return viviendas.reduce(function (sum, v) { return sum + (v.superficie_total_m2 || 0); }, 0);
+    // BUG corregido (auditoría de totales de superficie, 2026-09-03): aquí
+    // había un "fallback" que, para un proyecto analizado desde DXF sin solar
+    // declarado, sumaba `superficie_total_m2` de las viviendas y devolvía esa
+    // cifra COMO SUPERFICIE CONSTRUIDA. No lo es: `superficie_total_m2` es la
+    // suma de las estancias (`Unit.total_area_m2`), medida a cara interior de
+    // muro -- superficie ÚTIL. La construida incluye el espesor de los muros y
+    // ArchMuse no la conoce (no hay espesores en el DXF; ver el motivo de las
+    // celdas `superficie_construida_*` en `analyzer/cuadro_superficies.py`).
+    //
+    // Las consecuencias eran dos números falsos y creíbles: el PEM y la
+    // repercusión de suelo se calculaban sobre ~15-20% menos metros de los
+    // reales, y el "Ratio de Eficiencia de Superficie (Útil/Construida)" salía
+    // ~0,9 -- útil dividida entre útil-con-terrazas-- cuando en una vivienda
+    // real ronda 0,80. Se pintaba además sin badge de estimación, por estar
+    // declarado como "el único dato REAL de este bloque".
+    //
+    // Sin superficie construida declarada no hay superficie construida: `null`
+    // y el panel pinta "--", que es lo que ya hace con cualquier otro dato que
+    // falta. El arquitecto puede declararla en Urbanismo.
+    return null;
   }
 
   // Suma de `superficie_util_m2` (dato real DB-SI, ver `api_serializer.py`)

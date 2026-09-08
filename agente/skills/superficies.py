@@ -50,6 +50,28 @@ from ._comun import pregunta_legible, sin_producir, valor
 #: verificación puede pasar a bloqueante; hasta entonces, un umbral estricto
 #: sólo produciría falsos positivos, y un hallazgo falso destruye la confianza
 #: en los verdaderos (`DESTROY_ARCHMUSE.md` §5.1).
+#:
+#: **Anotación del 2026-09-03 (Pablo). Aquí hay DOS comprobaciones distintas
+#: que hoy comparten este número por accidente, y sólo una necesita esperar a
+#: los diez proyectos:**
+#:
+#: 1. *Suma contra los componentes del mismo cuadro.* La tolerancia debería ser
+#:    prácticamente cero — del orden del redondeo acumulado: ocho piezas a
+#:    ±0,005 m² dan ±0,04 m². Un total que no cuadra con sus propios sumandos
+#:    es un error, no una discrepancia legítima. **Esta comprobación no existe
+#:    todavía**, y su hueco no es pasivo: ver la nota de `_celda_total` en
+#:    `analyzer/cuadro_superficies.py`.
+#: 2. *Cuadro declarado contra geometría medida* — la que usa esta constante.
+#:    Aquí sí cabe una diferencia real y defendible: el arquitecto midió en
+#:    otro momento, con otro criterio de cara de muro, o el plano cambió
+#:    después de la memoria. Es la que no sabemos cuánto vale.
+#:
+#: Lo que sí está medido (2026-09-03, `ejemplo.dxf`, vivienda VT1/3): el ruido
+#: de medición de ArchMuse contra las ocho cifras que el arquitecto escribió en
+#: su propio cuadro es **≤ 0,0048 m², las ocho por debajo del redondeo a dos
+#: decimales**. O sea que este 5 % no está absorbiendo imprecisión de ArchMuse
+#: (que es ≤ 0,15 %): sobre VT1/3 son 3,32 m², exactamente su terraza — el
+#: cuadro podría perder una terraza entera y esto pasaría sin avisar.
 TOLERANCIA_SUMA = 0.05
 
 PRODUCE = (
@@ -116,14 +138,32 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
     # la comprobación comprobara que una suma es igual a sí misma.
     util = ctx.invocar("plano.superficie_util", ruta=ruta)
     medida = None
+    sin_medir = []
     if util.get("ok"):
-        medidas = [v["valor_m2"] for v in util["viviendas"] if v["valor_m2"] is not None]
-        medida = sum(medidas) if medidas else None
+        viviendas_medidas = util["viviendas"]
+        # **Una vivienda sin medir deja el plano sin total.** Antes se sumaban
+        # las que sí se podían medir y se publicaba el resultado como la
+        # superficie útil total del plano: sobre `ejemplo.dxf` eso daba
+        # 295,10 m² con VT6/2 —una vivienda entera, ~66 m²— fuera de la cifra y
+        # sin decirlo. Es la misma regla que `analyzer/medicion.py` ya aplica
+        # vivienda a vivienda («un total que puede estar mal es peor que la
+        # ausencia de total»), que aquí, un nivel por encima, no se estaba
+        # aplicando. El motivo de cada una viaja en el hecho.
+        sin_medir = [v["vivienda"] for v in viviendas_medidas if v["valor_m2"] is None]
+        if viviendas_medidas and not sin_medir:
+            medida = sum(v["valor_m2"] for v in viviendas_medidas)
     if medida is None:
+        detalle = "la geometría no permite medir la superficie útil con seguridad"
+        if sin_medir:
+            detalle = (
+                "no hay total del plano porque %s no se %s medir; sumar sólo las demás "
+                "publicaría una superficie a la que le falta una vivienda entera"
+                % (", ".join("«%s»" % n for n in sin_medir),
+                   "ha podido" if len(sin_medir) == 1 else "han podido")
+            )
         hechas["plano.superficie_util_total_m2"] = desconocido(
             "plano.superficie_util_total_m2", "superficie_no_medible",
-            "la geometría no permite medir la superficie útil con seguridad",
-            fuente=ctx.firma)
+            detalle, fuente=ctx.firma)
     else:
         hechas["plano.superficie_util_total_m2"] = calculo(
             "plano.superficie_util_total_m2", round(medida, 2), fuente=ctx.firma,
@@ -237,22 +277,52 @@ def _suma_cuadra(resultado) -> Any:
             "no se pudo medir va declarado junto a «plano.superficie_util_total_m2»."
         )
 
+    # Qué se suma: SÓLO los sumandos de la superficie útil, por el catálogo
+    # cerrado de `cuadro_superficies` (`CAMPOS_SUMANDOS_UTIL`). No por el
+    # nombre del campo.
+    #
+    # **El bug que esto cierra.** Antes se sumaba toda celda resuelta cuyo
+    # campo no contuviera la palabra "total". Eso deja fuera los totales —bien—
+    # y deja DENTRO las dos celdas de superficie CONSTRUIDA y el `NUMERO UDS`.
+    # La superficie construida y la útil miden lo mismo con criterios distintos
+    # y no se acumulan; el número de unidades no es ni siquiera una superficie.
+    # Con el cuadro de `ejemplo.dxf` («NUMERO UDS: 8») la comprobación sumaba
+    # ocho metros cuadrados inexistentes, y en cuanto el arquitecto declaraba
+    # la construida —que es justo el flujo que las `Solicitud` numéricas le
+    # piden— le sumaba encima una vivienda entera medida por otro criterio. El
+    # resultado se cruzaba contra la superficie útil medida sobre la geometría.
+    #
+    # Además el parseo era propio y más laxo que el del cuadro: quitaba "m²" y
+    # cambiaba la coma por punto, así que "8" colaba como 8 m² y "21.90m2" —el
+    # formato con el que un humano escribió las celdas de `ejemplo.dxf`— no
+    # colaba y se descartaba en silencio. Ahora se usa `superficie_en_m2`, el
+    # mismo parseo estricto con el que el cuadro calcula sus propios totales.
+    from analyzer.cuadro_superficies import CAMPOS_SUMANDOS_UTIL, superficie_en_m2
+
+    por_campo = {c.get("campo"): c for c in celdas}
     total = 0.0
-    contadas = 0
-    for celda in celdas:
-        texto = (celda.get("texto") or "").replace("m²", "").replace(",", ".").strip()
+    incompletos = []
+    for campo in CAMPOS_SUMANDOS_UTIL:
+        celda = por_campo.get(campo)
+        if celda is None:
+            continue          # este cuadro no trae esa fila: no falta nada
         if celda.get("estado") not in ("CALCULADO", "CERO_REAL"):
+            incompletos.append("«%s» %s" % (campo, celda.get("estado")))
             continue
-        if "total" in celda.get("campo", ""):
-            continue          # sumar un total sería contar dos veces
-        try:
-            total += float(texto)
-            contadas += 1
-        except ValueError:
-            continue          # no es una superficie (p. ej. «VT1 /3»): no se suma
-    if not contadas:
+        valor_m2 = superficie_en_m2(celda.get("texto"))
+        if valor_m2 is None:
+            incompletos.append("«%s» dice %r, que no es una superficie en el formato del cuadro"
+                               % (campo, celda.get("texto")))
+            continue
+        total += valor_m2
+
+    # Un sumando que falta hace la suma menor que la superficie medida SIEMPRE,
+    # y avisar de eso sería acusar al plano de un descuadre que lo ha producido
+    # ArchMuse al no poder leer una celda. Tercer estado, como arriba.
+    if incompletos:
         return NoSeHaPodidoComprobar(
-            "ninguna celda del cuadro tiene una superficie que sumar"
+            "la suma del cuadro está incompleta y compararla daría un descuadre falso: %s"
+            % "; ".join(incompletos)
         )
 
     diferencia = abs(total - float(medida)) / float(medida)

@@ -64,6 +64,63 @@ BLOQUEADO = "BLOQUEADO"
 _ESTADOS_VALIDOS = (CALCULADO, CERO_REAL, NO_DISPONIBLE, BLOQUEADO)
 
 
+# ---------------------------------------------------------------------------
+# Qué magnitud es cada campo del cuadro — catálogo cerrado y ÚNICO
+# ---------------------------------------------------------------------------
+#
+# **Por qué existe esta sección.** Un cuadro de superficies tiene columnas que
+# se parecen y no se suman entre sí. La superficie útil y la superficie
+# construida miden lo mismo con criterios distintos (una a cara interior de
+# muro, la otra incluyendo el muro): sumarlas no da una superficie mayor, da
+# una cifra que no significa nada. Y `NUMERO UDS` no es una superficie en
+# absoluto: es cuántas viviendas iguales tiene el edificio.
+#
+# Hasta hoy no había ningún sitio que dijera esto. Cada consumidor decidía por
+# su cuenta qué celdas eran sumandos, y `agente/skills/superficies.py` lo
+# decidía por el nombre —«si el campo contiene "total", no lo sumes»—, que deja
+# fuera los totales y deja DENTRO la superficie construida y el número de
+# unidades. Sobre `ejemplo.dxf`, cuyo cuadro trae «NUMERO UDS: 8», eso sumaba
+# ocho metros cuadrados que no existen.
+#
+# Las cuatro tuplas de abajo son la respuesta, y son exhaustivas: hay un test
+# (`tests/test_cuadro_superficies_magnitudes.py`) que falla si algún campo del
+# cuadro no está clasificado en exactamente una de ellas. Un campo nuevo obliga
+# a decidir qué magnitud es; no puede colarse como sumando por descuido.
+
+#: Sumandos de la superficie útil INTERIOR. Es también, y no por casualidad, la
+#: lista con la que `calcular_relleno_cuadro` calcula «TOTAL SUP.UTIL INTERIOR»:
+#: una sola definición para el total del cuadro y para quien lo compruebe.
+CAMPOS_UTIL_INTERIOR = (
+    "salon_cocina", "pasillo", "dormitorio_1", "dormitorio_2", "dormitorio_3",
+    "bano", "aseo", "vestibulo",
+)
+
+#: Sumandos de la superficie útil EXTERIOR (terrazas, tendederos).
+CAMPOS_UTIL_EXTERIOR = ("tendedero", "terraza_1", "terraza_2")
+
+#: Todo lo que suma superficie útil. Lo que se puede totalizar, y nada más.
+CAMPOS_SUMANDOS_UTIL = CAMPOS_UTIL_INTERIOR + CAMPOS_UTIL_EXTERIOR
+
+#: Totales ya calculados del propio cuadro. Sumarlos con sus partes duplicaría.
+CAMPOS_TOTAL_UTIL = ("total_util_interior", "total_util_exterior", "total_util")
+
+#: Superficie CONSTRUIDA. Es superficie y va en m², pero es otra magnitud: no
+#: suma con la útil ni se cruza contra ella. ArchMuse no la calcula (no conoce
+#: el espesor de los muros); cuando aparece con valor es porque el DXF la traía
+#: o porque el arquitecto la declaró, y en los dos casos sigue sin ser un
+#: sumando de la útil.
+CAMPOS_CONSTRUIDA = ("superficie_construida_cerrada", "superficie_construida_exterior")
+
+#: Campos que no son una superficie. `numero_unidades` es un contador de
+#: viviendas y `vivienda_tipo` un rótulo.
+CAMPOS_SIN_SUPERFICIE = ("numero_unidades", "vivienda_tipo")
+
+#: Todos los campos del cuadro, en un solo sitio. El orden no significa nada.
+CAMPOS_DEL_CUADRO = (
+    CAMPOS_SUMANDOS_UTIL + CAMPOS_TOTAL_UTIL + CAMPOS_CONSTRUIDA + CAMPOS_SIN_SUPERFICIE
+)
+
+
 def _normalizar(texto: str) -> str:
     """Mismo criterio que `evaluator._normalize`: sin acentos, en mayúsculas.
 
@@ -319,7 +376,30 @@ def _celda_total(
     genera) tampoco es sumable con garantías si su texto no está en el
     formato exacto de `_formatear_area` -- ver `_valor_numerico`. No se
     intenta interpretar un formato ajeno: se bloquea el total, con el mismo
-    principio que un componente `BLOQUEADO`."""
+    principio que un componente `BLOQUEADO`.
+
+    **DEFECTO CONOCIDO, sin corregir a 2026-09-03 (decisión de Pablo: la
+    iteración estaba cerrada cuando se encontró).** Esta función **nunca mira
+    `celda.texto_actual`**. Los otros quince campos del cuadro pasan por
+    `_resolver_o_preexistente` y conservan lo que el DXF ya trae; los tres
+    totales son los únicos que no. Consecuencia, reproducida: un cuadro que
+    declara «TOTAL SUP.UTIL INTERIOR: 70,00 m²» sobre unas piezas que miden
+    36,00 recibe un `CeldaRelleno("36,00 m²", CALCULADO, motivo=None,
+    preexistente=False, escribir=True)` — se sobrescribe la cifra del
+    arquitecto, se marca como calculada por ArchMuse, y **la discrepancia de
+    34 m² no se declara en ningún sitio**.
+
+    Rompe la regla 4 de este módulo («Nunca sobrescribir una celda ya
+    rellenada») y la regla 5 del §4 de `CLAUDE.md` («Conflictos, no
+    sobrescrituras… nunca elijas una fuente en silencio»). Y lo que se pierde
+    es justo lo que el §1 declara como la razón por la que alguien paga:
+    detectar que el cuadro de la memoria no cuadra con los planos antes de
+    visar.
+
+    No lo dispara ningún plano del banco: en `ejemplo.dxf` las tres celdas de
+    total están vacías. Lo dispara el plano de un arquitecto con la memoria ya
+    redactada. El arreglo es enrutar los tres totales por el mismo
+    `_con_conflicto_o` que ya usa `aplicar_respuestas` más abajo."""
     bloqueados = [c for c in componentes if c.estado == BLOQUEADO]
     if bloqueados:
         return CeldaRelleno(
@@ -348,17 +428,34 @@ def _celda_total(
     return CeldaRelleno(campo, _formatear_area(total), CALCULADO, None, celda)
 
 
-def _valor_numerico(celda_rellena: CeldaRelleno) -> Optional[float]:
-    """Lee el número de una celda ya resuelta (CALCULADO/CERO_REAL), solo si
-    su texto está en el formato exacto que genera `_formatear_area`
-    ("21,90 m²"). Devuelve `None` -- nunca una conversión aproximada -- si no
-    lo está: típicamente una celda PREEXISTENTE cuyo texto lo escribió un
-    humano en otro formato. Quien llame debe tratar `None` como "no sumable
-    con garantías", nunca como 0."""
-    m = re.fullmatch(r"(\d+),(\d{2}) m²", celda_rellena.texto.strip())
+def superficie_en_m2(texto: Optional[str]) -> Optional[float]:
+    """El número de un texto de celda, solo si está en el formato exacto que
+    genera `_formatear_area` ("21,90 m²"). `None` -- nunca una conversión
+    aproximada -- si no lo está.
+
+    Público porque lo necesita más de un consumidor: además del cálculo del
+    total (`_celda_total`), la verificación de la Skill que cruza el cuadro
+    contra la superficie medida (`agente/skills/superficies.py`). Tenían dos
+    parseos distintos y el de la Skill era más laxo: aceptaba "8" (el
+    `NUMERO UDS` de `ejemplo.dxf`) como si fueran 8 m². Uno solo, y el
+    estricto.
+
+    **Un texto que no case es «no sumable con garantías», nunca 0.** Típicamente
+    una celda PREEXISTENTE que escribió un humano en otro formato ("21.90m2",
+    como en `ejemplo.dxf`). Quien llame debe declararlo, no saltárselo: una
+    suma a la que le falta un sumando en silencio es peor que no sumar.
+    """
+    if not texto:
+        return None
+    m = re.fullmatch(r"(\d+),(\d{2}) m²", texto.strip())
     if not m:
         return None
     return float(m.group(1) + "." + m.group(2))
+
+
+def _valor_numerico(celda_rellena: CeldaRelleno) -> Optional[float]:
+    """`superficie_en_m2` sobre el texto de una celda ya resuelta."""
+    return superficie_en_m2(celda_rellena.texto)
 
 
 # ---------------------------------------------------------------------------
@@ -420,16 +517,13 @@ def calcular_relleno_cuadro(unit, cuadro: CuadroSuperficies, rooms: Sequence) ->
     por_campo = {c.campo: c for c in resultados}
 
     # --- Totales, en cascada sobre lo ya resuelto -----------------------
-    componentes_interior = [por_campo[c] for c in (
-        "salon_cocina", "pasillo", "dormitorio_1", "dormitorio_2", "dormitorio_3",
-        "bano", "aseo", "vestibulo",
-    )]
+    componentes_interior = [por_campo[c] for c in CAMPOS_UTIL_INTERIOR]
     total_interior = _celda_total("total_util_interior", cuadro.celda("total_util_interior"),
                                    componentes_interior, "TOTAL SUP.UTIL INTERIOR")
     resultados.append(total_interior)
     por_campo["total_util_interior"] = total_interior
 
-    componentes_exterior = [por_campo[c] for c in ("tendedero", "terraza_1", "terraza_2")]
+    componentes_exterior = [por_campo[c] for c in CAMPOS_UTIL_EXTERIOR]
     total_exterior = _celda_total("total_util_exterior", cuadro.celda("total_util_exterior"),
                                    componentes_exterior, "TOTAL SUP.UTIL EXTERIOR")
     resultados.append(total_exterior)
@@ -757,15 +851,12 @@ def aplicar_respuestas(
 
     # Recalcular los totales en cascada, con la MISMA función que los
     # calculó la primera vez -- ninguna fórmula nueva.
-    componentes_interior = [por_campo[c] for c in (
-        "salon_cocina", "pasillo", "dormitorio_1", "dormitorio_2", "dormitorio_3",
-        "bano", "aseo", "vestibulo",
-    )]
+    componentes_interior = [por_campo[c] for c in CAMPOS_UTIL_INTERIOR]
     total_interior = _celda_total("total_util_interior", por_campo["total_util_interior"].celda,
                                    componentes_interior, "TOTAL SUP.UTIL INTERIOR")
     por_campo["total_util_interior"] = total_interior
 
-    componentes_exterior = [por_campo[c] for c in ("tendedero", "terraza_1", "terraza_2")]
+    componentes_exterior = [por_campo[c] for c in CAMPOS_UTIL_EXTERIOR]
     total_exterior = _celda_total("total_util_exterior", por_campo["total_util_exterior"].celda,
                                    componentes_exterior, "TOTAL SUP.UTIL EXTERIOR")
     por_campo["total_util_exterior"] = total_exterior

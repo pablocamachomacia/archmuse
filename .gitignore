@@ -63,3 +63,9 @@ DESTROY_ARCHMUSE.md
 *.dxf
 *.dwg
 !tests/fixtures/**/*.dxf
+
+# Salida generada al correr el banco de DXF (correr_banco.py escribe el PDF de
+# medición y el de revisión junto a cada fixture). El banco son los DXF y su
+# MANIFIESTO; los PDF se regeneran en un segundo y ensucian cada `git status`.
+tests/fixtures/**/*_ArchMuse_medicion.pdf
+tests/fixtures/**/*_ArchMuse_revision.pdf

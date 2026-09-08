@@ -290,6 +290,69 @@ class Medicion:
     def piezas(self) -> int:
         return sum(len(v.piezas) for v in self.viviendas)
 
+    # -- El total de la planta ----------------------------------------------
+    #
+    # **La misma regla dura que arriba, un nivel por encima.** Una vivienda no
+    # lleva total si algo lo impide; una planta no lleva total si le falta una
+    # vivienda. Sin esto, quien quisiera el total de la planta lo sumaba a mano
+    # —que es justo el trabajo que se viene a delegar— o, peor, lo sumaba en
+    # código de presentación saltándose las que no se pudieron medir. Eso
+    # último es exactamente el defecto que se corrigió el 2026-09-03 en
+    # `agente/skills/superficies.py`: 295,10 m² publicados sobre un plano de
+    # seis viviendas de las que sólo cinco se habían medido.
+
+    @property
+    def viviendas_sin_total(self) -> Tuple[str, ...]:
+        return tuple(v.nombre for v in self.viviendas if v.total_util_m2 is None)
+
+    @property
+    def impedimentos(self) -> Tuple[str, ...]:
+        """Por qué esta planta no lleva total. Vacío = el total es publicable."""
+        if not self.viviendas:
+            return ("no se ha medido ninguna vivienda en esta planta",)
+        sin_total = self.viviendas_sin_total
+        if sin_total:
+            return (
+                "%s no lleva%s superficie útil total, y una planta a la que le falta "
+                "una vivienda entera no se totaliza: el motivo de cada una está en su "
+                "cuadro" % (", ".join("«%s»" % n for n in sin_total),
+                            "" if len(sin_total) == 1 else "n"),
+            )
+        return ()
+
+    @property
+    def advertencias(self) -> Tuple[str, ...]:
+        """Lo que NO impide el total pero hay que leer pegado a él.
+
+        **Por qué esto no bloquea.** Un rótulo `VT…` al que no ha ido a parar
+        ningún recinto puede ser una vivienda de esta planta que no se ha
+        medido —y entonces al total le falta— o una etiqueta de otra planta o
+        de una leyenda, y entonces no falta nada. No se puede decidir cuál es
+        sin mirar el plano, así que ni se bloquea el total (haría inútil la
+        cifra: los dos planos reales del cliente traen «VT22/1») ni se calla
+        (sería publicar un total que puede estar corto sin avisar). Va junto al
+        número, no en una lista al pie.
+        """
+        if not self.rotulos_sin_piezas:
+            return ()
+        return (
+            "el plano rotula %s y ningún recinto ha ido a parar ahí: si es una vivienda "
+            "de esta planta, el total no la incluye"
+            % ", ".join("«%s»" % r for r in self.rotulos_sin_piezas),
+        )
+
+    @property
+    def total_util_m2(self) -> Optional[float]:
+        """Superficie útil de la planta, o `None` **con motivo en `impedimentos`**.
+
+        Suma los totales **publicados** de cada vivienda, no las magnitudes
+        crudas: el arquitecto suma la columna a mano y una planta cuyo total no
+        es la suma de sus viviendas se lee como un error de cálculo.
+        """
+        if self.impedimentos:
+            return None
+        return _redondear(sum(v.total_util_m2 or 0.0 for v in self.viviendas))
+
 
 # ---------------------------------------------------------------------------
 # El cálculo
@@ -479,6 +542,13 @@ def a_dict(medicion: Medicion) -> Dict:
         ],
         "viviendas_medidas": len(medicion.viviendas),
         "viviendas_con_total": medicion.viviendas_con_total,
+        # El total de la planta, con la misma forma que el de una vivienda:
+        # la cifra o `None`, y en el segundo caso el motivo. `advertencias`
+        # viaja aunque haya total -- ver el docstring de la propiedad.
+        "total_util_m2": medicion.total_util_m2,
+        "viviendas_sin_total": list(medicion.viviendas_sin_total),
+        "impedimentos_del_total": list(medicion.impedimentos),
+        "advertencias_del_total": list(medicion.advertencias),
         "piezas": medicion.piezas,
         "rotulos_sin_piezas": list(medicion.rotulos_sin_piezas),
         "geometria_no_leida": [dict(d) for d in medicion.geometria_no_leida],
