@@ -136,6 +136,39 @@ averiguar. El checklist de `docs/design/checklist-primera-prueba-autocad.md` ya
 está escrito y separa, prueba a prueba, lo que sería fallo del flujo de lo que
 sería fallo del lenguaje.
 
+### Estado al cerrar la sesión del 2026-09-08
+
+**Cerrado:** el punto 0 (el trabajo del 3 de septiembre, commiteado), el 1a (las
+dos superficies), el 2 (la demo del `ACAD_TABLE`) y el 3 (el endpoint de
+geometría con sus tests de integración). **Cinco commits en la rama
+`medicion/totales-y-herramienta-medir`**, `main` intacto, nada empujado.
+Suite: **1395 pasan, 41 se saltan**.
+
+**Bloqueado, y por qué:**
+
+| Qué | Por qué | Qué lo desbloquea |
+|---|---|---|
+| **1b** — el fallo de duplicación del «Tendedero» | El DXF donde se vio no está disponible. Un test escrito contra un fallo que nadie ha visto reproduce lo que uno imagina, no lo que pasó | Que Pablo encuentre el fichero |
+| **1c** — el «Baño» que cae en `sin_clasificar` | Lo mismo. Hay dos sospechosos ya localizados: el plural «BAÑOS», que no casa con `BANO`, y que el rótulo no se haya asociado al recinto — en ese caso el arreglo está en otro sitio | El mismo fichero |
+| **`autocad/archmuse.lsp`** (tareas 5 y 6 del PRD) | No hay licencia de AutoCAD. No se simula: un *mock* daría confianza falsa sobre lo único que el prototipo existe para averiguar | Activar el trial, **de AutoCAD completo, nunca LT** |
+
+**El primer paso de la próxima sesión** depende de qué haya llegado, y en este
+orden:
+
+1. **Si está el DXF que falló:** 1b y 1c, con el test que reproduce cada fallo
+   escrito **antes** del arreglo, y el fichero derivado y auditado con
+   `scripts/derivar_fixture_anonimo.py` antes de que entre al repositorio.
+2. **Si está el trial de AutoCAD:** `archmuse.lsp`, con
+   `docs/design/checklist-primera-prueba-autocad.md` abierto al lado desde el
+   paso 0. Está escrito para que no se gasten días de licencia improvisando.
+3. **Si no está ninguno de los dos:** las cuatro preguntas de criterio que
+   siguen abiertas, empezando por el **vocabulario de rótulos** — hoy son ocho
+   familias y todo lo que no entra bloquea la vivienda entera, que es el fallo
+   más probable sobre un plano ajeno.
+
+**Y una decisión de Pablo pendiente que no es técnica:** qué hacer con la rama.
+Los cinco commits están sin empujar y `main` sigue en `faff391`.
+
 ### Qué NO se ha hecho, y por qué
 
 - **Los puntos 1b y 1c siguen bloqueados**: el fallo de duplicación del

@@ -89,6 +89,41 @@ siguen medidas.
 
 ---
 
+## C-3 · La marca de borrador va en lo que se entrega, no en lo que se lee
+
+**Propuesto por:** ArchMuse (CTO), al cazarlo el guardián de la marca el
+2026-09-08. **Dictaminado por Pablo:** 2026-09-08 — «queda como criterio, no como
+parche». **Estado:** implementado.
+
+**El criterio.** `C3` («todo entregable sale marcado como borrador para revisión
+de un colegiado, sin excepción y sin opción de desactivarlo») gobierna lo que
+**llega a una persona**. Un fichero interno que el producto se escribe a sí mismo
+para leerlo un segundo después no es un entregable, y **no lleva la marca**.
+
+**Por qué no es una rendija en `C3`, y esto es lo que hay que poder discutir.**
+No se exime por comodidad: estamparla ahí **falsearía la medición**. La marca es
+un `MTEXT`; el DXF que `analyzer/geometria_recibida.py` materializa existe
+precisamente para que `parser.leer_plano` busque rótulos de estancia en los
+`MTEXT`. Un texto que ArchMuse se inventa y que cae dentro de un recinto puede
+acabar siendo el rótulo de ese recinto. Sería el producto contaminando su propia
+entrada, y el fallo aparecería como una superficie mal rotulada, no como una
+marca de más.
+
+**Lo que sí lleva marca en ese mismo flujo**, y por eso el criterio no afloja
+nada: el PDF de medición (`medicion_pdf.py`) y la tabla nativa que el cliente CAD
+inserta en el plano del arquitecto, que el PRD de AutoCAD exige con marca y sin
+opción de quitarla.
+
+**Cómo se sostiene, que es la parte que importa.** El guardián
+`test_ningun_modulo_guarda_un_dxf_sin_pasar_por_la_marca` **se ha endurecido, no
+relajado**. La exención exige tres cosas a la vez: declarar la constante
+`DXF_INTERNO_SIN_MARCA_DE_BORRADOR` con el motivo escrito en su propio valor,
+estar nombrada a mano en el test —o sea, aparecer en el diff de quien la añada— y
+pasar un test que comprueba que el DXF materializado **no lleva ni un texto** que
+no venga del cliente. Una puerta trasera vale lo que valga su cerradura.
+
+---
+
 ## Lo que sigue sin firmar
 
 De los tres criterios que `D-7` enumera desde el 2026-08-19, **`C-1` y `C-2`
