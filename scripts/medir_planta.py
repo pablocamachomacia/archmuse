@@ -177,15 +177,16 @@ def main(argv: list) -> int:
             print("    %-24s %10s   %s"
                   % (pieza.get("rotulo"), _m2(pieza.get("area_m2")),
                      pieza.get("ambito")))
-        print("    %-24s %10s" % ("útil interior", _m2(vivienda.get("interior_m2"))))
-        print("    %-24s %10s" % ("útil exterior", _m2(vivienda.get("exterior_m2"))))
-        total = vivienda.get("total_util_m2")
-        if total is None:
-            print("    %-24s %10s" % ("TOTAL S. ÚTIL", "sin total"))
+        interior = vivienda.get("util_interior_m2")
+        exterior = vivienda.get("util_exterior_m2")
+        if interior is None or exterior is None:
+            print("    %-24s %10s" % ("S. ÚTIL INTERIOR", "no se publica"))
+            print("    %-24s %10s" % ("S. ÚTIL EXTERIOR", "no se publica"))
             for motivo in vivienda.get("impedimentos") or ():
                 print("      · %s" % motivo)
         else:
-            print("    %-24s %10s" % ("TOTAL S. ÚTIL", _m2(total)))
+            print("    %-24s %10s" % ("S. ÚTIL INTERIOR", _m2(interior)))
+            print("    %-24s %10s" % ("S. ÚTIL EXTERIOR", _m2(exterior)))
 
     _titulo("LO QUE TE LLEVAS")
     print("  PDF  %s" % destino)

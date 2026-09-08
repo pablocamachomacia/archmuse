@@ -116,13 +116,22 @@ def test_fixture_plausible_mide_36_m2_sin_falso_rechazo(dxf: Path, tmp_path):
         % (dxf.name, vivienda.get("impedimentos"))
     )
 
-    total = vivienda.get("total_util_m2")
-    assert total is not None, (
-        "%s: no se ha publicado total -- degradó a «sin total» en vez de "
-        "medir. Esto es exactamente el falso rechazo que este banco existe "
+    interior = vivienda.get("util_interior_m2")
+    exterior = vivienda.get("util_exterior_m2")
+    assert interior is not None and exterior is not None, (
+        "%s: no se han publicado las superficies -- degradó a «no se publica» en "
+        "vez de medir. Esto es exactamente el falso rechazo que este banco existe "
         "para atrapar." % dxf.name
     )
-    assert total == pytest.approx(SUPERFICIE_UTIL_ESPERADA_M2, abs=0.01), (
-        "%s: total_util_m2 = %.2f, se esperaban %.2f m²"
-        % (dxf.name, total, SUPERFICIE_UTIL_ESPERADA_M2)
+    # Los 11 fixtures son viviendas sin espacios exteriores: la verdad conocida
+    # por construcción son 36,00 m² de útil interior y ni un metro de exterior.
+    # Comprobar las dos por separado es más estricto que comprobar su suma, que
+    # es justamente lo que este cambio de criterio busca.
+    assert exterior == pytest.approx(0.0, abs=0.01), (
+        "%s: útil exterior = %.2f, y estos fixtures no tienen terrazas"
+        % (dxf.name, exterior)
+    )
+    assert interior == pytest.approx(SUPERFICIE_UTIL_ESPERADA_M2, abs=0.01), (
+        "%s: util_interior_m2 = %.2f, se esperaban %.2f m²"
+        % (dxf.name, interior, SUPERFICIE_UTIL_ESPERADA_M2)
     )

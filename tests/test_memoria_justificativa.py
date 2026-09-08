@@ -78,9 +78,8 @@ ACTA_UNA_VIVIENDA = {
                         {"rotulo": "Dormitorio 1", "familia": "dormitorio", "ambito": "interior",
                          "area_m2": 12.10, "capa": "AREAS"},
                     ],
-                    "interior_m2": 32.63, "exterior_m2": 0.0,
                     "suma_de_piezas_m2": 32.63, "superficie_por_union_m2": 32.63,
-                    "total_util_m2": None,
+                    "util_interior_m2": None, "util_exterior_m2": None,
                     "impedimentos": ["hay solapes sin resolver en esta vivienda"],
                     "solapes": [{"una": "Tendedero", "otra": "Tendedero", "area_m2": 2.0}],
                     "repartos_dudosos": [],
@@ -133,9 +132,9 @@ def test_las_superficies_del_pdf_son_las_del_acta_y_no_otras():
     assert "Salón" in texto
     assert "20,53" in texto  # área de la pieza, coma decimal española
     assert "12,10" in texto
-    # Sin total útil (era `None` en el acta) -- no se inventa un total.
-    assert "32,63" not in texto or "Superficie útil total" not in texto.split("Sin superficie útil total")[0]
-    assert "Sin superficie útil total" in texto
+    # Sin superficies publicables (eran `None` en el acta) -- no se inventa nada,
+    # y en particular no aparece ninguna cifra que sume interior y exterior.
+    assert "Sin superficies útiles publicables" in texto
     # El solape, que también estaba en el acta (anidado en la vivienda).
     assert "2,00" in texto
 

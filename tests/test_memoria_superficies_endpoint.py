@@ -86,7 +86,7 @@ def test_el_endpoint_devuelve_un_pdf_real_con_el_caso_conocido(client, dxf_bytes
     assert "APARTADO DE SUPERFICIES" in texto
     assert "BORRADOR PARA REVISIÓN DE UN COLEGIADO" in texto
     # El caso conocido: sin total útil, por el solape del DXF sintético.
-    assert "Sin superficie útil total" in texto
+    assert "Sin superficies útiles publicables" in texto
 
 
 def test_sin_autorizar_efectos_pide_confirmacion_y_no_genera_pdf(client, dxf_bytes):

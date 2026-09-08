@@ -126,23 +126,29 @@ def _m2(valor: Any) -> str:
 
 
 def _frase_del_total(datos: dict, viviendas: Sequence[dict]) -> str:
-    """El total de la planta en una frase, o por qué no lo hay.
+    """Las dos superficies de la planta en una frase, o por qué no las hay.
 
-    Las dos ramas vienen decididas de `analyzer/medicion.py`: aquí no se suma,
-    no se redondea y no se rellena. El recuento va pegado a la cifra —«suma de
-    3 de 3 viviendas»— porque un total sin saber sobre cuántas viviendas se ha
+    Las ramas vienen decididas de `analyzer/medicion.py`: aquí no se suma, no se
+    redondea y no se rellena. El recuento va pegado a las cifras —«suma de 3 de
+    3 viviendas»— porque una cifra sin saber sobre cuántas viviendas se ha
     calculado no se puede juzgar.
+
+    **Las dos van separadas y nunca sumadas** (criterio del arquitecto,
+    2026-09-07): escribir aquí «total: interior + exterior» sería reconstruir en
+    la capa de presentación el campo que se retiró del modelo.
     """
-    total = datos.get("total_util_m2")
-    con_total = sum(1 for v in viviendas if v.get("total_util_m2") is not None)
-    if total is None:
+    interior = datos.get("util_interior_m2")
+    exterior = datos.get("util_exterior_m2")
+    con_total = sum(1 for v in viviendas if v.get("util_interior_m2") is not None)
+    if interior is None or exterior is None:
         motivos = datos.get("impedimentos_del_total") or ()
-        return ("<b>Esta planta no lleva total de superficie útil.</b> %s"
+        return ("<b>Esta planta no lleva superficies útiles de planta.</b> %s"
                 % ("; ".join(motivos) if motivos
                    else "No se ha podido totalizar."))
-    return ("<b>TOTAL SUPERFICIE ÚTIL DE LA PLANTA: %s.</b> Suma de las %d vivienda(s) "
-            "medida(s), %d de %d con total propio."
-            % (_m2(total), len(viviendas), con_total, len(viviendas)))
+    return ("<b>SUPERFICIE ÚTIL INTERIOR DE LA PLANTA: %s · SUPERFICIE ÚTIL EXTERIOR: "
+            "%s.</b> Suma de las %d vivienda(s) medida(s), %d de %d con superficies "
+            "propias. Las dos magnitudes no se suman entre sí."
+            % (_m2(interior), _m2(exterior), len(viviendas), con_total, len(viviendas)))
 
 
 def _referencia(pieza: Dict[str, Any]) -> str:
@@ -222,28 +228,35 @@ def _tabla_de_piezas(vivienda: Dict[str, Any], estilos) -> Table:
 
     # Los totales van en la misma tabla y no en un párrafo aparte: un total que
     # no está en la columna que se suma es un total que nadie comprueba.
+    # **Dos filas de cierre, y ninguna las suma** (criterio del arquitecto,
+    # 2026-09-07). Antes había una tercera fila «TOTAL SUPERFICIE ÚTIL» que
+    # sumaba interior y exterior al 100 %: una terraza pesaba en el total lo
+    # mismo que un dormitorio. Se ha retirado del documento, no ocultado.
     primera_suma = len(filas)
-    filas.append([_p("Superficie útil interior", estilos["celda"]),
-                  _p("Suma de las piezas interiores.", estilos["celda_ref"]),
-                  _p("", estilos["celda"]),
-                  _p(_cifra(vivienda.get("interior_m2")), estilos["celda_num"])])
-    filas.append([_p("Superficie útil exterior", estilos["celda"]),
-                  _p("Suma de las piezas exteriores.", estilos["celda_ref"]),
-                  _p("", estilos["celda"]),
-                  _p(_cifra(vivienda.get("exterior_m2")), estilos["celda_num"])])
-    total = vivienda.get("total_util_m2")
-    if total is None:
+    interior = vivienda.get("util_interior_m2")
+    exterior = vivienda.get("util_exterior_m2")
+    if interior is None or exterior is None:
         motivos = " ".join("%s%s." % (motivo[:1].upper(), motivo[1:])
                            for motivo in (vivienda.get("impedimentos") or ()))
-        filas.append([_p("<b>TOTAL SUPERFICIE ÚTIL</b>", estilos["celda"]),
-                      _p("<b>No se totaliza.</b> %s" % motivos, estilos["celda_ref"]),
+        filas.append([_p("<b>SUPERFICIE ÚTIL INTERIOR</b>", estilos["celda"]),
+                      _p("<b>No se publica.</b> %s" % motivos, estilos["celda_ref"]),
+                      _p("", estilos["celda"]),
+                      _p("<b>—</b>", estilos["celda_num"])])
+        filas.append([_p("<b>SUPERFICIE ÚTIL EXTERIOR</b>", estilos["celda"]),
+                      _p("<b>No se publica</b>, por el mismo motivo.",
+                         estilos["celda_ref"]),
                       _p("", estilos["celda"]),
                       _p("<b>—</b>", estilos["celda_num"])])
     else:
-        filas.append([_p("<b>TOTAL SUPERFICIE ÚTIL</b>", estilos["celda"]),
-                      _p("Superficie útil interior más exterior.", estilos["celda_ref"]),
+        filas.append([_p("<b>SUPERFICIE ÚTIL INTERIOR</b>", estilos["celda"]),
+                      _p("Suma de las piezas interiores.", estilos["celda_ref"]),
                       _p("", estilos["celda"]),
-                      _p("<b>%s</b>" % _cifra(total), estilos["celda_num"])])
+                      _p("<b>%s</b>" % _cifra(interior), estilos["celda_num"])])
+        filas.append([_p("<b>SUPERFICIE ÚTIL EXTERIOR</b>", estilos["celda"]),
+                      _p("Suma de terrazas y tendederos. <b>No se suma a la "
+                         "interior.</b>", estilos["celda_ref"]),
+                      _p("", estilos["celda"]),
+                      _p("<b>%s</b>" % _cifra(exterior), estilos["celda_num"])])
     ultima = len(filas) - 1
     estilo += [
         ("BACKGROUND", (0, primera_suma), (-1, -1), _FONDO_SUMAS),
@@ -264,8 +277,8 @@ def _seccion_de_vivienda(vivienda: Dict[str, Any], estilos) -> List[Any]:
     ]
     for nota in _nota_de_familias(vivienda):
         bloque.append(_p(nota, estilos["nota"]))
-    total = vivienda.get("total_util_m2")
-    if total is not None and vivienda.get("superficie_por_union_m2") is not None:
+    if (vivienda.get("util_interior_m2") is not None
+            and vivienda.get("superficie_por_union_m2") is not None):
         # **Sin la cifra de la unión entre paréntesis, y ese paréntesis estuvo
         # aquí.** Decía «El total coincide con la superficie que ocupan
         # realmente las piezas (66,33 m²)» al lado de un TOTAL de 66,32: dos
@@ -278,13 +291,13 @@ def _seccion_de_vivienda(vivienda: Dict[str, Any], estilos) -> List[Any]:
         # No era un error de cálculo: el total es la suma de las piezas ya
         # redondeadas y la unión se redondea por su cuenta, así que difieren
         # hasta en un céntimo de metro. Lo que sobraba era el paréntesis. La
-        # afirmación se sostiene sola —`total_util_m2` sólo existe cuando
+        # afirmación se sostiene sola —las dos superficies sólo existen cuando
         # `impedimentos` está vacío, y un solape es un impedimento—, y la
         # magnitud de la unión sigue publicándose donde sí importa: en el
         # motivo de las viviendas que NO llevan total.
         bloque.append(_p(
-            "Las piezas no se pisan entre sí: el total es la superficie que "
-            "ocupan realmente.", estilos["nota"]))
+            "Las piezas no se pisan entre sí: las superficies publicadas son la "
+            "que ocupan realmente.", estilos["nota"]))
     solapes = vivienda.get("solapes") or ()
     if solapes:
         bloque.append(_p("Piezas que se pisan entre sí, y cuánto:", estilos["nota"]))
@@ -369,7 +382,7 @@ def generar_medicion_pdf(datos: Dict[str, Any]) -> bytes:
             "No se ha podido separar ninguna vivienda en este plano, así que no hay "
             "nada que medir. ArchMuse no inventa una agrupación.", estilos["cuerpo"]))
     else:
-        con_total = sum(1 for v in viviendas if v.get("total_util_m2") is not None)
+        con_total = sum(1 for v in viviendas if v.get("util_interior_m2") is not None)
         story.append(_p(
             "%d vivienda(s) medida(s) en esta planta, separadas por %s. "
             "%d con superficie útil total; %d sin total, y en su cuadro va el motivo."

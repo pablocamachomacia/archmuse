@@ -172,7 +172,7 @@ def clasificar(texto: str, datos=()) -> dict:
 # no en un test): antes de esto, `_seccion_datos` mostraba `str(valor)` sin
 # más para cualquier dato que no fuera texto/número. Para `medicion.viviendas`
 # y `medicion.sin_total` —cuyo valor es una lista de dicts— eso imprimía la
-# sintaxis cruda de Python (`[{'exterior_m2': 9.0, ...}]`). Para
+# sintaxis cruda de Python (`[{'util_exterior_m2': 9.0, ...}]`). Para
 # `medicion.informe` —cuyo valor es la ruta absoluta del PDF temporal—
 # imprimía la ruta del sistema operativo tal cual, con la cuenta de usuario
 # incluida (`C:\\Users\\...\\Temp\\...`). Ninguna de las dos cosas es
@@ -201,16 +201,21 @@ def _dato_medicion_viviendas(valor) -> str:
     frases = []
     for v in viviendas:
         piezas = v.get("piezas") or []
-        total = v.get("total_util_m2")
-        resumen_total = (
-            "total útil %s" % _m2_texto(total) if total is not None
-            else "sin total útil (el motivo está más abajo, en «Qué no se ha comprobado»)"
-        )
-        frases.append(
-            "«%s»: %d pieza(s) medidas, %s interior y %s exterior, %s."
-            % (v.get("vivienda", "?"), len(piezas), _m2_texto(v.get("interior_m2")),
-               _m2_texto(v.get("exterior_m2")), resumen_total)
-        )
+        interior = v.get("util_interior_m2")
+        exterior = v.get("util_exterior_m2")
+        if interior is None or exterior is None:
+            frases.append(
+                "«%s»: %d pieza(s) medidas, sin superficies útiles publicables "
+                "(el motivo está más abajo, en «Qué no se ha comprobado»)."
+                % (v.get("vivienda", "?"), len(piezas))
+            )
+        else:
+            frases.append(
+                "«%s»: %d pieza(s) medidas, %s de superficie útil interior y %s de "
+                "exterior."
+                % (v.get("vivienda", "?"), len(piezas), _m2_texto(interior),
+                   _m2_texto(exterior))
+            )
     return " ".join(frases)
 
 

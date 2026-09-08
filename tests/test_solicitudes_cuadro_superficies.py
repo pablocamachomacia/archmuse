@@ -115,17 +115,27 @@ cuadro_auto = cuadro_completo(existentes={
 })
 resultado_auto = calcular_relleno_cuadro(unit_auto, cuadro_auto, rooms_auto)
 
-check(len(celdas_sin_resolver(resultado_auto)) == 0,
-      "sin ningún campo BLOQUEADO/NO_DISPONIBLE",
-      str([r.campo for r in celdas_sin_resolver(resultado_auto)]))
+# `total_util` queda FUERA de las dos comprobaciones de abajo, y no es una
+# excepción cómoda: desde el 2026-09-08 esa celda es NO_DISPONIBLE **siempre y a
+# propósito** (criterio firmado C-1: la útil interior y la exterior no se suman
+# en una sola cifra). No es un campo que ArchMuse no haya sabido resolver, es
+# uno que ha decidido no componer, y por eso tampoco genera `Solicitud`: no le
+# falta un dato al programa, le falta un criterio al colegiado.
+sin_resolver_auto = [r.campo for r in celdas_sin_resolver(resultado_auto)]
+check(sin_resolver_auto == ["total_util"],
+      "sin ningún campo BLOQUEADO/NO_DISPONIBLE salvo total_util, que lo es siempre",
+      str(sin_resolver_auto))
 
 solicitudes_auto = detectar_solicitudes(resultado_auto, rooms_auto)
 check(solicitudes_auto == [], "detectar_solicitudes() = [] -- nada que preguntar",
       str([s.id for s in solicitudes_auto]))
 
-# Redundancia deliberada: ninguna celda queda con "N/D" como resultado final.
-check(all(r.texto != "N/D" for r in resultado_auto),
+# Redundancia deliberada: ninguna celda queda con "N/D" salvo la que lo lleva
+# por criterio, y esa lo lleva CON motivo -- un N/D mudo sí sería un fallo.
+check(all(r.texto != "N/D" for r in resultado_auto if r.campo != "total_util"),
       "ninguna celda quedó con N/D en el caso automático")
+check(all(r.motivo for r in resultado_auto if r.campo == "total_util"),
+      "el N/D de total_util viaja con su motivo escrito")
 
 
 print()

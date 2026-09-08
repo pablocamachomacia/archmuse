@@ -389,12 +389,11 @@
     "ok": true,
     "piezas": 8,
     "rotulos_sin_piezas": [],
-    "total_util_m2": 90.0,
+    "util_exterior_m2": 18.0,
+    "util_interior_m2": 72.0,
     "viviendas": [
       {
-        "exterior_m2": 9.0,
         "impedimentos": [],
-        "interior_m2": 36.0,
         "piezas": [
           {
             "ambito": "interior",
@@ -429,13 +428,12 @@
         "solapes": [],
         "suma_de_piezas_m2": 45.0,
         "superficie_por_union_m2": 45.0,
-        "total_util_m2": 45.0,
+        "util_exterior_m2": 9.0,
+        "util_interior_m2": 36.0,
         "vivienda": "VT1/1"
       },
       {
-        "exterior_m2": 9.0,
         "impedimentos": [],
-        "interior_m2": 36.0,
         "piezas": [
           {
             "ambito": "interior",
@@ -470,7 +468,8 @@
         "solapes": [],
         "suma_de_piezas_m2": 45.0,
         "superficie_por_union_m2": 45.0,
-        "total_util_m2": 45.0,
+        "util_exterior_m2": 9.0,
+        "util_interior_m2": 36.0,
         "vivienda": "VT2/1"
       }
     ],

@@ -3358,19 +3358,24 @@ def _medicion_a_json(acta: dict, informe: Optional[bytes]) -> dict:
     viviendas_dato = _dato("medicion.viviendas")
     viviendas = (viviendas_dato or {}).get("valor") or []
 
-    # El total de la planta, tal como lo publicó la Skill. `valor` es la cifra
-    # o `None`; cuando es `None`, `motivo` dice qué vivienda lo bloquea. Los
-    # dos van al MISMO sitio de la página —la cabecera—, porque quien mira la
-    # cabecera tiene que entender por qué no hay número sin bajar la vista.
+    # Las DOS superficies de la planta, tal como las publicó la Skill: interior
+    # y exterior, **nunca sumadas** (criterio del arquitecto, 2026-09-07). Cada
+    # `valor` es la cifra o `None`; cuando es `None`, `motivo` dice qué vivienda
+    # lo bloquea. Los dos van al MISMO sitio de la página —la cabecera—, porque
+    # quien mira la cabecera tiene que entender por qué no hay número sin bajar
+    # la vista.
     #
-    # No se suma nada aquí. La cifra la calcula `analyzer/medicion.py`
-    # (`Medicion.total_util_m2`), que es donde vive la regla de que una planta
-    # a la que le falta una vivienda no se totaliza.
-    hecho_total = _dato("medicion.total_util_m2") or {}
-    total_del_plano = {
-        "valor_m2": hecho_total.get("valor"),
-        "motivo": ((hecho_total.get("motivo") or {}).get("detalle")
-                   if isinstance(hecho_total.get("motivo"), dict) else None),
+    # No se suma nada aquí, y menos que nada una con otra: las calcula
+    # `analyzer/medicion.py` (`Medicion.util_interior_m2` / `util_exterior_m2`),
+    # que es donde vive la regla de que una planta a la que le falta una
+    # vivienda no se totaliza.
+    hecho_interior = _dato("medicion.util_interior_m2") or {}
+    hecho_exterior = _dato("medicion.util_exterior_m2") or {}
+    superficies_del_plano = {
+        "util_interior_m2": hecho_interior.get("valor"),
+        "util_exterior_m2": hecho_exterior.get("valor"),
+        "motivo": ((hecho_interior.get("motivo") or {}).get("detalle")
+                   if isinstance(hecho_interior.get("motivo"), dict) else None),
         "viviendas": len(viviendas),
         "viviendas_con_total": ((_dato("medicion.viviendas_con_total") or {}).get("valor")),
         # Advertencia que NO impide el total pero se lee pegada a él: un rótulo
@@ -3381,7 +3386,7 @@ def _medicion_a_json(acta: dict, informe: Optional[bytes]) -> dict:
 
     return {
         "viviendas": viviendas,
-        "total_del_plano": total_del_plano,
+        "superficies_del_plano": superficies_del_plano,
         "piezas": ((_dato("medicion.piezas") or {}).get("valor")),
         "viviendas_con_total": ((_dato("medicion.viviendas_con_total") or {}).get("valor")),
         # Lo que NO se ha podido establecer, partido en dos, porque son dos

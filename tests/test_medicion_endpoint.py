@@ -178,25 +178,30 @@ def test_el_dxf_devuelve_superficies_y_el_pdf_en_la_misma_llamada(client, dxf_li
 
 # --- 3. LA REGLA DE LA ITERACIÓN: qué suma un total ----------------------
 
-def test_el_total_es_util_interior_mas_util_exterior_y_nada_mas(client, dxf_limpio):
-    """El bug que abrió esta iteración, comprobado donde lo ve el arquitecto.
+def test_el_util_interior_y_el_exterior_llegan_separados_y_sin_sumarse(client, dxf_limpio):
+    """El criterio del arquitecto (2026-09-07), comprobado donde él lo ve.
 
-    36 m² de piezas interiores + 9 m² de terraza = 45 m². Ni un metro más: no
-    hay superficie construida en la suma (no se calcula), ni contadores, ni
-    ningún subtotal contado dos veces.
+    36 m² de piezas interiores y 9 m² de terraza, en dos cifras. Ni un metro
+    más: no hay superficie construida en ninguna de las dos (no se calcula), ni
+    contadores, ni ningún subtotal contado dos veces. Y **ninguna cifra que las
+    sume**: el `total_util_m2` que valía 45,00 se ha retirado del contrato.
     """
     vivienda = _medir(client, dxf_limpio).get_json()["viviendas"][0]
-    assert vivienda["interior_m2"] == pytest.approx(36.0)
-    assert vivienda["exterior_m2"] == pytest.approx(9.0)
-    assert vivienda["total_util_m2"] == pytest.approx(45.0)
+    assert vivienda["util_interior_m2"] == pytest.approx(36.0)
+    assert vivienda["util_exterior_m2"] == pytest.approx(9.0)
+    assert "total_util_m2" not in vivienda
 
 
-def test_el_total_es_exactamente_la_suma_de_las_piezas_publicadas(client, dxf_limpio):
-    """Un arquitecto suma la columna a mano. Si el total no es la suma de las
-    filas que ve, lee un error de cálculo aunque no lo haya."""
+def test_entre_las_dos_cifras_no_se_pierde_ninguna_pieza(client, dxf_limpio):
+    """Un arquitecto suma la columna a mano. Si las dos cifras no dan la suma de
+    las filas que ve, lee un error de cálculo aunque no lo haya.
+
+    Esto NO reintroduce el total: comprueba el invariante de que ninguna pieza
+    se ha quedado fuera de las dos.
+    """
     vivienda = _medir(client, dxf_limpio).get_json()["viviendas"][0]
     suma = round(sum(p["area_m2"] for p in vivienda["piezas"]), 2)
-    assert vivienda["total_util_m2"] == pytest.approx(suma)
+    assert vivienda["util_interior_m2"] + vivienda["util_exterior_m2"] == pytest.approx(suma)
 
 
 def test_la_superficie_construida_se_declara_no_disponible_con_motivo(client, dxf_limpio):
@@ -219,8 +224,10 @@ def test_una_vivienda_con_solape_llega_sin_total_y_con_el_motivo(client, dxf_con
     proyecto y acaba firmado."""
     cuerpo = _medir(client, dxf_con_solape).get_json()
     vivienda = cuerpo["viviendas"][0]
-    assert vivienda["total_util_m2"] is None
-    assert vivienda["impedimentos"], "sin total y sin motivo es indistinguible de un fallo"
+    assert vivienda["util_interior_m2"] is None
+    assert vivienda["util_exterior_m2"] is None, (
+        "un solape puede caer a caballo entre lo interior y lo exterior: bloquea las dos")
+    assert vivienda["impedimentos"], "sin cifra y sin motivo es indistinguible de un fallo"
     assert "dos veces" in " ".join(vivienda["impedimentos"])
     assert len(vivienda["piezas"]) == 4, "las piezas se miden aunque no haya total"
     assert cuerpo["viviendas_con_total"] == 0
@@ -312,9 +319,10 @@ def test_los_limites_genericos_no_entierran_los_hallazgos_del_plano(client, dxf_
 
 def test_planta_completa_lleva_total_con_el_recuento_al_lado(client, dxf_planta_completa):
     cuerpo = _medir(client, dxf_planta_completa).get_json()
-    total = cuerpo["total_del_plano"]
+    total = cuerpo["superficies_del_plano"]
 
-    assert total["valor_m2"] == pytest.approx(90.0)          # 45 + 45
+    assert total["util_interior_m2"] == pytest.approx(72.0)  # 36 + 36
+    assert total["util_exterior_m2"] == pytest.approx(18.0)  # 9 + 9
     assert total["motivo"] is None
     # El recuento viaja con la cifra: un total sin saber sobre cuántas
     # viviendas se ha calculado no se puede juzgar.
@@ -322,12 +330,14 @@ def test_planta_completa_lleva_total_con_el_recuento_al_lado(client, dxf_planta_
     assert total["viviendas_con_total"] == 2
 
 
-def test_el_total_de_planta_es_la_suma_de_los_totales_publicados(client, dxf_planta_completa):
-    """El arquitecto suma la columna a mano. Si el total de planta no es la
-    suma de los totales de las viviendas que ve, lee un error de cálculo."""
+def test_cada_superficie_de_planta_es_la_suma_de_su_columna(client, dxf_planta_completa):
+    """El arquitecto suma la columna a mano. Cada cifra de planta tiene que ser
+    la suma de esa misma cifra en las viviendas que ve -- y la interior nunca
+    lleva nada de la columna exterior."""
     cuerpo = _medir(client, dxf_planta_completa).get_json()
-    suma = round(sum(v["total_util_m2"] for v in cuerpo["viviendas"]), 2)
-    assert cuerpo["total_del_plano"]["valor_m2"] == pytest.approx(suma)
+    for campo in ("util_interior_m2", "util_exterior_m2"):
+        suma = round(sum(v[campo] for v in cuerpo["viviendas"]), 2)
+        assert cuerpo["superficies_del_plano"][campo] == pytest.approx(suma)
 
 
 def test_planta_con_una_vivienda_sin_medir_no_lleva_total_y_dice_cual(
@@ -336,13 +346,14 @@ def test_planta_con_una_vivienda_sin_medir_no_lleva_total_y_dice_cual(
     la que le falta una vivienda entera. El motivo va CON el hueco, en la
     cabecera, no sólo abajo en la lista de hallazgos."""
     cuerpo = _medir(client, dxf_planta_incompleta).get_json()
-    total = cuerpo["total_del_plano"]
+    total = cuerpo["superficies_del_plano"]
 
-    assert total["valor_m2"] is None
+    assert total["util_interior_m2"] is None
+    assert total["util_exterior_m2"] is None
     assert total["motivo"], "un hueco sin motivo es indistinguible de un fallo"
     # El nombre de la bloqueante, en el propio motivo de la cabecera.
     bloqueante = next(v["vivienda"] for v in cuerpo["viviendas"]
-                      if v["total_util_m2"] is None)
+                      if v["util_interior_m2"] is None)
     assert bloqueante in total["motivo"]
     # Y el recuento sigue estando: 1 de 2 se midió.
     assert (total["viviendas"], total["viviendas_con_total"]) == (2, 1)
@@ -352,10 +363,10 @@ def test_el_total_de_planta_nunca_suma_solo_las_medibles(client, dxf_planta_inco
     """El bug exacto, un nivel por encima del de la vivienda: la vivienda buena
     mide 45 m² y ese número NO puede aparecer como total de la planta."""
     cuerpo = _medir(client, dxf_planta_incompleta).get_json()
-    assert cuerpo["total_del_plano"]["valor_m2"] is None
-    medibles = [v["total_util_m2"] for v in cuerpo["viviendas"]
-                if v["total_util_m2"] is not None]
-    assert medibles == [pytest.approx(45.0)], "la vivienda buena sí se mide"
+    assert cuerpo["superficies_del_plano"]["util_interior_m2"] is None
+    medibles = [v["util_interior_m2"] for v in cuerpo["viviendas"]
+                if v["util_interior_m2"] is not None]
+    assert medibles == [pytest.approx(36.0)], "la vivienda buena sí se mide"
 
 
 def test_un_rotulo_de_vivienda_sin_recintos_advierte_junto_al_total(client, tmp_path):
@@ -375,8 +386,8 @@ def test_un_rotulo_de_vivienda_sin_recintos_advierte_junto_al_total(client, tmp_
         "VT9/1", dxfattribs={"layer": parser.AREA_LAYER}).set_location((500.0, 500.0))
     doc.saveas(str(ruta))
 
-    total = _medir(client, ruta.read_bytes()).get_json()["total_del_plano"]
-    assert total["valor_m2"] == pytest.approx(45.0), "el total se publica igual"
+    total = _medir(client, ruta.read_bytes()).get_json()["superficies_del_plano"]
+    assert total["util_interior_m2"] == pytest.approx(36.0), "las cifras se publican igual"
     assert total["advertencias"], "y el rótulo huérfano viaja con él"
     assert "VT9/1" in " ".join(total["advertencias"])
 
@@ -395,7 +406,8 @@ def test_un_plano_sin_viviendas_no_inventa_un_total_de_cero(client, tmp_path):
 
     cuerpo = _medir(client, ruta.read_bytes()).get_json()
     assert not cuerpo["viviendas"]
-    assert cuerpo["total_del_plano"]["valor_m2"] is None
+    assert cuerpo["superficies_del_plano"]["util_interior_m2"] is None
+    assert cuerpo["superficies_del_plano"]["util_exterior_m2"] is None
 
 
 # --- 7. Los cuatro arreglos de la auditoría de demo (2026-09-04) ----------

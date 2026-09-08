@@ -29,10 +29,17 @@ entregar en vez de sólo consultar:
    desaparece de un cuadro de superficies es superficie que falta sin que nadie
    lo sepa.
 
-**La regla de los totales, y es deliberadamente dura.** Un total que puede
-estar mal es peor que la ausencia de total: el primero se copia a la memoria
-del proyecto y el segundo se pregunta. Así que **basta un impedimento
-—cualquiera de los tres— para que esa vivienda no lleve ningún total**. Las
+**Dos magnitudes, no una** (criterio del arquitecto, 2026-09-07). Una vivienda
+lleva **superficie útil interior** y **superficie útil exterior**, y no se
+suman: hasta el 2026-09-08 existía un único `total_util_m2` que las sumaba al
+100 %, con lo que una terraza pesaba en el resultado igual que un dormitorio.
+Ese campo se ha eliminado del modelo, del acta, del PDF, de la API y de la
+pantalla — no se conserva en paralelo.
+
+**La regla de los totales, y es deliberadamente dura.** Una cifra que puede
+estar mal es peor que su ausencia: la primera se copia a la memoria del
+proyecto y la segunda se pregunta. Así que **basta un impedimento —cualquiera
+de los tres— para que esa vivienda no lleve ninguna de las dos cifras**. Las
 piezas siguen midiéndose una a una, que es donde está casi todo el valor, y el
 impedimento va escrito con su magnitud.
 
@@ -196,11 +203,14 @@ class ViviendaMedida:
         return _redondear(sum(p.area_m2 for p in self.piezas if p.ambito == ambito))
 
     @property
-    def interior_m2(self) -> float:
+    def suma_interior_m2(self) -> float:
+        """La suma de lo interior, **sin la regla dura**. Uso interno y del
+        motivo de un impedimento: publicar esto es lo que hacen
+        `util_interior_m2` y `util_exterior_m2`, que sí la aplican."""
         return self._suma(AMBITO_INTERIOR)
 
     @property
-    def exterior_m2(self) -> float:
+    def suma_exterior_m2(self) -> float:
         return self._suma(AMBITO_EXTERIOR)
 
     @property
@@ -261,11 +271,38 @@ class ViviendaMedida:
         return tuple(motivos)
 
     @property
-    def total_util_m2(self) -> Optional[float]:
-        """La superficie útil total, o `None` **con motivo en `impedimentos`**."""
+    def util_interior_m2(self) -> Optional[float]:
+        """Superficie útil **interior**, o `None` **con motivo en `impedimentos`**.
+
+        **Son dos magnitudes, no una, y no se suman** (criterio dictaminado por
+        el arquitecto el 2026-09-07, ver `PROGRESS.md`). Hasta hoy existía un
+        único `total_util_m2` que sumaba interior y exterior al 100 %: una
+        terraza entraba en el total de superficie útil con el mismo peso que un
+        dormitorio, que no es como se firma un cuadro de superficies. El campo
+        único **se ha eliminado**, no se conserva en paralelo: dejarlo vivo era
+        dejar la cifra vieja al alcance de cualquier consumidor nuevo.
+
+        **La regla dura se hereda entera, y ahora vale para las dos.** Antes los
+        parciales se publicaban aunque el total estuviera bloqueado, porque eran
+        el desglose de una cifra que el lector ya veía ausente. Al pasar a ser
+        ellos mismos el resultado, publicarlos con un impedimento abierto sería
+        exactamente el «total que puede estar mal» que este módulo existe para
+        no dar: un solape puede caer dentro de lo interior, dentro de lo
+        exterior o a caballo, y una pieza sin clasificar no se sabe de qué lado
+        cuenta. Con cualquier impedimento, **las dos** son `None` y las piezas
+        se siguen enseñando una a una, que es donde está casi todo el valor.
+        """
         if self.impedimentos:
             return None
-        return _redondear(self.interior_m2 + self.exterior_m2)
+        return self.suma_interior_m2
+
+    @property
+    def util_exterior_m2(self) -> Optional[float]:
+        """Superficie útil **exterior** (terrazas y tendederos), o `None`.
+        Mismo criterio que `util_interior_m2`."""
+        if self.impedimentos:
+            return None
+        return self.suma_exterior_m2
 
 
 @dataclass(frozen=True)
@@ -284,7 +321,7 @@ class Medicion:
 
     @property
     def viviendas_con_total(self) -> int:
-        return sum(1 for v in self.viviendas if v.total_util_m2 is not None)
+        return sum(1 for v in self.viviendas if v.util_interior_m2 is not None)
 
     @property
     def piezas(self) -> int:
@@ -303,7 +340,7 @@ class Medicion:
 
     @property
     def viviendas_sin_total(self) -> Tuple[str, ...]:
-        return tuple(v.nombre for v in self.viviendas if v.total_util_m2 is None)
+        return tuple(v.nombre for v in self.viviendas if v.util_interior_m2 is None)
 
     @property
     def impedimentos(self) -> Tuple[str, ...]:
@@ -342,16 +379,25 @@ class Medicion:
         )
 
     @property
-    def total_util_m2(self) -> Optional[float]:
-        """Superficie útil de la planta, o `None` **con motivo en `impedimentos`**.
+    def util_interior_m2(self) -> Optional[float]:
+        """Superficie útil interior de la planta, o `None` **con motivo en
+        `impedimentos`**.
 
-        Suma los totales **publicados** de cada vivienda, no las magnitudes
-        crudas: el arquitecto suma la columna a mano y una planta cuyo total no
+        Suma las cifras **publicadas** de cada vivienda, no las magnitudes
+        crudas: el arquitecto suma la columna a mano y una planta cuya cifra no
         es la suma de sus viviendas se lee como un error de cálculo.
         """
         if self.impedimentos:
             return None
-        return _redondear(sum(v.total_util_m2 or 0.0 for v in self.viviendas))
+        return _redondear(sum(v.util_interior_m2 or 0.0 for v in self.viviendas))
+
+    @property
+    def util_exterior_m2(self) -> Optional[float]:
+        """Superficie útil exterior de la planta. Mismo criterio que la
+        interior — **y nunca se suman entre sí**."""
+        if self.impedimentos:
+            return None
+        return _redondear(sum(v.util_exterior_m2 or 0.0 for v in self.viviendas))
 
 
 # ---------------------------------------------------------------------------
@@ -517,11 +563,12 @@ def a_dict(medicion: Medicion) -> Dict:
                     }
                     for p in v.piezas
                 ],
-                "interior_m2": v.interior_m2,
-                "exterior_m2": v.exterior_m2,
+                # Las dos magnitudes que se publican, cada una con su regla dura
+                # aplicada. **Nunca se suman entre sí** -- ver `util_interior_m2`.
+                "util_interior_m2": v.util_interior_m2,
+                "util_exterior_m2": v.util_exterior_m2,
                 "suma_de_piezas_m2": v.suma_de_piezas_m2,
                 "superficie_por_union_m2": _redondear(v.superficie_por_union_m2),
-                "total_util_m2": v.total_util_m2,
                 "impedimentos": list(v.impedimentos),
                 "solapes": [
                     {"una": s.una, "otra": s.otra, "area_m2": s.area_m2}
@@ -545,7 +592,8 @@ def a_dict(medicion: Medicion) -> Dict:
         # El total de la planta, con la misma forma que el de una vivienda:
         # la cifra o `None`, y en el segundo caso el motivo. `advertencias`
         # viaja aunque haya total -- ver el docstring de la propiedad.
-        "total_util_m2": medicion.total_util_m2,
+        "util_interior_m2": medicion.util_interior_m2,
+        "util_exterior_m2": medicion.util_exterior_m2,
         "viviendas_sin_total": list(medicion.viviendas_sin_total),
         "impedimentos_del_total": list(medicion.impedimentos),
         "advertencias_del_total": list(medicion.advertencias),

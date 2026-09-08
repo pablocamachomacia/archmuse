@@ -104,6 +104,24 @@ CAMPOS_SUMANDOS_UTIL = CAMPOS_UTIL_INTERIOR + CAMPOS_UTIL_EXTERIOR
 #: Totales ya calculados del propio cuadro. Sumarlos con sus partes duplicaría.
 CAMPOS_TOTAL_UTIL = ("total_util_interior", "total_util_exterior", "total_util")
 
+#: **`total_util` no se rellena nunca desde el 2026-09-08.** Es la celda que
+#: sumaba útil interior y útil exterior en una sola cifra, y el arquitecto
+#: dictaminó el 2026-09-07 que esas dos magnitudes no se suman: una terraza no
+#: pesa en el cuadro lo mismo que un dormitorio, y el cómputo de los espacios
+#: exteriores es criterio del técnico que firma, no de un programa.
+#:
+#: Se deja **`N/D` con este motivo escrito en el acta**, no en blanco: una celda
+#: vacía se lee como «ArchMuse no ha sabido», y aquí sí ha sabido — ha decidido
+#: no decidir por el arquitecto. Él puede escribirla a mano con su criterio.
+#:
+#: Ver `docs/design/2026-09-08-criterios-firmados-de-medicion.md`, criterio C-1.
+MOTIVO_TOTAL_UTIL_NO_SE_SUMA = (
+    "La superficie útil interior y la exterior no se suman en una sola cifra: el "
+    "cómputo de terrazas y tendederos es criterio del técnico que firma (¿al 100 %, "
+    "al 50 %, fuera del útil?) y ArchMuse no lo decide por él. Las dos magnitudes "
+    "están arriba, cada una con su total. Esta celda se rellena a mano."
+)
+
 #: Superficie CONSTRUIDA. Es superficie y va en m², pero es otra magnitud: no
 #: suma con la útil ni se cruza contra ella. ArchMuse no la calcula (no conoce
 #: el espesor de los muros); cuando aparece con valor es porque el DXF la traía
@@ -363,6 +381,24 @@ def _celda_no_disponible(campo: str, celda: Optional[CeldaCuadro], motivo: str) 
     return CeldaRelleno(campo, "N/D", NO_DISPONIBLE, motivo, celda)
 
 
+def _total_util_no_se_suma(celda: Optional[CeldaCuadro]) -> CeldaRelleno:
+    """La celda «TOTAL S. ÚTIL», siempre `N/D` y siempre con su motivo.
+
+    **No es una limitación de ArchMuse: es una decisión suya, y por eso lleva
+    motivo en vez de quedarse en blanco.** Sumar útil interior y útil exterior
+    produce una cifra que parece un total y no lo es — depende de un criterio de
+    cómputo que firma un colegiado, no un programa. Antes esta celda se rellenaba
+    con esa suma y viajaba dentro del DXF del cliente.
+    """
+    return CeldaRelleno(
+        campo="total_util",
+        texto="N/D",
+        estado=NO_DISPONIBLE,
+        motivo=MOTIVO_TOTAL_UTIL_NO_SE_SUMA,
+        celda=celda,
+    )
+
+
 def _celda_total(
     campo: str, celda: Optional[CeldaCuadro], componentes: Sequence[CeldaRelleno], etiqueta_total: str,
 ) -> CeldaRelleno:
@@ -529,10 +565,10 @@ def calcular_relleno_cuadro(unit, cuadro: CuadroSuperficies, rooms: Sequence) ->
     resultados.append(total_exterior)
     por_campo["total_util_exterior"] = total_exterior
 
-    # "TOTAL S. ÚTIL" -- interior + exterior, en la celda de columna B
-    # (decisión de producto ya fijada por el encargo).
-    resultados.append(_celda_total("total_util", cuadro.celda("total_util"),
-                                    [total_interior, total_exterior], "TOTAL S. ÚTIL"))
+    # "TOTAL S. ÚTIL" -- **ya no se calcula**. Ver `MOTIVO_TOTAL_UTIL_NO_SE_SUMA`:
+    # el encargo original pedía interior + exterior en una celda, y el criterio
+    # firmado del 2026-09-07 lo deroga. No se suma aquí ni en ningún otro sitio.
+    resultados.append(_total_util_no_se_suma(cuadro.celda("total_util")))
 
     # --- Superficies construidas: siempre N/D en esta fase --------------
     motivo_construida = (
@@ -861,8 +897,9 @@ def aplicar_respuestas(
                                    componentes_exterior, "TOTAL SUP.UTIL EXTERIOR")
     por_campo["total_util_exterior"] = total_exterior
 
-    por_campo["total_util"] = _celda_total("total_util", por_campo["total_util"].celda,
-                                            [total_interior, total_exterior], "TOTAL S. ÚTIL")
+    # Ninguna respuesta del arquitecto reabre esta celda: no es un dato que le
+    # falte a ArchMuse, es una magnitud que ArchMuse ha decidido no componer.
+    por_campo["total_util"] = _total_util_no_se_suma(por_campo["total_util"].celda)
 
     # Mismo orden que `resultados` de entrada, para que la salida sea estable.
     return [por_campo[r.campo] for r in resultados]

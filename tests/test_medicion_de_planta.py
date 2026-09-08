@@ -152,20 +152,30 @@ def test_un_rotulo_de_vivienda_sin_piezas_se_declara(tmp_path):
 
 # --- Los totales, y cuándo NO hay ------------------------------------------
 
-def test_el_total_es_interior_mas_exterior_y_suma_todas_las_piezas(tmp_path):
+def test_interior_y_exterior_son_dos_cifras_y_no_se_suman(tmp_path):
+    """El criterio del arquitecto (2026-09-07): la terraza no entra en el útil
+    interior, y no existe ninguna cifra que las junte."""
     medicion = medir_planta(leer(construir(tmp_path, DOS_VIVIENDAS, ETIQUETAS_DOS)))
     vivienda = medicion.viviendas[0]
-    assert vivienda.interior_m2 == 36.0            # 20 + 12 + 4
-    assert vivienda.exterior_m2 == 9.0             # la terraza
-    assert vivienda.total_util_m2 == 45.0
-    assert vivienda.total_util_m2 == vivienda.suma_de_piezas_m2
+    assert vivienda.util_interior_m2 == 36.0       # 20 + 12 + 4
+    assert vivienda.util_exterior_m2 == 9.0        # la terraza, aparte
     assert vivienda.impedimentos == ()
+    # Entre las dos no se pierde ninguna pieza -- el invariante, no una cifra
+    # publicada: `total_util_m2` ya no existe en ninguna capa del producto.
+    assert vivienda.util_interior_m2 + vivienda.util_exterior_m2 == vivienda.suma_de_piezas_m2
+    assert not hasattr(vivienda, "total_util_m2")
 
 
 def test_dos_piezas_solapadas_dejan_la_vivienda_sin_total(tmp_path):
-    """La regla dura: un total que puede estar mal es peor que no darlo."""
+    """La regla dura: una cifra que puede estar mal es peor que no darla.
+
+    Y desde el 2026-09-08 bloquea **las dos**: un solape puede caer dentro de lo
+    interior, dentro de lo exterior o a caballo, así que publicar una de las dos
+    sería publicar una cifra que puede estar mal.
+    """
     vivienda = medir_planta(leer(construir(tmp_path, SOLAPE, SOLAPE_ETIQUETAS))).viviendas[0]
-    assert vivienda.total_util_m2 is None
+    assert vivienda.util_interior_m2 is None
+    assert vivienda.util_exterior_m2 is None
     assert len(vivienda.solapes) == 1
     assert vivienda.solapes[0].area_m2 == 2.0
     assert vivienda.diferencia_con_la_union_m2 == 2.0
@@ -187,7 +197,8 @@ def test_compartir_un_borde_no_es_solaparse(tmp_path):
     )
     vivienda = medir_planta(leer(construir(tmp_path, piezas))).viviendas[0]
     assert vivienda.solapes == ()
-    assert vivienda.total_util_m2 == 45.0
+    assert vivienda.util_interior_m2 == 36.0
+    assert vivienda.util_exterior_m2 == 9.0
 
 
 def test_una_pieza_de_rotulo_desconocido_no_se_asigna_a_ningun_ambito(tmp_path):
@@ -202,7 +213,8 @@ def test_una_pieza_de_rotulo_desconocido_no_se_asigna_a_ningun_ambito(tmp_path):
     sueltas = vivienda.sin_clasificar
     assert [p.nombre for p in sueltas] == ["Trastero"]
     assert sueltas[0].ambito == AMBITO_SIN_CLASIFICAR
-    assert vivienda.total_util_m2 is None
+    assert vivienda.util_interior_m2 is None
+    assert vivienda.util_exterior_m2 is None
     assert "4,00 m²" in vivienda.impedimentos[0]    # su superficie va en el motivo
     # Y la pieza sigue medida y visible: bloquear el total no es esconderla.
     assert sueltas[0].area_m2 == 4.0
@@ -227,8 +239,8 @@ def test_un_reparto_apretado_entre_dos_viviendas_se_declara(tmp_path):
     medicion = medir_planta(leer(construir(tmp_path, piezas, etiquetas)))
     dudosos = [d for v in medicion.viviendas for d in v.repartos_dudosos]
     assert [d.pieza for d in dudosos] == ["Terraza"]
-    assert all(v.total_util_m2 is None for v in medicion.viviendas
-               if v.repartos_dudosos)
+    assert all(v.util_interior_m2 is None and v.util_exterior_m2 is None
+               for v in medicion.viviendas if v.repartos_dudosos)
 
 
 def test_un_reparto_holgado_no_se_declara(tmp_path):
@@ -401,17 +413,17 @@ def _comprobar(nombre: str, resultado):
 
 def test_un_total_publicado_con_impedimento_hace_fallar_la_verificacion():
     salida = _comprobar("ningun_total_publicado_con_impedimento", _resultado_con([
-        {"vivienda": "VT1/1", "total_util_m2": 45.0, "piezas": [],
-         "impedimentos": ["hay 2,00 m² dibujados dos veces"]},
+        {"vivienda": "VT1/1", "util_interior_m2": 36.0, "util_exterior_m2": 9.0,
+         "piezas": [], "impedimentos": ["hay 2,00 m² dibujados dos veces"]},
     ]))
     assert salida is not True
-    assert "peor que la ausencia de total" in str(salida)
+    assert "peor que su ausencia" in str(salida)
 
 
 def test_un_total_que_no_suma_todas_sus_piezas_hace_fallar_la_verificacion():
     salida = _comprobar("todo_total_suma_todas_sus_piezas", _resultado_con([
-        {"vivienda": "VT1/1", "total_util_m2": 45.0, "impedimentos": [],
-         "piezas": [{"area_m2": 20.0}, {"area_m2": 12.0}]},
+        {"vivienda": "VT1/1", "util_interior_m2": 36.0, "util_exterior_m2": 9.0,
+         "impedimentos": [], "piezas": [{"area_m2": 20.0}, {"area_m2": 12.0}]},
     ]))
     assert salida is not True
     assert "no está en el total" in str(salida)
@@ -425,8 +437,8 @@ def test_calificar_la_gravedad_hace_fallar_la_verificacion():
     decisión de producto y no un ajuste de formato.
     """
     salida = _comprobar("la_medicion_no_califica", _resultado_con([
-        {"vivienda": "VT1/1", "total_util_m2": None, "piezas": [],
-         "impedimentos": ["hay un solape grave entre dos piezas"]},
+        {"vivienda": "VT1/1", "util_interior_m2": None, "util_exterior_m2": None,
+         "piezas": [], "impedimentos": ["hay un solape grave entre dos piezas"]},
     ]))
     assert salida is not True
     assert "el criterio lo pone el arquitecto" in str(salida)
@@ -434,8 +446,8 @@ def test_calificar_la_gravedad_hace_fallar_la_verificacion():
 
 def test_una_pieza_sin_capa_hace_fallar_la_verificacion():
     salida = _comprobar("toda_pieza_dice_donde_esta", _resultado_con([
-        {"vivienda": "VT1/1", "total_util_m2": None, "impedimentos": [],
-         "piezas": [{"rotulo": "Salón", "area_m2": 20.0, "capa": ""}]},
+        {"vivienda": "VT1/1", "util_interior_m2": None, "util_exterior_m2": None,
+         "impedimentos": [], "piezas": [{"rotulo": "Salón", "area_m2": 20.0, "capa": ""}]},
     ]))
     assert salida is not True
     assert "no se puede comprobar" in str(salida)
@@ -454,8 +466,10 @@ def test_la_planta_real_de_tres_viviendas_se_mide_entera():
     """
     medicion = medir_planta(leer(DXF_PLANTA))
     assert medicion.agrupacion == POR_ROTULOS
-    totales = {v.nombre: v.total_util_m2 for v in medicion.viviendas}
-    assert totales == {"VT1/3": 66.32, "VT2/2": 58.44, "VT3/3": 66.56}
+    interiores = {v.nombre: v.util_interior_m2 for v in medicion.viviendas}
+    exteriores = {v.nombre: v.util_exterior_m2 for v in medicion.viviendas}
+    assert interiores == {"VT1/3": 58.78, "VT2/2": 50.97, "VT3/3": 59.11}
+    assert exteriores == {"VT1/3": 7.54, "VT2/2": 7.47, "VT3/3": 7.45}
     assert medicion.piezas == 22
     assert all(v.solapes == () and v.repartos_dudosos == ()
                for v in medicion.viviendas)
@@ -470,9 +484,10 @@ def test_el_plano_real_con_solapes_no_lleva_total():
     caminos independientes den la misma cifra es lo que hace creíble a los dos.
     """
     vivienda = medir_planta(leer(DXF_V2S)).viviendas[0]
-    assert vivienda.total_util_m2 is None
+    assert vivienda.util_interior_m2 is None
+    assert vivienda.util_exterior_m2 is None
     assert vivienda.diferencia_con_la_union_m2 == 7.08
     assert sorted(s.area_m2 for s in vivienda.solapes) == [3.08, 4.0]
     # Las nueve piezas siguen medidas: bloquear el total no borra el trabajo.
     assert len(vivienda.piezas) == 9
-    assert vivienda.interior_m2 == 58.78
+    assert vivienda.suma_interior_m2 == 58.78

@@ -69,11 +69,18 @@ def _tabla(filas: List[List[str]], anchos: List[float]) -> Table:
 
 
 def _seccion_vivienda(v: Dict[str, Any], h3, body, story: List[Any]) -> None:
-    """Una vivienda de `medicion.viviendas` -> su tabla de piezas + total.
+    """Una vivienda de `medicion.viviendas` -> su tabla de piezas + sus dos
+    superficies útiles.
 
-    Cada campo leído aquí (`piezas`, `interior_m2`, `exterior_m2`,
-    `total_util_m2`, `impedimentos`, `solapes`) ya existe tal cual en
-    `analyzer/medicion.py::a_dict()` -- no se deriva nada nuevo."""
+    Cada campo leído aquí (`piezas`, `util_interior_m2`, `util_exterior_m2`,
+    `impedimentos`, `solapes`) ya existe tal cual en
+    `analyzer/medicion.py::a_dict()` -- no se deriva nada nuevo.
+
+    **La memoria redacta las dos magnitudes por separado y no las suma**
+    (criterio del arquitecto, 2026-09-07). Es el sitio donde más importa de todo
+    el producto: lo que se escribe aquí acaba en la memoria justificativa que se
+    presenta, así que una «superficie útil total» que metiera la terraza al
+    100 % viajaría firmada. Ni se suman ni se elige una de las dos."""
     nombre = str(v.get("vivienda") or "?")
     story.append(Paragraph(xml_escape(nombre), h3))
 
@@ -87,21 +94,26 @@ def _seccion_vivienda(v: Dict[str, Any], h3, body, story: List[Any]) -> None:
     story.append(_tabla(filas, [8.0, 4.0, 4.0]))
     story.append(Spacer(1, 0.2 * cm))
 
+    interior = v.get("util_interior_m2")
+    exterior = v.get("util_exterior_m2")
     resumen = [
-        ["Superficie interior", _m2(v.get("interior_m2"))],
-        ["Superficie exterior", _m2(v.get("exterior_m2"))],
+        ["Superficie útil interior", _m2(interior)],
+        ["Superficie útil exterior (terrazas y tendederos)", _m2(exterior)],
     ]
-    total = v.get("total_util_m2")
-    if total is not None:
-        resumen.append(["Superficie útil total", _m2(total)])
     story.append(_tabla(resumen, [8.0, 8.0]))
 
-    if total is None:
+    if interior is None or exterior is None:
         impedimentos = v.get("impedimentos") or []
         story.append(Paragraph(
-            "Sin superficie útil total" +
+            "Sin superficies útiles publicables" +
             (" — %s" % xml_escape("; ".join(str(i) for i in impedimentos)) if impedimentos else "") +
-            ". Las piezas están medidas; el total es una decisión pendiente, no un cálculo que falte.",
+            ". Las piezas están medidas; la cifra es una decisión pendiente, no un cálculo que falte.",
+            body,
+        ))
+    else:
+        story.append(Paragraph(
+            "Las dos superficies se declaran por separado y no se suman entre sí: "
+            "el cómputo de los espacios exteriores es criterio del técnico que firma.",
             body,
         ))
 
@@ -109,7 +121,7 @@ def _seccion_vivienda(v: Dict[str, Any], h3, body, story: List[Any]) -> None:
     if solapes:
         story.append(Paragraph(
             "Solapes detectados en esta vivienda (superficie contada dos veces, "
-            "no incluida en el total anterior):", body,
+            "no incluida en las cifras anteriores):", body,
         ))
         for s in solapes:
             story.append(Paragraph(

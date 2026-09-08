@@ -90,6 +90,11 @@
     }
     .total-planta.sin .cifra { font-size: 20px; color: var(--alarma); }
     .total-planta .recuento { font-size: 13.5px; color: var(--tinta-suave); max-width: 62ch; }
+    /* La exterior se enseña con el mismo peso tipográfico que la interior pero
+       un punto por debajo en tamaño: son dos magnitudes del mismo rango, no un
+       total y su desglose, y separarlas demasiado invitaría a sumarlas. */
+    .total-planta .cifra.secundaria { margin-top: 6px; }
+    .matiz { font-weight: 400; color: var(--tinta-suave); font-size: 12.5px; }
     .aviso-total {
       margin: 12px 0 0; padding: 10px 12px; background: #fdf9f1;
       border-left: 3px solid #b8862b; font-size: 13.5px; color: #6b5220;
@@ -393,20 +398,27 @@
     if (boton) boton.addEventListener("click", descargarPdf);
   }
 
-  // La cabecera es donde un arquitecto mira primero, así que el total de la
-  // planta va ahí y **se explica ahí**: con el recuento pegado cuando lo hay
-  // ("3 de 3 viviendas"), y con la vivienda que lo bloquea cuando no lo hay.
+  // La cabecera es donde un arquitecto mira primero, así que las superficies de
+  // la planta van ahí y **se explican ahí**: con el recuento pegado cuando las
+  // hay ("3 de 3 viviendas"), y con la vivienda que las bloquea cuando no.
   // Un número suelto no se puede juzgar, y un hueco sin motivo obliga a bajar
   // la vista para entender por qué falta.
+  //
+  // **Dos cifras, nunca sumadas** (criterio del arquitecto, 2026-09-07): la
+  // interior y la exterior se enseñan una al lado de la otra, y no hay ninguna
+  // casilla que las junte.
   function cabeceraHtml(datos, viviendas) {
-    var t = datos.total_del_plano || {};
-    var hayTotal = t.valor_m2 !== null && t.valor_m2 !== undefined;
+    var t = datos.superficies_del_plano || {};
+    var hayTotal = t.util_interior_m2 !== null && t.util_interior_m2 !== undefined &&
+                   t.util_exterior_m2 !== null && t.util_exterior_m2 !== undefined;
     var recuento = texto(t.viviendas_con_total) + " de " + texto(t.viviendas) + " viviendas";
 
     var cifra = hayTotal
-      ? '<div class="total-planta"><span class="cifra">' + m2(t.valor_m2) + "</span>" +
-        '<span class="recuento">superficie útil de la planta · ' + recuento + "</span></div>"
-      : '<div class="total-planta sin"><span class="cifra">Sin total de planta</span>' +
+      ? '<div class="total-planta"><span class="cifra">' + m2(t.util_interior_m2) + "</span>" +
+        '<span class="recuento">útil interior de la planta · ' + recuento + "</span>" +
+        '<span class="cifra secundaria">' + m2(t.util_exterior_m2) + "</span>" +
+        '<span class="recuento">útil exterior (terrazas y tendederos) · no se suma a la interior</span></div>'
+      : '<div class="total-planta sin"><span class="cifra">Sin superficies de planta</span>' +
         '<span class="recuento">' + texto(t.motivo || (recuento + " medidas")) + "</span></div>";
 
     // La advertencia va pegada al número porque es el número el que podría
@@ -438,9 +450,12 @@
       );
     }).join("");
 
-    var cabeceraTotal = v.total_util_m2 === null || v.total_util_m2 === undefined
-      ? '<span class="sin-total">sin total</span>'
-      : '<span class="total">' + m2(v.total_util_m2) + "</span>";
+    var sinCifras = v.util_interior_m2 === null || v.util_interior_m2 === undefined ||
+                    v.util_exterior_m2 === null || v.util_exterior_m2 === undefined;
+    var cabeceraTotal = sinCifras
+      ? '<span class="sin-total">sin superficies</span>'
+      : '<span class="total">' + m2(v.util_interior_m2) + " int · " +
+        m2(v.util_exterior_m2) + " ext</span>";
 
     var impedimentos = (v.impedimentos || []).map(function (m) {
       return '<p class="impedimento">' + texto(m) + "</p>";
@@ -452,15 +467,13 @@
         "<table><thead><tr>" +
           "<th>Recinto</th><th>Ámbito</th><th>Capa del DXF</th><th class=\"num\">Superficie</th>" +
         "</tr></thead><tbody>" + filas +
-        '<tr class="subtotal"><td colspan="3">Superficie útil interior</td>' +
-          '<td class="num">' + m2(v.interior_m2) + "</td></tr>" +
-        '<tr class="subtotal"><td colspan="3">Superficie útil exterior</td>' +
-          '<td class="num">' + m2(v.exterior_m2) + "</td></tr>" +
-        '<tr class="total"><td colspan="3">TOTAL SUPERFICIE ÚTIL</td>' +
+        '<tr class="total"><td colspan="3">SUPERFICIE ÚTIL INTERIOR</td>' +
           '<td class="num">' +
-            (v.total_util_m2 === null || v.total_util_m2 === undefined
-              ? "sin total" : m2(v.total_util_m2)) +
-          "</td></tr>" +
+            (sinCifras ? "no se publica" : m2(v.util_interior_m2)) + "</td></tr>" +
+        '<tr class="total"><td colspan="3">SUPERFICIE ÚTIL EXTERIOR ' +
+          '<span class="matiz">(terrazas y tendederos · no se suma a la interior)</span></td>' +
+          '<td class="num">' +
+            (sinCifras ? "no se publica" : m2(v.util_exterior_m2)) + "</td></tr>" +
         "</tbody></table>" + impedimentos +
       "</section>"
     );

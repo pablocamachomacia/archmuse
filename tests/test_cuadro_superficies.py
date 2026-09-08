@@ -135,8 +135,17 @@ check(por_campo["total_util_interior"].texto == "41,00 m²",
       "total_util_interior = 20+10+8+3 = 41,00 m²", por_campo["total_util_interior"].texto)
 check(por_campo["total_util_exterior"].texto == "15,00 m²",
       "total_util_exterior = 4+5+6 = 15,00 m²", por_campo["total_util_exterior"].texto)
-check(por_campo["total_util"].texto == "56,00 m²",
-      "total_util = 41+15 = 56,00 m²", por_campo["total_util"].texto)
+# `total_util` (la celda que sumaba 41+15 = 56,00 m²) **ya no se calcula**:
+# criterio firmado C-1 del 2026-09-07 -- la útil interior y la exterior no se
+# suman en una sola cifra, porque el cómputo de terrazas y tendederos lo decide
+# el técnico que firma. Sale N/D con su motivo, y el motivo es lo que hace que
+# no se lea como «ArchMuse no ha sabido».
+check(por_campo["total_util"].texto == "N/D",
+      "total_util NO se suma (criterio C-1): N/D", por_campo["total_util"].texto)
+check(por_campo["total_util"].estado == NO_DISPONIBLE,
+      "total_util queda NO_DISPONIBLE, no BLOQUEADO", por_campo["total_util"].estado)
+check(bool(por_campo["total_util"].motivo) and "criterio" in por_campo["total_util"].motivo,
+      "y su N/D lleva escrito por qué", str(por_campo["total_util"].motivo))
 
 check(por_campo["superficie_construida_cerrada"].estado == NO_DISPONIBLE, "construida cerrada -> N/D siempre")
 check(por_campo["superficie_construida_exterior"].estado == NO_DISPONIBLE, "construida exterior -> N/D siempre")

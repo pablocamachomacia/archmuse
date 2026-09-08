@@ -5,6 +5,117 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-08 · Dos superficies donde había una, y dos planos reales que ya viajan con el repositorio
+
+**Encargo de Pablo**, en orden estricto: cerrar lo del 3 de septiembre sin
+commitear; los cambios de criterio validados con el arquitecto; la demo del
+`ACAD_TABLE`; y sólo si sobraba tiempo, el endpoint de AutoCAD.
+
+### El criterio, que es lo que de verdad cambia
+
+`total_util_m2` **ha desaparecido del producto entero**. En su lugar,
+`util_interior_m2` y `util_exterior_m2`, que no se suman. Escrito como criterio
+firmado en `docs/design/2026-09-08-criterios-firmados-de-medicion.md` (`C-1`),
+no como detalle de implementación: el cómputo de terrazas y tendederos lo decide
+el técnico que firma, y una cifra que lo resolvía sola viajaba hasta la memoria
+justificativa.
+
+Cifras antes y después, sobre los tres planos reales:
+
+| Plano | Antes (`total_util_m2`) | Después (interior · exterior) |
+|---|---|---|
+| `V5.dxf` VT1/3 | 66,32 | **58,78 · 7,54** |
+| `V5.dxf` VT2/2 | 58,44 | **50,97 · 7,47** |
+| `V5.dxf` VT3/3 | 66,56 | **59,11 · 7,45** |
+| `V5.dxf` planta | 191,32 | **168,86 · 22,46** |
+| `ejemplo.dxf` planta | sin total (falta VT6/2) | sin cifras, mismo motivo |
+| `v2s.dxf` VT1/3 | sin total (7,08 m² solapados) | sin cifras, mismo motivo |
+
+Los 22,46 m² de exterior de `V5` son los que antes iban dentro de los 191,32
+como si fueran superficie interior: un **11,7 %** del «total útil» de esa planta
+era terraza computando al 100 %.
+
+**`C-2`, criterio nuevo propuesto al implementar y aprobado por Pablo:** un
+impedimento bloquea **las dos** cifras, no sólo su suma. Antes los parciales se
+publicaban junto a un total ausente porque eran su desglose; al pasar a ser
+ellos el resultado, publicarlos con un solape abierto sería el «número que puede
+estar mal» que la regla dura existe para no dar — un solape puede caer dentro de
+lo interior, dentro de lo exterior o a caballo.
+
+**14 ficheros de producto tocados**, ninguno con el campo viejo conviviendo:
+modelo, acta (dos hechos con procedencia en vez de uno), PDF de medición,
+memoria justificativa, acta legible, API, `/medir` y el CLI. Interior y exterior
+se suman **en un solo punto de todo el repositorio**: la verificación que
+comprueba que entre las dos no se ha perdido ninguna pieza.
+
+**La celda «TOTAL S. ÚTIL» del `ACAD_TABLE`** sale `N/D` **con su motivo
+escrito**, no en blanco. En blanco se lee como «ArchMuse no ha sabido»; con
+motivo se lee como lo que es, que ha decidido no decidir por el arquitecto.
+
+### Dos planos reales dentro del repositorio, y por qué no son los planos
+
+Pablo pidió guardar `V5.dxf` en `tests/fixtures/reales/`. **Se paró antes de
+hacerlo**: el repositorio es público y el `.gitignore` prohíbe los DXF con su
+motivo escrito («una fuga de datos que el historial no olvida»), con la única
+excepción `!tests/fixtures/**/*.dxf` — o sea que la carpeta pedida era
+justamente donde la red de seguridad no salta. Pablo eligió la opción
+anonimizada.
+
+**No se anonimiza borrando: se reconstruye.** `scripts/derivar_fixture_anonimo.py`
+lee el plano con el mismo `parser.leer_plano` del producto, se queda con los
+polígonos y los rótulos, y escribe un DXF nuevo desde cero. Lo que no se copia
+no existe en la salida porque nunca llegó a existir.
+
+**La diferencia no era teórica:** el original de `V5.dxf` traía
+`$LASTSAVEDBY = '<nombre omitido>'` en la cabecera — el nombre de pila de quien lo guardó,
+que ningún borrado de capas habría quitado. En el derivado esa variable vale
+`ezdxf` y los dos GUID del documento son nuevos.
+
+`scripts/auditar_fixture_anonimo.py` audita el resultado como si viniera de un
+desconocido: cabecera entera, capas apagadas y congeladas, bloques insertados o
+no, estilos, todo el texto de todos los layouts y bloques, `XDATA`, diccionarios
+y propiedades. Lo que queda son rótulos de estancia y códigos `VT<n>/<m>`.
+
+- `planta_tres_viviendas.dxf` — de 19,5 MB a **33 KB**. La planta que sí se mide.
+- `vivienda_con_solapes.dxf` — de 19,1 MB a **24 KB**. La rama bloqueada.
+
+Los dos miden **exactamente** lo mismo que sus originales, comprobado al
+derivarlos. Y `tests/test_fixtures_reales.py` añade un guardián de la fuga, no
+sólo de la medición: se pone rojo si alguien regenera un fixture desde un plano
+de cliente sin pasar por el script.
+
+Hasta hoy la regresión contra plano real dependía de `ARCHMUSE_DXF_PLANTA`: en
+cualquier máquina que no fuera la de Pablo **se saltaba en silencio**. Ahora
+corre siempre, también en CI.
+
+### La demo del punto 2
+
+`_material/demo/v2s_ArchMuse_cuadro_2026-09-08.dxf`: el DXF del arquitecto con
+su propio `ACAD_TABLE` relleno, con las dos sumas nuevas, con la marca de
+borrador de `C3` estampada, y con el original intacto (sello SHA-256
+recalculado). `TOTAL SUP.UTIL INTERIOR: 58,78 m²`; `TOTAL S. ÚTIL: N/D` con su
+motivo. **Fuera del repositorio**, por lo mismo que los fixtures.
+
+### Qué NO se ha hecho, y por qué
+
+- **Los puntos 1b y 1c siguen bloqueados**: el fallo de duplicación del
+  «Tendedero» y el del «Baño» en `sin_clasificar` se detectaron sobre un DXF que
+  todavía no está disponible. No se han empezado a ciegas, por orden expresa de
+  Pablo y porque un test escrito contra un fallo que nadie ha visto reproduce lo
+  que uno imagina, no lo que pasó.
+- **El punto 3** (endpoint de geometría del PRD de AutoCAD) no se ha tocado: iba
+  detrás de todo lo demás.
+- El segundo fixture se deriva de `v2s`, **no** del DXF que falló. Cubre la rama
+  bloqueada, que la planta de tres viviendas no ejercita, pero no sustituye al
+  que hará falta para 1b y 1c.
+
+### Validación
+
+Suite completa en verde. Los dos planos reales, ya como fixtures, con sus cifras
+escritas a mano en `tests/test_fixtures_reales.py`.
+
+---
+
 ## 2026-09-03 · Los totales de superficie, y la herramienta mínima
 
 **Encargo de Pablo**: un experimento de validación de una semana. Un arquitecto

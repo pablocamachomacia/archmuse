@@ -14,11 +14,9 @@
       "unidad": null,
       "valor": [
         {
-          "exterior_m2": 9.0,
           "impedimentos": [
             "hay 2,00 m² dibujados dos veces: la suma de las piezas da 39,00 m² y la superficie que ocupan realmente es 37,00 m²"
           ],
-          "interior_m2": 30.0,
           "piezas": [
             {
               "ambito": "interior",
@@ -59,7 +57,8 @@
           ],
           "suma_de_piezas_m2": 39.0,
           "superficie_por_union_m2": 37.0,
-          "total_util_m2": null,
+          "util_exterior_m2": null,
+          "util_interior_m2": null,
           "vivienda": "VT1/1"
         }
       ],
@@ -109,6 +108,8 @@
           "impedimentos": [
             "hay 2,00 m² dibujados dos veces: la suma de las piezas da 39,00 m² y la superficie que ocupan realmente es 37,00 m²"
           ],
+          "util_exterior_m2": null,
+          "util_interior_m2": null,
           "vivienda": "VT1/1"
         }
       ],
