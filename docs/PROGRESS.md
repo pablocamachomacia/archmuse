@@ -76,12 +76,26 @@ cambio queda en el diff. En concreto, sigue sin comprobarse:
 Un *mock* de AutoCAD no se ha escrito a propósito: daría confianza falsa sobre
 lo único que este prototipo existe para averiguar.
 
-### El primer paso cuando termine la instalación
+### El primer paso al volver (el equipo se reinicia para terminar de instalar AutoCAD)
 
-`docs/design/checklist-primera-prueba-autocad.md`, desde el paso 0, que ya avisa
-de que el trial tiene que ser de AutoCAD completo. El paso 3 ahora tiene número:
-si el recuento de polilíneas no cuadra con el del navegador, la primera sospecha
-son las polilíneas con el flag mal puesto, y el propio comando dice cuántas son.
+Literalmente esto, en este orden, y nada más hasta que los tres pasen:
+
+1. **Levantar el servidor:** `python app.py`, y comprobar que
+   `http://127.0.0.1:5000/medir` contesta. Sin él, el comando no tiene a quién
+   preguntar y el fallo parecería del script.
+2. **`APPLOAD`** → `autocad/archmuse.lsp`. Si sale una ventana de error, es un
+   paréntesis y **no dice nada sobre si el flujo sirve** — anota el número de
+   línea y sigue el paso 1 del checklist.
+3. **`ARCHMUSE`** en la línea de comandos, con `_material/ejemplo.dxf` abierto.
+
+Y a partir de ahí, `docs/design/checklist-primera-prueba-autocad.md` **desde el
+paso 0**, que se lee entero antes de tocar nada. Dos cosas que conviene tener
+presentes al llegar al paso 3: el recuento de polilíneas puede no cuadrar con el
+del navegador, y la primera sospecha son las que llevan el flag de cerrada mal
+puesto — el propio comando dice cuántas deja fuera antes de enviar, así que si
+ese número explica la diferencia no hay nada que depurar. Y en el paso 5, lo que
+hay que contrastar son **dos** cifras por vivienda: si aparece una que sume
+interior y exterior, eso es el fallo.
 
 ---
 
