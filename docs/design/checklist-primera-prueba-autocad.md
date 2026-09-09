@@ -59,12 +59,18 @@ Con `ejemplo.dxf` abierto:
       número que anuncia el script es muy distinto, párate aquí.
 - [ ] Prueba a dar una capa a mano cuando pregunte, y comprueba que la respeta.
 
-**Si el recuento no cuadra**, mira primero estos dos, que son diferencias
+**Si el recuento no cuadra**, mira primero estos tres, que son diferencias
 **conocidas y esperadas** frente a la web, no fallos:
 
-1. **Bloques anidados.** `ssget` no entra en bloques; el lector Python sí. Si el
+1. **Polilíneas con el flag de «cerrada» mal puesto.** Es la causa más probable
+   y está medida: `ssget` sólo filtra por el bit del código 70, y el lector de
+   Python además recupera las que cierran geométricamente. En los planos reales
+   son **3 de 22 en `V5.dxf`, 2 de 10 en `v2s.dxf` y 9 de 53 en `ejemplo.dxf`**
+   — hasta un 17%. **El propio comando te dice cuántas deja fuera antes de
+   enviar**: si ese número explica la diferencia, no hay nada que depurar.
+2. **Bloques anidados.** `ssget` no entra en bloques; el lector Python sí. Si el
    plano dibuja recintos dentro de bloques, el script verá menos.
-2. **Polilíneas con arco (*bulge*).** El script las declara aparte y no las
+3. **Polilíneas con arco (*bulge*).** El script las declara aparte y no las
    mide.
 
 Cualquier otra diferencia es del **flujo** y hay que anotarla: significa que lo

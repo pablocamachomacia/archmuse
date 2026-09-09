@@ -5,6 +5,86 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-09 · `archmuse.lsp`, escrito sin AutoCAD y con lo que no se ha podido comprobar declarado
+
+Tareas 5 y 6 del PRD de AutoCAD, con el trial instalándose. **No se ha tocado el
+motor, ni el endpoint, ni el registro de capacidades.**
+
+### Tres hallazgos que cambiaron el script antes de escribirlo
+
+1. **`read` no sirve para leer la respuesta.** Tiene un tope de unos 2.300
+   caracteres, y la s-expresión de la planta de tres viviendas ocupa **6.564**
+   (medido, no supuesto); la de seis pasa de 13.000. El script extrae los cuatro
+   campos que la tabla necesita con búsqueda de cadenas — no construye listas y
+   no es un parser.
+2. **`ssget` no puede seleccionar lo que el navegador sí mide.** Sólo sabe
+   filtrar por el bit de «cerrada» del código 70, y el lector de Python además
+   recupera las polilíneas con el flag mal puesto que cierran geométricamente
+   (tolerancia del 1% de su diagonal). En los planos reales eso es **3 de 22 en
+   `V5.dxf`, 2 de 10 en `v2s.dxf` y 9 de 53 en `ejemplo.dxf` — hasta un 17%**.
+   No se ha replicado esa tolerancia en LISP: es criterio del parser y duplicarlo
+   repetiría el error que `D-7` prohíbe. El comando **cuenta las que deja fuera y
+   lo anuncia antes de enviar**, con la recomendación de subir el mismo plano a
+   `/medir` para comparar.
+3. **Un MTEXT de más de 250 caracteres parte su contenido** en códigos 3 más el
+   1 final. Leer sólo el 1 devolvería la cola del rótulo. Se concatenan.
+
+**La solución buena del punto 2 es de servidor** y no se ha hecho porque tocaría
+el endpoint: que el payload lleve el flag de cerrada por recinto y decida
+`parser._esta_cerrada`, igual que en el camino web. Es el primer candidato de la
+próxima sesión de servidor, y las cifras de arriba son su justificación.
+
+### Lo que sí se ha verificado, sin AutoCAD
+
+`tests/test_archmuse_lsp.py`, 10 comprobaciones. **Encontró un fallo real**: un
+`setq` con un paréntesis de más que habría hecho fallar `APPLOAD` el primer día
+del trial, que es exactamente el escenario que el checklist existe para evitar.
+Comprueba paréntesis y comillas con un lector que distingue cadena de comentario;
+que ningún `defun` esté anidado; que **cada función llamada** sea una primitiva
+contrastada contra la referencia de Autodesk o esté definida en el fichero (una
+errata tipo `vla-SetTex` no se ve leyendo); que la marca de `C3` sea literalmente
+la misma cadena que `analyzer/marca_borrador.LEYENDA` y que se escriba sin
+condición; que no se llame a `read`; y que no haya ningún cálculo de distancia
+entre texto y polígono, que sería el criterio de rótulo reimplementado.
+
+Contrastado contra documentación oficial, función a función: el filtro bit a bit
+de `ssget` es `(-4 . "&")` y no `&=`; `vla-AddTable` es
+`(InsertionPoint NumRows NumColumns RowHeight ColWidth)`; `MergeCells` es
+`(MinRow MaxRow MinColumn MaxColumn)`; `vlax-create-object` no existe en LT.
+
+### Lo que NO se ha podido comprobar, y no se simula
+
+**Nada del script se ha ejecutado nunca.** El fichero lo dice en su cabecera y
+hay un test que lo vigila; el día que corra, ese test se cambia a mano y el
+cambio queda en el diff. En concreto, sigue sin comprobarse:
+
+- Que `APPLOAD` lo cargue. Es lo más probable que falle, y fallar ahí **no dice
+  nada** sobre si el flujo sirve.
+- Que el objeto COM se cree y que la petición salga (antivirus, cortafuegos).
+- **La codificación.** El servidor manda UTF-8 y AutoCAD en Windows lee ANSI.
+  Los motivos llevan tildes y comillas angulares: es el fallo más probable
+  después de la sintaxis, y es de codificación, no del flujo.
+- Que `vla-AddTable` acepte el número de filas calculado, y que `vla-SetText`
+  escriba en la fila de título y en las celdas fusionadas como se espera.
+- Que `ssget` coja el mismo número de recintos que el lector de Python en un
+  plano cualquiera. Sólo se ha razonado sobre los tres planos reales.
+- El rendimiento con un plano grande de verdad, y el comportamiento de
+  `SetTimeouts` (puesto a 5 minutos de recepción a propósito: el valor por
+  defecto de WinHttp son 30 s y una planta de seis viviendas tarda unos 12).
+- Nada en Mac. El COM de Windows no existe allí.
+
+Un *mock* de AutoCAD no se ha escrito a propósito: daría confianza falsa sobre
+lo único que este prototipo existe para averiguar.
+
+### El primer paso cuando termine la instalación
+
+`docs/design/checklist-primera-prueba-autocad.md`, desde el paso 0, que ya avisa
+de que el trial tiene que ser de AutoCAD completo. El paso 3 ahora tiene número:
+si el recuento de polilíneas no cuadra con el del navegador, la primera sospecha
+son las polilíneas con el flag mal puesto, y el propio comando dice cuántas son.
+
+---
+
 ## 2026-09-08 · Dos superficies donde había una, y dos planos reales que ya viajan con el repositorio
 
 **Encargo de Pablo**, en orden estricto: cerrar lo del 3 de septiembre sin
