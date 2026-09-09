@@ -1,8 +1,13 @@
 # Checklist — primer día de trial de AutoCAD
 
-**Fecha:** 2026-09-08 · **PRD:** `docs/prd/2026-09-08-integracion-autocad-autolisp.md`
-(**Borrador, sin aprobar** — si el PRD cambia de salida técnica, los pasos 5-9 de
-este documento cambian con él).
+**Fecha:** 2026-09-08 · **Actualizado:** 2026-09-09 · **PRD:**
+`docs/prd/2026-09-08-integracion-autocad-autolisp.md` (**APROBADO**).
+
+> **Actualización del 2026-09-09.** El PRD está aprobado, `archmuse.lsp` está
+> escrito y las cifras esperadas del paso 5 se han rehecho: el criterio firmado
+> `C-1` retiró la «superficie útil total», así que lo que hay que contrastar son
+> **dos** magnitudes por vivienda y no tres. Si en la pantalla aparece una cifra
+> que sume interior y exterior, **eso es el fallo**, no la referencia.
 
 **Para qué existe:** el trial es un reloj corriendo. Este documento es el orden
 del día para no improvisar. **Se lee entero antes de instalar nada.**
@@ -96,19 +101,23 @@ Los tres son del **lenguaje/entorno**. Ninguno dice nada del flujo.
 
 - [ ] El script imprime en la línea de comandos el total de la primera vivienda
       **antes** de dibujar nada.
-- [ ] **Contrástalo contra la cifra conocida.** Sobre `ejemplo.dxf`:
+- [ ] **Contrástalo contra las cifras conocidas.** Sobre `ejemplo.dxf`, y son
+      **dos por vivienda, que no se suman** (criterio firmado `C-1`):
 
-  | Vivienda | interior | exterior | total |
-  |---|---|---|---|
-  | VT1/3 | 58,78 | 7,54 | **66,32** |
-  | VT2/2 | 50,97 | 7,47 | **58,44** |
-  | VT3/3 | 59,11 | 7,45 | **66,56** |
-  | VT4/2 | 50,91 | 7,56 | **58,47** |
-  | VT5/1 | 41,05 | 4,27 | **45,32** |
-  | VT6/2 | 46,23 | 28,14 | **sin total** (solape de 8,47 m²) |
+  | Vivienda | útil interior | útil exterior |
+  |---|---|---|
+  | VT1/3 | **58,78** | **7,54** |
+  | VT2/2 | **50,97** | **7,47** |
+  | VT3/3 | **59,11** | **7,45** |
+  | VT4/2 | **50,91** | **7,56** |
+  | VT5/1 | **41,05** | **4,27** |
+  | VT6/2 | **no se publica** | **no se publica** (solape de 8,47 m²) |
 
-  Total de planta: **ninguno** — falta VT6/2. Y aviso: el rótulo `VT22/1` no
-  tiene ningún recinto.
+  Planta: **sin cifras** — falta VT6/2, y una planta a la que le falta una
+  vivienda no se totaliza. Y aviso: el rótulo `VT22/1` no tiene ningún recinto.
+
+  Si prefieres un plano que sí dé cifras de planta, usa `V5.dxf`: **168,86**
+  interior y **22,46** exterior, 3 de 3 viviendas.
 
 - [ ] **Acentos.** Comprueba que un motivo con tildes y comillas angulares se lee
       bien y no sale como `Â«VT6/2Â»`. Es el fallo más probable después de la
@@ -133,10 +142,14 @@ mal invocado).
 Esto es lo que de verdad se viene a probar. Es más importante que los seis
 pasos anteriores.
 
-- [ ] **VT6/2 NO trae número de total.** Trae el motivo: los 8,47 m² dibujados
-      dos veces, con las dos cifras (74,37 suma de piezas / 65,89 superficie
-      real).
-- [ ] **No hay total de planta**, y la tabla dice qué vivienda lo bloquea.
+- [ ] **VT6/2 no trae NINGUNA de las dos cifras** — ni la interior ni la
+      exterior (criterio firmado `C-2`: un solape puede caer a caballo entre las
+      dos). Trae el motivo: los 8,47 m² dibujados dos veces, con las dos
+      magnitudes (74,37 suma de piezas / 65,89 superficie real).
+- [ ] **No hay cifras de planta**, y la tabla dice qué vivienda lo bloquea.
+- [ ] **No aparece por ningún lado una «superficie útil total»** que sume
+      interior y exterior. Si aparece, alguien ha reintroducido el campo que
+      `C-1` retiró, y es el hallazgo más grave que puede salir de esta prueba.
 - [ ] **La marca de borrador está** («Borrador para revisión de un colegiado»,
       `C3`) y **no hay forma de quitarla** desde el comando.
 - [ ] Ninguna celda trae un número que no venga del servidor. Ninguna celda
