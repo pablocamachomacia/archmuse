@@ -339,17 +339,29 @@ def group_rooms_by_unit_label(
     Esto sustituye a la agrupación por proximidad espacial (más frágil) por
     la agrupación real del proyecto, tal y como la definió el arquitecto en
     el propio DXF.
+
+    **Por rótulo, no por texto** (`C-13`, firmado por Pablo el 2026-09-13).
+    Hasta ese día las habitaciones se agrupaban por el TEXTO del rótulo más
+    cercano, y dos viviendas del mismo tipo —`VT1/3` es «tipo 1, tres
+    unidades», lo normal en un bloque— se fundían en una sola, con los recintos
+    de las dos y un total que era la suma de ambas, limpio y sin ninguna nota.
+    Ahora cada rótulo es su propia vivienda aunque se llame igual que otro. Qué
+    se hace con dos viviendas que no se distinguen no lo decide el agrupador:
+    lo declara `medicion.py`.
+
+    El orden de salida es el de siempre —por tipo y número, y entre iguales, el
+    de la primera habitación asignada—, así que un plano sin rótulos repetidos
+    sale exactamente igual que antes.
     """
     if not unit_labels:
         return group_rooms_by_proximity(rooms)
 
-    groups: Dict[str, List[Room]] = {}
+    groups: Dict[int, List[Room]] = {}
     for room in rooms:
         centroid = room.polygon.centroid
-        name, _, _ = min(
-            unit_labels, key=lambda item: centroid.distance(Point(item[1], item[2]))
-        )
-        groups.setdefault(name, []).append(room)
+        indice = min(range(len(unit_labels)),
+                     key=lambda i: centroid.distance(Point(unit_labels[i][1], unit_labels[i][2])))
+        groups.setdefault(indice, []).append(room)
 
     def unit_sort_key(name: str):
         match = re.match(r"VT\s*(\d+)(?:\s*/\s*(\d+))?", name, re.IGNORECASE)
@@ -359,7 +371,11 @@ def group_rooms_by_unit_label(
             return (0, primary, secondary)
         return (1, 0, name)
 
-    return [Unit(name=name, rooms=groups[name]) for name in sorted(groups, key=unit_sort_key)]
+    # `groups` guarda el orden de la primera habitación asignada a cada rótulo:
+    # es el desempate que antes daba `sorted` sobre el diccionario por nombre.
+    llegada = {indice: n for n, indice in enumerate(groups)}
+    orden = sorted(groups, key=lambda i: (unit_sort_key(unit_labels[i][0]), llegada[i]))
+    return [Unit(name=unit_labels[i][0], rooms=groups[i]) for i in orden]
 
 
 MAX_GAP_BETWEEN_ROOMS_M = 2.0

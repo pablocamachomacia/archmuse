@@ -196,11 +196,14 @@ CASOS = {
         "volatiles": ("ruta",),
     },
     "plano.cuadro_de_superficies": {
-        # Un `ACAD_TABLE` no se sintetiza de forma realista, así que el caso
-        # congelado es el de un DXF sin cuadro: la negativa, con su motivo.
-        # El camino bueno lo cubre `tests/test_agente_plano.py` contra el
-        # v2s.dxf real cuando `ARCHMUSE_DXF_V2S` está definida. Anotarlo aquí
-        # es la única forma honesta de decir hasta dónde llega este golden.
+        # **Recapturado el 2026-09-13 (2.0.0). Quién: Pablo. Por qué:** el agente
+        # pasa a la plantilla fija del cuadro, la misma que la web y el comando
+        # (PRD `2026-09-13-cuadro-plantilla-fija.md`): «si el agente calcula
+        # distinto que el comando y la web, C-9 vuelve a romperse por un tercer
+        # sitio». Hasta ese día el caso congelado era la NEGATIVA —este DXF no
+        # trae `ACAD_TABLE`— porque la 1.x rellenaba el cuadro del arquitecto.
+        # La plantilla no lo necesita, así que ahora se congela el camino bueno:
+        # la tabla entera, sus notas y sus filas.
         "argumentos": lambda d: {"ruta": construir_dxf(d)},
         "volatiles": ("ruta", "detalle", "pregunta"),
     },

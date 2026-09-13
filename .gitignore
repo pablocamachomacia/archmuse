@@ -69,3 +69,7 @@ DESTROY_ARCHMUSE.md
 # MANIFIESTO; los PDF se regeneran en un segundo y ensucian cada `git status`.
 tests/fixtures/**/*_ArchMuse_medicion.pdf
 tests/fixtures/**/*_ArchMuse_revision.pdf
+# Lo mismo con la copia rellena que escribe la exportación del cuadro junto al
+# DXF de origen: se regenera y ningún test la lee versionada.
+tests/fixtures/**/*_ArchMuse_relleno.dxf
+tests/fixtures/**/*_ArchMuse_relleno.pdf

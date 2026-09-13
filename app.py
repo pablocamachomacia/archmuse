@@ -27,6 +27,8 @@ from werkzeug.utils import secure_filename
 from analyzer.ai_analyst import AIAnalysis, analyze_with_ai, build_viviendas_payload_from_proyecto
 from analyzer.ai_generator import GenerationError, generate_project, derivar_mixes_alternativos
 from analyzer.comparador_opciones import calcular_metricas_opcion
+from analyzer.version import version as version_de_archmuse
+from analyzer.version import lsp as version_del_lsp
 from analyzer.altura_evacuacion import normalizar_declaracion_altura
 from analyzer.altura_evacuacion import resolver_altura_evacuacion
 from analyzer.api_serializer import serialize_ai_analysis, serialize_analysis
@@ -37,7 +39,7 @@ from analyzer.cte_zonas import get_densidad_urbana, resolver_zona_cte
 # las Fases 2/3 -- este módulo no reimplementa ninguna detección ni cálculo
 # de superficie, solo las expone por HTTP.
 from analyzer.cuadro_superficies import detectar_cuadro_superficies
-from analyzer.cuadro_superficies_export import exportar_cuadro_relleno, obtener_estado_cuadro, obtener_solicitudes
+from analyzer.cuadro_superficies_export import exportar_cuadro_relleno, obtener_plantilla_cuadro, obtener_solicitudes
 from analyzer.dxf_export import exportar_planta_dxf
 from analyzer.dossier_pdf import generar_dossier_pdf
 from analyzer.ifc_export import exportar_espacios_ifc
@@ -2555,21 +2557,23 @@ def viabilidad_financiera():
     )
 
 
-def _serializar_solicitud(s) -> dict:
-    """`cuadro_superficies.Solicitud`/`CandidatoAsignacion` -> JSON. Solo
-    lectura de campos ya calculados -- no decide qué preguntar, eso vive
-    entero en `analyzer/cuadro_superficies.detectar_solicitudes` (Fase 5a)."""
+def _serializar_solicitud(p) -> dict:
+    """Una pregunta de interior/exterior (`plantilla_cuadro.PreguntaDeAmbito`)
+    -> JSON. **Desde el 2026-09-13 son las únicas preguntas del cuadro**: con la
+    plantilla fija no hay huecos que asignar (cuatro terrazas son cuatro filas)
+    ni superficies que declarar a mano. No decide nada: la pregunta la redacta
+    `analyzer/plantilla_cuadro.py`."""
     return {
-        "id": s.id,
-        "tipo": s.tipo,
-        "campos": list(s.campos),
-        "titulo": s.titulo,
-        "ayuda": s.ayuda,
-        "unidad": s.unidad,
-        "candidatos": [
-            {"id": c.id, "etiqueta": c.room_label, "area_m2": c.area_m2, "x": c.x, "y": c.y}
-            for c in s.candidatos
-        ],
+        "id": p.familia,
+        "tipo": "ambito",
+        "familia": p.familia,
+        "campos": [p.familia],
+        "titulo": p.texto,
+        "ayuda": "Elige si es un espacio interior o exterior: ArchMuse la colocará en ese lado de la tabla.",
+        "piezas": list(p.piezas),
+        "opciones": ["interior", "exterior"],
+        "unidad": None,
+        "candidatos": [],
     }
 
 
@@ -2604,35 +2608,16 @@ def cuadro_superficies_solicitudes_endpoint():
     return jsonify(solicitudes=[_serializar_solicitud(s) for s in solicitudes])
 
 
-def _serializar_celda_relleno(r) -> dict:
-    """`cuadro_superficies.CeldaRelleno` -> JSON, para pintar la tabla en
-    pantalla (Fase 6). Solo lectura de lo que ya calculó
-    `calcular_relleno_cuadro`; no decide nada nuevo aquí. `etiqueta` sale de
-    la celda destino cuando existe (el texto real del DXF, p. ej. "S.
-    CONSTRUIDA CERRADA"); si el cuadro no trae celda para ese campo (caso
-    límite, un cuadro más pequeño), se usa el propio nombre de campo como
-    respaldo -- nunca se inventa una redacción."""
-    return {
-        "campo": r.campo,
-        "etiqueta": r.celda.etiqueta if r.celda is not None else r.campo,
-        "columna": r.celda.columna if r.celda is not None else None,
-        "texto": r.texto,
-        "estado": r.estado,
-        "motivo": r.motivo,
-        "preexistente": r.preexistente,
-        "declarado_por_usuario": r.declarado_por_usuario,
-    }
 
 
 @app.route("/api/cuadro-superficies/estado", methods=["POST"])
 def cuadro_superficies_estado_endpoint():
-    """Fase 6 -- el borrador COMPLETO del cuadro (las 18 celdas, resueltas o
-    no) más las solicitudes pendientes sobre ese mismo cálculo, para
-    pintarlo en pantalla sin necesidad de descargar nada
-    (`obtener_estado_cuadro`, que reutiliza `detectar_solicitudes` de la
-    Fase 5a -- ningún cálculo se repite ni se reimplementa aquí). Mismo
-    campo `dxf` y mismo patrón de temporal que el resto de endpoints de
-    cuadro de superficies.
+    """Fase 6 -- la tabla de ArchMuse COMPLETA (desde el 2026-09-13, la
+    plantilla fija de `obtener_plantilla_cuadro`: rejilla, notas y preguntas de
+    interior/exterior), para pintarla en pantalla sin necesidad de descargar
+    nada. Es la misma que dibujan el comando y el agente (`C-9`). Mismo campo
+    `dxf` y mismo patrón de temporal que el resto de endpoints de cuadro de
+    superficies.
 
     Fase 6b -- campo `respuestas` opcional (mismo JSON que
     `/api/exportar-cuadro-superficies-completo`): si se manda, la tabla
@@ -2659,7 +2644,7 @@ def cuadro_superficies_estado_endpoint():
         filename = secure_filename(file.filename) or "plano.dxf"
         origen = os.path.join(tmp_dir, filename)
         file.save(origen)
-        resultado, solicitudes = obtener_estado_cuadro(origen, respuestas=respuestas)
+        plantilla, solicitudes = obtener_plantilla_cuadro(origen, respuestas=respuestas)
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
     except Exception as exc:  # noqa: BLE001 - límite del sistema: DXF/respuestas arbitrarios reenviados por el cliente
@@ -2667,8 +2652,18 @@ def cuadro_superficies_estado_endpoint():
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
+    # **La misma plantilla que dibuja el comando** (PRD 2026-09-13, decisión 7):
+    # `celdas` son `(fila, columna, texto)` de la tabla de ArchMuse y `notas` los
+    # motivos de las celdas vacías. Si la web pintara otra cosa, `C-9` saltaría.
+    from analyzer.plantilla_cuadro import a_dict as plantilla_a_dict
+
+    datos = plantilla_a_dict(plantilla)
     return jsonify(
-        celdas=[_serializar_celda_relleno(r) for r in resultado],
+        celdas=datos["celdas"],
+        notas=datos["notas"],
+        n_filas=datos["n_filas"],
+        n_columnas=datos["n_columnas"],
+        vivienda=datos["vivienda"],
         solicitudes=[_serializar_solicitud(s) for s in solicitudes],
     )
 
@@ -3016,7 +3011,8 @@ def _medir_planta_y_levantar_acta(file, filename: str, capa: Optional[str],
 
 def _ejecutar_medicion_de_planta(file, filename: str, capa: Optional[str],
                                   factor_escala, *, quien: str,
-                                  autorizar_efectos: bool = False):
+                                  autorizar_efectos: bool = False,
+                                  alinear_rotulos: bool = False):
     """El DXF subido -> Skill real `superficies.medicion_de_planta` ->
     `(acta de procedencia, PDF de medición)`.
 
@@ -3066,6 +3062,11 @@ def _ejecutar_medicion_de_planta(file, filename: str, capa: Optional[str],
             argumentos["capa"] = capa
         if factor_escala is not None:
             argumentos["factor_escala"] = factor_escala
+        # Sólo se manda cuando es `True`: así el argumento no aparece en el plan
+        # de una medición normal, y el acta de un plano corriente no menciona
+        # una corrección que nadie ha pedido ni se ha aplicado.
+        if alinear_rotulos:
+            argumentos["alinear_rotulos"] = True
 
         raiz = os.path.splitext(filename)[0] or "plano"
         capacidades = registro(recargar=True)
@@ -3389,6 +3390,16 @@ def _medicion_a_json(acta: dict, informe: Optional[bytes]) -> dict:
         "superficies_del_plano": superficies_del_plano,
         "piezas": ((_dato("medicion.piezas") or {}).get("valor")),
         "viviendas_con_total": ((_dato("medicion.viviendas_con_total") or {}).get("valor")),
+        # `C-10`: los contornos que ArchMuse ha tenido que reparar para poder
+        # medirlos. Va SIEMPRE, aunque esté vacío, por el mismo motivo que
+        # `geometria_descartada`: una reparación silenciosa deja al arquitecto
+        # con una cifra buena sobre un dibujo que sigue estando mal.
+        "geometria_reparada": ((_dato("medicion.geometria_reparada") or {}).get("valor") or []),
+        # La corrección de rótulos APLICADA, si alguna. `None` en una medición
+        # normal. Cuando no es `None`, la cifra de esta medición depende de ella.
+        "rotulos_alineados": ((_dato("medicion.rotulos_alineados") or {}).get("valor")),
+        "capa_de_rotulos": ((_dato("medicion.capa_de_rotulos") or {}).get("valor")),
+        "rotulos_desplazados": ((_dato("medicion.rotulos_desplazados") or {}).get("valor")),
         # Lo que NO se ha podido establecer, partido en dos, porque son dos
         # cosas y el acta las lleva en la misma lista.
         #
@@ -3484,6 +3495,196 @@ def medicion_endpoint():
     return jsonify(_medicion_a_json(acta, informe))
 
 
+#: Lo que `/api/medicion-geometria` sabe hacer, por nombre. El cliente CAD lo
+#: comprueba para distinguir «este servidor no ha podido» de «este servidor es
+#: anterior a esta función». Añadir una capacidad aquí es declararla; quitarla,
+#: retirarla. No se deduce del código: se escribe.
+CAPACIDADES_DEL_ENDPOINT_DE_GEOMETRIA = (
+    "medicion",            # medir la planta y devolver superficies
+    "reparto_de_cuadro",   # repartir esas superficies en el cuadro del cliente
+)
+
+
+def _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear=False):
+    """La tabla de ArchMuse de cada vivienda: plantilla fija y, si el cliente
+    manda la ventana, maquetada dentro de ella.
+
+    PRD `docs/prd/2026-09-13-cuadro-plantilla-fija.md`. **El cuadro del
+    arquitecto ya no entra en el cálculo.** Hasta el 2026-09-13 se clonaban sus
+    filas y con ellas llegaban las que el plano no dibuja: `pasillo` y
+    `vestibulo` acabaron en `0,00 m²` (`D-13`), verificado en AutoCAD. Ahora de
+    su cuadro sólo llegan **sus cajas**, para no dibujar encima, y **las alturas
+    de su texto**, para el umbral de legibilidad (`D-14`). Las filas las pone el
+    plano y el formato lo pone ArchMuse (`analyzer/plantilla_cuadro.py`).
+
+    **El tamaño se decide aquí, no en el cliente** (`D-14`): con la ventana que
+    marca el arquitecto se devuelve la tabla resuelta —esquina, altura de texto,
+    ancho de cada columna y posición de cada nota— o el motivo por el que no
+    cabe (`analyzer/maquetacion_cuadro.py`). El `.lsp` dibuja lo que se le da.
+
+    Devuelve una lista, una entrada por vivienda; nunca una excepción: que la
+    tabla no salga no puede tumbar una medición que sí.
+    """
+    import os
+    import shutil
+    import tempfile
+
+    from analyzer import maquetacion_cuadro as mq
+    from analyzer import parser
+    from analyzer import plantilla_cuadro as pc
+    from analyzer.geometria_recibida import SubidaMaterializada
+
+    ambitos = cuerpo.get("ambitos") if isinstance(cuerpo.get("ambitos"), dict) else {}
+    # El punto único (3.4.0) manda sobre la ventana; la ventana se sigue
+    # aceptando para un cliente anterior.
+    punto = _punto_de_payload(cuerpo.get("punto"))
+    ventana = _caja_de_payload(cuerpo.get("ventana"))
+    cajas = [c for c in (_caja_de_payload(b) for b in (cuerpo.get("cajas_de_cuadros") or []))
+             if c is not None]
+    alturas_cuadro = [a for a in (_numero_positivo(x)
+                                  for x in (cuerpo.get("alturas_texto_cuadro") or []))
+                      if a is not None]
+
+    carpeta = tempfile.mkdtemp(prefix="archmuse_cuadro_")
+    ruta = os.path.join(carpeta, "geometria_recibida.dxf")
+    try:
+        SubidaMaterializada(geometria).save(ruta)
+        doc = parser.load_document(ruta)
+        plano = parser.leer_plano(doc, capa, factor_escala, alinear_rotulos=alinear)
+        altura_minima = mq.altura_minima(
+            min(alturas_cuadro) if alturas_cuadro else None,
+            mq.alturas_de_rotulos(doc, [r.label for r in plano.rooms if r.label]))
+        # El estilo de texto de la tabla, uno que ya existe en su plano: el de su
+        # cuadro, o el de sus rótulos. Ninguno = `None`, y la tabla no se dibuja.
+        estilos_de_cuadro = [str(e) for e in (cuerpo.get("estilos_de_cuadro") or [])
+                             if isinstance(e, str) and e.strip()]
+        estilo_texto = mq.estilo_de_texto(
+            estilos_de_cuadro,
+            mq.estilos_de_rotulos(doc, [r.label for r in plano.rooms if r.label]))
+
+        from analyzer import medicion
+
+        medida = medicion.medir_planta(plano)
+        resultado = []
+        vistas = set()
+        for vivienda in medida.viviendas:
+            if vivienda.nombre in vistas:
+                continue
+            vistas.add(vivienda.nombre)
+            if vivienda.viviendas_con_el_mismo_rotulo > 1:
+                # `C-13`: varias viviendas con este rótulo. No hay tabla que
+                # dibujar —no se sabe de cuál sería— y se dice una sola vez, no
+                # una por vivienda: son dos opciones que nadie podría distinguir.
+                resultado.append({
+                    "ok": False,
+                    "vivienda": vivienda.nombre,
+                    "indistinguible": True,
+                    "motivo": medicion.motivo_c13(vivienda.nombre,
+                                                  vivienda.viviendas_con_el_mismo_rotulo),
+                })
+                continue
+            plantilla = pc.construir(doc, plano, vivienda.nombre, ambitos=ambitos, medida=medida)
+            dibujo = pc.a_dict(plantilla)
+            if punto is not None:
+                maquetacion = mq.maquetar_en_punto(plantilla.celdas(), plantilla.notas,
+                                                   punto, altura_minima, cajas)
+            elif ventana is not None:
+                maquetacion = mq.maquetar(plantilla.celdas(), plantilla.notas,
+                                          ventana, altura_minima, cajas)
+            else:
+                maquetacion = None
+            dibujo["maquetacion"] = None if maquetacion is None else mq.a_dict(maquetacion)
+            # **Para el `.lsp` 3.5.0**: con qué estilo de SU plano se dibuja —o por
+            # qué no hay ninguno—, qué tiene que medir con `textbox` y la altura
+            # mínima que ya se ha calculado aquí. Con eso pide la tabla colocada a
+            # `/api/maquetar-cuadro`. La `maquetacion` de arriba se mide con Arial y
+            # sirve a la web; el comando la sustituye por la medida en AutoCAD.
+            dibujo["estilo_texto"] = estilo_texto
+            if estilo_texto is None:
+                dibujo["motivo_sin_estilo"] = mq.MOTIVO_SIN_ESTILO
+            dibujo["altura_minima"] = altura_minima
+            dibujo["textos_a_medir"] = mq.textos_a_medir(plantilla.celdas(), plantilla.notas)
+            resultado.append({
+                "ok": True,
+                "vivienda": plantilla.vivienda,
+                "medicion_limpia": plantilla.medicion_limpia,
+                "impedimentos": list(plantilla.impedimentos),
+                "preguntas_de_ambito": dibujo["preguntas_de_ambito"],
+                "no_escritas": [{"motivo": n} for n in plantilla.notas],
+                "piezas_sin_fila": [{"motivo": p} for p in plantilla.sin_fila],
+                "cuadro_a_dibujar": dibujo,
+            })
+        return resultado
+    except Exception as exc:  # noqa: BLE001 - la geometría es de un cliente ajeno
+        return [{"ok": False,
+                 "motivo": "no se ha podido preparar el cuadro de ArchMuse: %s" % exc}]
+    finally:
+        shutil.rmtree(carpeta, ignore_errors=True)
+
+
+def _numero_positivo(valor):
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        return None
+    return numero if 0 < numero < float("inf") else None
+
+
+def _punto_de_payload(bruto):
+    """`[x, y]` -> `(x, y)`, o `None` si no lo es."""
+    try:
+        x, y = bruto
+        punto = (float(x), float(y))
+    except (TypeError, ValueError):
+        return None
+    if any(v != v or v in (float("inf"), float("-inf")) for v in punto):
+        return None
+    return punto
+
+
+def _caja_de_payload(bruto):
+    """`[[x1, y1], [x2, y2]]` -> `((x1, y1), (x2, y2))`, o `None` si no lo es."""
+    try:
+        (x1, y1), (x2, y2) = bruto
+        caja = ((float(x1), float(y1)), (float(x2), float(y2)))
+    except (TypeError, ValueError):
+        return None
+    if any(v != v or v in (float("inf"), float("-inf")) for punto in caja for v in punto):
+        return None
+    return caja
+
+
+@app.route("/api/salud", methods=["GET"])
+def salud_endpoint():
+    """¿Está vivo este servidor, y cuál es?
+
+    **La rama C del PRD de la beta depende de esto** (D-1): cuando el comando de
+    AutoCAD no obtiene respuesta, lanza el servidor y reintenta *aquí* cada
+    segundo hasta veinte. Tiene que ser una petición que no mida nada, que no
+    abra ningún fichero y que conteste en el primer instante en el que Flask
+    acepta conexiones — si sondeara el endpoint de geometría, un servidor recién
+    arrancado parecería caído mientras termina de importar `shapely`.
+
+    Es `GET` y sin cuerpo a propósito: desde AutoLISP, un `GET` es una línea.
+    """
+    return jsonify(
+        ok=True,
+        version=version_de_archmuse(),
+        lsp=version_del_lsp(),
+        capacidades=list(CAPACIDADES_DEL_ENDPOINT_DE_GEOMETRIA),
+    )
+
+
+def _desplaza(valor: float) -> str:
+    """Una coordenada para teclear en un DESPLAZA de AutoCAD: **punto** decimal,
+    y cero cuando lo que hay es ruido de la rejilla de votación del detector."""
+    from analyzer.parser import PASO_DEL_VOTO
+
+    if abs(valor) < 2 * PASO_DEL_VOTO:
+        return "0"
+    return ("%.2f" % valor).rstrip("0").rstrip(".")
+
+
 @app.route("/api/medicion-geometria", methods=["POST"])
 def medicion_geometria_endpoint():
     """Geometría en JSON -> la MISMA medición que `/api/medicion`, sin subir el DXF.
@@ -3528,11 +3729,17 @@ def medicion_geometria_endpoint():
 
     capa = (cuerpo.get("capa_de_recintos") or "").strip() or None
     factor_escala = factor_de_unidad(cuerpo.get("escala") or "")
+    # **Una petición del arquitecto, no una opción del cliente.** El `.lsp` sólo
+    # la manda después de enseñarle la cifra del desfase y de que él conteste
+    # `Si`; y aunque llegue a `True`, el parser la ignora si el desfase no es
+    # limpio (`docs/prd/2026-09-11-alinear-rotulos-desplazados.md`).
+    alinear = cuerpo.get("alinear_rotulos") is True
 
     try:
         acta, informe = _ejecutar_medicion_de_planta(
             SubidaMaterializada(geometria), "geometria_recibida.dxf", capa,
             factor_escala, quien="api:medicion-geometria",
+            alinear_rotulos=alinear,
             # Mismo criterio que `/api/medicion`: el PDF se escribe en un
             # temporal del servidor y se lo lleva el arquitecto, no toca ningún
             # fichero suyo. Aquí la autorización la da haber lanzado el comando.
@@ -3551,6 +3758,110 @@ def medicion_geometria_endpoint():
     # descarte silencioso es superficie que falta sin que nadie lo sepa.
     respuesta["geometria_descartada"] = [dict(d) for d in geometria.descartes]
 
+    # **`C-10` dicho en una frase, para el cliente CAD.** La lista estructurada
+    # (`geometria_reparada`) ya viaja desde `_medicion_a_json` y es lo que usan
+    # la web y el PDF; esto es la misma información redactada, porque AutoLISP
+    # lee un átomo con `am:valor-tras` en dos líneas y una lista de objetos no.
+    #
+    # **La redacta el servidor, no el cliente.** Es la misma regla que ya tiene
+    # un test en `tests/test_archmuse_lsp.py`: el `.lsp` no escribe ni un texto
+    # que no venga de aquí. Si mañana cambia el criterio de reparación, cambia
+    # la frase en un sitio y no en dos.
+    # **El desfase de rótulos, dicho para que el comando pueda preguntar.** La
+    # frase la redacta el servidor —incluido el `DESPLAZA` que le arreglaría el
+    # plano para siempre— por la misma regla de siempre: el `.lsp` no escribe ni
+    # un texto que no venga de aquí.
+    #
+    # `puede_alinearse` es lo único que el cliente tiene que mirar para decidir
+    # si ofrece o no. Un desfase detectado pero NO limpio llega con la frase y
+    # con `puede_alinearse` a `false`: se declara y no se ofrece, que es la
+    # condición que Pablo firmó.
+    desfase = respuesta.get("rotulos_desplazados")
+    if desfase and not desfase.get("aplicado"):
+        hacia = "por debajo de" if desfase["dy"] > 0 else "por encima de"
+        respuesta["rotulos_desplazados_aviso"] = (
+            "Los rótulos de este plano están %.2f unidades de dibujo %s los "
+            "recintos: %d recinto(s) sin un solo nombre dentro."
+            % (abs(desfase["dy"]), hacia, desfase["recintos_sin_rotulo"])
+        ).replace(".", ",", 1)
+        respuesta["rotulos_desplazados_puede_alinearse"] = bool(desfase.get("limpio"))
+        # **Las coordenadas del DESPLAZA van con PUNTO decimal**, no con coma:
+        # es lo que él va a teclear en AutoCAD, donde la coma separa `dx` de
+        # `dy`. Escribir «-0,25,-50,00» le daría cuatro números en vez de dos.
+        # El resto del producto usa coma decimal y aquí no, a propósito.
+        #
+        # Y se redondea el ruido de la rejilla de votación: por debajo de media
+        # unidad no hay medida, hay resolución del método, y mandarle a desplazar
+        # 0,25 en X sería mandarle a mover su plano por nada.
+        respuesta["rotulos_desplazados_consejo"] = (
+            "Si esto no es intencionado, un DESPLAZA de %s,%s en tu AutoCAD lo "
+            "arregla para siempre y no tendré que preguntártelo más."
+            % (_desplaza(-desfase["dx"]), _desplaza(-desfase["dy"]))
+        )
+
+    reparada = respuesta.get("geometria_reparada") or []
+    if reparada:
+        respuesta["geometria_reparada_aviso"] = (
+            "He reparado %d contorno(s) de tu plano para poder medirlos: estaban "
+            "mal construidos (se cruzaban consigo mismos). Su superficie NO ha "
+            "cambiado — si hubiera cambiado, no los habría reparado, los habría "
+            "descartado. Siguen estando mal en tu dibujo." % len(reparada))
+
+    # **Qué sabe hacer este servidor.** Viaja SIEMPRE, y existe por un fallo
+    # concreto (2026-09-10): el cliente mandó un cuadro a un servidor arrancado
+    # antes de que el reparto existiera. El servidor midió de maravilla y no
+    # devolvió reparto —no sabía que se le pedía uno—, y desde el cliente eso era
+    # indistinguible de «tu cuadro no se puede rellenar». Se perdió una sesión
+    # buscando el fallo en `ssget` y en `vla-GetText`, que estaban bien.
+    #
+    # Con esta lista, «no lo hace» y «no lo tiene» dejan de parecerse. Es la
+    # misma idea de `C-7` aplicada al otro sentido: igual que el servidor no
+    # puede suponer que le ha llegado todo, el cliente no puede suponer que al
+    # otro lado hay la versión que él espera.
+    respuesta["capacidades"] = list(CAPACIDADES_DEL_ENDPOINT_DE_GEOMETRIA)
+
+    # **Y qué versión lo ha hecho.** Misma lógica que `capacidades`, un paso más
+    # allá: aquélla dice qué sabe hacer este servidor, ésta dice cuál es. Desde
+    # que el servidor vive en el ordenador del arquitecto (PRD de la beta, D-2)
+    # puede haber dos versiones midiendo la misma planta, y una cifra sin
+    # versión al lado no se puede reproducir tres semanas después con su
+    # informe delante.
+    respuesta["version"] = version_de_archmuse()
+    # **Y con qué `.lsp` se empaquetó.** El cliente CAD la compara con la suya y
+    # **se niega a escribir si no es exactamente la misma**: el servidor va por
+    # la 0.3.x y el `.lsp` por la 3.x, así que la parte mayor de una no se puede
+    # cotejar con la de la otra (ver `analyzer.version.lsp`).
+    respuesta["lsp"] = version_del_lsp()
+
+    # **Si se ha alineado, se dice, y con la cifra.** Condición de la firma: «no
+    # puede quedar una medición que dependa de un desplazamiento sin que conste».
+    aplicado = respuesta.get("rotulos_alineados")
+    if aplicado:
+        respuesta["rotulos_alineados_aviso"] = (
+            "He medido con los rótulos alineados (%s, %s), como me has pedido. "
+            "Tu dibujo no se ha tocado: la corrección vive sólo en esta "
+            "medición, y la próxima vez volveré a preguntártelo."
+            % (_desplaza(aplicado["dx"]), _desplaza(aplicado["dy"]))
+        )
+
+    # **La tabla de ArchMuse, una por vivienda** (PRD 2026-09-13). El cuadro del
+    # arquitecto ya no aporta filas: de él sólo llegan sus cajas y las alturas
+    # de su texto, dentro de `cuerpo`. `cuadros`/`cuadro` se siguen aceptando y
+    # se ignoran, así que un cliente anterior sigue recibiendo su tabla.
+    repartos = _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear)
+    respuesta["repartos"] = repartos
+    # Aquí iba también `respuesta["reparto"] = repartos[0]`, una copia para
+    # clientes anteriores que nadie leía. El `.lsp` 3.2.0 cuenta las tablas
+    # buscando `cuadro_a_dibujar` en el texto, y esa copia le hizo ofrecer
+    # «2 viviendas VT1/3» sobre un plano con una (AutoCAD, 2026-09-13). Retirada.
+    # Las preguntas de interior/exterior, una por familia y juntas para todas las
+    # viviendas: el arquitecto contesta «trastero» una vez, no una por vivienda.
+    preguntas = {}
+    for reparto in repartos:
+        for pregunta in reparto.get("preguntas_de_ambito") or []:
+            preguntas.setdefault(pregunta["familia"], pregunta)
+    respuesta["preguntas_de_ambito"] = list(preguntas.values())
+
     if (request.args.get("formato") or "").lower() == "lisp":
         # El PDF no cabe en una s-expresión que AutoLISP pueda leer de un
         # tirón, y el cliente CAD no lo quiere: dibuja una tabla, no abre un
@@ -3560,6 +3871,76 @@ def medicion_geometria_endpoint():
         return Response(a_sexpresion(sin_pdf), mimetype="text/plain; charset=utf-8")
 
     return jsonify(respuesta)
+
+
+@app.route("/api/maquetar-cuadro", methods=["POST"])
+def maquetar_cuadro_endpoint():
+    """La tabla colocada con los anchos que ha medido AutoCAD (`.lsp` 3.5.0).
+
+    **Por qué existe** (AutoCAD, 2026-09-13). La 3.4.1 no pudo crear su estilo de
+    texto con `arial.ttf` («Error de automatización. Error de archivador»), y ese
+    estilo sólo existía para que lo dibujado midiera lo mismo que lo medido aquí
+    con Arial. Ahora no se crea ninguno: la tabla se dibuja con un estilo que ya
+    existe en el plano, **el cliente mide cada texto con `textbox`** y aquí se
+    maqueta con esas medidas. El tamaño lo sigue decidiendo el servidor (`D-14`).
+
+    No vuelve a medir el plano: recibe lo que el propio servidor mandó en
+    `/api/medicion-geometria` —celdas, notas, altura mínima, estilo— más las
+    medidas y el punto. Si el punto pisa un cuadro del arquitecto, devuelve
+    `cabe: false` con el motivo, y el cliente pide otro punto sin volver a medir.
+
+    Sin estilo de texto: **422**, con el motivo, y no se maqueta: no se inventa
+    una fuente. `?formato=lisp` como el resto de la vía del comando.
+    """
+    import dataclasses
+
+    from analyzer import maquetacion_cuadro as mq
+    from analyzer.geometria_recibida import a_sexpresion
+
+    lisp = (request.args.get("formato") or "").lower() == "lisp"
+
+    def responder(datos, estado=200):
+        if lisp:
+            return Response(a_sexpresion(datos), status=estado,
+                            mimetype="text/plain; charset=utf-8")
+        return jsonify(datos), estado
+
+    cuerpo = request.get_json(silent=True)
+    if not isinstance(cuerpo, dict):
+        return responder({"cabe": False, "motivo": "Manda un cuerpo JSON con la tabla y "
+                                                   "los anchos medidos."}, 400)
+
+    estilo = str(cuerpo.get("estilo_texto") or "").strip()
+    if not estilo:
+        return responder({"cabe": False, "sin_estilo": True,
+                          "motivo": mq.MOTIVO_SIN_ESTILO}, 422)
+
+    try:
+        celdas = [(int(f), int(c), str(t)) for f, c, t in cuerpo["celdas"]]
+        notas = [str(n) for n in (cuerpo.get("notas") or [])]
+        medir = mq.medidor_de_medidas([str(t) for t in cuerpo["textos_medidos"]],
+                                      list(cuerpo["anchos_medidos"]))
+    except (KeyError, TypeError, ValueError) as exc:
+        return responder({"cabe": False,
+                          "motivo": "La petición no trae la tabla y sus medidas completas: %s"
+                                    % exc}, 400)
+
+    punto = _punto_de_payload(cuerpo.get("punto"))
+    if punto is None:
+        return responder({"cabe": False, "motivo": "Falta el punto donde colocar la tabla."}, 400)
+    cajas = [c for c in (_caja_de_payload(b) for b in (cuerpo.get("cajas_de_cuadros") or []))
+             if c is not None]
+
+    try:
+        maquetacion = mq.maquetar_en_punto(celdas, notas, punto,
+                                           _numero_positivo(cuerpo.get("altura_minima")),
+                                           cajas, medir=medir)
+    except mq.MedidaIncompleta as exc:
+        return responder({"cabe": False, "motivo": "No se puede maquetar: %s" % exc}, 400)
+
+    if isinstance(maquetacion, mq.Maquetacion):
+        maquetacion = dataclasses.replace(maquetacion, estilo=estilo)
+    return responder(mq.a_dict(maquetacion))
 
 
 @app.route("/api/coherencia-datos", methods=["POST"])

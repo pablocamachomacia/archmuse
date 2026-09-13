@@ -15,13 +15,19 @@ todos los textos, sin emparejar nada. Un payload inventado probaría lo que el
 autor del test cree que manda AutoCAD.
 
 **Lo que estos tests NO prueban**, y está escrito aquí para que nadie lo dé por
-probado: nada de `autocad/archmuse.lsp`, que no existe todavía y no se podrá
-ejecutar hasta que haya una licencia de AutoCAD. Lo que se comprueba aquí es el
-lado del servidor, que es todo lo verificable sin ella.
+probado: nada de `autocad/archmuse.lsp`. Ese fichero ya existe y se ejecutó el
+2026-09-09 en AutoCAD 2027, pero lo que corre aquí es el lado del servidor, que
+es todo lo verificable sin una licencia delante.
+
+**Y una advertencia sobre en qué datos corren.** Los dos fixtures reales no
+tienen ni una polilínea con el flag de cerrada mal puesto —la anonimización lo
+borra— así que la sección 1 en verde **no prueba** que el cliente y el servidor
+seleccionen lo mismo en un plano de verdad. Eso lo mide la sección 8.
 """
 from __future__ import annotations
 
 import json
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -273,3 +279,231 @@ def test_el_payload_derivado_trae_todo_lo_que_ssget_cogeria():
     # Y es JSON de verdad: si algo no fuera serializable, el cliente no podría
     # mandarlo y este test es el sitio donde se ve, no en AutoCAD.
     json.dumps(payload)
+
+
+# --- 8. `ssget` no sabe recuperar cierres, y el simulador tampoco puede ----
+#
+# Hasta el 2026-09-10 `payload_desde_dxf` filtraba con `parser._esta_cerrada`
+# **con la recuperación geométrica activada**, que es justo lo que `ssget` no
+# sabe hacer: en AutoCAD sólo se puede filtrar por el bit del código 70. El
+# simulador era más listo que lo simulado, así que los tests de la sección 1
+# comparaban el camino nuevo contra el viejo sin la diferencia que separa a los
+# dos.
+#
+# El error no lo detectó nadie porque **ningún fixture del repositorio tenía el
+# defecto**: los dos derivados de planos reales los reconstruye
+# `derivar_fixture_anonimo.py` con `close=True`, así que la anonimización lo
+# borra sin querer (0 de 22 y 0 de 9, medido). Sobre los originales sí está: 3
+# de 22 en `V5.dxf`, 2 de 10 en `v2s.dxf`, 9 de 53 en `ejemplo.dxf`.
+#
+# `14_flag_de_cerrada_mal_puesto.dxf` existe para que esa diferencia se pueda
+# medir sin depender de un plano de cliente.
+#
+# **Actualizado el 2026-09-10, y el cambio es el que este fichero pedía.** El
+# cliente ya no filtra: manda todas las polilíneas de la capa con su flag en
+# `cerrada`, y decide `parser._esta_cerrada` en el servidor. La diferencia de
+# 2 recintos que estos tests medían ya no existe, y los tests lo dicen ahora
+# con las cifras nuevas — que es lo que su versión anterior mandaba hacer el
+# día que la mejora se hiciera.
+
+FLAG_MALO = Path(__file__).parent / "fixtures" / "dxf_tortura" / "14_flag_de_cerrada_mal_puesto.dxf"
+
+
+def _polilineas_por_flag(ruta: Path):
+    """(bien flagueadas, con el flag mal puesto) de la capa de recintos."""
+    from analyzer import parser
+
+    doc = parser.load_document(str(ruta))
+    capa = parser._resolver_capa(doc, None)[0].nombre
+    bien = con_flag_malo = 0
+    for entidad in doc.modelspace():
+        if entidad.dxftype() != "LWPOLYLINE" or entidad.dxf.layer != capa:
+            continue
+        if parser._esta_cerrada(entidad, recuperar_geometria=False):
+            bien += 1
+        elif parser._esta_cerrada(entidad):
+            con_flag_malo += 1
+    return bien, con_flag_malo
+
+
+def test_el_fixture_del_flag_mal_puesto_reproduce_el_defecto():
+    """Si esto falla, el fixture ha dejado de servir para lo que existe y los
+    dos tests siguientes estarían midiendo cero contra cero."""
+    bien, con_flag_malo = _polilineas_por_flag(FLAG_MALO)
+    assert (bien, con_flag_malo) == (4, 2)
+
+
+def test_el_payload_manda_tambien_las_que_el_flag_declara_abiertas():
+    """El cliente **no filtra**: manda las 7 polilíneas con su flag.
+
+    Filtrar por el flag en el cliente es lo que hacía desaparecer superficie:
+    `ssget` sólo sabe mirar el bit del código 70, y ese bit está mal puesto en
+    los planos reales. Lo que el cliente no manda, el servidor no puede
+    recuperar.
+    """
+    payload = payload_desde_dxf(str(FLAG_MALO))
+    assert len(payload["recintos"]) == 7
+
+    cerradas = [r for r in payload["recintos"] if r["cerrada"]]
+    abiertas = [r for r in payload["recintos"] if not r["cerrada"]]
+    assert len(cerradas) == 4, "las 4 bien flagueadas"
+    assert len(abiertas) == 3, "las 2 con el flag mal puesto y la abierta de verdad"
+
+
+def test_el_servidor_recupera_las_que_el_flag_declara_mal():
+    """Y esto es lo que se compra mandándolas: **6 recintos medidos, 6
+    enviables**. Antes del 2026-09-10 eran 6 y 4, y los 2 que faltaban eran
+    superficie que no llegaba a la tabla del arquitecto.
+
+    La polilínea abierta de verdad sigue descartándose: mandar todo no es medir
+    todo, es dejar que decida quien sabe (`parser._esta_cerrada`).
+    """
+    from analyzer.geometria_recibida import SubidaMaterializada, validar
+    from analyzer import parser
+
+    payload = payload_desde_dxf(str(FLAG_MALO))
+    with tempfile.TemporaryDirectory() as carpeta:
+        ruta = Path(carpeta) / "materializado.dxf"
+        SubidaMaterializada(validar(payload)).save(str(ruta))
+        plano = parser.leer_plano(parser.load_document(str(ruta)))
+
+    assert len(plano.rooms) == 6, sorted((r.label or "") for r in plano.rooms)
+
+
+def test_el_color_viaja_para_que_el_contorno_agrupador_se_reconozca():
+    """Sin el color, el DXF materializado sale entero en BYLAYER y
+    `_discard_container_candidates` deja de distinguir una habitación de un
+    contorno. Medido sobre `v1plantas.dxf`: 8 piezas pasaban a 10 y aparecían
+    7,08 m² dibujados dos veces."""
+    payload = payload_desde_dxf(str(PLANTA))
+    assert all("color" in r for r in payload["recintos"])
+
+
+@pytest.mark.parametrize("ruta", [PLANTA, SOLAPES])
+def test_sobre_los_fixtures_reales_la_diferencia_es_cero_y_por_eso_no_saltaba(ruta):
+    """Por qué el error pudo vivir aquí sin poner nada rojo.
+
+    Los dos fixtures derivados no tienen ni una polilínea con el flag mal
+    puesto, así que filtrar con recuperación o sin ella da exactamente lo
+    mismo. Dejar esto escrito como test evita que alguien concluya, viendo la
+    sección 1 en verde, que el camino está probado: está probado sobre datos
+    que no contienen el caso.
+    """
+    bien, con_flag_malo = _polilineas_por_flag(ruta)
+    assert con_flag_malo == 0
+    assert len(payload_desde_dxf(str(ruta))["recintos"]) == bien
+
+
+# --- 9. El tipo de cada texto viaja, y el materializador lo respeta -------
+#
+# La tercera divergencia `C-9`, del 2026-09-11. `escribir_dxf` escribía **todos**
+# los textos como MTEXT; `parser.extract_labels` da prioridad al MTEXT sobre el
+# TEXT para desempatar dos rótulos dentro del mismo recinto, así que aplanar los
+# dos tipos a uno le quita a esa regla el dato con el que decide. Medido sobre
+# `plantasimple.dxf` —651 MTEXT y 136 TEXT en la misma capa—: 157 recintos y 16
+# viviendas con superficie por la web, 169 y 3 por el comando.
+#
+# El arreglo no añade criterio: el payload declara lo que el arquitecto tiene
+# dibujado y aquí se escribe eso. La prioridad sigue viviendo en
+# `extract_labels`, que es donde está probada.
+
+MEZCLA = (Path(__file__).parent / "fixtures" / "dxf_tortura"
+          / "15_mtext_y_text_en_el_mismo_recinto.dxf")
+
+
+def _etiquetas(ruta_dxf):
+    from analyzer import parser
+
+    plano = parser.leer_plano(parser.load_document(str(ruta_dxf)))
+    return sorted((r.label or "").strip() for r in plano.rooms)
+
+
+def _materializar(payload):
+    from analyzer import parser
+    from analyzer.geometria_recibida import SubidaMaterializada
+
+    with tempfile.TemporaryDirectory() as carpeta:
+        ruta = Path(carpeta) / "materializado.dxf"
+        SubidaMaterializada(validar(payload)).save(str(ruta))
+        plano = parser.leer_plano(parser.load_document(str(ruta)))
+    return sorted((r.label or "").strip() for r in plano.rooms)
+
+
+def test_el_payload_declara_el_tipo_de_cada_texto():
+    """Sin esto no hay nada que respetar: es el dato que faltaba."""
+    payload = payload_desde_dxf(str(MEZCLA))
+    assert {t["tipo"] for t in payload["textos"]} == {"MTEXT", "TEXT"}
+    assert all(t["tipo"] in ("MTEXT", "TEXT") for t in payload["textos"])
+    json.dumps(payload)
+
+
+def test_el_dxf_materializado_conserva_el_censo_de_tipos():
+    """Los mismos MTEXT y los mismos TEXT que había en el dibujo del arquitecto.
+
+    Se comprueba el censo, no la entidad una a una: lo que el motor mira es
+    cuántos de cada tipo caen dentro de cada recinto, y un materializador que
+    conserve el censo y las coordenadas le da exactamente lo mismo que el DXF
+    original.
+    """
+    import collections
+
+    from analyzer import parser
+    from analyzer.geometria_recibida import SubidaMaterializada
+
+    original = collections.Counter(
+        e.dxftype() for e in parser.load_document(str(MEZCLA)).modelspace()
+        if e.dxftype() in ("TEXT", "MTEXT"))
+
+    with tempfile.TemporaryDirectory() as carpeta:
+        ruta = Path(carpeta) / "materializado.dxf"
+        SubidaMaterializada(validar(payload_desde_dxf(str(MEZCLA)))).save(str(ruta))
+        materializado = collections.Counter(
+            e.dxftype() for e in parser.load_document(str(ruta)).modelspace()
+            if e.dxftype() in ("TEXT", "MTEXT"))
+
+    assert materializado == original == {"MTEXT": 4, "TEXT": 4}
+
+
+def test_con_el_tipo_las_estancias_se_llaman_igual_por_las_dos_vias():
+    """El fixture está hecho para que esto falle si el tipo no viaja: el TEXT con
+    la cifra se escribe ANTES que el MTEXT con el nombre, así que sin prioridad
+    gana la cifra."""
+    esperado = ["BANO", "DORMITORIO 1", "DORMITORIO 2", "SALON"]
+    assert _etiquetas(MEZCLA) == esperado
+    assert _materializar(payload_desde_dxf(str(MEZCLA))) == esperado
+
+
+def test_un_payload_antiguo_sin_tipo_sigue_midiendo_y_se_comporta_como_antes():
+    """El cliente que no declare el tipo **no se queda fuera**: se le escribe todo
+    en MTEXT, que es lo que se hacía antes de que el tipo viajara.
+
+    Y este test deja escrito **qué se pierde** cuando eso pasa, que es el motivo
+    de que el `.lsp` suba a 2.4.0: las cuatro estancias pasan a llamarse por su
+    cifra. Un comando antiguo contra un servidor nuevo mide, pero mide lo de
+    antes —y eso hay que poder verlo aquí, no descubrirlo en el plano de alguien.
+    """
+    payload = payload_desde_dxf(str(MEZCLA))
+    for texto in payload["textos"]:
+        texto.pop("tipo")
+    assert _materializar(payload) == ["12.00 m2", "12.00 m2", "12.00 m2", "6.00 m2"]
+
+
+@pytest.mark.parametrize("bruto", [None, "", "LINE", 7, "mtext", "text"])
+def test_un_tipo_raro_no_revienta_la_medicion(bruto):
+    """Igual que un código de color inesperado cuenta como BYLAYER. Y las minúsculas
+    valen: el tipo llega de un `assoc 0` de AutoLISP, no de una constante nuestra.
+    """
+    from analyzer.geometria_recibida import _tipo_de_texto
+
+    esperado = bruto.upper() if isinstance(bruto, str) and bruto.upper() in (
+        "MTEXT", "TEXT") else "MTEXT"
+    assert _tipo_de_texto(bruto) == esperado
+
+
+def test_el_lsp_manda_el_tipo_que_lee_del_dibujo():
+    """Entre Python y LISP no hay forma de compartir una constante, así que el
+    contrato se comprueba leyendo el fuente —igual que hace `C-9` con la capa de
+    la marca de borrador."""
+    fuente = (Path(__file__).parent.parent / "autocad" / "archmuse.lsp").read_text(
+        encoding="utf-8")
+    assert '",\\"tipo\\":"   (am:json-cad tipo)' in fuente

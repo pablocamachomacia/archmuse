@@ -18,6 +18,16 @@ criterio; el criterio no se deduce de la implementación.
 
 ## C-1 · La superficie útil interior y la exterior no se suman
 
+> **DEROGADO EN PARTE el 2026-09-13 por `C-14`**, firmado por un arquitecto
+> colegiado tras ver la tabla en AutoCAD. La fila «TOTAL S. ÚTIL» de la tabla de
+> ArchMuse **ya no sale vacía**: se calcula con la regla de `C-14`, que no suma
+> las dos al 100 % sino que computa la exterior con tope. Lo que sigue en pie de
+> `C-1`: interior y exterior son dos magnitudes y se publican por separado en la
+> medición, el acta, la API y la pantalla `/medir`; el total existe **sólo** en
+> la fila del cuadro y **sólo** con la regla de `C-14`. El cuadro antiguo por
+> clonación (`cuadro_superficies.calcular_relleno_cuadro`, con su `N/D`) no lo
+> usa ya ninguna salida del producto y no se ha tocado.
+
 **Dictaminado por:** el arquitecto, en la sesión de validación del 2026-09-07.
 **Aprobado por Pablo:** 2026-09-08. **Estado:** implementado el 2026-09-08.
 
@@ -124,18 +134,731 @@ no venga del cliente. Una puerta trasera vale lo que valga su cerradura.
 
 ---
 
+## C-4 · Un `0,00 m²` sólo se escribe sobre una medición limpia
+
+> **DEROGADO el 2026-09-13 por `D-13`** (abajo). Ya no se escribe `0,00 m²` ni
+> con la medición limpia: ninguna habitación mide cero. El texto de `C-4` se
+> conserva porque su argumento —un cero es peor que una celda vacía, porque se
+> lee como «esto está mirado»— es exactamente el que `D-13` lleva hasta el final.
+> Lo que falló fue la condición: «limpia» no bastaba. El 2026-09-13, en AutoCAD,
+> sobre una medición limpia, el cuadro del arquitecto pedía `pasillo` y
+> `vestibulo`, ese estudio mete el pasillo en el salón, y ArchMuse escribió
+> `0,00 m²` en las dos filas.
+
+**Dictaminado por:** Pablo, 2026-09-10, elevando a criterio una objeción de
+ArchMuse (CTO) al criterio anterior.
+
+**Qué dice.** Cuando el cuadro del arquitecto pide una pieza que la vivienda no
+tiene, se escribe `0,00 m²` — pero **sólo si la medición de esa vivienda está
+limpia**: sin impedimentos abiertos, sin polilíneas descartadas en su capa, sin
+piezas sin clasificar y sin piezas medidas que no hayan encontrado fila.
+
+> **Ampliado por `C-7` (2026-09-10).** «Limpia» incluye desde entonces una
+> condición más, y es la que faltaba: que **conste que el cliente mandó todo lo
+> que había**. Sin eso, una medición sin impedimentos puede ser una medición a la
+> que le falta media vivienda y no lo sabe — pasó, con el salón de
+> `v1plantas.dxf`. Si algo
+de eso falta, la celda **se queda en blanco** y el motivo dice que no se ha
+encontrado ninguna y que la medición no está limpia.
+
+**Por qué.** La regla anterior escribía `0,00 m²` sin condición, con el
+argumento de que es un hecho negativo verificado —se buscó y no hay ninguna— y
+no una ausencia de información. El argumento es bueno **y depende por entero de
+que la búsqueda haya sido completa**.
+
+El 2026-09-10 se comprobó que no siempre lo es. En `v1plantas.dxf` el baño
+**estaba dibujado y rotulado**, y ArchMuse no lo veía: su rótulo llevaba la eñe
+escapada (`Ba\U+00F1o`) y ningún patrón casaba. Si el cuadro hubiera pedido una
+fila que ArchMuse no supiera leer, la regla habría escrito `0,00 m²` **en el
+plano del arquitecto para una habitación que existe**.
+
+Eso no es un hecho negativo verificado: es un fallo de lectura con formato de
+dato. Y es peor que una celda vacía, porque una celda vacía se lee como «esto
+hay que mirarlo» y un `0,00 m²` se lee como «esto está mirado».
+
+El coste es cobertura: sobre un plano con impedimentos abiertos se rellenan
+menos celdas. Lo que se compra es que ninguna cifra escrita en el documento de
+alguien pueda ser una omisión disfrazada de medida.
+
+**Dónde se aplica.** `analyzer/cuadro_superficies.py`, estado `CERO_REAL`.
+
+---
+
+## C-5 · Una ambigüedad de reparto no se reparte ni se suma
+
+**Dictaminado por:** Pablo, 2026-09-10. Cierra el punto 2 de «lo que sigue sin
+firmar» de este mismo documento, abierto el 2026-09-08.
+
+**Qué dice.** Cuando el cuadro pide N huecos de una familia y la geometría no da
+exactamente N piezas inequívocas, **ninguna de las celdas implicadas se
+rellena**, y cada una lleva su motivo. Ni se reparte por orden de aparición, ni
+se suman las piezas, ni se rellena una dejando la otra en blanco.
+
+**Los dos casos, con el plano en el que se dictaminó** (`v1plantas.dxf`):
+
+- El cuadro pide `terraza 1` y `terraza 2`; el plano dibuja **una** `Terraza` de
+  3,32 m². **Las dos celdas se quedan vacías.** Escribir 3,32 en «terraza 1» es
+  decidir por el arquitecto cuál de sus dos filas ha dibujado, y dejar la otra en
+  blanco insinúa que mide cero, que es distinto de «no lo sé».
+- El cuadro pide una fila `tendedero` y aparecen dos piezas con ese rótulo:
+  **no se suman.** Sumarlas afirma que son el mismo espacio.
+
+**La alternativa que se descarta, y por qué.** Otro arquitecto podría sostener
+que «la mayor manda» o que se reparta por orden. Es defendible para quien firma
+el proyecto; no lo es para un programa que no sabe cuál de las dos terrazas del
+cuadro es la dibujada. El criterio elegido es el conservador a propósito: deja
+trabajo al arquitecto en vez de arriesgar una cifra en el sitio equivocado.
+
+**Nota sobre el caso que lo motivó.** Los «dos Tendedero» de `v1plantas.dxf` no
+eran una ambigüedad de reparto: eran un tendedero y el **contorno** que lo
+agrupa con la terraza (ver la nota de C-6 y `tests/test_contorno_agrupador.py`).
+El criterio se firma igualmente porque el caso de las dos terrazas sí es real y
+sigue en pie.
+
+---
+
+## C-6 · Conservación de la medida: ninguna superficie desaparece en silencio
+
+**Dictaminado por:** Pablo, 2026-09-10, como **invariante permanente** del
+producto — no como detalle de la tarea en la que salió.
+
+**Qué dice.** Toda pieza medida termina en **exactamente uno** de estos tres
+sitios, y en ninguno más:
+
+1. una celda del cuadro,
+2. la lista de piezas que no han encontrado fila,
+3. la lista de bloqueos, con su motivo.
+
+La unión de las tres es el total de piezas medidas, y ninguna aparece dos veces.
+**Es comprobable, y se comprueba con un test**, no con una revisión a ojo.
+
+Y una consecuencia que se firma con el criterio: si hay una pieza medida sin
+fila donde ir, **el total correspondiente no se rellena**. Un total que no
+incluye una superficie medida es un total falso, y un cuadro cuadrado y
+equivocado es peor que uno incompleto — el incompleto se ve.
+
+**Por qué es un invariante y no una regla de una tarea.** El daño que evita no
+depende de por dónde entre el trabajo: una superficie que se mide y no aparece
+en ningún sitio del entregable es el fallo que hace que un cuadro pase un visado
+diciendo una cifra que no es. Aplica al cuadro del arquitecto, al camino web, y
+a cualquier salida futura que reparta piezas medidas en huecos.
+
+---
+
+## C-7 · Una medición limpia no prueba que haya llegado todo
+
+**Dictaminado por:** Pablo, 2026-09-10, a partir de una fuga medida ese mismo
+día. **El mecanismo de verificación lo propone ArchMuse y está pendiente de tu
+visto bueno** — el criterio, no.
+
+**Qué dice.** El servidor **no puede concluir «esta vivienda no tiene salón»**.
+Sólo puede concluir «no ha llegado nada que parezca un salón». Son dos frases
+distintas y hasta hoy el producto las trataba como la misma.
+
+Por lo tanto: **una medición sin impedimentos no es una medición completa** hasta
+que consta que el cliente mandó todo lo que había. Mientras eso no conste, todo
+lo que dependa de una ausencia —`0,00 m²` por `C-4`, un total, un «no existe»—
+queda sin escribir.
+
+### El caso que lo motiva, medido
+
+`v1plantas.dxf`, 2026-09-10. El cliente CAD seleccionaba con `ssget` filtrando
+por el bit de «cerrada» del código 70, que es lo único que `ssget` sabe hacer. En
+ese plano ese bit está mal puesto en 2 de 10 polilíneas, **y una es el
+`Salón/cocina` de 21,90 m²**. Resultado:
+
+- la polilínea del salón **no salía del dibujo**;
+- el servidor medía 7 piezas en vez de 8, sin ningún hueco aparente;
+- la medición salía **sin un solo impedimento** — porque desde el servidor no
+  faltaba nada: lo que no llega no se echa de menos;
+- y `C-4` daba el visto bueno para escribir un **`0,00 m²` en la fila del salón**
+  del cuadro que el arquitecto firma.
+
+`C-4` funcionó exactamente como se firmó. El problema es que `C-4` mira si la
+medición está limpia, y **la medición estaba limpia**. Lo que estaba roto era el
+transporte, y el transporte no tenía quién lo mirara.
+
+### Cómo se verifica de forma permanente (propuesta)
+
+Tres piezas. Las tres son necesarias: la primera hace el fallo detectable, las
+otras dos hacen que no pueda volver a introducirse en silencio.
+
+**1. El cliente declara qué barrió, y el servidor lo comprueba.**
+
+El payload lleva, además de los recintos, lo que el cliente vio antes de
+mandarlos:
+
+```json
+"seleccion": {
+  "criterio": "todas las polilineas de la capa",
+  "polilineas_en_la_capa": 10
+}
+```
+
+Y el servidor compara ese número con los recintos recibidos. **Si no cuadran, la
+medición NO está limpia**, diga lo que diga el resto — se declara como
+impedimento con su cifra («el cliente vio 10 polilíneas en la capa y han llegado
+8») y `C-4` deja de autorizar ceros.
+
+Es autodeclarado, sí. No detecta a un cliente que mienta; detecta al que **filtre
+sin darse cuenta**, que es lo que pasó y lo que volverá a pasar. Y el criterio
+declarado convierte un filtro nuevo en un cambio visible: para colar uno hay que
+cambiar esa cadena, y eso se ve en el diff.
+
+**2. El simulador no puede filtrar, y hay un test que lo dice.**
+
+`payload_desde_dxf` es lo que los 34 tests del endpoint usan como cliente. Si él
+filtra, los tests corren sobre un mundo que no existe — que es exactamente lo que
+pasó: el error vivió meses ahí porque ningún fixture tenía el defecto. El test
+comprueba que **manda tantos recintos como polilíneas hay en la capa**, sobre un
+fixture que sí tiene polilíneas con el flag mal puesto
+(`14_flag_de_cerrada_mal_puesto.dxf`).
+
+**3. El `.lsp` no puede filtrar, y hay otro test que lo dice.**
+
+Un guardián sobre `am:recolectar`: su `ssget` de recintos no puede llevar más
+filtro que la capa. Nada de `(-4 . "&")` ni de `(70 . 1)`. Es una comprobación de
+texto sobre el fichero, del mismo tipo que las que ya vigilan que no se
+reintroduzca `vla-AddTable`, y es la única forma de vigilar el cliente sin
+AutoCAD delante.
+
+### Por qué no basta con «acordarse»
+
+Porque ya nos habíamos acordado. La nota del 2026-09-09 decía que la solución
+buena era de servidor y estaba escrita con sus cifras (3 de 22, 2 de 10, 9 de
+53). Sobrevivió un día entero como pendiente mientras el producto escribía ceros.
+Un criterio que depende de que alguien recuerde una nota no es un criterio: es
+una esperanza. Las tres piezas de arriba lo convierten en algo que falla solo.
+
+---
+
+## C-7, otra vez · Los tests comprueban lo que calcula el servidor, no lo que dibuja AutoCAD
+
+**Anotado por orden de Pablo el 2026-09-13**, después de que costara dos bugs en
+la primera prueba del `.lsp` 3.2.0 sobre `v1plantas.dxf`. Es la misma forma que
+`C-7` —una comprobación que pasa no prueba lo que parece probar— en otra capa.
+
+- **Las notas se dibujaban encima de la tabla.** El servidor las colocaba debajo
+  de la tabla **que él había calculado** (borde en y = −293,58, primera nota en
+  −293,72), y su test lo comprobaba y pasaba. Pero AutoCAD dibuja con el estilo
+  de tabla activo del plano (`Standard`: margen vertical 1,5, texto 4,5), y las
+  filas crecen hasta decenas de veces lo calculado. El test miraba el cálculo, no
+  el dibujo.
+- **«Dos viviendas VT1/3» donde había una.** El servidor devolvía una vivienda,
+  y su test lo comprobaba y pasaba. Pero la respuesta LISP llevaba el mismo
+  bloque dos veces (`repartos` y `reparto`), y el `.lsp` cuenta apariciones de
+  texto. Ningún test hacía lo que hace el `.lsp` con esa respuesta.
+
+**La regla.** Un test del servidor no dice nada de lo que ve el arquitecto en
+AutoCAD. Mientras el `.lsp` no se pueda ejecutar en CI, cada cosa que el comando
+hace con la respuesta —contar, elegir, dibujar a una medida— tiene que tener o
+un test que reproduzca **esa misma lectura** sobre la respuesta real, o una
+casilla en `docs/design/checklist-primera-prueba-autocad.md` que diga que está
+sin comprobar. «El test pasa» sin una de las dos es una hipótesis.
+
+---
+
+## C-13 · Dos viviendas que no se pueden distinguir no se fusionan
+
+**Dictaminado por:** Pablo, 2026-09-13: «Si dos viviendas no se pueden
+distinguir, no se fusionan: se declara y se deja sin escribir. Firmo el
+criterio.»
+
+**Qué dice.** Cada rótulo de vivienda es una vivienda, aunque su texto sea igual
+que el de otra. Si varias viviendas de la planta llevan el mismo rótulo, ninguna
+cifra suya se publica —ni su superficie útil, ni su tabla, ni el total de la
+planta— y el motivo lo dice, con cuántas son. Sus piezas se siguen enseñando una
+a una.
+
+**Por qué es lo más grave que salió ese día.** El agrupador asignaba cada
+habitación al TEXTO del rótulo más cercano, así que dos `VT1/3` se fundían en una
+sola vivienda: filas repetidas y **TOTAL SUP. INTERIOR 87,40 m²**, la suma de las
+dos, con la medición limpia y sin nota. Un `0,00` se ve; esto no. Y `VT1/3`
+significa «tipo 1, tres unidades»: las viviendas repetidas del mismo tipo son lo
+normal en un bloque, no un caso raro. Medido además en un plano real:
+`plantasimple.dxf` rotula `VT22/1` dos veces, a 1.385 m una de otra.
+
+**Dónde se aplica.** `evaluator.group_rooms_by_unit_label` (agrupa por rótulo, no
+por texto), `medicion.ViviendaMedida.impedimentos` y `medicion.motivo_c13` (una
+sola redacción), `plantilla_cuadro.construir` (se niega), el endpoint del
+comando (una entrada sin tabla por rótulo repetido), la exportación web y
+`plano.superficie_util` del agente.
+
+**Cómo se guarda.** `tests/test_c13_viviendas_indistinguibles.py`: el guardián
+estructural —ninguna vivienda contiene recintos de dos rótulos— y un centinela
+por valor sobre toda la respuesta; con un control de dos viviendas con rótulos
+distintos que sí se miden.
+
+---
+
+## C-14 · El total útil computa la exterior con tope
+
+**Dictaminado por:** un arquitecto colegiado, 2026-09-13, tras ver la tabla en
+AutoCAD. «Son criterio profesional, no sugerencias.» **Deroga la parte de `C-1`
+que dejaba esta fila vacía.**
+
+**El criterio.**
+
+    TOTAL S. ÚTIL = útil interior + el MENOR de
+                    a) el 50 % de la útil exterior
+                    b) el 10 % de la útil interior
+
+**El ejemplo con el que se firmó**, medido ese día en `v1plantas.dxf`: interior
+58,78 · exterior 7,54 · 50 % del exterior 3,77 · 10 % del interior 5,88 · gana el
+menor → **62,55 m²**.
+
+**Si la interior o la exterior no se pueden afirmar, el total tampoco**: fila
+vacía con su motivo. No se calcula sobre una cifra bloqueada.
+
+**Cómo se aplica** (`plantilla_cuadro.superficie_util_total` y `_total_util`):
+
+- Sobre **las dos cifras que escribe la tabla** en su fila de totales, ya
+  redondeadas a céntimos, para que quien la lea la rehaga a mano y le salga lo
+  mismo. *Decisión de ArchMuse, declarada, no del criterio.*
+- Resultado redondeado a céntimos **hacia arriba en el medio** (`ROUND_HALF_UP`,
+  en `Decimal`): la mitad de una exterior como 7,55 deja 3,775, y
+  58,78 + 3,775 = 62,555 → **62,56**. *Decisión de ArchMuse, declarada, no del
+  criterio: `C-14` no dice nada del redondeo.* Pendiente de que lo confirme el
+  arquitecto.
+- **Un lado sin ningún espacio** está afirmado y aporta cero: es el caso «sin
+  exterior: 100 → 100» del criterio. Su celda de total sigue vacía con la nota
+  de `D-13` (un total vacío no se escribe como cero), pero no bloquea.
+- **Un lado bloqueado** —impedimento (`C-2`), pieza sin fila (`C-6`), una fila
+  sin cifra— deja el total vacío con la nota «la superficie útil exterior no se
+  puede afirmar (ver su nota), y el total no se calcula sobre una cifra
+  bloqueada (C-14)». Nunca «58,78 + 0».
+- Sin ningún espacio interior no hay total: vacía con motivo.
+
+**Cómo se guarda.** `tests/test_c14_total_util.py`: los tres casos del criterio
+con sus cifras (62,55 · 110 · 100), los mismos por la plantilla del fixture
+sintético, los bloqueos, y un guardián que rehace el total desde lo escrito en la
+tabla en cinco escenarios y exige que coincida, o que esté vacío si algún lado
+está bloqueado.
+
+---
+
+## C-8 · Lo que el plano declara manda sobre lo que ArchMuse deduce
+
+**Dictaminado por:** Pablo, 2026-09-11. **Criterio firmado; sin implementar** —
+toca `medicion.py`, los totales y la forma en que `C-2` bloquea, así que va en
+sesión propia.
+
+**Qué dice.** Cuando el plano **declara** en qué magnitud entra un recinto, esa
+declaración manda. La deducción por familia —«terraza» → exterior, «dormitorio»
+→ interior— **sólo actúa cuando no hay declaración**.
+
+Nunca al revés, y nunca «las dos y que gane la que coincida»: si el plano dice
+una cosa y la familia sugiere otra, **manda el plano**, y la discrepancia se
+declara como hallazgo para que el arquitecto la mire. No se resuelve en silencio
+hacia ninguno de los dos lados.
+
+### Por qué
+
+Porque el ámbito de un recinto es criterio profesional, y `C-1` y `C-2` ya
+dicen que ArchMuse no lo decide por el técnico que firma. Hasta hoy lo decidía:
+deducía interior o exterior del nombre de la estancia, porque no había otra cosa
+de la que deducirlo.
+
+Resulta que sí la hay. En `v1plantas.dxf`, cada recinto lleva **dos** MTEXT: el
+nombre y un título de campo encima que dice qué magnitud es.
+
+| Título en el plano | Recintos |
+|---|---|
+| `superficie util` | Salón/cocina, Dormitorio 1, Dormitorio 2, Dormitorio 3, Baño, Aseo |
+| `superficie util exterior` | Terraza, Tendedero |
+| `Superficie construida cerrada` | *(un rótulo suelto, sin recinto)* |
+| `Superficie construida exterior` | *(idem)* |
+
+Sin una sola excepción, y coincide con lo que ArchMuse deducía. **Que coincida es
+precisamente lo que lo hace seguro de adoptar**: se puede cambiar el origen del
+dato sin cambiar ninguna cifra, y las discrepancias que aparezcan en otros planos
+serán informativas, no una regresión.
+
+Deducir lo que el arquitecto ya ha escrito no es un atajo: es ignorarlo. Y el
+día que un plano diga algo distinto de lo que ArchMuse deduciría —una terraza
+cerrada que él computa como interior, que es una decisión suya y legítima—
+deducir sería sustituir su criterio por el nuestro sin decírselo.
+
+### Qué implica implementarlo, para el día que se haga
+
+- **`parser`** tiene que conservar el título de campo del recinto, no sólo
+  descartarlo para elegir el nombre (que es lo único que hace hoy, desde el
+  arreglo del 2026-09-11). Hace falta un campo nuevo en `Room`.
+- **`medicion.py`** tiene que preferirlo a `FAMILIAS` al asignar el ámbito, y
+  dejar `FAMILIAS` como camino por defecto.
+- **Los totales** cambian de origen: hoy suman por ámbito deducido.
+- **`C-2`** sigue igual, pero con un caso nuevo: un recinto con declaración
+  ilegible o contradictoria no es «sin clasificar por su rótulo», es otra cosa y
+  merece su propio motivo.
+- **Un hallazgo nuevo:** declaración y familia que no coinciden. No bloquea —el
+  plano manda— pero se dice.
+
+---
+
+## C-9 · Dos vías de entrada no pueden leer distinto el mismo plano
+
+**Dictaminado por:** Pablo, 2026-09-11, como **invariante permanente**, al mismo
+nivel que `C-6`.
+
+**Qué dice.** ArchMuse tiene dos formas de recibir un plano —el DXF subido por la
+web y la geometría que manda el cliente CAD— y **las dos tienen que leer lo
+mismo**: los mismos recintos, los mismos rótulos, las mismas superficies. Si
+divergen, es un fallo de severidad alta aunque las dos cifras parezcan
+razonables, porque **no se sabe cuál de las dos es la buena**.
+
+> **AMPLIADO el 2026-09-11: y lo que cada vía ESCRIBE, no sólo lo que lee.**
+>
+> El criterio se firmó mirando la entrada, y por eso no cazó el primer fallo de
+> salida que apareció: la vía web marcaba el borrador en la capa
+> `00 ARCHMUSE BORRADOR` y el comando de AutoCAD en `ARCHMUSE - BORRADOR`. **El
+> mismo plano marcado por los dos caminos acababa con dos capas distintas**, y
+> el arquitecto que apagara una seguiría viendo la otra — o creería haber
+> quitado la marca sin haberla quitado.
+>
+> Los tests de `C-9` estaban todos en verde mientras eso pasaba, porque comparan
+> **mediciones**. Que no lo vieran es una **carencia del invariante, no una
+> defensa**: la pregunta que este criterio hace no es «¿miden igual?» sino «¿hacen
+> lo mismo?», y lo que se escribe en el dibujo forma parte de lo que se hace.
+>
+> Desde hoy, cualquier cosa que las dos vías dejen en el plano —la capa de la
+> marca, su texto, dónde va— tiene que ser la misma, y comprobarse. Lo hace
+> `tests/test_marca_borrador.py::test_las_dos_vias_marcan_en_LA_MISMA_capa`,
+> que compara las dos cadenas directamente porque **entre Python y LISP no hay
+> forma de compartir una constante**. Cuando el servidor declare sus convenciones
+> y el cliente las lea al arrancar —deuda P2 del PRD del 2026-09-10— ese test
+> dejará de hacer falta y el invariante se cumplirá por construcción.
+
+Y se comprueba con un test que corre **las dos vías sobre el mismo plano** y
+compara el resultado. No basta con que cada una tenga los suyos.
+
+### Por qué es un invariante y no un detalle
+
+Porque ya ha pasado **cuatro veces**, todas con el mismo patrón —una vía en
+verde, la otra rota, y nadie mirando el hueco entre ellas:
+
+1. **2026-09-10, el color y el flag de cerrada.** El payload del cliente no
+   llevaba ni el color ni el bit de cerrada, así que el DXF materializado salía
+   entero en BYLAYER y con todo cerrado. Por la vía web el salón medía 21,90 m²;
+   por la vía CAD, el mismo plano perdía el salón entero y escribía `0,00 m²` en
+   el cuadro.
+2. **2026-09-11, los títulos de campo.** `match_label_to_room` devolvía el primer
+   texto que cayera dentro del recinto, y el orden de llegada no es el mismo
+   leyendo un DXF que recibiendo un `ssget`. El mismo plano daba «Dormitorio 1»
+   por una vía y «superficie util» por la otra.
+
+3. **2026-09-11, la capa de la marca.** Dos nombres distintos para la misma
+   capa, uno por vía. Este mismo criterio estaba en verde mientras pasaba,
+   porque miraba la entrada y esto era la salida.
+
+4. **2026-09-11, el tipo de entidad de los rótulos — cerrado el 2026-09-12.**
+   `geometria_recibida.escribir_dxf` escribía **todos** los textos como MTEXT
+   porque el payload no decía de qué tipo era cada uno. `extract_labels` ordena
+   los MTEXT antes que los TEXT justamente para desempatar dos rótulos dentro
+   del mismo recinto, así que aplanar los dos tipos le quitaba a esa regla el
+   dato con el que decide. Sobre `plantasimple.dxf`:
+
+   | | Por la web | Por el comando |
+   |---|---:|---:|
+   | Recintos | 157 | 169 |
+   | Con nombre | 156 | 168 |
+   | Viviendas con superficie | **16** | **3** |
+
+   Doce contornos agrupadores dejaban de reconocerse y contaban superficie dos
+   veces, y `C-6` bloqueaba 13 viviendas. **Se cerró sin criterio nuevo:** el
+   payload declara el tipo (`"tipo": "MTEXT"` / `"TEXT"`, que el `.lsp` ya leía
+   del `assoc 0` y no mandaba) y el materializador lo respeta. La prioridad
+   sigue viviendo en `extract_labels`, que es donde estaba probada. Después del
+   arreglo las dos vías dan **157 / 156 / 16**, idénticas pieza a pieza.
+
+Los cuatro tenían tests, y los cuatro tenían **todos sus tests en verde**: cada
+vía se probaba por separado y ninguno cruzaba. El hueco entre dos caminos
+correctos no lo vigila nadie salvo que se vigile a propósito — y el tercero
+enseña algo más: **un invariante también tiene huecos**, y el suyo estaba en
+haberse definido sobre lo que se lee.
+
+El cuarto enseña el otro hueco posible: **contra qué planos corre**. Los seis
+del banco eran todo-MTEXT o todo-TEXT, así que ninguno podía ejercitar la
+prioridad; y `plantasimple.dxf`, que sí la ejercita, **se saltaba en silencio**
+porque no resuelve su capa solo. Un invariante que elige contra qué se comprueba
+no es un invariante. Desde el 2026-09-12 el banco lleva el plano con su capa
+declarada y un fixture sintético que mezcla los dos tipos
+(`15_mtext_y_text_en_el_mismo_recinto.dxf`), y sólo se salta lo que no está en
+la máquina.
+
+### Cómo se verifica
+
+`tests/test_dos_vias_leen_igual.py`: sobre cada plano disponible —los fixtures
+del repositorio y los reales si están en la máquina— se lee por las dos vías y se
+comparan recintos, rótulos y superficies. Y **con el orden de los textos
+invertido**, porque el orden de llegada es lo único que el cliente no puede
+garantizar.
+
+Cuando aparezca una tercera vía de entrada —el plugin nativo, IFC, un DWG
+convertido— entra en ese test el mismo día que se escribe, no después.
+
+**Las superficies se comparan a dos decimales, que es a los que se publican.**
+No es una tolerancia de conveniencia: el payload lleva las coordenadas a seis
+decimales porque es lo que `am:json-num` sabe mandar (`(rtos x 2 6)`), y en un
+recinto de `plantasimple.dxf` con el perímetro a 300 m del origen ese micrómetro
+por vértice acumula 0,0001 m² —el «Tendedero» mide 4,1236 m² por una vía y
+4,1237 por la otra—. Es **1 cm² en 1 de 157 piezas** y es el único resto de todo
+el banco. Comparar más fino sería comparar el ruido del transporte; subir la
+precisión del simulador lo haría más fino que lo simulado, que es el error que
+ya se cometió una vez con el flag de cerrada.
+
+### Lo que el banco ampliado ha destapado, y no se ha arreglado
+
+Con `plantasimple.dxf` dentro, el test del **orden de los textos** falla, y no
+por el tipo: ese plano rotula cada salón con **varios MTEXT de la misma capa**
+—el nombre repetido dos o tres veces y la cifra de su superficie, todos MTEXT en
+`00 TEXTO`—. Medido el 2026-09-12: **156 recintos tienen más de un texto dentro
+y 63 tienen tres MTEXT compitiendo**. Ni la prioridad MTEXT-sobre-TEXT (mismo
+tipo) ni la regla de la capa que nombra (misma capa) desempatan eso: lo desempata
+el orden del recorrido, y `ssget` no garantiza ninguno. Al invertirlo, las
+estancias pasan de llamarse «Salón/cocina» a llamarse «21.90m²».
+
+Está **declarado como `xfail(strict=True)`** con su motivo, no tapado: cuál de
+dos textos de la misma capa y el mismo tipo nombra una estancia es criterio
+profesional (`D-7`) y **está sin firmar**. El día que se firme, el xfail se pone
+rojo y hay que venir a borrarlo.
+
+---
+
+## C-11 · ArchMuse no escribe ninguna cifra que no haya medido él
+
+**Dictaminado por:** Pablo, 2026-09-12, al revisar el cuadro propio.
+
+**Qué dice.** En el cuadro que ArchMuse dibuja no puede aparecer **ni una cifra
+que no proceda de su propia medición**. Ni copiada del cuadro del arquitecto, ni
+leída de un texto del plano, ni heredada de una celda que ya tenía valor. Si una
+cifra no la ha medido ArchMuse, no se escribe: se deja la celda con su nota.
+
+**Por qué es un criterio y no una comprobación más.** Los demás criterios de este
+documento gobiernan *qué se puede afirmar*. Éste gobierna algo anterior: **de
+quién es lo que se afirma**. Un cuadro firmado «ArchMuse» con dentro las cifras
+del arquitecto no es una medición incompleta —eso sería `C-6`—: es ArchMuse
+poniendo su nombre debajo de un número que no ha comprobado. Y como el número
+viene de él, **coincide con su documentación y nada chirría**: el error es
+invisible por construcción, y sobrevive hasta que alguien mide a mano.
+
+### El caso que lo motiva, y cómo se vio
+
+El 2026-09-12, construyendo el cuadro propio. `cuadro_superficies._construir_cuadro`
+mete en su lista de etiquetas **todos** los MTEXT de la rejilla, y una celda de
+valor —`21.90m²`— es un MTEXT como cualquier otro: llegaba al código que copia
+las filas indistinguible de un encabezado, y se copiaba dentro de la tabla de
+ArchMuse como si fuera una fila suya.
+
+> **Se vio por el formato, y eso fue suerte, no diseño.** El arquitecto escribe
+> `21.90m²` —punto decimal, sin espacio— y ArchMuse `21,90 m²` —coma y
+> espacio—. La cifra desentonaba a simple vista. **Si él escribiera con coma, no
+> lo habría visto nadie**: el número sería plausible, coincidiría con su memoria
+> y el cuadro habría salido perfecto y mintiendo.
+>
+> Por eso este criterio **no se comprueba comparando textos**. Comparar cadenas
+> funciona mientras los dos formatos difieran, es decir, por casualidad; y además
+> daría un falso positivo el día que ArchMuse midiera exactamente lo mismo que él
+> escribió, que es el caso bueno.
+
+### Cómo se comprueba, y por qué así
+
+**Por procedencia, no por aspecto, y de forma cerrada.** Todo texto que salga en
+el cuadro dibujado tiene que ser una de estas cuatro cosas y ninguna más:
+
+1. una **etiqueta** copiada de su cuadro (o del formato canónico de ArchMuse),
+2. un **valor** producido por `calcular_relleno_cuadro` con `escribir=True`,
+3. una **marca de nota** (`(1)`, `(2)`…),
+4. el **título**.
+
+El test recorre el cuadro dibujado y exige que cada celda caiga en una de las
+cuatro. No mira si el texto «parece» una superficie ni de qué se parece a qué:
+si aparece algo cuyo origen no es ninguno de los cuatro, falla —venga de
+`_construir_cuadro`, de `cuadro_desde_celdas` o de lo que alguien escriba mañana
+para leer las celdas de otra manera—.
+
+Vive en `tests/test_cuadro_propio.py`:
+`test_toda_cifra_del_cuadro_sale_de_la_medicion` y
+`test_ningun_texto_del_cuadro_tiene_origen_desconocido`.
+
+### Lo que este criterio NO prohíbe
+
+**Leer sus cifras.** ArchMuse las lee y las necesita: el rótulo `VIVIENDA TIPO`
+es lo que empareja el cuadro con la vivienda (`elegir_vivienda`). Lo que no puede
+es **reemitirlas como suyas**. Leer, sí; firmar, no.
+
+> **Desde el 2026-09-13 el cuadro de ArchMuse ya no copia ni las etiquetas** del
+> cuadro del arquitecto: es una plantilla fija (PRD
+> `docs/prd/2026-09-13-cuadro-plantilla-fija.md`). Las cuatro procedencias de
+> arriba se quedan en tres —texto de la plantilla, valor medido, nota— y el test
+> que lo guarda es `tests/test_plantilla_cuadro.py`. Los tests de
+> `test_cuadro_propio.py` que lo guardaban sobre el cuadro clonado siguen
+> vigilando `reparto_cuadro.cuadro_dibujable`, que ya no usa el producto.
+
+---
+
+> **Sobre la numeración de los tres apartados que siguen.** Nacieron el
+> 2026-09-13 como `D-8`, `D-9` y `D-10`, y **esos números ya existían** en
+> `docs/design/decisiones-pendientes.md` con otro significado (umbral de
+> propuesta de Skill, push en sesión autónoma, tipo de cambio). El mismo día, por
+> orden de Pablo —«tres etiquetas con dos significados en el mismo repo no se
+> arreglan solas»—, se renumeraron a los primeros libres: **`D-13`, `D-14` y
+> `D-15`**, en el código, los tests, los nombres de fichero y los documentos.
+> Quien encuentre `D-8`…`D-10` en una conversación de ese día, que lea éstos.
+
+## D-13 · Un `0,00 m²` no es nunca una superficie válida de estancia
+
+**Dictaminado por:** Pablo, 2026-09-13, tras verlo en AutoCAD. **Deroga `C-4`.**
+
+**Qué dice.** Ninguna celda de superficie de ningún cuadro que produzca ArchMuse
+contiene `0,00`. Si la geometría de una estancia no está limpia, o el plano no
+dibuja lo que una fila pediría, la celda se queda **vacía** y su motivo va en una
+nota **debajo de la tabla, fuera del marco** — no altera la plantilla y se queda
+en el plano. `C-5` no se toca: una terraza para dos huecos deja los dos sin cifra
+y con nota, y ese es el mecanismo que se reutiliza.
+
+**Cómo se midió el fallo.** Tres constructores del estado `CERO_REAL` en
+`analyzer/cuadro_superficies.py` (familia simple, salón + cocina, familia
+múltiple) más `condicionar_ceros` en `reparto_cuadro.py`, que sobre una medición
+limpia los dejaba pasar. En el fixture sintético, antes del arreglo: por el
+comando, `(6,1,'0,00 m²')` y `(7,1,'0,00 m²')`; por la web, dos `0,00 m²`.
+
+**Cómo se guarda.** `CERO_REAL` ya no existe; su sitio lo ocupa `NO_DIBUJADA`,
+que no escribe. Y **un guardián a la salida** (`cuadro_superficies.guardian_d13`)
+convierte cualquier cero que se cuele en una celda vacía **con un motivo propio**
+(`MOTIVO_GUARDIAN_D13`): no calla, y un test exige que ese motivo no aparezca
+nunca. Tests: `tests/test_d13_ninguna_superficie_cero.py`,
+`tests/test_plantilla_cuadro.py`.
+
+## D-14 · El tamaño de la tabla lo decide el servidor, dentro de una ventana
+
+> **ENMENDADO el 2026-09-13 (noche) por Pablo, tras probarlo en AutoCAD:** «Quita
+> la fricción del tamaño. El arquitecto no debe adivinar cuánto mide la tabla ni
+> recibir "marca una ventana mayor".» Ya no se pide una ventana: se pide **un
+> punto** —la esquina de arriba a la izquierda— y la tabla sale a la altura
+> mínima legible, del tamaño que necesita (`maquetacion_cuadro.maquetar_en_punto`,
+> `.lsp` 3.4.0). La única negativa que queda es que pisaría su cuadro, y entonces
+> se pide otro punto. Sigue en pie todo lo demás: el servidor decide el tamaño,
+> ninguna palabra se parte y el umbral de legibilidad sale de sus cuadros o sus
+> rótulos, nunca de una constante.
+>
+> **ENMENDADO otra vez el 2026-09-13 (madrugada), tras la 3.4.1 en AutoCAD.** La
+> tabla del comando **no crea estilo de texto**: se dibuja con uno que ya existe
+> en el plano —el de su cuadro, o el de sus rótulos—, y **los anchos los mide
+> AutoCAD** con `textbox`. El servidor sigue decidiendo el tamaño, ahora con esas
+> medidas (`/api/maquetar-cuadro`). **Si el plano no tiene ni cuadro ni rótulos
+> de los que sacar el estilo, no se dibuja y se dice por qué**: no se inventa una
+> fuente (Pablo). Motivo: crear un estilo con `arial.ttf` falló en `v1plantas.dxf`
+> y depender de un `.ttf` concreto es frágil.
+
+**Dictaminado por:** Pablo, 2026-09-13.
+
+**Qué dice.** El comando pide una **ventana de dos esquinas** (declaración
+explícita: manda sobre cualquier deducción, como en `C-8`). El servidor devuelve
+la tabla resuelta: esquina, altura de texto, ancho de cada columna —proporcional
+a su contenido— y posición de cada nota. **Ninguna palabra se parte.** Si no cabe
+legible, no se dibuja y se pide una ventana mayor. El umbral de legibilidad sale
+de la altura del texto del cuadro del arquitecto; sin cuadro, de la mediana de
+las alturas de los rótulos de estancia del propio plano. **No hay constante.**
+
+**Cómo se midió el fallo (hipótesis de mecanismo, síntoma visto).** Palabras
+partidas en vertical en AutoCAD. En el `.lsp` 3.1 las medidas de la tabla eran
+constantes escritas a mano (`1.0`, `14.0`) y la altura del texto no se fijaba,
+así que la hereda del estilo del dibujo. **Que ésa sea la causa de lo visto no se
+ha medido en AutoCAD**: el `.lsp` 3.2.0 no se ha ejecutado todavía.
+
+**Cómo se guarda.** `analyzer/maquetacion_cuadro.py` y
+`tests/test_d14_maquetacion_cuadro.py`, que además exige que `am:dibujar-cuadro`
+no contenga ninguna medida literal.
+
+## D-15 · La web nunca aplicó `C-4`
+
+**Registrado por:** Pablo, 2026-09-13.
+
+La exportación de la web (`cuadro_superficies_export.exportar_cuadro_relleno`)
+nunca pasó por `condicionar_ceros`: escribía `0,00 m²` también con la medición
+sucia. Con `D-13` la cuestión desaparece —ya no hay cero que condicionar— y la
+web dibuja la misma plantilla que el comando. Test:
+`test_d15_por_la_web_no_se_escribe_ningun_cero_ni_con_la_medicion_sucia`, y el
+contenido igual por las dos vías en `test_dos_vias_leen_igual.py`
+(`test_las_dos_vias_dibujan_la_misma_tabla`).
+
+## C-12 · La superficie construida cerrada es la polilínea que el arquitecto rotula
+
+**Firmado:** 2026-09-13, por un arquitecto colegiado («Queda FIRMADO. Es la
+polilínea rotulada "Superficie construida cerrada"») y con el visto bueno de
+Pablo a la forma de identificarla: **por su rótulo, no por el color**. «Es
+declaración explícita del arquitecto, la misma lógica de C-8, y si no está el
+rótulo la fila queda vacía en vez de coger otra polilínea.»
+
+**Historia, para quien lea el código viejo.** Nació el mismo día como propuesta
+de ArchMuse: la polilínea **con color propio** de la capa de recintos que
+contuviera la vivienda. Estuvo desactivada (`C12_FIRMADO = False`) hasta que lo
+confirmara un arquitecto. Al firmar se vio que el color no identifica una sola
+cosa y se sustituyó entero; **el criterio por color ya no existe en el código**.
+
+**El criterio.**
+
+1. **El rótulo:** un TEXT o MTEXT del espacio modelo, de cualquier capa, que
+   dice exactamente «superficie construida cerrada» o «s. construida cerrada»
+   (sin distinguir mayúsculas ni acentos; espacios colapsados). Las dos formas
+   están firmadas; «superficie construida exterior» y «s. construida ext.» no
+   son esto.
+2. **Su polilínea:** las `LWPOLYLINE` de **cualquier capa** —cerradas con el flag
+   o recuperadas por geometría— cuyo borde está a **menos de 3 alturas del texto
+   del rótulo** (firmado). **Si hay más de una, no se elige:** se declara y la
+   fila queda vacía. Nunca la más grande ni la primera (condición 1 de Pablo).
+3. **La comprobación:** la polilínea tiene que contener todas las piezas
+   interiores de la vivienda y ninguna exterior (5 cm de tolerancia).
+4. **La cifra sólo existe si hay exactamente una polilínea rotulada** que
+   contenga la vivienda (condición 3). Sin rótulo, vacía con motivo: **nunca a
+   cero, nunca otra polilínea parecida, nunca por color, ni como respaldo**
+   (condición 2).
+
+**Lo que se midió antes de escribir el código** (siete DXF de `_material`):
+
+- En `v1plantas.dxf` la construida (`A6188E`) está **en `00 areas`** y es **la
+  única roja**; la del Dormitorio 3 va por capa (naranja 30). Contradecía lo que
+  se dijo al firmar; se pidió comprobarlo en AutoCAD.
+- El rótulo, a 0,11-0,28 m del borde de su envolvente, con textos de 0,125; lo
+  siguiente, a 0,49 m o más. `ejemplo.dxf` usa «S. construida cerrada».
+- El `.lsp` sólo mandaba la capa de recintos: una construida en otra capa la
+  habría visto la web y no el comando (`C-9`). Desde la 3.6.0 manda las
+  polilíneas de las demás capas **sin color** (`otras_polilineas`).
+
+**Lo que salió al implementarlo, medido:** ezdxf escribe altura 2,5 en todo
+texto que llega sin ella (y también si se le da 0). Por la vía del comando, un
+rótulo sin altura buscaba su polilínea a 7,50 m, y la maquetación de `D-14`
+tenía el mismo fallo. Se marca con XDATA y se lee con
+`geometria_recibida.altura_de_texto`.
+
+**Cómo se guarda.** `tests/test_c12_construida_por_rotulo.py`: doce escenarios
+sobre el fixture sintético (con y sin rótulo, abreviado, en otra capa y sin
+color, otra polilínea mayor al alcance, dos rotuladas, sin altura, lejos, junto
+a una pieza), el guardián de la condición 3 sobre todos, un guardián que prohíbe
+leer el color en las tres funciones, las dos vías leyendo igual una construida en
+otra capa, y la medición intacta con y sin las otras capas.
+
+**Lo que queda abierto.** Qué hacer con una envolvente que contiene el patio o el
+hueco de escalera. Y el parser ya conocía una capa `AM_CONS_CER` (contrato de
+clasificación, Fase 3) que es otra forma de declarar la construida: `C-12` no la
+usa y nadie ha decidido si debería.
+
+---
+
 ## Lo que sigue sin firmar
 
 De los tres criterios que `D-7` enumera desde el 2026-08-19, **`C-1` y `C-2`
-resuelven el tercero** (qué hacer ante un solape). Siguen abiertos:
+resuelven el tercero** (qué hacer ante un solape) y `C-5` cierra el segundo.
+Sigue abierto:
 
 1. **El orden del procedimiento de `superficies.cuadro_de_vivienda`** —
    comprobar la unidad antes de medir, medir por un camino separado del cálculo,
    y cruzar los dos. Ese orden es criterio profesional y hoy lo eligió Claude.
-2. **Qué hacer ante una ambigüedad de reparto** — dos piezas «Tendedero» para un
-   hueco del cuadro, una «Terraza» para dos. Hoy: no se reparte ni se suma, y la
-   celda queda bloqueada con su motivo. Defendible y conservador, pero otro
-   arquitecto podría sostener que la mayor manda.
+2. ~~**Qué hacer ante una ambigüedad de reparto.**~~ **Firmado el 2026-09-10
+   como `C-5`.** Y con una corrección de los hechos que lo motivaron: las «dos
+   piezas Tendedero» de las que hablaba este punto **no existían** — eran un
+   tendedero y el contorno que lo agrupa con la terraza. El caso de «una Terraza
+   para dos filas» sí es real, y es el que sostiene el criterio.
 
 Y de las cuatro preguntas abiertas de la sesión de validación siguen sin
 contestar dos: **qué vocabulario de rótulos** reconoce el motor (hoy ocho

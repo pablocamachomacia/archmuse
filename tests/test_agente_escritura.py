@@ -60,14 +60,25 @@ def origen(tmp_path) -> str:
 
 # --- 1. El original, intacto y verificado ---------------------------------
 
-def test_el_original_conserva_su_sha256_aunque_la_escritura_falle(origen, tmp_path):
+def test_el_original_conserva_su_sha256_aunque_la_escritura_falle(origen, tmp_path, monkeypatch):
     """EL CASO QUE MÁS IMPORTA, y el que se comprueba peor por costumbre.
 
-    El DXF sintético no trae `ACAD_TABLE`, así que la escritura falla. Un fallo
-    a mitad es justo el momento en el que un original podría haberse tocado —
-    comprobar el sello sólo en el camino feliz sería comprobarlo donde no hace
-    falta.
+    La exportación revienta **a mitad**: con el original ya abierto y medio
+    destino escrito. Un fallo a mitad es justo el momento en el que un original
+    podría haberse tocado — comprobar el sello sólo en el camino feliz sería
+    comprobarlo donde no hace falta.
+
+    Hasta el 2026-09-13 el fallo lo provocaba el propio DXF sintético, que no trae
+    `ACAD_TABLE`. Con la plantilla fija ya no hace falta el cuadro del arquitecto
+    para escribir, así que ese DXF se escribe bien: el fallo se provoca a propósito.
     """
+    def revienta_a_mitad(ruta_origen, ruta_destino, respuestas=None):
+        with open(ruta_origen, "rb") as leido, open(ruta_destino, "wb") as escrito:
+            escrito.write(leido.read(64))
+        raise RuntimeError("fallo provocado a mitad de la escritura")
+
+    monkeypatch.setattr("analyzer.cuadro_superficies_export.exportar_cuadro_relleno",
+                        revienta_a_mitad)
     antes = sha256(origen)
     resultado = plano.escribir_cuadro(origen, str(tmp_path / "copia.dxf"))
 
@@ -169,8 +180,12 @@ def test_con_autorizacion_se_ejecuta(origen, tmp_path):
     cap = registro(recargar=True).buscar("plano.escribir_cuadro")
     resultado = manifiesto.invocar(cap, origen, str(tmp_path / "copia.dxf"),
                                    autorizaciones=PERMISO)
-    # Este DXF no tiene cuadro: lo que importa aquí es que el portero dejó pasar.
-    assert resultado["error"] == "cuadro_no_escribible"
+    # Lo que importa aquí es que el portero dejó pasar. Desde la plantilla fija
+    # (2026-09-13) un DXF sin cuadro del arquitecto también se escribe.
+    assert resultado.get("error") != "no_autorizado", resultado
+    assert resultado["ok"] is True, resultado
+    assert (tmp_path / "copia.dxf").exists()
+    assert resultado["origen_intacto"] is True
 
 
 def test_el_portero_esta_en_la_capacidad_y_no_solo_en_el_ejecutor():

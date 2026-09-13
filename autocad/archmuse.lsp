@@ -2,21 +2,34 @@
 ;;; ArchMuse — comando ARCHMUSE para AutoCAD
 ;;; ===========================================================================
 ;;;
-;;; Mide las superficies útiles de la planta dibujada y las escribe en una
-;;; tabla nativa dentro del propio plano.
+;;; Mide las superficies útiles de la planta dibujada y **rellena el cuadro de
+;;; superficies que el arquitecto ya tiene dibujado en su plano**.
 ;;;
-;;; PRD: docs/prd/2026-09-08-integracion-autocad-autolisp.md (tareas 5 y 6).
+;;; PRD: docs/prd/2026-09-10-rellenar-el-cuadro-del-arquitecto.md (APROBADO).
+;;; Anterior: docs/prd/2026-09-08-integracion-autocad-autolisp.md (tareas 5 y 6).
 ;;; Checklist de la primera prueba: docs/design/checklist-primera-prueba-autocad.md
 ;;;
 ;;; ---------------------------------------------------------------------------
-;;; ESTE FICHERO NUNCA SE HA EJECUTADO
+;;; CAMBIO DE OBJETIVO DEL 2026-09-10: SE RELLENA SU CUADRO, NO SE INSERTA OTRO
 ;;; ---------------------------------------------------------------------------
-;;; Se escribió el 2026-09-09 sin AutoCAD instalado. Cada función se ha
-;;; contrastado contra la referencia oficial de Autodesk, y el fichero pasa un
-;;; comprobador de paréntesis y de comillas, pero **eso no es haberlo
-;;; ejecutado**. Lo que no se ha podido comprobar está en `docs/PROGRESS.md`,
-;;; entrada del 2026-09-09, y el checklist separa prueba a prueba lo que sería
-;;; un fallo del flujo de lo que sería un fallo del lenguaje.
+;;; Hasta hoy este comando insertaba una tabla nueva con formato de ArchMuse. El
+;;; arquitecto pidió lo contrario: que le **rellenen la suya**, la que su estudio
+;;; ya tiene maquetada, respetando sus filas y su redacción. No es un cambio de
+;;; formato, es un cambio de a quién pertenece el entregable — una tabla nueva al
+;;; lado de la suya no le ahorra el trabajo, se lo cambia por comparar dos tablas
+;;; y copiar de una a otra.
+;;;
+;;; ---------------------------------------------------------------------------
+;;; EJECUTADO POR PRIMERA VEZ EL 2026-09-09, EN AUTOCAD 2027
+;;; ---------------------------------------------------------------------------
+;;; Se escribió el 2026-09-09 sin AutoCAD instalado y se ejecutó ese mismo día en
+;;; AutoCAD 2027. Cargó con APPLOAD sin un error de sintaxis, reconoció la capa,
+;;; llamó al servidor y dibujó su tabla con las cifras correctas. **Pero lo que
+;;; se ejecutó aquel día era el comando anterior**: de todo lo que hay debajo de
+;;; esta línea, lo único probado en AutoCAD es la parte que no ha cambiado —la
+;;; selección, el POST y la lectura de la respuesta—. El cuadro del arquitecto,
+;;; `vla-GetText`, `vla-SetText` y la marca en su capa **no se han ejecutado
+;;; nunca**. Ver `docs/PROGRESS.md`, 2026-09-10.
 ;;;
 ;;; ---------------------------------------------------------------------------
 ;;; TRES DECISIONES DE DISEÑO QUE CONVIENE LEER ANTES DE TOCAR NADA
@@ -55,15 +68,177 @@
 
 (vl-load-com)
 
-(setq *am:url*      "http://localhost:5000/api/medicion-geometria?formato=lisp")
-(setq *am:version*  "1.0.0 (2026-09-09, sin ejecutar)")
+;; **El puerto no se da por hecho** (D-1 del PRD de la beta). El servidor
+;; instalado prueba 5000, 5001… y escribe el que ha cogido en
+;; `%LOCALAPPDATA%\ArchMuse\servidor.json`. Sin ese fichero —la máquina de
+;; desarrollo— vale 5000, que es lo de siempre. Ver `am:puerto`.
+(setq *am:puerto-por-defecto* 5000)
+;; **Dos formas de la misma versión, y las dos hacen falta.** La corta es la
+;; que se coteja con la que declara el servidor (D-2 del PRD de la beta: si no
+;; es la misma, no se escribe) y la que cabe en una línea de registro. La
+;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
+;; que la larga empieza por la corta, porque dos números que se separan son
+;; peor que uno solo.
+(setq *am:version-corta* "3.6.0")
+(setq *am:version*  "3.6.0 (2026-09-13, C-12: construida rotulada, de cualquier capa)")
 (setq *am:capa-por-defecto* "00 areas")
+
+;; Cuántas celdas del cuadro se mandaron en la última llamada. Es global porque
+;; la escribe `am:recolectar` y la lee el comando cuando aquélla ya ha terminado:
+;; el alcance dinámico de AutoLISP hace visible lo de fuera hacia dentro, nunca
+;; al revés.
+(setq *am:celdas-enviadas* 0)
+
+;; Si la capa de recintos la nombró él o la propuso ArchMuse. Global por el
+;; mismo motivo que la de arriba: la escribe `am:elegir-capa` y la lee el
+;; comando cuando aquélla ya ha terminado.
+(setq *am:capa-la-dijo-el-usuario* nil)
+(setq *am:capa-elegida* nil)
+
+;; La versión que ha dicho el servidor en la última respuesta. Hasta que
+;; conteste una vez, no se sabe — y «desconocida» es la respuesta correcta, no
+;; una cadena vacía que se leería como que no la declara.
+(setq *am:version-del-servidor* "desconocida")
+
+;; La capa de la marca de borrador. **Tiene que ser la misma que
+;; `analyzer/marca_borrador.CAPA_DXF`**: si las dos vías marcan en capas
+;; distintas, el mismo plano acaba con dos, y quien apague una seguirá viendo la
+;; otra. Hay un test que compara las dos cadenas
+;; (`tests/test_marca_borrador.py`), porque entre Python y LISP no hay forma de
+;; compartir una constante — mientras no la declare el servidor, que es lo que
+;; propone la deuda P2 del PRD.
+(setq *am:capa-de-la-marca* "ARCHMUSE - BORRADOR")
+
+;; Por qué no se ha podido dibujar la tabla, lo que se ha dibujado sin algo que
+;; se pidió, y si llegó a dibujarse algo. Los rellena `am:dibujar-cuadro` y los
+;; lee el comando. **Existen porque un fallo del que sólo se sabe que ocurrió no
+;; se puede arreglar**: la 3.4.0 dijo en AutoCAD «No he podido dibujar la tabla»
+;; y nada más, con el mensaje de AutoCAD ya capturado y tirado dentro del handler.
+(setq *am:fallo-del-dibujo* nil)
+(setq *am:avisos-del-dibujo* nil)
+(setq *am:dibujo-empezado* nil)
+;; Por qué no se han podido medir los textos de la tabla con `textbox` (3.5.0).
+(setq *am:fallo-de-la-medida* nil)
 
 ;; Leyenda de `C3`, literal y sin opción de desactivarla. Es la misma frase que
 ;; `analyzer/marca_borrador.py` estampa en el resto de entregables: si cambia
 ;; allí, tiene que cambiar aquí.
 (setq *am:leyenda-borrador*
   "BORRADOR PARA REVISIÓN DE UN COLEGIADO. ArchMuse asesora; el proyecto lo firma el arquitecto que lo redacta.")
+
+;;; ---------------------------------------------------------------------------
+;;; EL REGISTRO LOCAL — T6 DEL PRD DE LA BETA
+;;; ---------------------------------------------------------------------------
+;;; `docs/prd/2026-09-11-beta-instalable-en-el-ordenador-del-arquitecto.md`, §4.4.
+;;;
+;;; **Por qué el registro lo escribe el cliente y no el servidor.** Parece más
+;;; cómodo que lo escriba Python —es donde hay tests y donde ya está la
+;;; versión—, y es justo lo que no puede ser: **un registro que depende del
+;;; servidor está mudo exactamente cuando el servidor es el problema**, que es
+;;; el fallo nº 1 que va a tener esta beta. El `.lsp` es la única pieza que está
+;;; siempre, así que es la que escribe.
+;;;
+;;; **Dónde vive: `%LOCALAPPDATA%\ArchMuse\registro`.** NO en `Documentos` ni en
+;;; el `Escritorio`, porque los dos suelen estar sincronizados con OneDrive, y
+;;; un registro que se sube a la nube contradice la única frase que le hemos
+;;; prometido al arquitecto. Él no navega hasta ahí nunca: el informe se le deja
+;;; en el escritorio y se le abre la carpeta.
+;;;
+;;; **QUÉ SE ESCRIBE:** fecha y hora · versión del `.lsp` · versión del servidor
+;;; · versión de AutoCAD · **el nombre del dibujo, sin su ruta** · la capa
+;;; elegida y quién la eligió · y el suceso, que siempre es un recuento o un
+;;; mensaje de error.
+;;;
+;;; **QUÉ NO SE ESCRIBE NUNCA, y es la mitad importante de este bloque:** ni un
+;;; vértice, ni un rótulo, ni el contenido de una celda del cuadro, ni la ruta
+;;; del fichero. Los nombres de las estancias y los textos del cuadro **son el
+;;; proyecto de su cliente**, y la ruta suele llevar el nombre del cliente
+;;; dentro. Por eso `am:log` recibe UNA cadena ya construida por quien llama, y
+;;; ninguna de las funciones que arman el payload (`am:recolectar`,
+;;; `am:json-vertices`, `am:celdas-json`) la llama jamás. Hay un test que lo
+;;; comprueba leyendo este fichero.
+;;;
+;;; **Nada de esto puede tumbar el comando.** Si no hay `%LOCALAPPDATA%`, si el
+;;; disco está lleno o si el fichero está abierto por otro, `am:log` se calla y
+;;; sigue. Perder una línea de registro es barato; perder la medición por no
+;;; haber podido escribirla, no.
+
+(setq *am:carpeta-de-archmuse* nil)
+
+(defun am:carpeta ( / base)
+  ;; `%LOCALAPPDATA%\ArchMuse`, creada si hace falta. nil si no se puede, y
+  ;; entonces todo lo de abajo se degrada a no registrar nada.
+  (if *am:carpeta-de-archmuse*
+    *am:carpeta-de-archmuse*
+    (progn
+      (setq base (getenv "LOCALAPPDATA"))
+      (if (null base)
+        nil
+        (progn
+          (setq base (strcat base "\\ArchMuse"))
+          (if (not (vl-file-directory-p base)) (vl-mkdir base))
+          (if (vl-file-directory-p base)
+            (setq *am:carpeta-de-archmuse* base)
+            nil))))))
+
+
+(defun am:carpeta-de-registro ( / base carpeta)
+  (setq base (am:carpeta))
+  (if (null base)
+    nil
+    (progn
+      (setq carpeta (strcat base "\\registro"))
+      (if (not (vl-file-directory-p carpeta)) (vl-mkdir carpeta))
+      (if (vl-file-directory-p carpeta) carpeta nil))))
+
+
+(defun am:ahora ()
+  ;; `$(edtime)` de DIESEL, que es la única forma de formatear una fecha en
+  ;; AutoLISP sin hacer aritmética sobre el real de `CDATE` — y la aritmética
+  ;; sobre `CDATE` pierde los segundos por redondeo del coma flotante.
+  (menucmd "M=$(edtime,$(getvar,date),YYYY-MO-DD HH:MM:SS)"))
+
+
+(defun am:mes-actual ()
+  (menucmd "M=$(edtime,$(getvar,date),YYYY-MO)"))
+
+
+(defun am:fichero-de-registro ( / carpeta)
+  (setq carpeta (am:carpeta-de-registro))
+  (if carpeta
+    (strcat carpeta "\\archmuse-" (am:mes-actual) ".log")
+    nil))
+
+
+(defun am:contexto ( / capa)
+  ;; La cabecera de cada línea. Todo lo de aquí es una versión o un recuento,
+  ;; menos el nombre del dibujo — que es `DWGNAME`, el nombre **sin la ruta**.
+  ;; `DWGPREFIX` (la carpeta) no aparece en este fichero ni una vez, y no es un
+  ;; olvido: ahí es donde vive el nombre del cliente.
+  (setq capa (if *am:capa-elegida* *am:capa-elegida* "-"))
+  (strcat "lsp " *am:version-corta*
+          " | srv " *am:version-del-servidor*
+          " | acad " (getvar "ACADVER")
+          " | " (getvar "DWGNAME")
+          " | capa " capa
+          (if *am:capa-elegida*
+            (if *am:capa-la-dijo-el-usuario* " (dicha)" " (propuesta)")
+            "")))
+
+
+(defun am:log (suceso / ruta f)
+  ;; Una línea, y ni un error hacia fuera pase lo que pase.
+  (setq ruta (am:fichero-de-registro))
+  (if ruta
+    (progn
+      (setq f (vl-catch-all-apply 'open (list ruta "a")))
+      (if (and f (not (vl-catch-all-error-p f)))
+        (progn
+          (vl-catch-all-apply
+            'write-line (list (strcat (am:ahora) " | " (am:contexto) " | " suceso) f))
+          (vl-catch-all-apply 'close (list f))))))
+  (princ))
+
 
 ;;; ---------------------------------------------------------------------------
 ;;; Utilidades de cadena
@@ -120,38 +295,8 @@
             (setq fin (1+ fin)))
           (substr cadena (1+ ini) (- fin ini)))))))
 
-(defun am:cadenas-de-lista (cadena clave desde / marca p i ch res par seguir)
-  ;; Las cadenas de una lista `("clave" . ("a" "b"))`, en orden.
-  ;; Recorre carácter a carácter llevando la cuenta de si está dentro de una
-  ;; cadena, que es lo que hace que un «pieza(s)» dentro de un motivo no cierre
-  ;; la lista antes de tiempo.
-  (setq marca (strcat "(\"" clave "\" . ("))
-  (setq p (am:pos marca cadena desde))
-  (if (null p)
-    nil
-    (progn
-      (setq i (+ p (strlen marca)) res nil seguir T)
-      (while (and seguir (< i (strlen cadena)))
-        (setq ch (am:car-en cadena i))
-        (cond
-          ((= ch "\"")
-            (setq par (am:lee-cadena cadena i))
-            (if par
-              (setq res (cons (car par) res) i (cdr par))
-              (setq seguir nil)))
-          ((= ch ")") (setq seguir nil))
-          (T          (setq i (1+ i)))))
-      (reverse res))))
 
-(defun am:num->texto (x)
-  ;; Formato español de una superficie: dos decimales y coma decimal, igual que
-  ;; el PDF y el acta. `rtos` en modo 2 escribe siempre con punto.
-  (vl-string-subst "," "." (rtos x 2 2)))
 
-(defun am:texto->real (s)
-  ;; «58.78» -> 58.78. `distof` en modo 2 (decimal) devuelve nil si no es un
-  ;; número, que es lo que hace falta para distinguir una cifra de un «nil».
-  (if s (distof s 2) nil))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Serialización a JSON — sólo lo que hay que mandar
@@ -233,74 +378,294 @@
     (list (cadr (assoc 11 datos)) (caddr (assoc 11 datos)))
     (list (cadr (assoc 10 datos)) (caddr (assoc 10 datos)))))
 
-(defun am:capas-con-recintos ( / ss i ename capa capas par)
-  ;; Capas que tienen alguna polilínea cerrada, con su recuento. Es una ayuda
-  ;; para preguntar, no una detección: la capa la confirma el usuario y el
-  ;; servidor la valida.
-  (setq ss (ssget "_X" '((0 . "LWPOLYLINE") (-4 . "&") (70 . 1))))
+(defun am:capas-con-recintos ( / ss i ename datos capa capas par flags con-flag)
+  ;; Capas con polilíneas, y cuántas de cada una llevan el flag de cerrada.
+  ;;
+  ;; **Cuenta TODAS, no sólo las que llevan el flag**, y por un motivo que costó
+  ;; una sesión de depuración: hasta el 2026-09-10 este recuento filtraba por el
+  ;; bit del código 70 y era el que se imprimía al elegir capa. Sobre
+  ;; `v1plantas.dxf` decía «8 polilíneas cerradas» cuando la capa tiene **10**,
+  ;; y las 2 que no salían eran justo las del flag mal puesto — una de ellas el
+  ;; salón. El mensaje no era el fallo, pero mandó la búsqueda al sitio
+  ;; equivocado, que es lo que hace un mensaje que cuenta una cosa distinta de
+  ;; la que se manda.
+  ;;
+  ;; Ahora los dos números viajan juntos: lo que hay y lo que `ssget` sabría
+  ;; reconocer como cerrado. La diferencia entre los dos es exactamente lo que
+  ;; el servidor tiene que recuperar.
+  (setq ss (ssget "_X" '((0 . "LWPOLYLINE"))))
   (setq capas nil i 0)
   (if ss
     (while (< i (sslength ss))
       (setq ename (ssname ss i)
-            capa  (cdr (assoc 8 (entget ename)))
+            datos (entget ename)
+            capa  (cdr (assoc 8 datos))
+            flags (if (assoc 70 datos) (cdr (assoc 70 datos)) 0)
+            con-flag (if (= 1 (logand flags 1)) 1 0)
             par   (assoc capa capas))
       (if par
-        (setq capas (subst (cons capa (1+ (cdr par))) par capas))
-        (setq capas (cons (cons capa 1) capas)))
+        (setq capas (subst (list capa (1+ (cadr par)) (+ con-flag (caddr par)))
+                           par capas))
+        (setq capas (cons (list capa 1 con-flag) capas)))
       (setq i (1+ i))))
   (reverse capas))
 
-(defun am:elegir-capa ( / capas respuesta)
-  (setq capas (am:capas-con-recintos))
+(defun am:describe-capa (par)
+  ;; «10 polilíneas, 8 con el flag de cerrada». Los dos números, siempre: el
+  ;; segundo es lo que `ssget` reconocería por su cuenta y el primero lo que se
+  ;; manda de verdad.
+  (strcat (itoa (cadr par)) " polilínea(s), " (itoa (caddr par))
+          " con el flag de cerrada"))
+
+
+(defun am:mete-ordenado (par lista)
+  ;; Inserción ordenada por número de polilíneas, de más a menos. Se escribe a
+  ;; mano en vez de usar `vl-sort` porque `vl-sort` **elimina los elementos que
+  ;; su función de comparación considera iguales**, y dos capas con el mismo
+  ;; recuento son exactamente el caso en el que hay que enseñárselas las dos.
   (cond
-    ((null capas)
-      (princ "\nArchMuse: no hay ninguna polilínea cerrada en este dibujo.")
-      nil)
-    ;; Si la capa por defecto del repositorio está y tiene recintos, se propone.
-    ((assoc *am:capa-por-defecto* capas)
-      (princ (strcat "\nArchMuse: capa de recintos detectada «" *am:capa-por-defecto*
-                     "» (" (itoa (cdr (assoc *am:capa-por-defecto* capas)))
-                     " polilíneas cerradas)."))
-      (setq respuesta (getstring T "\nPulsa INTRO para aceptarla, o escribe otra capa: "))
-      (if (= respuesta "") *am:capa-por-defecto* respuesta))
-    (T
-      (princ "\nArchMuse no reconoce la capa de recintos de este plano. Candidatas:")
-      (foreach par capas
-        (princ (strcat "\n   " (car par) "  (" (itoa (cdr par)) " polilíneas cerradas)")))
-      (setq respuesta (getstring T "\nEscribe la capa de recintos: "))
-      (if (= respuesta "") nil respuesta))))
+    ((null lista) (list par))
+    ((> (cadr par) (cadr (car lista))) (cons par lista))
+    (T (cons (car lista) (am:mete-ordenado par (cdr lista))))))
 
-(defun am:abiertas-en (capa / todas cerradas)
-  ;; Cuántas polilíneas de la capa NO llevan el bit de cerrada. Ver la decisión
-  ;; de diseño 3 de la cabecera: el navegador recupera buena parte de éstas y
-  ;; este comando no puede, así que se cuentan para poder decirlo.
+
+(defun am:ordena-capas (capas / res)
+  (setq res nil)
+  (foreach par capas (setq res (am:mete-ordenado par res)))
+  res)
+
+
+(defun am:capa-por-nombre (texto capas / objetivo encontrada)
+  ;; La capa que se llama así, sin distinguir mayúsculas: «00 Areas» y
+  ;; «00 areas» son la misma capa para un arquitecto. Mismo criterio que
+  ;; `parser._buscar_capa` en el servidor — que las dos vías acepten lo mismo
+  ;; escrito igual es parte de `C-9`.
   ;;
-  ;; Por diferencia y no con un filtro `<NOT` sobre el operador bit a bit:
-  ;; anidar `<NOT` alrededor de `(-4 . "&")` es construcción dudosa, y aquí no
-  ;; hay forma de probarla. Dos `ssget` simples hacen lo mismo sin apostar.
-  (setq todas    (ssget "_X" (list '(0 . "LWPOLYLINE") (cons 8 capa)))
-        cerradas (ssget "_X" (list '(0 . "LWPOLYLINE") (cons 8 capa)
-                                   '(-4 . "&") '(70 . 1))))
-  (- (if todas (sslength todas) 0)
-     (if cerradas (sslength cerradas) 0)))
+  ;; Devuelve el nombre TAL COMO ESTÁ EN EL DIBUJO, no lo que él tecleó: es lo
+  ;; que va al `ssget` y lo que se escribe en los mensajes.
+  (setq objetivo (strcase texto) encontrada nil)
+  (foreach par capas
+    (if (and (null encontrada) (= (strcase (car par)) objetivo))
+      (setq encontrada (car par))))
+  encontrada)
 
-(defun am:recolectar (capa / ss i ename recintos textos datos tipo txt pt primero json)
+
+(defun am:capa-por-numero (texto capas / n)
+  ;; «3» -> la tercera de la lista que se acaba de imprimir.
+  ;;
+  ;; `atoi` devuelve 0 para lo que no es un número, y 0 nunca es un índice
+  ;; válido porque la lista se numera desde 1: el mismo cero sirve de rechazo,
+  ;; sin necesidad de comprobar aparte si el texto era un número.
+  (setq n (atoi texto))
+  (if (and (> n 0) (<= n (length capas)))
+    (car (nth (1- n) capas))
+    nil))
+
+
+;;; ---------------------------------------------------------------------------
+;;; QUÉ CAPA SE MIDE, Y QUIÉN LO DECIDE
+;;; ---------------------------------------------------------------------------
+;;; Hasta el 2026-09-11 esto pedía **el nombre de la capa escrito a mano** y no
+;;; comprobaba nada: lo que él tecleara se mandaba tal cual al `ssget`, y una
+;;; errata o una tilde de más no se veía aquí — se veía tres pasos después,
+;;; como «no hay ninguna polilínea en la capa «00 áreas»», que parece un
+;;; problema del plano y es un problema de la respuesta.
+;;;
+;;; Ahora se enseña la lista numerada SIEMPRE y se admiten las dos formas, el
+;;; número y el nombre, **y nada más**: lo que no esté en la lista se rechaza en
+;;; el sitio donde se escribió. Es la diferencia entre preguntar y obedecer.
+;;;
+;;; **El número gana sobre el nombre sólo si el nombre no casa.** Si hay una
+;;; capa que de verdad se llama «3», teclear 3 elige esa capa, no la tercera de
+;;; la lista: el nombre es lo que él ve en su AutoCAD.
+;;;
+;;; **Lo que este chooser NO es: el heurístico del servidor.** `ssget "_X"` sólo
+;;; ve el primer nivel del modelspace, así que aquí se ordena por número de
+;;; polilíneas y nada más. El servidor puntúa además por tamaño de estancia y
+;;; por rótulos dentro (`parser.capas_candidatas`) y **entra en los bloques**.
+;;; Sobre `plantasimple.dxf` la diferencia es visible: el servidor ve 9 capas
+;;; candidatas y el comando ve 2. Duplicar aquí esa puntuación sería una segunda
+;;; implementación de un criterio profesional, que es lo que prohíbe `D-7`.
+;;;
+;;; **Divergencia declarada (`C-9`), sin arreglar en esta tarea:** un plano que
+;;; dibuje sus recintos DENTRO de un bloque lo mide la vía web y no lo mide el
+;;; comando, porque `ssget "_X"` no baja a las referencias de bloque. En los
+;;; cinco planos disponibles no pasa —los recintos están siempre en el
+;;; modelspace—, pero es un hueco real entre las dos vías, no una suposición.
+
+(defun am:elegir-capa ( / capas por-defecto intentos respuesta elegida i par)
+  (setq capas (am:ordena-capas (am:capas-con-recintos)))
+  (if (null capas)
+    (progn
+      (princ "\nArchMuse: este dibujo no tiene ni una polilínea, así que no hay")
+      (princ "\nrecintos que medir. ¿Es el plano que querías abrir?")
+      nil)
+    (progn
+      (setq por-defecto (am:capa-por-nombre *am:capa-por-defecto* capas))
+
+      (princ "\nCapas con polilíneas en este dibujo, de más a menos:")
+      (setq i 1)
+      (foreach par capas
+        (princ (strcat "\n  " (itoa i) ") " (car par)
+                       "   (" (am:describe-capa par) ")"
+                       (if (= (car par) por-defecto) "   <- la que ArchMuse propone" "")))
+        (setq i (1+ i)))
+
+      (if (null por-defecto)
+        (progn
+          (princ "\nNinguna se llama como la capa de áreas que ArchMuse conoce")
+          (princ (strcat " («" *am:capa-por-defecto* "»),"))
+          (princ "\nasí que no la doy por sabida: dime cuál es la de los recintos.")))
+
+      ;; Tres intentos y no más. Un bucle sin salida delante de alguien que no
+      ;; sabe qué contestar es peor que rendirse diciendo por qué.
+      (setq intentos 3 elegida nil)
+      (while (and (null elegida) (> intentos 0))
+        (setq respuesta
+          (getstring T
+            (if por-defecto
+              (strcat "\nNúmero o nombre de la capa de recintos <" por-defecto ">: ")
+              "\nNúmero o nombre de la capa de recintos (INTRO para dejarlo): ")))
+        (if (= respuesta "")
+          (setq elegida por-defecto intentos 0)
+          (progn
+            (setq elegida (am:capa-por-nombre respuesta capas))
+            (if (null elegida) (setq elegida (am:capa-por-numero respuesta capas)))
+            (if (null elegida)
+              (progn
+                (setq intentos (1- intentos))
+                (princ (strcat "\n«" respuesta "» no es ninguna de las de arriba."))
+                (if (> intentos 0)
+                  (princ "\n  Escribe su número, o el nombre tal y como aparece en la lista.")
+                  (princ "\n  Lo dejo aquí, sin tocar tu plano.")))))))
+
+      ;; **Quién eligió la capa viaja con la elección.** Una capa que él ha
+      ;; nombrado es un dato declarado; una que sale de que se llamaba como
+      ;; esperábamos es una suposición nuestra, y las dos no valen lo mismo
+      ;; cuando luego hay que explicar de dónde salió una cifra. El servidor
+      ;; hace la misma distinción (`PlanoLeido.capa_elegida_por_heuristico`).
+      (if elegida
+        (progn
+          (setq *am:capa-la-dijo-el-usuario* (/= respuesta ""))
+          (setq *am:capa-elegida* elegida)
+          (princ (strcat "\nMido «" elegida "»"
+                         (if *am:capa-la-dijo-el-usuario*
+                           ", que me has dicho tú."
+                           ", que es la que ArchMuse proponía.")))))
+      elegida)))
+
+
+(defun am:con-alineado (cuerpo / p)
+  ;; El mismo cuerpo, con `"alinear_rotulos": true` metido delante. Se inserta
+  ;; tras la primera llave en vez de rehacer el JSON: volver a recorrer el
+  ;; dibujo costaria otro `ssget` de todo y, sobre todo, mandaria una geometria
+  ;; distinta de la que el servidor acaba de medir. La segunda medicion tiene
+  ;; que ser la MISMA planta con una instruccion mas, no otra lectura.
+  (strcat "{\"alinear_rotulos\":true," (substr cuerpo 2)))
+
+
+(defun am:cuadros-json (cuadros / res primero celdas n)
+  ;; Los N cuadros del plano: `[{"celdas":[...]}, ...]`, y cuantas celdas van.
+  ;;
+  ;; Se mandan TODOS. Hasta el 2026-09-12 se mandaba uno y los demas no existian
+  ;; para el servidor; con 25 cuadros en el plano eso es no entregar 24.
+  (setq res "[" primero T n 0)
+  (foreach tabla cuadros
+    (setq celdas (am:celdas-json tabla))
+    (setq n (+ n (am:cuenta-celdas celdas)))
+    (if (not primero) (setq res (strcat res ",")))
+    (setq res (strcat res "{\"celdas\":" celdas "}"))
+    (setq primero nil))
+  (setq *am:celdas-enviadas* n)
+  (strcat res "]"))
+
+(defun am:otras-polilineas (capa / ss i ename datos flags cerrada json primero n)
+  ;; `C-12` (firmado el 2026-09-13): la superficie construida cerrada es la
+  ;; polilínea que el arquitecto ROTULA, y puede estar en otra capa que la de
+  ;; recintos. Se mandan todas las LWPOLYLINE del espacio modelo que no son de
+  ;; esa capa, en crudo: capa, flag y vértices. **Sin color**: la construida no
+  ;; se reconoce por color, ni como respaldo. Cuál es la rotulada lo decide el
+  ;; servidor (`plantilla_cuadro.medir_construida`), no este script.
+  ;; Devuelve (json . cuántas).
+  (setq ss (ssget "_X" '((0 . "LWPOLYLINE") (410 . "Model")))
+        json "" primero T i 0 n 0)
+  (if ss
+    (while (< i (sslength ss))
+      (setq ename (ssname ss i)
+            datos (entget ename))
+      (if (/= (strcase (cdr (assoc 8 datos))) (strcase capa))
+        (progn
+          (setq flags (if (assoc 70 datos) (cdr (assoc 70 datos)) 0)
+                cerrada (if (= 1 (logand flags 1)) "true" "false"))
+          (if (not primero) (setq json (strcat json ",")))
+          (setq json (strcat json
+                             "{\"handle\":" (am:json-cad (cdr (assoc 5 datos)))
+                             ",\"capa\":" (am:json-cad (cdr (assoc 8 datos)))
+                             ",\"cerrada\":" cerrada
+                             ",\"vertices\":" (am:json-vertices (am:vertices-de ename)) "}")
+                primero nil
+                n (1+ n))))
+      (setq i (1+ i))))
+  (cons json n))
+
+(defun am:recolectar (capa cuadros / ss i ename recintos textos datos tipo txt pt
+                                    primero json color cerrada flags enviadas
+                                    sin-flag celdas-cuadro n-celdas otras)
   ;; Devuelve el cuerpo JSON completo, o nil si no hay nada que medir.
-  (setq ss (ssget "_X" (list '(0 . "LWPOLYLINE") (cons 8 capa) '(-4 . "&") '(70 . 1))))
+  ;;
+  ;; **Se mandan TODAS las polilíneas de la capa, cerradas o no, y decide el
+  ;; servidor.** Antes se filtraba aquí con `(-4 . "&") (70 . 1)`, que es lo
+  ;; único que `ssget` sabe hacer: mirar el bit de «cerrada» del código 70. Ese
+  ;; bit está mal puesto en los planos reales —2 de 10 en `v1plantas.dxf`, y una
+  ;; de ellas es el salón—, así que filtrar aquí borraba superficie antes de que
+  ;; nadie pudiera recuperarla: 21,90 m² de salón que llegaban al cuadro del
+  ;; arquitecto convertidos en un `0,00 m²`, con la medición aparentemente
+  ;; limpia. Ahora el flag viaja en `cerrada` y quien decide es
+  ;; `parser._esta_cerrada`, que además sabe recuperar la que cierra
+  ;; geométricamente.
+  ;;
+  ;; **El color también viaja, y tampoco es cosmético.** El servidor distingue
+  ;; una habitación de un contorno agrupador por si lleva color propio o el de
+  ;; su capa. Sin él, el contorno de la zona exterior entra como una habitación
+  ;; más y su superficie se cuenta dos veces.
+  (setq ss (ssget "_X" (list '(0 . "LWPOLYLINE") (cons 8 capa))))
   (if (null ss)
-    (progn (princ (strcat "\nArchMuse: no hay polilíneas cerradas en la capa «" capa "»."))
+    (progn (princ (strcat "\nArchMuse: no hay ninguna polilínea en la capa «" capa "»."))
            nil)
     (progn
-      (setq recintos "" primero T i 0)
+      (setq recintos "" primero T i 0 enviadas 0 sin-flag 0)
       (while (< i (sslength ss))
-        (setq ename (ssname ss i))
+        (setq ename (ssname ss i)
+              datos (entget ename)
+              ;; Sin código 62 la entidad va con el color de su capa (BYLAYER),
+              ;; que es 256 y es justo lo que significa «esto es una habitación
+              ;; normal, no un contorno dibujado aparte».
+              color (if (assoc 62 datos) (cdr (assoc 62 datos)) 256)
+              flags (if (assoc 70 datos) (cdr (assoc 70 datos)) 0)
+              cerrada (if (= 1 (logand flags 1)) "true" "false"))
         (if (not primero) (setq recintos (strcat recintos ",")))
         (setq recintos
           (strcat recintos
-                  "{\"handle\":" (am:json-cad (cdr (assoc 5 (entget ename))))
+                  "{\"handle\":" (am:json-cad (cdr (assoc 5 datos)))
                   ",\"capa\":"   (am:json-cad capa)
+                  ",\"color\":"  (itoa color)
+                  ",\"cerrada\":" cerrada
                   ",\"vertices\":" (am:json-vertices (am:vertices-de ename)) "}"))
+        (setq enviadas (1+ enviadas))
+        (if (= cerrada "false") (setq sin-flag (1+ sin-flag)))
         (setq primero nil i (1+ i)))
+
+      ;; **Lo que se manda, dicho en voz alta.** Sin esto no se puede saber si
+      ;; una superficie que falta se perdió aquí o allí, y esa distinción costó
+      ;; una sesión entera el 2026-09-10.
+      (princ (strcat "\nEnvío " (itoa enviadas) " polilínea(s) de «" capa "»"))
+      (if (> sin-flag 0)
+        (princ (strcat ", " (itoa sin-flag) " de ellas con el flag de cerrada "
+                       "SIN poner (las recupera el servidor si cierran)")))
+      (princ ".")
+      (setq otras (am:otras-polilineas capa))
+      (princ (strcat "\nEnvío " (itoa (cdr otras)) " polilínea(s) de otras capas: "
+                     "la construida es la que tú rotulas, y puede estar en otra (C-12)."))
 
       ;; TODOS los textos del dibujo, sin filtrar por capa y sin emparejar. El
       ;; servidor decide de qué capas puede salir un rótulo (`_capas_de_rotulo`)
@@ -320,6 +685,15 @@
           ;; No se limpian aquí: el servidor lo escribe en un MTEXT y ezdxf los
           ;; quita al leerlo con `plain_text()`. Una limpieza en LISP sería otra
           ;; implementación de lo mismo, y peor.
+          ;;
+          ;; **El tipo viaja, y no es un dato de adorno.** El servidor
+          ;; materializa un DXF con lo que llega, y su lector da prioridad al
+          ;; MTEXT sobre el TEXT para desempatar dos rotulos que caigan dentro
+          ;; del mismo recinto. Si aqui no se dice de que tipo es cada texto,
+          ;; el servidor los escribe todos iguales y ese desempate se queda sin
+          ;; dato: medido sobre `plantasimple.dxf`, 16 viviendas con superficie
+          ;; por la via web contra 3 por esta. El criterio no se decide aqui --
+          ;; solo se declara lo que el arquitecto tiene dibujado.
           (if (and txt (/= txt "") (car pt))
             (progn
               (if (not primero) (setq textos (strcat textos ",")))
@@ -328,99 +702,237 @@
                         "{\"handle\":" (am:json-cad (cdr (assoc 5 datos)))
                         ",\"capa\":"   (am:json-cad (cdr (assoc 8 datos)))
                         ",\"texto\":"  (am:json-cad txt)
+                        ",\"tipo\":"   (am:json-cad tipo)
                         ",\"x\":"      (am:json-num (car pt))
-                        ",\"y\":"      (am:json-num (cadr pt)) "}"))
+                        ",\"y\":"      (am:json-num (cadr pt))
+                        ;; La altura, en crudo (código 40 de TEXT y de MTEXT).
+                        ;; De ella saca el servidor la altura mínima legible de
+                        ;; la tabla cuando el plano no tiene cuadro (`D-14`).
+                        ",\"altura\":" (if (numberp (cdr (assoc 40 datos)))
+                                         (am:json-num (cdr (assoc 40 datos)))
+                                         "null")
+                        ;; El estilo, en crudo (código 7; sin él es «Standard»).
+                        ;; De los rótulos saca el servidor el estilo con el que
+                        ;; se dibuja la tabla si el plano no tiene cuadro (3.5.0).
+                        ",\"estilo\":" (am:json-cad (if (cdr (assoc 7 datos))
+                                                      (cdr (assoc 7 datos))
+                                                      "Standard"))
+                        "}"))
               (setq primero nil)))
           (setq i (1+ i))))
+
+      ;; Las celdas de TODOS sus cuadros. Si no hay ninguno, no es un fallo:
+      ;; ArchMuse dibuja el suyo igual, con su propio formato, y lo dice.
+      (setq celdas-cuadro (am:cuadros-json cuadros)
+            n-celdas *am:celdas-enviadas*)
+      (if cuadros
+        (progn
+          (princ (strcat "\nLeo " (itoa n-celdas) " celda(s) de "
+                         (itoa (length cuadros)) " cuadro(s) tuyo(s)."))
+          (if (= n-celdas 0)
+            (progn
+              (princ "\n  AVISO: no se ha podido leer ni una celda.")
+              (princ "\n  Dibujare mi cuadro con MI formato, no con el tuyo."))))
+        (princ "\nNo tienes ningun cuadro en el plano: dibujare el mio."))
 
       (setq json
         (strcat "{\"insunits\":" (itoa (getvar "INSUNITS"))
                 ",\"capa_de_recintos\":" (am:json-cad capa)
                 ",\"recintos\":[" recintos "]"
-                ",\"textos\":[" textos "]}"))
+                ",\"otras_polilineas\":[" (car otras) "]"
+                ",\"textos\":[" textos "]"
+                ",\"cuadros\":" celdas-cuadro "}"))
       json)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; La petición
 ;;; ---------------------------------------------------------------------------
 
-(defun am:post (cuerpo / http estado respuesta)
-  ;; COM es la única vía: AutoLISP no tiene HTTP. En AutoCAD LT
-  ;; `vlax-create-object` devuelve nil siempre y aquí se sale con un mensaje
-  ;; que lo dice, en vez de con un error de LISP que no explica nada.
+;;; ---------------------------------------------------------------------------
+;;; Dónde está el servidor, y levantarlo si no está (T4 y T5 del PRD de la beta)
+;;; ---------------------------------------------------------------------------
+;;;
+;;; **NADA DE ESTE BLOQUE SE HA EJECUTADO EN AUTOCAD TODAVÍA** (2026-09-13). Lo
+;;; que tiene más riesgo de comportarse distinto de lo escrito: `_.DELAY` dentro
+;;; de un comando con `CMDECHO` a 0, y `WScript.Shell` `Run` lanzando un
+;;; `pythonw.exe` con espacios en la ruta.
+
+(defun am:lee-fichero (ruta / f linea texto)
+  ;; El fichero entero en una cadena, o nil. Nunca un error hacia fuera.
+  (setq f (vl-catch-all-apply 'open (list ruta "r")))
+  (if (or (null f) (vl-catch-all-error-p f))
+    nil
+    (progn
+      (setq texto "")
+      (while (setq linea (read-line f))
+        (setq texto (strcat texto linea)))
+      (close f)
+      texto)))
+
+
+(defun am:puerto ( / base texto p ini fin n)
+  ;; El puerto de `servidor.json`, o 5000. **Se relee en cada llamada**: si el
+  ;; servidor se ha levantado mientras tanto, puede haber cogido otro. El
+  ;; fichero lo escribe `json.dump` de Python, con un espacio tras los dos
+  ;; puntos: se saltan los espacios que haya, sean cuantos sean.
+  (setq base (getenv "LOCALAPPDATA"))
+  (if base
+    (setq texto (am:lee-fichero (strcat base "\\ArchMuse\\servidor.json"))))
+  (if texto
+    (progn
+      (setq p (vl-string-search "\"puerto\":" texto))
+      (if p
+        (progn
+          (setq ini (+ p 9))
+          (while (= (am:car-en texto ini) " ")
+            (setq ini (1+ ini)))
+          (setq fin ini)
+          (while (and (< fin (strlen texto)) (wcmatch (am:car-en texto fin) "#"))
+            (setq fin (1+ fin)))
+          (if (> fin ini)
+            (setq n (atoi (substr texto (1+ ini) (- fin ini)))))))))
+  (if (and n (> n 0) (< n 65536)) n *am:puerto-por-defecto*))
+
+
+(defun am:url-base ()
+  ;; 127.0.0.1 y no `localhost`: el servidor escucha sólo en la loopback de
+  ;; IPv4, y `localhost` puede resolverse primero a ::1.
+  (strcat "http://127.0.0.1:" (itoa (am:puerto))))
+
+
+(defun am:url ()
+  (strcat (am:url-base) "/api/medicion-geometria?formato=lisp"))
+
+
+(defun am:peticion (metodo url cuerpo recibir-ms / http estado respuesta)
+  ;; Una petición HTTP. Devuelve:
+  ;;   (estado . texto)   si el servidor ha contestado, bien o mal;
+  ;;   0                  si no se puede crear el objeto HTTP (AutoCAD LT);
+  ;;   una cadena         con el error, si no ha contestado nadie.
+  ;; COM es la única vía: AutoLISP no tiene HTTP.
   (setq http (vl-catch-all-apply 'vlax-create-object (list "WinHttp.WinHttpRequest.5.1")))
   (if (or (vl-catch-all-error-p http) (null http))
-    (progn
-      (princ "\nArchMuse: no se ha podido crear el objeto HTTP.")
-      (princ "\n  Si esto es AutoCAD LT, no hay solución: LT no permite crear objetos COM.")
-      (princ "\n  Si es AutoCAD completo, revisa el antivirus o el cortafuegos.")
-      nil)
+    0
     (progn
       (setq respuesta
         (vl-catch-all-apply
           '(lambda ()
-            (vlax-invoke-method http 'Open "POST" *am:url* :vlax-false)
-            (vlax-invoke-method http 'SetRequestHeader "Content-Type"
-                                "application/json; charset=utf-8")
-            ;; Resolver, conectar, enviar, recibir. El de recibir es de cinco
-            ;; minutos a propósito: medir seis viviendas tarda unos doce
-            ;; segundos, y el valor por defecto de WinHttp (30 s) dejaría un
-            ;; plano grande a medias con un error que parecería de red.
-            (vlax-invoke-method http 'SetTimeouts 10000 10000 30000 300000)
-            (vlax-invoke-method http 'Send cuerpo)
+            (vlax-invoke-method http 'Open metodo url :vlax-false)
+            (if cuerpo
+              (vlax-invoke-method http 'SetRequestHeader "Content-Type"
+                                  "application/json; charset=utf-8"))
+            ;; Resolver, conectar, enviar, recibir. El de recibir de una
+            ;; medición es de cinco minutos a propósito: seis viviendas tardan
+            ;; unos doce segundos, y el valor por defecto de WinHttp (30 s)
+            ;; dejaría un plano grande a medias con un error que parecería de red.
+            (vlax-invoke-method http 'SetTimeouts 10000 10000 30000 recibir-ms)
+            (vlax-invoke-method http 'Send (if cuerpo cuerpo ""))
             (setq estado (vlax-get-property http 'Status))
             (vlax-get-property http 'ResponseText))))
       (vl-catch-all-apply 'vlax-release-object (list http))
-      (cond
-        ((vl-catch-all-error-p respuesta)
-          (princ "\nArchMuse no responde en localhost:5000. ¿Está levantado el servidor?")
-          (princ (strcat "\n  Detalle: " (vl-catch-all-error-message respuesta)))
-          nil)
-        ((/= estado 200)
-          (princ (strcat "\nArchMuse ha devuelto un error " (itoa estado) ":"))
-          (princ (strcat "\n  " respuesta))
-          nil)
-        (T respuesta)))))
+      (if (vl-catch-all-error-p respuesta)
+        (vl-catch-all-error-message respuesta)
+        (cons estado respuesta)))))
 
-;;; ---------------------------------------------------------------------------
-;;; Lectura de la respuesta — cuatro campos, no un parser
-;;; ---------------------------------------------------------------------------
 
-(defun am:viviendas (s / p viviendas nombre interior exterior motivos)
-  ;; Recorre las marcas `("vivienda" . "…")` en orden. Para cada una, el primer
-  ;; `("util_interior_m2" . …)` que aparece DESPUÉS es el suyo: son campos del
-  ;; mismo diccionario, así que están dentro de su bloque, y los del plano
-  ;; entero vienen más tarde. No depende del orden de las claves.
-  (setq viviendas nil p 0)
-  (while (setq p (am:pos "(\"vivienda\" . " s p))
-    (setq nombre   (am:valor-tras s "vivienda" p)
-          interior (am:valor-tras s "util_interior_m2" p)
-          exterior (am:valor-tras s "util_exterior_m2" p)
-          motivos  (am:cadenas-de-lista s "impedimentos" p))
-    (setq viviendas (cons (list nombre interior exterior motivos) viviendas))
-    (setq p (1+ p)))
-  (reverse viviendas))
+(defun am:salud-responde ( / r)
+  ;; `GET /api/salud`: no mide nada y contesta en cuanto Flask acepta conexiones.
+  (setq r (am:peticion "GET" (strcat (am:url-base) "/api/salud") nil 2000))
+  (and (listp r) (= (car r) 200) (am:pos "\"ok\"" (cdr r) 0)))
 
-;;; ---------------------------------------------------------------------------
-;;; La tabla
-;;; ---------------------------------------------------------------------------
 
-(defun am:filas-necesarias (viviendas / n)
-  ;; Título + cabecera + una fila por vivienda + una fila de motivo por cada
-  ;; vivienda bloqueada + fila de planta + fila de la marca de borrador.
-  (setq n 2)
-  (foreach v viviendas
-    (setq n (1+ n))
-    (if (null (am:texto->real (cadr v))) (setq n (1+ n))))
-  (+ n 2))
+(defun am:servidor-instalado ( / base pythonw lanzador)
+  ;; (pythonw . lanzador) si la beta está instalada en este ordenador, o nil.
+  ;; Las rutas son las que deja `empaquetado/ArchMuse-Beta.iss`; un test
+  ;; compara las dos.
+  (setq base (getenv "LOCALAPPDATA"))
+  (if base
+    (progn
+      (setq pythonw  (strcat base "\\ArchMuse\\runtime\\pythonw.exe")
+            lanzador (strcat base "\\ArchMuse\\app\\actual\\lanzador.pyw"))
+      ;; `vl-file-size` y no `findfile`: devuelve nil si el fichero no está, y
+      ;; ya está en la lista de primitivas verificadas del test.
+      (if (and (vl-file-size pythonw) (vl-file-size lanzador))
+        (cons pythonw lanzador)
+        nil))
+    nil))
+
+
+(defun am:lanzar-sin-ventana (orden / shell r)
+  ;; `WScript.Shell` y no `startapp`: con `Run` las comillas de la orden son
+  ;; exactamente las que se escriben aquí, y la ventana es 0 (ninguna).
+  (setq shell (vl-catch-all-apply 'vlax-create-object (list "WScript.Shell")))
+  (if (or (vl-catch-all-error-p shell) (null shell))
+    nil
+    (progn
+      (setq r (vl-catch-all-apply 'vlax-invoke-method (list shell 'Run orden 0 :vlax-false)))
+      (vl-catch-all-apply 'vlax-release-object (list shell))
+      (not (vl-catch-all-error-p r)))))
+
+
+(defun am:levantar-servidor ( / instalado i vivo)
+  ;; **Rama C de D-1.** El servidor no responde: el comando lo levanta y espera
+  ;; hasta 20 s preguntando a `/api/salud` cada segundo. Sólo si la beta está
+  ;; instalada; en la máquina de desarrollo no hay nada que lanzar y se dice.
+  ;; Devuelve T si al final contesta.
+  (setq instalado (am:servidor-instalado))
+  (if (null instalado)
+    nil
+    (progn
+      (princ "\nArchMuse no estaba en marcha. Lo pongo en marcha: unos segundos")
+      (am:log "el servidor no responde: el comando lo levanta")
+      (am:lanzar-sin-ventana (strcat "\"" (car instalado) "\" \"" (cdr instalado) "\""))
+      (setq i 0 vivo nil)
+      (while (and (not vivo) (< i 20))
+        (command "_.DELAY" 1000)
+        (princ ".")
+        (setq i (1+ i))
+        (setq vivo (am:salud-responde)))
+      (if vivo
+        (progn
+          (am:log (strcat "servidor levantado por el comando en " (itoa i) " s"))
+          T)
+        (progn
+          (am:log "el servidor no se ha levantado en 20 s")
+          nil)))))
+
+
+(defun am:post (cuerpo / r)
+  (setq r (am:peticion "POST" (am:url) cuerpo 300000))
+  ;; Nadie ha contestado: la rama C, una vez, y se vuelve a intentar.
+  (if (and (= (type r) 'STR) (am:levantar-servidor))
+    (setq r (am:peticion "POST" (am:url) cuerpo 300000)))
+  (cond
+    ((= r 0)
+      ;; En AutoCAD LT `vlax-create-object` devuelve nil siempre: se dice, en
+      ;; vez de salir con un error de LISP que no explica nada.
+      (princ "\nArchMuse: no se ha podido crear el objeto HTTP.")
+      (princ "\n  Si esto es AutoCAD LT, no hay solución: LT no permite crear objetos COM.")
+      (princ "\n  Si es AutoCAD completo, revisa el antivirus o el cortafuegos.")
+      nil)
+    ((= (type r) 'STR)
+      (princ (strcat "\nArchMuse no responde en " (am:url-base) "."))
+      (if (am:servidor-instalado)
+        (progn
+          (princ "\n  He intentado ponerlo en marcha y no ha contestado en 20 segundos.")
+          (princ "\n  Reinicia el ordenador. Si sigue igual, teclea ARCHMUSE-INFORME y mándamelo."))
+        (princ "\n  ¿Está levantado el servidor? En desarrollo: doble clic en «ArchMuse» del escritorio."))
+      (princ (strcat "\n  Detalle: " r))
+      nil)
+    ((/= (car r) 200)
+      (princ (strcat "\nArchMuse ha devuelto un error " (itoa (car r)) ":"))
+      (princ (strcat "\n  " (cdr r)))
+      nil)
+    (T (cdr r))))
+
 
 (defun am:escala-de-dibujo ( / u)
   ;; Cuantas unidades de dibujo mide un metro, segun `$INSUNITS`.
   ;;
-  ;; La tabla se crea con medidas en UNIDADES DE DIBUJO, no en metros. Una tabla
-  ;; de 1 unidad de alto es legible en un plano dibujado en metros y es un punto
-  ;; invisible en uno dibujado en milimetros, que es como viene la mitad de los
-  ;; planos. Esto no es criterio: es la misma tabla de unidades que usa
+  ;; La marca de borrador se escribe en UNIDADES DE DIBUJO, no en metros. Un
+  ;; texto de 0,25 unidades es legible en un plano dibujado en metros y es un
+  ;; punto invisible en uno dibujado en milimetros, que es como viene la mitad
+  ;; de los planos. Esto no es criterio: es la misma tabla de unidades que usa
   ;; `analyzer/escala.py`, aplicada aqui al tamaño del dibujo.
   (setq u (getvar "INSUNITS"))
   (cond ((= u 4) 1000.0)      ; milimetros
@@ -428,87 +940,1063 @@
         ((= u 14) 10.0)       ; decimetros
         (T 1.0)))             ; metros, o desconocido: no se escala
 
-(defun am:dibujar-tabla (pt s viviendas / doc ms tabla fila v interior exterior
-                                          plano-int plano-ext motivo p-planta k)
-  (setq doc (vla-get-ActiveDocument (vlax-get-acad-object))
-        ms  (vla-get-ModelSpace doc)
-        k   (am:escala-de-dibujo))
-  ;; (InsertionPoint NumRows NumColumns RowHeight ColWidth)
-  (setq tabla (vla-AddTable ms (vlax-3d-point pt)
-                            (am:filas-necesarias viviendas) 3 (* 1.0 k) (* 12.0 k)))
-  (vla-put-RegenerateTableSuppressed tabla :vlax-true)
+;;; ---------------------------------------------------------------------------
+;;; El cuadro del arquitecto
+;;; ---------------------------------------------------------------------------
+;;;
+;;; **Este comando ya no dibuja una tabla suya: rellena la del arquitecto.**
+;;; Lo dijo él el 2026-09-10 y es un cambio de a quién pertenece el entregable:
+;;; una tabla nueva al lado de la suya no le ahorra el trabajo, se lo cambia por
+;;; comparar dos tablas y copiar de una a otra.
+;;;
+;;; **Lo que este fichero decide sobre el cuadro: NADA.** Lee las celdas, las
+;;; manda, y escribe donde le dicen. Qué fila es «salón + cocina» y qué cifra le
+;;; toca lo resuelve `analyzer/reparto_cuadro.py` en el servidor, que es donde
+;;; vive el criterio profesional y donde está probado (`D-7`). Aquí sólo hay
+;;; transporte.
+;;;
+;;; **Por qué la escritura tiene que ser desde AutoCAD y no desde Python.**
+;;; Probado el 2026-09-10: `ezdxf` 1.4.4 carga un `ACAD_TABLE` como
+;;; `AcadTableBlockContent` y **no expone forma de escribir en sus celdas** — se
+;;; sustituyó el tag de una celda, se guardó y al reabrir estaba vacía otra vez.
+;;; `vla-SetText` sobre la tabla que ya existe es una llamada de una línea. Ésta
+;;; es la única pieza del flujo que AutoLISP hace mejor que el servidor.
 
-  (vla-SetColumnWidth tabla 0 (* 16.0 k))
-  (vla-SetColumnWidth tabla 1 (* 12.0 k))
-  (vla-SetColumnWidth tabla 2 (* 12.0 k))
+(setq *am:titulo-del-cuadro* "CUADRO DE SUPERFICIES POR TIPO DE VIVIENDA")
 
-  (vla-SetText tabla 0 0 "ArchMuse · superficies útiles")
-  (vla-SetText tabla 1 0 "Vivienda")
-  (vla-SetText tabla 1 1 "Útil interior (m²)")
-  ;; El encabezado dice que no se suman. Es la primera lectura que hace quien
-  ;; mira la tabla, y la que evita que alguien sume las dos columnas a mano.
-  (vla-SetText tabla 1 2 "Útil exterior (m²) — no se suma a la interior")
+(defun am:mayusculas-sin-tildes (s / i ch res)
+  ;; Comparación tosca a propósito: sólo se usa para reconocer el título del
+  ;; cuadro, y el criterio fino de qué es cada fila es del servidor. Convierte
+  ;; las vocales acentuadas y la eñe a su letra base para que «Útil» y «UTIL»
+  ;; se parezcan lo suficiente.
+  (setq res "" i 0)
+  (while (< i (strlen s))
+    (setq ch (strcase (am:car-en s i)))
+    (setq res
+      (strcat res
+        (cond ((member ch '("Á" "À" "Ä" "Â")) "A")
+              ((member ch '("É" "È" "Ë" "Ê")) "E")
+              ((member ch '("Í" "Ì" "Ï" "Î")) "I")
+              ((member ch '("Ó" "Ò" "Ö" "Ô")) "O")
+              ((member ch '("Ú" "Ù" "Ü" "Û")) "U")
+              ((= ch "Ñ") "N")
+              (T ch))))
+    (setq i (1+ i)))
+  res)
 
-  (setq fila 2)
-  (foreach v viviendas
-    (setq interior (am:texto->real (cadr v))
-          exterior (am:texto->real (caddr v)))
-    (vla-SetText tabla fila 0 (car v))
-    (if (and interior exterior)
-      (progn
-        (vla-SetText tabla fila 1 (am:num->texto interior))
-        (vla-SetText tabla fila 2 (am:num->texto exterior))
-        (setq fila (1+ fila)))
-      (progn
-        ;; NUNCA un valor inventado ni una celda vacía: una celda vacía se lee
-        ;; como «se olvidó», y el motivo va debajo, en su propia fila.
-        (vla-SetText tabla fila 1 "no se publica")
-        (vla-SetText tabla fila 2 "no se publica")
-        (setq fila (1+ fila))
-        ;; Acumulado con `foreach` y no con `(apply 'strcat …)`: `apply` tiene
-        ;; tope de argumentos, y una vivienda puede traer tres impedimentos.
-        (setq motivo "")
-        (foreach m (cadddr v) (setq motivo (strcat motivo m ". ")))
-        (if (= motivo "")
-          (setq motivo "Sin motivo declarado — avisa, esto es un fallo de ArchMuse."))
-        (vla-MergeCells tabla fila fila 0 2)
-        (vla-SetText tabla fila 0 motivo)
-        (setq fila (1+ fila)))))
+(defun am:texto-de-celda (tabla f c / r)
+  ;; `vla-GetText` de una celda, o "" si esa celda no se puede leer. Con red
+  ;; porque una tabla ajena puede traer celdas fusionadas o de tipo bloque, y
+  ;; una de ésas no puede tumbar la lectura del cuadro entero.
+  (setq r (vl-catch-all-apply 'vla-GetText (list tabla f c)))
+  (if (or (vl-catch-all-error-p r) (null r)) "" r))
 
-  ;; La planta entera, con las mismas dos magnitudes y la misma regla.
-  (setq p-planta (am:pos "(\"superficies_del_plano\"" s 0)
-        plano-int (if p-planta (am:texto->real (am:valor-tras s "util_interior_m2" p-planta)))
-        plano-ext (if p-planta (am:texto->real (am:valor-tras s "util_exterior_m2" p-planta))))
-  (vla-SetText tabla fila 0 "TOTAL DE LA PLANTA")
-  (if (and plano-int plano-ext)
+(defun am:es-el-cuadro (tabla / titulo)
+  (setq titulo (am:mayusculas-sin-tildes (am:texto-de-celda tabla 0 0)))
+  (/= nil (vl-string-search (am:mayusculas-sin-tildes *am:titulo-del-cuadro*) titulo)))
+
+(defun am:cuantas-tablas ( / ss)
+  ;; Cuántas `ACAD_TABLE` hay en el dibujo, sean lo que sean.
+  ;;
+  ;; Sirve para distinguir dos cosas que el comando confundía: **«no hay ninguna
+  ;; tabla»** y **«hay tablas y ninguna es tu cuadro»**. El mensaje que las
+  ;; mezclaba mandó a buscar en `V5.dxf` un cuadro dibujado con líneas sueltas
+  ;; que no existe —ese plano no tiene cuadro de ninguna clase—, igual que el
+  ;; mensaje de las celdas mandó a mirar `ssget` cuando el fallo era del
+  ;; servidor. Un mensaje que da por supuesta la causa cuesta más que uno que
+  ;; dice lo que sabe.
+  (setq ss (ssget "_X" '((0 . "ACAD_TABLE"))))
+  (if ss (sslength ss) 0))
+
+(defun am:buscar-cuadros ( / ss i ename obj res)
+  ;; TODAS las tablas que son un cuadro de superficies, en orden de dibujo.
+  ;;
+  ;; **Un plano real tiene varios.** `plantasimple.dxf` tiene 25, uno por
+  ;; vivienda, y es el unico proyecto completo del lote; `ejemplo.dxf` tiene 6.
+  ;; Hasta el 2026-09-12 este comando cogia el primero y los demas no existian.
+  (setq ss (ssget "_X" '((0 . "ACAD_TABLE"))))
+  (setq i 0 res nil)
+  (if ss
+    (while (< i (sslength ss))
+      (setq ename (ssname ss i)
+            obj   (vlax-ename->vla-object ename))
+      (if (am:es-el-cuadro obj) (setq res (cons obj res)))
+      (setq i (1+ i))))
+  (reverse res))
+
+(defun am:celdas-json (tabla / filas cols f c res primero texto)
+  ;; Las celdas del cuadro como JSON: `[[fila, columna, "texto"], ...]`.
+  ;; Se mandan TODAS, también las vacías: el servidor necesita ver el hueco para
+  ;; saber que esa fila está por rellenar y no ya rellena por el arquitecto.
+  (setq filas (vla-get-Rows tabla)
+        cols  (vla-get-Columns tabla)
+        res "[" primero T f 0)
+  (while (< f filas)
+    (setq c 0)
+    (while (< c cols)
+      (setq texto (am:texto-de-celda tabla f c))
+      (if (not primero) (setq res (strcat res ",")))
+      (setq res (strcat res "[" (itoa f) "," (itoa c) "," (am:json-cad texto) "]"))
+      (setq primero nil c (1+ c)))
+    (setq f (1+ f)))
+  (strcat res "]"))
+
+(defun am:cuenta-celdas (json / i n)
+  ;; Cuántas celdas lleva el JSON de `am:celdas-json`, contando sus corchetes de
+  ;; apertura. Es tosco y sirve: lo único que hay que saber es si son cero.
+  (setq n 0 i 1)
+  (while (< i (strlen json))
+    (if (= (am:car-en json i) "[") (setq n (1+ n)))
+    (setq i (1+ i)))
+  n)
+
+;;; ---------------------------------------------------------------------------
+;;; Lectura del reparto que devuelve el servidor
+;;; ---------------------------------------------------------------------------
+
+(defun am:lista-de-motivos (s clave desde / p fin res motivo)
+  ;; Los motivos de una de las listas de «lo que no se ha escrito». Se enseñan
+  ;; tal cual: están redactados para que los lea un arquitecto.
+  (setq res nil p (am:pos (strcat "(\"" clave "\"") s desde))
+  (if p
     (progn
-      (vla-SetText tabla fila 1 (am:num->texto plano-int))
-      (vla-SetText tabla fila 2 (am:num->texto plano-ext)))
+      (setq fin (am:pos "(\"piezas_descuadradas\"" s p))
+      (while (and (setq p (am:pos "(\"motivo\" . " s p))
+                  (or (null fin) (< p fin)))
+        (setq motivo (am:valor-tras s "motivo" p))
+        (if motivo (setq res (cons motivo res)))
+        (setq p (1+ p)))))
+  (reverse res))
+
+;;; ---------------------------------------------------------------------------
+;;; El cuadro propio de ArchMuse
+;;; ---------------------------------------------------------------------------
+;;;
+;;; **Nunca se escribe en el cuadro del arquitecto. Nunca.** Desde el 2026-09-12
+;;; ArchMuse dibuja el SUYO al lado, con sus mediciones, y el de el se queda
+;;; intacto. Comparar los dos es cosa suya (PRD 2026-09-12).
+;;;
+;;; Lo que se dibuja lo decide entero el servidor: filas, columnas, que texto va
+;;; en cada casilla y que notas van al pie, ya redactadas. Aqui no se compone ni
+;;; un espacio -- componer es decidir.
+
+(defun am:trozo (s ini fin)
+  ;; El trozo de la respuesta entre dos posiciones, para no leer de otro cuadro.
+  (if (and ini (> (strlen s) ini))
+    (substr s (1+ ini) (if fin (- fin ini) (- (strlen s) ini)))
+    ""))
+
+(defun am:celdas-del-cuadro (s / p celdas fila columna texto)
+  ;; Las casillas del cuadro a dibujar: `(fila columna texto)`.
+  ;; Mismo patron que `am:reparto-celdas`: las tres claves llegan en orden.
+  (setq celdas nil p (am:pos "(\"celdas\"" s 0))
+  (if p
+    (while (setq p (am:pos "(\"fila\" . " s p))
+      (setq fila    (am:valor-tras s "fila" p)
+            columna (am:valor-tras s "columna" p)
+            texto   (am:valor-tras s "texto" p))
+      (if (and fila columna texto)
+        (setq celdas (cons (list (atoi fila) (atoi columna) texto) celdas)))
+      (setq p (1+ p))))
+  (reverse celdas))
+
+;;; ---------------------------------------------------------------------------
+;;; La tabla de ArchMuse: plantilla fija, un punto y medidas del servidor
+;;; (PRD 2026-09-13, D-13, D-14 enmendado y C-13)
+;;; ---------------------------------------------------------------------------
+;;;
+;;; **Ejecutado por primera vez el 2026-09-13, la 3.2.0, sobre `v1plantas.dxf`.**
+;;; Dibujó, sin ceros, y la negativa por ventana pequeña funcionó. Salieron las
+;;; notas encima de la tabla, filas desiguales, color heredado y «2 viviendas»
+;;; donde había una: arreglado en la 3.2.1 y la 3.3.0.
+;;;
+;;; **Sin ejecutar todavía:** el estilo de tabla creado por ActiveX y la capa con
+;;; su color (3.3.0), y el punto único con `getpoint` (3.4.0). Casillas 13 a 18
+;;; del checklist.
+
+(defun am:json-caja (caja)
+  ;; `((xmin ymin) (xmax ymax))` -> `[[x,y],[x,y]]`.
+  (strcat "[[" (am:json-num (car (car caja))) "," (am:json-num (cadr (car caja)))
+          "],[" (am:json-num (car (cadr caja))) "," (am:json-num (cadr (cadr caja))) "]]"))
+
+
+(defun am:alturas-de-cuadro (tabla / filas cols f c h res)
+  ;; Las alturas de texto de TODAS sus celdas, en crudo. Cuál vale como umbral de
+  ;; legibilidad lo decide el servidor (`maquetacion_cuadro.altura_minima`).
+  (setq filas (vla-get-Rows tabla) cols (vla-get-Columns tabla) f 0 res nil)
+  (while (< f filas)
+    (setq c 0)
+    (while (< c cols)
+      (setq h (vl-catch-all-apply 'vla-GetCellTextHeight (list tabla f c)))
+      (if (and (not (vl-catch-all-error-p h)) (numberp h) (> h 0.0))
+        (setq res (cons h res)))
+      (setq c (1+ c)))
+    (setq f (1+ f)))
+  res)
+
+
+(defun am:estilos-de-cuadro (tabla / filas cols f c e res)
+  ;; Los estilos de texto de TODAS sus casillas, en crudo. Cuál vale para dibujar
+  ;; la tabla de ArchMuse lo decide el servidor (`maquetacion_cuadro.estilo_de_texto`).
+  (setq filas (vla-get-Rows tabla) cols (vla-get-Columns tabla) f 0 res nil)
+  (while (< f filas)
+    (setq c 0)
+    (while (< c cols)
+      (setq e (vl-catch-all-apply 'vla-GetCellTextStyle (list tabla f c)))
+      (if (and (not (vl-catch-all-error-p e)) (= (type e) 'STR) (/= e ""))
+        (setq res (cons e res)))
+      (setq c (1+ c)))
+    (setq f (1+ f)))
+  res)
+
+
+(defun am:con-dibujo (geometria cuadros punto ambitos / cajas alturas estilos caja json)
+  ;; El cuerpo de la geometría, con lo que el servidor necesita para dibujar y
+  ;; las respuestas de interior/exterior. **Nada de esto se interpreta aquí**: el
+  ;; punto es el que ha marcado él, las cajas y alturas se leen de sus cuadros
+  ;; tal cual, y los ámbitos son sus respuestas.
+  (setq cajas "" alturas "" estilos "" json "")
+  (foreach tabla cuadros
+    (setq caja (am:caja-de tabla))
+    (if caja
+      (progn
+        (if (/= cajas "") (setq cajas (strcat cajas ",")))
+        (setq cajas (strcat cajas (am:json-caja caja)))))
+    (foreach h (am:alturas-de-cuadro tabla)
+      (if (/= alturas "") (setq alturas (strcat alturas ",")))
+      (setq alturas (strcat alturas (am:json-num h))))
+    (foreach nombre (am:estilos-de-cuadro tabla)
+      (if (/= estilos "") (setq estilos (strcat estilos ",")))
+      (setq estilos (strcat estilos (am:json-cad nombre)))))
+  (foreach par ambitos
+    (if (/= json "") (setq json (strcat json ",")))
+    (setq json (strcat json (am:json-cad (car par)) ":" (am:json-cad (cdr par)))))
+  (strcat "{"
+          (if punto
+            (strcat "\"punto\":[" (am:json-num (car punto)) "," (am:json-num (cadr punto)) "],")
+            "")
+          "\"cajas_de_cuadros\":[" cajas "],"
+          "\"alturas_texto_cuadro\":[" alturas "],"
+          "\"estilos_de_cuadro\":[" estilos "],"
+          "\"ambitos\":{" json "},"
+          (substr geometria 2)))
+
+
+(defun am:pedir-punto ( / p)
+  ;; Un punto: la esquina de arriba a la izquierda del cuadro de ArchMuse. **El
+  ;; tamaño lo pone el servidor** (Pablo, 2026-09-13: «el arquitecto no debe
+  ;; adivinar cuánto mide la tabla»). Hasta la 3.3.0 se pedía una ventana de dos
+  ;; esquinas y, si era pequeña, había que marcar otra. nil si cancela.
+  (setq p (getpoint "\nMarca la esquina de arriba a la izquierda del cuadro de ArchMuse: "))
+  (if p (list (car p) (cadr p)) nil))
+
+
+(defun am:ultima-pos (patron s / p ultima)
+  (setq p 0 ultima nil)
+  (while (setq p (am:pos patron s p))
+    (setq ultima p p (1+ p)))
+  ultima)
+
+
+(defun am:preguntar-ambitos (respuesta / ini bloque p familia texto r res)
+  ;; Las preguntas de interior/exterior que ha decidido el SERVIDOR, una por
+  ;; familia (decisión 4 de Pablo). Aquí se enseñan y se recoge la respuesta; no
+  ;; se decide nada. Devuelve `((familia . "interior") ...)` con las contestadas.
+  ;; La lista de arriba es la última clave de la respuesta: por eso la última.
+  (setq ini (am:ultima-pos "(\"preguntas_de_ambito\"" respuesta) res nil)
+  (if ini
     (progn
-      (vla-SetText tabla fila 1 "no se publica")
-      (vla-SetText tabla fila 2 "no se publica")))
-  (setq fila (1+ fila))
+      (setq bloque (am:trozo respuesta ini nil) p 0)
+      (while (setq p (am:pos "(\"familia\" . " bloque p))
+        (setq familia (am:valor-tras bloque "familia" p)
+              texto   (am:valor-tras bloque "texto" p))
+        (if (and familia texto)
+          (progn
+            (princ (strcat "\n\n" texto))
+            (initget "Interior Exterior")
+            (setq r (getkword "\n[Interior/Exterior] <sin contestar>: "))
+            (if r (setq res (cons (cons familia (strcase r T)) res)))))
+        (setq p (1+ p)))))
+  (reverse res))
 
-  ;; `C3`, obligatoria y sin parámetro que la quite. Va la última porque es lo
-  ;; que tiene que leer quien reciba el plano, no quien lo dibuja.
-  (vla-MergeCells tabla fila fila 0 2)
-  (vla-SetText tabla fila 0 *am:leyenda-borrador*)
 
-  (vla-put-RegenerateTableSuppressed tabla :vlax-false)
-  tabla)
+(defun am:zona-de-repartos (respuesta / ini fin)
+  ;; La lista `repartos` de la respuesta y nada más.
+  ;;
+  ;; **Por qué no se busca en toda la respuesta** (AutoCAD, 2026-09-13): el
+  ;; servidor mandaba además `reparto`, una copia del primero, y contar
+  ;; `cuadro_a_dibujar` en todo el texto ofreció «2 viviendas VT1/3» sobre un
+  ;; plano con una. El servidor ya no la manda; esto protege también de uno
+  ;; anterior que todavía la mande.
+  (setq ini (am:pos "(\"repartos\"" respuesta 0))
+  (if ini
+    (progn
+      (setq fin (am:pos "(\"reparto\" . " respuesta ini))
+      (am:trozo respuesta ini fin))
+    ""))
+
+
+(defun am:viviendas-de (respuesta / zona p v res)
+  ;; El nombre de la vivienda de cada tabla, en el orden del servidor, y SÓLO
+  ;; de la lista `repartos` (ver `am:zona-de-repartos`).
+  (setq zona (am:zona-de-repartos respuesta) p 0 res nil)
+  (while (setq p (am:pos "(\"cuadro_a_dibujar\"" zona p))
+    (setq v (am:valor-tras zona "vivienda" p))
+    (setq res (cons (if v v "?") res) p (1+ p)))
+  (reverse res))
+
+
+(defun am:bloque-de-vivienda (respuesta n / zona p i)
+  ;; El `cuadro_a_dibujar` de la vivienda n (base 0), sin leer el de otra y
+  ;; sin salir de `repartos`.
+  (setq zona (am:zona-de-repartos respuesta)
+        p    (am:pos "(\"cuadro_a_dibujar\"" zona 0)
+        i    0)
+  (while (and p (< i n))
+    (setq p (am:pos "(\"cuadro_a_dibujar\"" zona (1+ p)) i (1+ i)))
+  (if p
+    (am:trozo zona p (am:pos "(\"cuadro_a_dibujar\"" zona (1+ p)))
+    nil))
+
+
+(defun am:motivos-indistinguibles (respuesta / zona p m res)
+  ;; `C-13`: las viviendas que el servidor NO ofrece porque hay varias con el
+  ;; mismo rótulo. Su motivo viene redactado de allí y se enseña tal cual.
+  (setq zona (am:zona-de-repartos respuesta) p 0 res nil)
+  (while (setq p (am:pos "(\"indistinguible\" . T)" zona p))
+    (if (setq m (am:valor-tras zona "motivo" p))
+      (setq res (cons m res)))
+    (setq p (1+ p)))
+  (reverse res))
+
+
+(defun am:elegir-vivienda (nombres / i n)
+  ;; Con varias viviendas medidas, él elige de cuál es la tabla. Base 0, o nil.
+  (if (< (length nombres) 2)
+    0
+    (progn
+      (princ "\n\nHe medido varias viviendas. ¿De cuál dibujo el cuadro?")
+      (setq i 0)
+      (foreach nombre nombres
+        (setq i (1+ i))
+        (princ (strcat "\n  " (itoa i) ". " nombre)))
+      (initget 6)
+      (setq n (getint (strcat "\nNúmero (1-" (itoa (length nombres)) "): ")))
+      (if (and n (<= n (length nombres))) (1- n) nil))))
+
+
+(defun am:numeros-tras (s clave desde / marca p ini fin actual ch res)
+  ;; La lista de números que sigue a `("clave" . (`. Sin `read`, que tiene un
+  ;; tope de unos 2.300 caracteres: se recorre carácter a carácter.
+  (setq marca (strcat "(\"" clave "\" . (") p (am:pos marca s desde) res nil)
+  (if p
+    (progn
+      (setq ini (+ p (strlen marca)) fin (am:pos ")" s (+ p (strlen marca))) actual "")
+      (while (and fin (< ini fin))
+        (setq ch (am:car-en s ini))
+        (if (= ch " ")
+          (progn
+            (if (/= actual "") (setq res (cons (atof actual) res)))
+            (setq actual ""))
+          (setq actual (strcat actual ch)))
+        (setq ini (1+ ini)))
+      (if (/= actual "") (setq res (cons (atof actual) res)))))
+  (reverse res))
+
+
+(defun am:notas-colocadas (m / p x y linea res)
+  ;; `(x y linea)` de cada nota, **ya redactada y colocada por el servidor**.
+  (setq res nil p (am:pos "(\"notas\"" m 0))
+  (if p
+    (while (setq p (am:pos "(\"x\" . " m p))
+      (setq x (am:valor-tras m "x" p)
+            y (am:valor-tras m "y" p)
+            linea (am:valor-tras m "linea" p))
+      (if (and x y linea)
+        (setq res (cons (list (atof x) (atof y) linea) res)))
+      (setq p (1+ p))))
+  (reverse res))
+
+
+(defun am:cadenas-tras (s clave desde / marca p par res)
+  ;; La lista de cadenas que sigue a `("clave" . (`: `("a" "b")` -> ("a" "b").
+  ;; Carácter a carácter con `am:lee-cadena`, sin `read` (tope de longitud).
+  (setq marca (strcat "(\"" clave "\" . (") p (am:pos marca s desde) res nil)
+  (if p
+    (progn
+      (setq p (+ p (strlen marca)))
+      (while (= (am:car-en s p) "\"")
+        (setq par (am:lee-cadena s p)
+              res (cons (car par) res)
+              p   (cdr par))
+        (if (= (am:car-en s p) " ") (setq p (1+ p))))))
+  (reverse res))
+
+
+(defun am:textos-de-notas (bloque / ini fin zona p texto-nota res)
+  ;; El texto de cada nota al pie de la tabla, tal como lo redactó el servidor.
+  ;; Entre `notas` y `preguntas_de_ambito`: las preguntas también traen «texto».
+  ;; La local no se llama `nota`: el comando usa `nota` en su propio `foreach`.
+  (setq ini  (am:pos "(\"notas\" . (" bloque 0)
+        fin  (if ini (am:pos "(\"preguntas_de_ambito\"" bloque ini) nil)
+        zona (if ini (am:trozo bloque ini fin) "")
+        p 0 res nil)
+  (while (setq p (am:pos "(\"texto\" . " zona p))
+    (if (setq texto-nota (am:valor-tras zona "texto" p))
+      (setq res (cons texto-nota res)))
+    (setq p (1+ p)))
+  (reverse res))
+
+
+(defun am:medir-textos (textos estilo / caja res)
+  ;; **El ancho de cada texto lo mide AutoCAD** (3.5.0): con `textbox`, en el
+  ;; estilo de texto del plano con el que se va a dibujar, y a altura 1. Qué se
+  ;; mide lo decide el servidor (`textos_a_medir`); aquí sólo se mide.
+  ;;
+  ;; **Por qué** (AutoCAD, 2026-09-13): hasta la 3.4.1 el servidor medía con
+  ;; `arial.ttf` y este fichero creaba un estilo con esa fuente para que lo
+  ;; dibujado midiera lo mismo. Crearlo falló en `v1plantas.dxf` («Error de
+  ;; automatización. Error de archivador»). Así no se depende de ninguna fuente.
+  ;;
+  ;; Devuelve la lista de anchos, en el orden de `textos`, o nil con el motivo en
+  ;; `*am:fallo-de-la-medida*`. Un texto sin medir no se sustituye por nada.
+  (setq *am:fallo-de-la-medida* nil res nil)
+  (foreach texto textos
+    (if (null *am:fallo-de-la-medida*)
+      (progn
+        (setq caja (vl-catch-all-apply
+                     'textbox (list (list (cons 1 texto) (cons 7 estilo) (cons 40 1.0)))))
+        (cond
+          ((vl-catch-all-error-p caja)
+            (setq *am:fallo-de-la-medida*
+                   (strcat "al medir «" texto "» con el estilo «" estilo "»: "
+                           (vl-catch-all-error-message caja))))
+          ((null caja)
+            (setq *am:fallo-de-la-medida*
+                   (strcat "AutoCAD no ha devuelto la medida de «" texto
+                           "» con el estilo «" estilo "»")))
+          (T
+            (setq res (cons (- (car (cadr caja)) (car (car caja))) res)))))))
+  (if *am:fallo-de-la-medida* nil (reverse res)))
+
+
+(defun am:json-cadenas (lista / res primero)
+  (setq res "[" primero T)
+  (foreach elemento lista
+    (if (not primero) (setq res (strcat res ",")))
+    (setq res (strcat res (am:json-cad elemento)) primero nil))
+  (strcat res "]"))
+
+
+(defun am:json-numeros (lista / res primero)
+  (setq res "[" primero T)
+  (foreach elemento lista
+    (if (not primero) (setq res (strcat res ",")))
+    (setq res (strcat res (am:json-num elemento)) primero nil))
+  (strcat res "]"))
+
+
+(defun am:json-celdas (celdas / res primero)
+  ;; `((fila columna texto) …)` -> `[[fila,columna,"texto"],…]`.
+  (setq res "[" primero T)
+  (foreach celda celdas
+    (if (not primero) (setq res (strcat res ",")))
+    (setq res (strcat res "[" (itoa (car celda)) "," (itoa (cadr celda)) ","
+                      (am:json-cad (caddr celda)) "]")
+          primero nil))
+  (strcat res "]"))
+
+
+(defun am:post-maquetar (cuerpo / r)
+  ;; `/api/maquetar-cuadro`. El servidor ya ha contestado a la medición, así que
+  ;; aquí no se levanta nada: si falla, se dice con lo que haya contestado.
+  (setq r (am:peticion "POST" (strcat (am:url-base) "/api/maquetar-cuadro?formato=lisp")
+                       cuerpo 60000))
+  (cond
+    ((= r 0)
+      (princ "\nArchMuse: no se ha podido crear el objeto HTTP para colocar la tabla.")
+      nil)
+    ((= (type r) 'STR)
+      (princ (strcat "\nArchMuse no ha contestado al colocar la tabla: " r))
+      nil)
+    ((/= (car r) 200)
+      (princ (strcat "\nArchMuse no ha podido colocar la tabla (error " (itoa (car r)) "):"))
+      (princ (strcat "\n  " (cdr r)))
+      nil)
+    (T (cdr r))))
+
+
+(defun am:maquetar (bloque textos anchos punto cuadros estilo / altura cajas caja)
+  ;; La tabla colocada con los anchos que ha medido AutoCAD. **Aquí no se decide
+  ;; nada**: se le devuelve al servidor lo que él mismo mandó —celdas, notas,
+  ;; altura mínima, estilo— con las medidas y el punto, y él maqueta.
+  (setq altura (am:valor-tras bloque "altura_minima" 0) cajas "")
+  (foreach tabla cuadros
+    (setq caja (am:caja-de tabla))
+    (if caja
+      (progn
+        (if (/= cajas "") (setq cajas (strcat cajas ",")))
+        (setq cajas (strcat cajas (am:json-caja caja))))))
+  (am:post-maquetar
+    (strcat "{\"estilo_texto\":" (am:json-cad estilo)
+            ",\"punto\":[" (am:json-num (car punto)) "," (am:json-num (cadr punto)) "]"
+            ",\"altura_minima\":" (if (or (null altura) (= altura "nil")) "null" altura)
+            ",\"cajas_de_cuadros\":[" cajas "]"
+            ",\"celdas\":" (am:json-celdas (am:celdas-del-cuadro bloque))
+            ",\"notas\":" (am:json-cadenas (am:textos-de-notas bloque))
+            ",\"textos_medidos\":" (am:json-cadenas textos)
+            ",\"anchos_medidos\":" (am:json-numeros anchos)
+            "}")))
+
+
+(defun am:avisar-del-dibujo (texto)
+  ;; Apunta algo que no se ha podido hacer al dibujar, una sola vez: el mismo
+  ;; fallo en treinta casillas es un aviso, no treinta.
+  (if (not (member texto *am:avisos-del-dibujo*))
+    (setq *am:avisos-del-dibujo* (cons texto *am:avisos-del-dibujo*))))
+
+
+(defun am:intentar (que funcion argumentos / r)
+  ;; Una llamada que puede fallar sin que la tabla deje de dibujarse. **Si falla,
+  ;; no se calla**: apunta qué no se ha podido hacer y el mensaje de AutoCAD, y
+  ;; el comando lo enseña. Devuelve el resultado de la llamada, T si no devuelve
+  ;; nada, o nil si ha fallado.
+  (setq r (vl-catch-all-apply funcion argumentos))
+  (if (vl-catch-all-error-p r)
+    (progn
+      (am:avisar-del-dibujo (strcat que ": " (vl-catch-all-error-message r)))
+      nil)
+    (if r r T)))
+
+
+(defun am:estilo-de-tabla (doc nombre estilo h ht margen margen-v / dic ts r paso)
+  ;; El estilo de tabla de ArchMuse: su texto, sus alturas y sus márgenes, todo
+  ;; del servidor. Devuelve el nombre si lo ha encontrado o creado, o nil **con
+  ;; el paso y el motivo apuntados en `*am:avisos-del-dibujo*`**.
+  ;;
+  ;; **Por qué existe** (AutoCAD, 2026-09-13): la tabla se creaba con el estilo
+  ;; activo del plano —en `v1plantas.dxf`, `Standard` con margen vertical 1,5 y
+  ;; texto 4,5, medidos en su DXF— y las filas crecían hasta decenas de veces lo
+  ;; calculado: las notas acababan encima de la cabecera y las filas desiguales.
+  ;;
+  ;; **Sin verificar en AutoCAD:** `AddObject` con «AcDbTableStyle» y los tipos
+  ;; de fila (1 datos, 2 título, 4 cabecera). Si falla, no pasa nada grave: la
+  ;; tabla se dibuja con el estilo activo y los mismos márgenes y alturas puestos
+  ;; en la propia tabla y en cada celda (`am:dibujar-cuadro`).
+  (setq paso "abrir el diccionario de estilos de tabla")
+  (setq r (vl-catch-all-apply
+            '(lambda ( / )
+              (setq dic (vla-Item (vla-get-Dictionaries doc) "ACAD_TABLESTYLE")
+                    ts  (vl-catch-all-apply 'vla-Item (list dic nombre)))
+              (if (vl-catch-all-error-p ts)
+                (progn
+                  (setq paso "crearlo")
+                  (setq ts (vla-AddObject dic nombre "AcDbTableStyle"))))
+              (setq paso "fijar sus márgenes")
+              (vla-put-HorzCellMargin ts margen)
+              (vla-put-VertCellMargin ts margen-v)
+              (setq paso "fijar su estilo de texto")
+              (vla-SetTextStyle ts 7 estilo)
+              (setq paso "fijar sus alturas de texto")
+              (vla-SetTextHeight ts 5 h)
+              (vla-SetTextHeight ts 2 ht))))
+  (if (vl-catch-all-error-p r)
+    (progn
+      (am:avisar-del-dibujo
+        (strcat "estilo de tabla «" nombre "», al " paso ": "
+                (vl-catch-all-error-message r)
+                " (la tabla lleva sus medidas puestas igualmente)"))
+      nil)
+    nombre))
+
+
+(defun am:dibujar-cuadro (m celdas / doc ms tabla estilos st capas ly x y h ht alto alto-t
+                              margen margen-v anchos filas cols estilo fuente capa color
+                              estilo-tabla c f mt r paso)
+  ;; Dibuja la tabla **exactamente como la ha resuelto el servidor** (`D-14`):
+  ;; esquina, alturas de texto y de fila (el título aparte), márgenes, ancho de
+  ;; cada columna, estilos, capa y color. Devuelve la tabla, o nil si falla.
+  ;;
+  ;; **Aquí no hay ni una medida.** Hasta el 2026-09-13 la fila medía 1,0 y la
+  ;; columna 14,0 escritas a mano y la altura de texto no se fijaba; en AutoCAD
+  ;; 2027 salió un texto más alto que el edificio, partido letra a letra.
+  ;;
+  ;; **Y nada se hereda del plano** (3.3.0): ni el estilo de tabla activo —sus
+  ;; márgenes hacían crecer las filas y ponían las notas encima—, ni el color
+  ;; activo —la tabla salía amarilla—, ni la altura de las celdas vacías.
+  ;;
+  ;; **Y ningún fallo se calla** (3.4.1). La 3.4.0 dijo en AutoCAD «No he podido
+  ;; dibujar la tabla» y nada más: este handler capturaba el error de AutoCAD y
+  ;; lo tiraba. Ahora cada paso que puede tumbar la tabla se apunta en `paso`
+  ;; antes de darlo, y si falla queda en `*am:fallo-del-dibujo*` como «al <paso>:
+  ;; <mensaje de AutoCAD>». Lo que falla sin impedir la tabla —estilo, capa,
+  ;; color, margen vertical, una casilla— va por `am:intentar` y queda en
+  ;; `*am:avisos-del-dibujo*`. El comando enseña las dos cosas.
+  (setq *am:fallo-del-dibujo* nil
+        *am:avisos-del-dibujo* nil
+        *am:dibujo-empezado* nil
+        paso "leer las medidas que ha mandado el servidor")
+  (setq r (vl-catch-all-apply
+    '(lambda ( / )
+      (setq x        (atof (am:valor-tras m "x" 0))
+            y        (atof (am:valor-tras m "y" 0))
+            h        (atof (am:valor-tras m "altura_texto" 0))
+            ht       (atof (am:valor-tras m "altura_titulo" 0))
+            alto     (atof (am:valor-tras m "alto_fila" 0))
+            alto-t   (atof (am:valor-tras m "alto_fila_titulo" 0))
+            margen   (atof (am:valor-tras m "margen" 0))
+            margen-v (atof (am:valor-tras m "margen_vertical" 0))
+            anchos   (am:numeros-tras m "anchos" 0)
+            filas    (atoi (am:valor-tras m "n_filas" 0))
+            cols     (atoi (am:valor-tras m "n_columnas" 0))
+            estilo   (am:valor-tras m "estilo" 0)
+            fuente   (am:valor-tras m "fuente" 0)
+            estilo-tabla (am:valor-tras m "estilo_tabla" 0)
+            capa     (am:valor-tras m "capa" 0)
+            color    (atoi (am:valor-tras m "color_capa" 0)))
+      (setq paso "abrir el dibujo")
+      (setq doc     (vla-get-ActiveDocument (vlax-get-acad-object))
+            ms      (vla-get-ModelSpace doc)
+            estilos (vla-get-TextStyles doc))
+      ;; **El estilo de texto es uno que YA EXISTE en su plano** —el de su cuadro
+      ;; o el de sus rótulos, elegido por el servidor— y con él ha medido AutoCAD
+      ;; cada texto (`am:medir-textos`). Aquí no se crea ninguno (3.5.0).
+      ;;
+      ;; **Lo que no se sabe, escrito aunque el arreglo lo esquive.** La 3.2.0
+      ;; creó aquí un estilo «ARCHMUSE» con `arial.ttf` sobre `v1plantas.dxf` y
+      ;; dibujó. La 3.4.1, con el mismo código, falló en este paso: «Error de
+      ;; automatización. Error de archivador». No se sabe por qué, ni cuál de las
+      ;; dos llamadas falló (crear el estilo o ponerle la fuente). Un acierto sin
+      ;; explicación es una hipótesis con suerte: la 3.2.0 no probó que funcionara.
+      (setq paso (strcat "encontrar en el dibujo el estilo de texto «" estilo "»"))
+      (setq st (vla-Item estilos estilo))
+      ;; Su capa, con su color. El color se pone sólo al crearla: si el
+      ;; arquitecto ya se la ha cambiado, se respeta lo que él decidió.
+      (setq paso (strcat "crear la capa «" capa "»"))
+      (setq capas (vla-get-Layers doc)
+            ly    (vl-catch-all-apply 'vla-Item (list capas capa)))
+      (if (vl-catch-all-error-p ly)
+        (progn
+          (setq ly (vla-Add capas capa) *am:dibujo-empezado* T)
+          (am:intentar (strcat "poner el color " (itoa color) " a la capa «" capa "»")
+                       'vla-put-Color (list ly color))))
+      (setq paso "crear la tabla")
+      (setq tabla (vla-AddTable ms (vlax-3d-point (list x y 0.0))
+                                filas cols alto (car anchos))
+            *am:dibujo-empezado* T)
+      (setq paso "suspender la regeneración de la tabla")
+      (vla-put-RegenerateTableSuppressed tabla :vlax-true)
+      (if (am:estilo-de-tabla doc estilo-tabla estilo h ht margen margen-v)
+        (am:intentar (strcat "aplicar a la tabla el estilo «" estilo-tabla "»")
+                     'vla-put-StyleName (list tabla estilo-tabla)))
+      ;; PorCapa (256): sin esto la tabla toma el color activo del dibujo.
+      (am:intentar (strcat "poner la tabla en la capa «" capa "»")
+                   'vla-put-Layer (list tabla capa))
+      (am:intentar "poner la tabla PorCapa (color 256)"
+                   'vla-put-Color (list tabla 256))
+      (setq paso "fijar el margen horizontal de las casillas")
+      (vla-put-HorzCellMargin tabla margen)
+      (am:intentar "fijar el margen vertical de las casillas"
+                   'vla-put-VertCellMargin (list tabla margen-v))
+      (setq paso "fijar el ancho de las columnas" c 0)
+      (foreach ancho anchos
+        (vla-SetColumnWidth tabla c ancho)
+        (setq c (1+ c)))
+      (setq paso "fijar el alto de las filas")
+      (vla-SetRowHeight tabla 0 alto-t)
+      (setq f 1)
+      (while (< f filas)
+        (vla-SetRowHeight tabla f alto)
+        (setq f (1+ f)))
+      ;; El título, a lo ancho.
+      (am:intentar "fusionar la fila del título"
+                   'vla-MergeCells (list tabla 0 0 0 (1- cols)))
+      ;; Estilo y altura en TODAS las celdas, también las vacías: una celda vacía
+      ;; conserva la altura del estilo, y con la de `Standard` (4,5) es la que
+      ;; hacía crecer las filas del cuerpo.
+      (setq f 0)
+      (while (< f filas)
+        (setq c 0)
+        (while (< c cols)
+          (am:intentar "poner el estilo de texto en las casillas"
+                       'vla-SetCellTextStyle (list tabla f c estilo))
+          (am:intentar "poner la altura de texto en las casillas"
+                       'vla-SetCellTextHeight (list tabla f c (if (= f 0) ht h)))
+          (setq c (1+ c)))
+        (setq f (1+ f)))
+      (foreach celda celdas
+        (am:intentar "escribir el texto de alguna casilla (se queda vacía)"
+                     'vla-SetText (list tabla (car celda) (cadr celda) (caddr celda))))
+      ;; Las notas, DEBAJO y FUERA del marco (decisión 2 de Pablo), en la misma
+      ;; capa y PorCapa. Ancho 0 = sin partir: las líneas ya vienen partidas por
+      ;; palabras del servidor.
+      (setq paso "dibujar las notas al pie")
+      (foreach nota (am:notas-colocadas m)
+        (setq mt (vla-AddMText ms (vlax-3d-point (list (car nota) (cadr nota) 0.0))
+                               0.0 (caddr nota)))
+        (vla-put-Height mt h)
+        (am:intentar (strcat "poner las notas en la capa «" capa "»")
+                     'vla-put-Layer (list mt capa))
+        (am:intentar "poner las notas PorCapa (color 256)"
+                     'vla-put-Color (list mt 256))
+        (am:intentar (strcat "aplicar a las notas el estilo de texto «" estilo "»")
+                     'vla-put-StyleName (list mt estilo)))
+      (setq paso "regenerar la tabla")
+      (vla-put-RegenerateTableSuppressed tabla :vlax-false)
+      T)))
+  (if (vl-catch-all-error-p r)
+    (progn
+      (setq *am:fallo-del-dibujo*
+             (strcat "al " paso ": " (vl-catch-all-error-message r)))
+      nil)
+    tabla))
+
+;;; ---------------------------------------------------------------------------
+;;; Rellenar el cuadro
+;;; ---------------------------------------------------------------------------
+
+(defun am:punto->lista (v / r)
+  ;; Un punto de la API ActiveX, venga como venga, a `(x y z)`.
+  ;;
+  ;; **No todos llegan igual, y confundirlos revienta el comando.**
+  ;; `vla-get-InsertionPoint` DEVUELVE una variante que envuelve un safearray;
+  ;; `vla-GetBoundingBox` no devuelve nada: ESCRIBE safearrays directamente en
+  ;; los dos símbolos que se le pasan. Aplicar `vlax-variant-value` a lo segundo
+  ;; da «tipo de argumento erróneo: variantp #<safearray...>», que es el error
+  ;; que tumbó el comando el 2026-09-11 **después de escribir las diez celdas**.
+  ;;
+  ;; Se mira el tipo en vez de suponerlo, y así la misma función sirve para los
+  ;; dos casos y para el siguiente que aparezca.
+  (setq r (vl-catch-all-apply
+            '(lambda ()
+              (cond
+                ((= (type v) 'variant)   (vlax-safearray->list (vlax-variant-value v)))
+                ((= (type v) 'safearray) (vlax-safearray->list v))
+                ((listp v)               v)
+                (T nil)))))
+  (if (vl-catch-all-error-p r) nil r))
+
+(defun am:altura-del-cuadro (tabla / h)
+  ;; La altura de texto con la que está escrito el cuadro, leída de una celda de
+  ;; datos. **No se supone: se pregunta.**
+  ;;
+  ;; La marca de borrador califica a este cuadro, así que tiene que leerse a su
+  ;; misma escala. Un valor fijo derivado de `$INSUNITS` no vale: el 2026-09-11,
+  ;; sobre `v1plantas.dxf`, daba 0,25 cuando el cuadro está escrito a 0,125 — el
+  ;; triple de alto en pantalla, y con el ancho de 60 caracteres que llevaba, un
+  ;; texto que se salía por la derecha.
+  (setq h (vl-catch-all-apply 'vla-GetCellTextHeight (list tabla 1 0)))
+  (if (or (vl-catch-all-error-p h) (null h) (not (numberp h)) (<= h 0.0))
+    nil
+    h))
+
+(defun am:caja-de (obj / minp maxp r a b)
+  ;; `((xmin ymin) (xmax ymax))` de la extensión REAL del objeto, o nil.
+  ;;
+  ;; Hace falta porque el punto de inserción de una tabla es su esquina
+  ;; **superior** izquierda, y la tabla crece hacia abajo. Escribir «debajo»
+  ;; restando unas unidades a ese punto deja la marca ENCIMA del cuadro, tapando
+  ;; las primeras filas — que son justo las que se acaban de rellenar. Pasó el
+  ;; 2026-09-11 y tapaba tres.
+  (setq r (vl-catch-all-apply 'vla-GetBoundingBox (list obj 'minp 'maxp)))
+  (if (vl-catch-all-error-p r)
+    nil
+    (progn
+      (setq a (am:punto->lista minp)
+            b (am:punto->lista maxp))
+      (if (and a b (cadr a) (cadr b)) (list a b) nil))))
+
+(defun am:sitio-de-la-marca (tabla / caja h alto-fila ext)
+  ;; Dónde y de qué tamaño va la marca: `(x y ancho altura)`.
+  ;;
+  ;; **Siempre devuelve un sitio.** Con la caja de la tabla, justo debajo de su
+  ;; borde inferior y con su mismo ancho. Sin ella —una tabla que no sabe
+  ;; medirse— se recurre a la esquina inferior izquierda del dibujo
+  ;; (`$EXTMIN`), que es donde la pone `marca_borrador.estampar_dxf()` en la vía
+  ;; web: un sitio poco elegante pero seguro, que nunca cae sobre el cuadro.
+  ;;
+  ;; Esa segunda salida existe porque **`C-3` no admite un «no he podido»**. Una
+  ;; versión anterior dejaba el plano sin marca cuando no podía medir la tabla, y
+  ;; eso es una forma de desactivarla: lo cazó su propio guardián. Entre marcar
+  ;; en un sitio poco elegante y no marcar, se marca.
+  (setq caja (am:caja-de tabla)
+        h    (am:altura-del-cuadro tabla))
+
+  (if caja
+    (progn
+      ;; Sin altura legible, la de una fila: el alto de la tabla entre sus filas,
+      ;; a un 40% —lo que ocupa el texto dentro de su fila—. Estimación, y sólo
+      ;; se usa cuando la buena no se puede leer.
+      (setq alto-fila (/ (- (cadr (cadr caja)) (cadr (car caja)))
+                         (float (max 1 (vla-get-Rows tabla)))))
+      (if (null h) (setq h (* 0.4 alto-fila)))
+      (list (car (car caja))                        ; el borde IZQUIERDO
+            (- (cadr (car caja)) (* 2.0 h))          ; bajo el borde INFERIOR
+            (- (car (cadr caja)) (car (car caja)))   ; su mismo ancho
+            h))
+    (progn
+      (setq ext (getvar "EXTMIN"))
+      (if (null h) (setq h (* 0.25 (am:escala-de-dibujo))))
+      (list (car ext) (- (cadr ext) (* 4.0 h)) (* 40.0 h) h))))
+
+(defun am:sitio-de-la-marca-del-servidor (m tabla / x)
+  ;; Donde dice el servidor —debajo de las notas, `D-14`—; si no lo dice (un
+  ;; servidor anterior), el sitio de siempre, debajo de la tabla.
+  (setq x (if m (am:valor-tras m "marca_x" 0) nil))
+  (if x
+    (list (atof x)
+          (atof (am:valor-tras m "marca_y" 0))
+          (atof (am:valor-tras m "marca_ancho" 0))
+          (atof (am:valor-tras m "altura_texto" 0)))
+    (am:sitio-de-la-marca tabla)))
+
+(defun am:marcar-borrador (tabla m / doc ms capa sitio mt r)
+  ;; `C3` dentro del plano, **sin tocar ni una celda del cuadro**.
+  ;; Devuelve **T si la marca ha quedado escrita, nil si no** — y esa respuesta
+  ;; la mira el comando, porque un cuadro con números y sin marca es exactamente
+  ;; el estado que `C-3` existe para impedir.
+  ;;
+  ;; Aprobado el 2026-09-10 así y no de otra forma: un MTEXT en su propia capa,
+  ;; justo debajo del cuadro. El arquitecto puede apagar la capa para imprimir
+  ;; sin borrar nada, y la marca se lee junto a los números que califica. Añadirle
+  ;; una fila a su tabla se descartó porque le cambia la maquetación, que es
+  ;; justo lo que ha pedido que no hagamos.
+  ;;
+  ;; Tres cosas salen de la propia tabla y ninguna es un valor fijo: **dónde**
+  ;; (debajo de su borde inferior, no de su punto de inserción), **de qué
+  ;; tamaño** (la altura de texto de sus celdas) y **de qué ancho** (el suyo, así
+  ;; que el texto parte en líneas en vez de salirse por un lado). Las tres eran
+  ;; constantes hasta el 2026-09-11 y las tres estaban mal.
+  (setq r (vl-catch-all-apply
+    '(lambda ( / )
+      (setq doc   (vla-get-ActiveDocument (vlax-get-acad-object))
+            ms    (vla-get-ModelSpace doc)
+            capa  *am:capa-de-la-marca*
+            sitio (am:sitio-de-la-marca-del-servidor m tabla))
+      (if (vl-catch-all-error-p
+            (vl-catch-all-apply 'vla-Item (list (vla-get-Layers doc) capa)))
+        (vl-catch-all-apply 'vla-Add (list (vla-get-Layers doc) capa)))
+      (setq mt (vla-AddMText ms (vlax-3d-point (list (car sitio) (cadr sitio) 0.0))
+                             (caddr sitio) *am:leyenda-borrador*))
+      (vla-put-Layer mt capa)
+      (vla-put-Height mt (cadddr sitio))
+      T)))
+  (if (vl-catch-all-error-p r)
+    (progn
+      (princ (strcat "\n  (motivo: " (vl-catch-all-error-message r) ")"))
+      nil)
+    T))
 
 ;;; ---------------------------------------------------------------------------
 ;;; El comando
 ;;; ---------------------------------------------------------------------------
 
-(defun c:ARCHMUSE ( / *error* capa abiertas cuerpo respuesta viviendas pt eco)
+;;; ---------------------------------------------------------------------------
+;;; ARCHMUSE-INFORME — EL REGISTRO, EMPAQUETADO PARA MANDARLO
+;;; ---------------------------------------------------------------------------
+;;; §4.4 del PRD de la beta. Lo que este comando tiene que conseguir no es
+;;; comprimir un fichero: es que **el arquitecto pueda mandar lo que hace falta
+;;; sin mandar su proyecto**, y que lo sepa sin fiarse de nuestra palabra. De ahí
+;;; las tres decisiones que tiene dentro:
+;;;
+;;; 1. **Se enseña la lista exacta antes de comprimir**, con el tamaño de cada
+;;;    fichero. La promesa de «sin planos dentro» tiene que ser verificable por
+;;;    él, no una afirmación nuestra.
+;;; 2. **El plano va en OTRO comando** (`ARCHMUSE-INFORME-PLANO`), nunca aquí y
+;;;    nunca por omisión. Son dos nombres distintos y no una pregunta con
+;;;    opciones, porque una pregunta se contesta mal con las prisas y un nombre
+;;;    de comando hay que teclearlo entero.
+;;; 3. **Siempre se dice la ruta de la carpeta.** Si el ZIP falla —política de
+;;;    ejecución de PowerShell, antivirus, disco lleno—, él sigue teniendo dónde
+;;;    ir a buscar los ficheros y comprimirlos a mano. Un comando de diagnóstico
+;;;    que falla en silencio es peor que no tenerlo.
+;;;
+;;; **Por qué PowerShell y no AutoLISP.** AutoLISP no sabe comprimir. La
+;;; alternativa clásica (`Shell.Application` + `CopyHere` sobre una cabecera ZIP
+;;; falsificada) es asíncrona y falla en silencio; `Compress-Archive` está en
+;;; todos los Windows 10 y 11 y devuelve un error cuando hay un error. Además
+;;; PowerShell resuelve el escritorio **de verdad** con
+;;; `[Environment]::GetFolderPath('Desktop')`, que es lo único que acierta
+;;; cuando OneDrive lo ha redirigido — un `%USERPROFILE%\Desktop` escrito a mano
+;;; dejaría el ZIP en una carpeta que él no ve.
+;;;
+;;; **Se manda el registro entero, no los últimos 30 días.** El PRD decía 30
+;;; días; son líneas de texto de unos 180 caracteres y hacer aritmética de
+;;; fechas en AutoLISP para recortar un fichero de unos KB es complejidad que se
+;;; paga sin comprar nada. La rotación es mensual, así que el recorte natural ya
+;;; existe: un fichero por mes.
+
+(defun am:legible (bytes)
+  (if (< bytes 1024)
+    (strcat (itoa bytes) " B")
+    (strcat (itoa (fix (/ bytes 1024.0))) " KB")))
+
+
+(defun am:ficheros-de-registro ( / carpeta)
+  ;; Los `.log` de la carpeta de registro, sólo nombres. `1` es «ficheros, no
+  ;; directorios».
+  (setq carpeta (am:carpeta-de-registro))
+  (if carpeta
+    (vl-directory-files carpeta "archmuse-*.log" 1)
+    nil))
+
+
+(defun am:escribe-entorno ( / base ruta f)
+  ;; Un `entorno.txt` con lo que hace falta para interpretar el registro y NADA
+  ;; que identifique el proyecto. Devuelve la ruta, o nil.
+  (setq base (am:carpeta))
+  (if (null base)
+    nil
+    (progn
+      (setq ruta (strcat base "\\entorno.txt"))
+      (setq f (vl-catch-all-apply 'open (list ruta "w")))
+      (if (or (null f) (vl-catch-all-error-p f))
+        nil
+        (progn
+          (write-line (strcat "fecha            " (am:ahora)) f)
+          (write-line (strcat "archmuse lsp     " *am:version*) f)
+          (write-line (strcat "archmuse srv     " *am:version-del-servidor*) f)
+          (write-line (strcat "autocad          " (getvar "ACADVER")) f)
+          (write-line (strcat "endpoint         " (am:url)) f)
+          (write-line (strcat "capa por defecto " *am:capa-por-defecto*) f)
+          (write-line (strcat "carpeta          " base) f)
+          (close f)
+          ruta)))))
+
+
+(defun am:lanza-el-empaquetado (con-plano / base ps f destino sello dwg)
+  ;; Escribe el .ps1 y lo lanza. Devuelve el nombre del ZIP que va a aparecer,
+  ;; o nil si ni siquiera se ha podido escribir el guión.
+  (setq base (am:carpeta))
+  (if (null base)
+    nil
+    (progn
+      (setq sello (menucmd "M=$(edtime,$(getvar,date),YYYY-MO-DD-HHMM)"))
+      (setq destino (strcat "archmuse-informe-" sello
+                            (if con-plano "-con-plano" "") ".zip"))
+      (setq ps (strcat base "\\informe.ps1"))
+      (setq f (vl-catch-all-apply 'open (list ps "w")))
+      (if (or (null f) (vl-catch-all-error-p f))
+        nil
+        (progn
+          (write-line "$ErrorActionPreference = 'Stop'" f)
+          (write-line (strcat "$base = '" base "'") f)
+          (write-line (strcat "$destino = Join-Path ([Environment]::GetFolderPath('Desktop')) '"
+                              destino "'") f)
+          (write-line "$tmp = Join-Path $env:TEMP ('archmuse-' + [guid]::NewGuid().ToString('N'))" f)
+          (write-line "New-Item -ItemType Directory -Path $tmp | Out-Null" f)
+          (write-line "Copy-Item (Join-Path $base 'registro\\archmuse-*.log') $tmp" f)
+          (write-line "Copy-Item (Join-Path $base 'entorno.txt') $tmp" f)
+          (if con-plano
+            (progn
+              (setq dwg (strcat (getvar "DWGPREFIX") (getvar "DWGNAME")))
+              (write-line (strcat "Copy-Item '" dwg "' $tmp") f)))
+          (write-line "Compress-Archive -Path (Join-Path $tmp '*') -DestinationPath $destino -Force" f)
+          (write-line "Remove-Item $tmp -Recurse -Force" f)
+          (write-line "Start-Process -FilePath explorer.exe -ArgumentList ('/select,\"' + $destino + '\"')" f)
+          (close f)
+          (startapp "powershell.exe"
+                    (strcat "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \""
+                            ps "\""))
+          destino)))))
+
+
+(defun am:informe (con-plano / ficheros carpeta total tam r destino)
+  (setq carpeta (am:carpeta-de-registro))
+  (if (null carpeta)
+    (progn
+      (princ "\nArchMuse no ha podido encontrar su carpeta de registro")
+      (princ "\n(%LOCALAPPDATA%\\ArchMuse). Sin ella no hay informe que mandar.")
+      (princ)
+      (exit)))
+
+  (setq ficheros (am:ficheros-de-registro))
+  (if (null ficheros)
+    (progn
+      (princ "\nTodavía no hay nada registrado: ArchMuse no ha medido ningún plano")
+      (princ "\nen este ordenador, o no ha podido escribir su registro.")
+      (princ (strcat "\nLa carpeta es: " carpeta))
+      (princ)
+      (exit)))
+
+  ;; **La lista exacta, antes de comprimir.** Es lo que hace verificable la
+  ;; promesa en vez de creíble.
+  (princ "\nEsto es TODO lo que voy a meter en el informe:")
+  (setq total 0)
+  (foreach n ficheros
+    (setq tam (vl-file-size (strcat carpeta "\\" n)))
+    (if (null tam) (setq tam 0))
+    (setq total (+ total tam))
+    (princ (strcat "\n   " n "   (" (am:legible tam) ")")))
+  (princ (strcat "\n   entorno.txt   (versiones de ArchMuse y de tu AutoCAD)"))
+  (if con-plano
+    (princ (strcat "\n   " (getvar "DWGNAME")
+                   "   <-- TU PLANO, porque has usado ARCHMUSE-INFORME-PLANO")))
+  (princ (strcat "\n\nSon " (am:legible total) " de texto"
+                 (if con-plano ", más tu plano." ".")))
+  (princ "\nNo hay nada más: ni medidas, ni nombres de estancias, ni rutas de")
+  (princ "\ncarpetas. Puedes abrir el ZIP y comprobarlo antes de mandarlo.")
+
+  (if con-plano
+    (progn
+      (princ "\n\n*** ESTE INFORME INCLUYE UNA COPIA DE TU DIBUJO. ***")
+      (princ "\nEs el proyecto de tu cliente. Sólo di que sí si te lo he pedido")
+      (princ "\nexpresamente y sabes por qué hace falta.")))
+
+  (initget "Si No")
+  (setq r (getkword (if con-plano
+                      "\n\n¿Preparo el informe CON tu plano dentro? [Si/No] <No>: "
+                      "\n\n¿Preparo el informe? [Si/No] <No>: ")))
+  (if (/= r "Si")
+    (progn (princ "\nCancelado. No se ha creado ningún fichero.") (princ) (exit)))
+
+  (am:escribe-entorno)
+  (setq destino (am:lanza-el-empaquetado con-plano))
+  (am:log (strcat "ARCHMUSE-INFORME" (if con-plano "-PLANO" "") ": "
+                  (itoa (length ficheros)) " fichero(s) de registro"))
+
+  (if (null destino)
+    (progn
+      (princ "\n\nNo he podido preparar el ZIP. No pasa nada: los ficheros están")
+      (princ (strcat "\naquí y los puedes comprimir tú:\n   " carpeta)))
+    (progn
+      (princ (strcat "\n\nEn unos segundos aparecerá en tu ESCRITORIO:\n   " destino))
+      (princ "\nY se abrirá la carpeta con él seleccionado. Arrástralo a WhatsApp.")
+      (princ (strcat "\n\nSi no aparece, los ficheros están aquí y los puedes")
+             )
+      (princ (strcat "\ncomprimir tú:\n   " carpeta))))
+  (princ))
+
+
+(defun c:ARCHMUSE-INFORME ()
+  (am:informe nil))
+
+
+(defun c:ARCHMUSE-INFORME-PLANO ()
+  ;; Comando aparte, y no una opción del anterior. Mandar el proyecto de un
+  ;; cliente tiene que costar teclear otro nombre.
+  (am:informe T))
+
+
+(defun c:ARCHMUSE ( / *error* capa cuadros cuerpo respuesta celdas motivos consejo
+                      sueltas descartes doc marcado tablas eco r
+                      trozos ini fin bloque dibujadas tabla
+                      filas cols notas i n
+                      punto geometria ambitos alineado nombres elegida m intentos
+                      estilo-texto textos medidos)
 
   (defun *error* (msg)
     ;; `(exit)` levanta *error* con «quit / exit abort». Una salida ordenada no
     ;; puede imprimirse como fallo, asi que entra en la lista junto al ESC.
     (if (and msg (not (wcmatch (strcase msg)
                                "*BREAK*,*CANCEL*,*SALIDA*,*QUIT*,*EXIT*")))
-      (princ (strcat "\nArchMuse se ha detenido: " msg)))
+      (progn
+        (princ (strcat "\nArchMuse se ha detenido: " msg))
+        ;; **El único sitio del comando que registra una traza.** Un fallo que
+        ;; sólo existe en la línea de comandos se pierde en cuanto él teclea
+        ;; otra cosa, y es justo el que hay que poder leer tres semanas después.
+        ;; `msg` es el mensaje de AutoLISP: no lleva geometría dentro.
+        (am:log (strcat "ERROR: " msg))))
     (setvar "CMDECHO" (if eco eco 1))
     (princ))
 
@@ -517,52 +2005,374 @@
 
   (princ (strcat "\nArchMuse " *am:version*))
 
+  ;; 1. Los cuadros del arquitecto, si los tiene. **Ya no es un requisito.**
+  ;;
+  ;;    Hasta el 2026-09-12 esto era una puerta: sin cuadro el comando se
+  ;;    paraba, porque lo unico que sabia hacer era rellenar el suyo. Sobre
+  ;;    `V5.dxf` -- el plano que MEJOR mide de todo el lote -- eso significaba
+  ;;    medir tres viviendas enteras y no entregar nada.
+  ;;
+  ;;    Ahora ArchMuse entrega siempre su cuadro. Si el tiene uno, se copian sus
+  ;;    filas para que la comparacion sea directa; si no, se dibuja con el
+  ;;    formato de ArchMuse y **se le dice que es el de ArchMuse**.
+  (setq cuadros (am:buscar-cuadros))
+  (if (null cuadros)
+    (progn
+      ;; **Dos casos distintos, y hasta el 2026-09-11 se decían igual.** El
+      ;; mensaje anterior sugería siempre que el cuadro podía estar dibujado con
+      ;; líneas sueltas; en `V5.dxf` eso no era verdad —ese plano no tiene cuadro
+      ;; de ninguna clase, ni tabla ni líneas— y mandaba a buscar algo que no
+      ;; existe. Ahora se dice lo que se sabe y sólo lo que se sabe.
+      (setq tablas (am:cuantas-tablas))
+      (if (= tablas 0)
+        (progn
+          (princ "\nEste plano no tiene ningun cuadro de superficies.")
+          (princ "\n  No pasa nada: medire el plano y te dibujare el mio, con el")
+          (princ "\n  formato de ArchMuse. Nada de lo que tienes dibujado se toca."))
+        (progn
+          (princ (strcat "\nHe encontrado " (itoa tablas) " tabla(s) en este dibujo, pero"))
+          (princ "\nninguna parece tu cuadro de superficies.")
+          (princ (strcat "\n  Busco una cuya primera celda diga «"
+                         *am:titulo-del-cuadro* "»."))
+          (princ "\n  Te dibujare el cuadro de ArchMuse con mi formato. Si el tuyo se")
+          (princ "\n  titula de otra forma, dilo: copiar tus filas es mejor que inventarlas."))))
+    (princ (strcat "\nHe encontrado " (itoa (length cuadros))
+                   " cuadro(s) de superficies. No voy a tocar ninguno.")))
+
   (setq capa (am:elegir-capa))
   (if (null capa)
     (progn (setvar "CMDECHO" eco) (princ) (exit)))
 
-  ;; Lo que se deja fuera, ANTES de medir. Ver la decisión de diseño 3.
-  (setq abiertas (am:abiertas-en capa))
-  (if (> abiertas 0)
+  ;; **Dónde va la tabla, ANTES de medir** (`D-14`, enmendado el 2026-09-13).
+  ;; Un punto: la esquina de arriba a la izquierda. El servidor devuelve la
+  ;; tabla ya resuelta —a la altura legible, del tamaño que necesita, con sus
+  ;; notas—. Ni este fichero ni él deciden cuánto mide.
+  (setq punto (am:pedir-punto))
+  (if (null punto)
     (progn
-      (princ (strcat "\nAVISO: " (itoa abiertas) " polilínea(s) de «" capa
-                     "» no llevan el flag de cerrada y NO se envían."))
-      (princ "\n  El navegador sí recupera las que cierran geométricamente, así que")
-      (princ "\n  esta medición puede quedarse corta. Súbelo a /medir para comparar.")))
+      (princ "\nCancelado. No se ha dibujado nada.")
+      (setvar "CMDECHO" eco) (princ) (exit)))
 
-  (setq cuerpo (am:recolectar capa))
-  (if (null cuerpo)
+  (setq geometria (am:recolectar capa cuadros))
+  (if (null geometria)
     (progn (setvar "CMDECHO" eco) (princ) (exit)))
+  (setq ambitos nil alineado nil
+        cuerpo (am:con-dibujo geometria cuadros punto ambitos))
 
+  (am:log (strcat "envio " (itoa *am:celdas-enviadas*) " celda(s) del cuadro"))
   (princ "\nMidiendo… (una planta de seis viviendas tarda unos 12 segundos)")
   (setq respuesta (am:post cuerpo))
   (if (null respuesta)
-    (progn (setvar "CMDECHO" eco) (princ) (exit)))
-
-  (setq viviendas (am:viviendas respuesta))
-  (if (null viviendas)
     (progn
-      (princ "\nArchMuse no ha podido separar ninguna vivienda en este plano.")
-      (princ (strcat "\n  " (if (am:valor-tras respuesta "motivo" 0)
-                              (am:valor-tras respuesta "motivo" 0)
-                              "Sin motivo declarado.")))
+      (am:log "el servidor no ha respondido")
       (setvar "CMDECHO" eco) (princ) (exit)))
 
-  ;; Se enseña por la línea de comandos ANTES de dibujar: si la cifra está mal,
-  ;; el arquitecto lo ve sin haberse encontrado ya una tabla dentro del plano.
-  (princ (strcat "\n" (itoa (length viviendas)) " vivienda(s) medidas:"))
-  (foreach v viviendas
-    (princ (strcat "\n   " (car v) "   interior " (cadr v) "   exterior " (caddr v))))
+  ;; **La versión del servidor, en cuanto se sabe.** A partir de aquí cada línea
+  ;; del registro la lleva; antes decía «desconocida», que era la verdad.
+  (setq r (am:valor-tras respuesta "version" 0))
+  (if r (setq *am:version-del-servidor* r))
+  (princ (strcat "\nServidor ArchMuse " *am:version-del-servidor*
+                 "  ·  comando " *am:version-corta* "."))
 
-  (setq pt (getpoint "\nPunto de inserción de la tabla: "))
-  (if (null pt)
-    (progn (princ "\nCancelado: no se ha dibujado nada.")
-           (setvar "CMDECHO" eco) (princ) (exit)))
+  ;; **D-2: el comando cargado tiene que ser el que va con este servidor, o no
+  ;; se escribe.** Condición de la aprobación del PRD, no un detalle. Se compara
+  ;; la versión EXACTA del `.lsp` que el servidor dice llevar consigo, no «la
+  ;; parte mayor»: servidor (0.3.x) y comando (3.x) numeran por separado, y lo
+  ;; que hay que cazar es actualizar con AutoCAD abierto — el `.lsp` viejo en
+  ;; memoria contra el servidor nuevo, que es el caso que produce cifras que
+  ;; nadie puede reproducir después. Va aquí: después de saber qué servidor es y
+  ;; antes de tocar nada del dibujo.
+  (setq r (am:valor-tras respuesta "lsp" 0))
+  (cond
+    ((null r)
+      (am:log "el servidor no declara con que lsp va (servidor anterior a la beta)"))
+    ((/= r *am:version-corta*)
+      (princ (strcat "\n\nNO ESCRIBO NADA. El comando ArchMuse cargado en este AutoCAD es el "
+                     *am:version-corta* ", y este servidor va con el " r "."))
+      (princ "\n  Pasa cuando ArchMuse se actualiza con AutoCAD abierto.")
+      (princ "\n  Cierra AutoCAD y vuelve a abrirlo, y teclea ARCHMUSE otra vez.")
+      (am:log (strcat "versiones desparejadas: el servidor va con lsp " r ". No se escribe"))
+      (setvar "CMDECHO" eco) (princ) (exit)))
 
-  (am:dibujar-tabla pt respuesta viviendas)
-  (princ "\nTabla insertada. Es un BORRADOR para revisión de un colegiado.")
+  ;; 2a. Lo que el servidor ha tirado, con su motivo. Va ANTES del reparto: si
+  ;;     falta superficie, esto dice si se perdió en el camino o nunca se envió.
+  ;; 2a-bis. Lo que ha entrado REPARADO (`C-10`). Va antes que los descartes
+  ;;     porque responde a la misma pregunta y es la menos esperada de las dos:
+  ;;     que falte superficie se entiende; que ArchMuse haya tenido que arreglar
+  ;;     un contorno para poder medirlo hay que decirlo en voz alta, porque el
+  ;;     número sale bien y el dibujo sigue estando mal.
+  (setq r (am:valor-tras respuesta "geometria_reparada_aviso" 0))
+  (if r
+    (progn
+      (princ "\n\nAVISO — ")
+      (princ r)
+      (am:log "el servidor ha reparado geometria para poder medirla")))
+
+  ;; 2a-ter. **Los rótulos desplazados, y la única pregunta que este comando
+  ;;     hace sobre el dibujo del arquitecto.**
+  ;;
+  ;;     Va aquí, con la medición ya hecha, porque hasta que el servidor no mide
+  ;;     no se sabe si hay desfase ni de cuánto. Si él dice que sí, **se vuelve a
+  ;;     medir** — sí, dos veces: sólo ocurre en los planos que lo necesitan, y
+  ;;     el precio de no medir dos veces sería preguntar a ciegas.
+  ;;
+  ;;     Tres cosas que no son negociables, y están firmadas:
+  ;;     · **nunca se alinea sin que él lo diga**, ni con la detección más
+  ;;       limpia del mundo — la certeza técnica no sustituye su permiso;
+  ;;     · **por defecto NO**;
+  ;;     · y si el desfase no es limpio, el servidor manda
+  ;;       `puede_alinearse` a `nil` y aquí **no se ofrece nada**: se dice y se
+  ;;       sigue. Ofrecer un desplazamiento dudoso es peor que no ofrecer.
+  ;;
+  ;;     Ni una de las frases se escribe aquí: vienen redactadas del servidor,
+  ;;     incluido el DESPLAZA que le arreglaría el plano para siempre.
+  (setq r (am:valor-tras respuesta "rotulos_desplazados_aviso" 0))
+  (if r
+    (progn
+      (princ "\n\nAVISO — ")
+      (princ r)
+      (setq consejo (am:valor-tras respuesta "rotulos_desplazados_consejo" 0))
+      (if consejo (progn (princ "\n  ") (princ consejo)))
+      (am:log "el servidor declara rotulos desplazados")
+      (if (am:pos "(\"rotulos_desplazados_puede_alinearse\" . T)" respuesta 0)
+        (progn
+          (initget "Si No")
+          (setq r (getkword "\n¿Los alineo SÓLO para esta medición? Tu dibujo no se toca. [Si/No] <No>: "))
+          (if (= r "Si")
+            (progn
+              (princ "\nDe acuerdo. Vuelvo a medir con los rótulos alineados…")
+              (am:log "el usuario acepta alinear los rotulos")
+              (setq alineado T
+                    cuerpo (am:con-alineado cuerpo))
+              (setq respuesta (am:post cuerpo))
+              (if (null respuesta)
+                (progn
+                  (am:log "el servidor no ha respondido al volver a medir")
+                  (setvar "CMDECHO" eco) (princ) (exit)))
+              (setq r (am:valor-tras respuesta "rotulos_alineados_aviso" 0))
+              (if r (progn (princ "\n") (princ r))))
+            (am:log "el usuario NO alinea los rotulos")))
+        (princ "\n  No te ofrezco alinearlos: el desplazamiento no es el mismo en todo el plano."))))
+
+  (setq descartes (am:lista-de-motivos respuesta "geometria_descartada" 0))
+  (if descartes
+    (progn
+      (princ (strcat "\n\nEl servidor ha descartado " (itoa (length descartes))
+                     " de lo que envié:"))
+      (foreach r descartes (princ (strcat "\n   " r))))
+    (princ "\nEl servidor no ha descartado nada de lo que envié."))
+
+  ;; 2b. **La tabla de ArchMuse** (PRD 2026-09-13). Plantilla fija: las filas
+  ;;     las pone el plano, el formato ArchMuse y el tamaño el servidor. Si no
+  ;;     llega, se distingue un servidor anterior de un fallo suyo por lo que el
+  ;;     propio servidor declara saber hacer.
+  (if (null (am:pos "(\"cuadro_a_dibujar\"" (am:zona-de-repartos respuesta) 0))
+    (progn
+      (cond
+        ((am:motivos-indistinguibles respuesta)
+          ;; `C-13`: no es un fallo, es un criterio firmado. Varias viviendas con
+          ;; el mismo rótulo no se distinguen, y no se dibuja la de ninguna.
+          (princ "\n\nNo dibujo ningún cuadro:")
+          (foreach r (am:motivos-indistinguibles respuesta)
+            (princ (strcat "\n  " r))))
+        ((null (am:pos "\"reparto_de_cuadro\"" respuesta 0))
+          (princ "\n\nTu servidor ArchMuse NO SABE dibujar el cuadro: es una versión")
+          (princ "\nanterior a esa función. Ha medido bien, pero no dibuja.")
+          (princ "\n  Reinícialo y vuelve a teclear ARCHMUSE."))
+        (T
+          (princ "\n\nEl servidor ha medido y no ha devuelto ningún cuadro que dibujar.")
+          (if (am:valor-tras respuesta "motivo" 0)
+            (princ (strcat "\n  " (am:valor-tras respuesta "motivo" 0))))
+          (princ "\n  Esto es un fallo suyo, no tuyo: avisa con esta línea.")))
+      (setvar "CMDECHO" eco) (princ) (exit)))
+
+  ;; 2c. **Interior o exterior**, si el servidor lo pregunta (decisión 4 de
+  ;;     Pablo): una pregunta por familia, redactada allí. Con las respuestas se
+  ;;     vuelve a medir la MISMA geometría con una instrucción más, como al
+  ;;     alinear los rótulos.
+  (setq ambitos (am:preguntar-ambitos respuesta))
+  (if ambitos
+    (progn
+      (am:log (strcat "el usuario contesta " (itoa (length ambitos))
+                      " pregunta(s) de interior o exterior"))
+      (setq cuerpo (am:con-dibujo geometria cuadros punto ambitos))
+      (if alineado (setq cuerpo (am:con-alineado cuerpo)))
+      (setq respuesta (am:post cuerpo))
+      (if (null respuesta)
+        (progn
+          (am:log "el servidor no ha respondido al volver a medir con las respuestas")
+          (setvar "CMDECHO" eco) (princ) (exit)))))
+
+  ;; 2d. **De qué vivienda**, si el plano tiene varias: él elige. Las que llevan
+  ;;     el mismo rótulo que otra no se ofrecen (`C-13`), y se dice por qué: dos
+  ;;     opciones con el mismo nombre no se pueden elegir.
+  (if (am:motivos-indistinguibles respuesta)
+    (progn
+      (princ "\n\nNo te ofrezco estas viviendas:")
+      (foreach r (am:motivos-indistinguibles respuesta)
+        (princ (strcat "\n  " r)))))
+  (setq nombres (am:viviendas-de respuesta)
+        elegida (am:elegir-vivienda nombres))
+  (if (null elegida)
+    (progn
+      (princ "\nCancelado. No se ha dibujado nada.")
+      (setvar "CMDECHO" eco) (princ) (exit)))
+
+  ;; 2e. **El estilo de texto de la tabla** (3.5.0): uno que ya existe en su
+  ;;     plano —el de su cuadro, o el de sus rótulos—, elegido por el servidor.
+  ;;     Si el plano no tiene ninguno del que sacarlo, **no se inventa una
+  ;;     fuente**: se dice por qué y no se dibuja (Pablo, 2026-09-13).
+  (setq bloque (am:bloque-de-vivienda respuesta elegida))
+  (if (or (null bloque)
+          (null (am:valor-tras bloque "estilo_texto" 0))
+          (= (am:valor-tras bloque "estilo_texto" 0) "nil"))
+    (progn
+      (princ (strcat "\n\nNo dibujo la tabla: "
+                     (if (and bloque (am:valor-tras bloque "motivo_sin_estilo" 0))
+                       (am:valor-tras bloque "motivo_sin_estilo" 0)
+                       "el servidor no ha elegido ningún estilo de texto de tu plano.")))
+      (am:log "no hay estilo de texto del plano con el que dibujar la tabla; no se dibuja")
+      (setvar "CMDECHO" eco) (princ) (exit)))
+  (setq estilo-texto (am:valor-tras bloque "estilo_texto" 0)
+        celdas       (am:celdas-del-cuadro bloque)
+        textos       (am:cadenas-tras bloque "textos_a_medir" 0))
+
+  ;; 2f. **Los anchos los mide AutoCAD**, con `textbox`, en ese estilo y a altura
+  ;;     1. Qué se mide lo ha decidido el servidor. Si una medida falla, se dice
+  ;;     qué texto y qué ha contestado AutoCAD.
+  (setq medidos (am:medir-textos textos estilo-texto))
+  (if (null medidos)
+    (progn
+      (princ (strcat "\n\nNo he podido medir los textos de la tabla "
+                     (if *am:fallo-de-la-medida*
+                       *am:fallo-de-la-medida*
+                       "y AutoCAD no ha dado ningún motivo")
+                     "."))
+      (am:log "fallo al medir los textos de la tabla con textbox")
+      (setvar "CMDECHO" eco) (princ) (exit)))
+
+  ;; 2g. **¿Se puede poner ahí?** Lo decide el servidor con esas medidas. La única
+  ;;     negativa es que la tabla pisaría su cuadro: se pide otro punto, hasta
+  ;;     tres veces, sin volver a medir el plano ni los textos.
+  (setq m (am:maquetar bloque textos medidos punto cuadros estilo-texto) intentos 0)
+  (while (and m (am:pos "(\"cabe\" . nil)" m 0) (< intentos 3))
+    (princ (strcat "\n\n" (am:valor-tras m "motivo" 0)))
+    (setq punto (am:pedir-punto) intentos (1+ intentos))
+    (setq m (if punto (am:maquetar bloque textos medidos punto cuadros estilo-texto) nil)))
+  (if (or (null m) (null (am:pos "(\"cabe\" . T)" m 0)))
+    (progn
+      (princ (if m
+               "\n\nNo he dibujado nada: desde ese punto la tabla pisaría tu cuadro."
+               "\n\nNo he dibujado nada: el motivo está en la línea de arriba."))
+      (am:log "la tabla no se ha colocado; no se ha dibujado nada")
+      (setvar "CMDECHO" eco) (princ) (exit)))
+  (setq notas (am:notas-colocadas m))
+
+  ;; 3. **Enseñar antes de dibujar.** Ve lo que va a aparecer en su plano y
+  ;;    puede irse sin que se haya tocado nada.
+  (princ (strcat "\n\nVoy a dibujar el cuadro de ArchMuse de " (nth elegida nombres)
+                 ": " (itoa (length celdas)) " casilla(s) con texto."))
+  (princ "\n  Tu cuadro no se toca: la tabla va desde el punto que has marcado.")
+  (if notas
+    (progn
+      (princ (strcat "\n\n" (itoa (length notas))
+                     " nota(s) al pie, con el motivo de cada celda vacía:"))
+      (foreach nota notas (princ (strcat "\n   " (caddr nota))))))
+
+  (initget "Si No")
+  (setq r (getkword "\n\n¿Te dibujo el cuadro de ArchMuse? [Si/No] <No>: "))
+  (if (/= r "Si")
+    (progn
+      (princ "\nCancelado. No se ha dibujado nada.")
+      (am:log (strcat "cancelado por el usuario con " (itoa (length celdas))
+                      " casilla(s) listas"))
+      (setvar "CMDECHO" eco) (princ) (exit)))
+
+  ;; **Todo lo que se escribe va dentro de UN grupo de deshacer.** Así un solo
+  ;; `UNDO` lo quita entero —tabla, notas y marca— en vez de dejar al arquitecto
+  ;; pulsando diez veces, y así se puede retirar en bloque si algo sale mal.
+  (setq doc (vla-get-ActiveDocument (vlax-get-acad-object)))
+  (vl-catch-all-apply 'vla-StartUndoMark (list doc))
+
+  (setq tabla (am:dibujar-cuadro m celdas))
+  (if (null tabla)
+    (progn
+      (vl-catch-all-apply 'vla-EndUndoMark (list doc))
+      ;; **La causa, siempre** (3.4.1). La 3.4.0 decía sólo «No he podido dibujar
+      ;; la tabla. No se ha quedado nada a medias.»: ni en qué paso ni por qué —el
+      ;; error de AutoCAD se capturaba y se tiraba—, y lo segundo no se comprobaba.
+      (princ (strcat "\nNo he podido dibujar la tabla "
+                     (if *am:fallo-del-dibujo*
+                       *am:fallo-del-dibujo*
+                       "y AutoCAD no ha dado ningún motivo")
+                     "."))
+      (am:log (strcat "fallo al dibujar el cuadro "
+                      (if *am:fallo-del-dibujo* *am:fallo-del-dibujo* "sin motivo")))
+      ;; Lo que llegó a dibujarse antes del fallo se retira con el mismo UNDO que
+      ;; usa la marca de borrador. **Sólo si se llegó a dibujar algo**: con el
+      ;; grupo vacío, ese UNDO desharía lo último que hizo él.
+      (if *am:dibujo-empezado*
+        (if (vl-catch-all-error-p (vl-catch-all-apply 'command (list "_.U")))
+          (princ "\nY NO he podido deshacer lo que llegué a dibujar: pulsa UNDO tú.")
+          (princ "\nHe deshecho lo que llegué a dibujar: tu plano está como antes."))
+        (princ "\nNo había llegado a dibujar nada: tu plano está como antes."))
+      (princ "\nCópiame la línea de «No he podido…» cuando me avises: dice dónde y por qué.")
+      (setvar "CMDECHO" eco) (princ) (exit)))
+  (princ (strcat "\n" (itoa (length celdas)) " casilla(s) escritas en el cuadro de ArchMuse."))
+  (princ "\nTu cuadro sigue exactamente como estaba.")
+  ;; Lo que no se ha podido hacer sin impedir la tabla, con su motivo: dicho, no
+  ;; tragado (3.4.1).
+  (if *am:avisos-del-dibujo*
+    (progn
+      (princ "\n\nLa tabla está dibujada, pero esto no se ha podido hacer:")
+      (foreach r (reverse *am:avisos-del-dibujo*)
+        (princ (strcat "\n  - " r))
+        (am:log (strcat "aviso al dibujar: " r)))
+      (princ "\nCópiame estas líneas cuando me avises.")))
+
+  ;; **`C-3`: nunca números sin marca.** Un cuadro relleno sin la advertencia de
+  ;; borrador es exactamente el estado que ese criterio existe para impedir, y es
+  ;; peor que no haber escrito nada: el arquitecto se queda con cifras que
+  ;; parecen definitivas. Si la marca no se puede poner, **se retira lo escrito**.
+  ;;
+  ;; Pasó el 2026-09-11: la marca reventó DESPUÉS de escribir las diez celdas y
+  ;; el plano se quedó con los números y sin advertencia. Si el arquitecto no
+  ;; llega a mirar la línea de comandos, no se entera.
+  ;; **La marca va en la tabla de ArchMuse**, no en la suya: es la nuestra la
+  ;; que lleva cifras que hay que calificar de borrador, y la suya no se toca.
+  ;; Misma capa y mismo texto que la via web, que es lo que exige `C-9`.
+  (setq marcado (am:marcar-borrador tabla m))
+  (vl-catch-all-apply 'vla-EndUndoMark (list doc))
+
+  (if (null marcado)
+    (progn
+      (am:log "la marca de borrador no se ha podido poner; se retira lo escrito")
+      (princ "\n\n*** ATENCIÓN — NO he podido poner la marca de borrador. ***")
+      (princ "\nUn cuadro con cifras y sin esa advertencia parece definitivo, y no lo")
+      (princ "\nes. Deshago lo que acabo de escribir para no dejarte el plano así.")
+      (if (vl-catch-all-error-p (vl-catch-all-apply 'command (list "_.U")))
+        (progn
+          (princ "\n\n*** Y TAMPOCO he podido deshacerlo. ***")
+          (princ "\nTu cuadro tiene AHORA MISMO cifras de ArchMuse sin marca de")
+          (princ "\nborrador. Pulsa UNDO tú, o no entregues este plano sin revisarlo."))
+        (princ "\nHecho: el cuadro ha vuelto a como estaba. No has perdido nada."))
+      (setvar "CMDECHO" eco)
+      (princ)
+      (exit)))
+
+  (princ "\nEs un BORRADOR para revisión de un colegiado. La marca está en la capa")
+  ;; El nombre de la capa sale de la variable y no escrito a mano:
+  ;; un mensaje que nombra una capa distinta de donde se escribe de
+  ;; verdad es otra forma de mandar al arquitecto a mirar donde no es.
+  (princ (strcat "\n«" *am:capa-de-la-marca* "»: puedes apagarla para imprimir, no borrarla."))
+  (princ "\nUn solo UNDO deshace todo lo que acabo de escribir.")
+  ;; Hasta el 2026-09-13 esta línea leía `resultado`, que no se asignaba en
+  ;; ninguna parte: `(itoa (car nil))` revienta, así que el comando terminaba
+  ;; en «se ha detenido» después de haber dibujado y marcado bien.
+  (am:log (strcat "OK: " (itoa (length celdas)) " casilla(s) escritas, "
+                  (itoa (length notas)) " nota(s) al pie"))
   (setvar "CMDECHO" eco)
   (princ))
 
-(princ "\nArchMuse cargado. Teclea ARCHMUSE para medir la planta.")
+(princ "\nArchMuse cargado. Teclea ARCHMUSE para medir el plano y dibujar tu cuadro.")
 (princ)

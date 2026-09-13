@@ -105,8 +105,20 @@
         "que": "Geometría descartada"
       },
       {
+        "para": "qué contornos estaban mal construidos y han entrado reparados, sin que su superficie cambie",
+        "que": "Geometría reparada"
+      },
+      {
         "para": "que ninguna pieza esté sin rotular y que ningún rótulo se repita",
         "que": "Rótulos"
+      },
+      {
+        "para": "si un plano entero sin rotular se explica porque los textos están movidos en bloque",
+        "que": "Rótulos desplazados"
+      },
+      {
+        "para": "que los nombres de las estancias vengan de una sola capa y no de varias",
+        "que": "De qué capa salen los nombres"
       },
       {
         "para": "que el cuadro y el plano nombren las mismas piezas",
@@ -335,8 +347,181 @@
     "viviendas": 1
   },
   "plano.cuadro_de_superficies": {
-    "error": "cuadro_no_calculable",
-    "ok": false
+    "celdas": [
+      {
+        "columna": 0,
+        "fila": 0,
+        "texto": "CUADRO DE SUPERFICIES POR TIPO DE VIVIENDA"
+      },
+      {
+        "columna": 0,
+        "fila": 1,
+        "texto": "ESPACIOS INTERIORES"
+      },
+      {
+        "columna": 1,
+        "fila": 1,
+        "texto": "SUPERFICIES UTILES INT."
+      },
+      {
+        "columna": 2,
+        "fila": 1,
+        "texto": "ESPACIOS EXTERIORES"
+      },
+      {
+        "columna": 3,
+        "fila": 1,
+        "texto": "SUPERFICIES UTILES EXT."
+      },
+      {
+        "columna": 0,
+        "fila": 2,
+        "texto": "Salón"
+      },
+      {
+        "columna": 1,
+        "fila": 2,
+        "texto": "20,00 m²"
+      },
+      {
+        "columna": 0,
+        "fila": 3,
+        "texto": "Cocina"
+      },
+      {
+        "columna": 1,
+        "fila": 3,
+        "texto": "9,00 m²"
+      },
+      {
+        "columna": 0,
+        "fila": 4,
+        "texto": "Dormitorio 1"
+      },
+      {
+        "columna": 1,
+        "fila": 4,
+        "texto": "12,00 m²"
+      },
+      {
+        "columna": 0,
+        "fila": 5,
+        "texto": "Baño"
+      },
+      {
+        "columna": 1,
+        "fila": 5,
+        "texto": "4,00 m²"
+      },
+      {
+        "columna": 0,
+        "fila": 6,
+        "texto": "TOTAL SUP. INTERIOR (m2)"
+      },
+      {
+        "columna": 1,
+        "fila": 6,
+        "texto": "45,00 m²"
+      },
+      {
+        "columna": 2,
+        "fila": 6,
+        "texto": "TOTAL SUP. EXTERIOR (m2)"
+      },
+      {
+        "columna": 0,
+        "fila": 7,
+        "texto": "TOTAL S. UTIL(m2)"
+      },
+      {
+        "columna": 1,
+        "fila": 7,
+        "texto": "45,00 m²"
+      },
+      {
+        "columna": 0,
+        "fila": 8,
+        "texto": "S. CONSTRUIDA C."
+      },
+      {
+        "columna": 0,
+        "fila": 9,
+        "texto": "VIVIENDA TIPO"
+      },
+      {
+        "columna": 1,
+        "fila": 9,
+        "texto": "VT1/1"
+      },
+      {
+        "columna": 2,
+        "fila": 9,
+        "texto": "NUMERO UDS:"
+      }
+    ],
+    "celdas_declaradas_por_el_arquitecto": [],
+    "celdas_sin_resolver": [
+      {
+        "etiqueta": "TOTAL SUP. EXTERIOR (m2)",
+        "motivo": "no hay ningún espacio de este lado, y un total vacío no se escribe como cero (D-13)."
+      },
+      {
+        "etiqueta": "S. CONSTRUIDA C.",
+        "motivo": "el plano no rotula ninguna polilínea como «Superficie construida cerrada» ni «S. construida cerrada», y sin ese rótulo no se escribe (C-12)."
+      },
+      {
+        "etiqueta": "NUMERO UDS",
+        "motivo": "el plano lo declara, pero leer lo que el plano declara (C-8) no está implementado todavía: se escribe a mano."
+      }
+    ],
+    "completo": true,
+    "filas": [
+      {
+        "ambito": "interior",
+        "area_m2": 20.0,
+        "familia": "salón",
+        "rotulo": "Salón",
+        "tiene_fila": true,
+        "valor": "20,00 m²"
+      },
+      {
+        "ambito": "interior",
+        "area_m2": 9.0,
+        "familia": "cocina",
+        "rotulo": "Cocina",
+        "tiene_fila": true,
+        "valor": "9,00 m²"
+      },
+      {
+        "ambito": "interior",
+        "area_m2": 12.0,
+        "familia": "dormitorio",
+        "rotulo": "Dormitorio 1",
+        "tiene_fila": true,
+        "valor": "12,00 m²"
+      },
+      {
+        "ambito": "interior",
+        "area_m2": 4.0,
+        "familia": "baño",
+        "rotulo": "Baño",
+        "tiene_fila": true,
+        "valor": "4,00 m²"
+      }
+    ],
+    "impedimentos": [],
+    "medicion_limpia": true,
+    "n_columnas": 4,
+    "n_filas": 10,
+    "notas": [
+      "TOTAL SUP. EXTERIOR (m2): no hay ningún espacio de este lado, y un total vacío no se escribe como cero (D-13).",
+      "S. CONSTRUIDA C.: el plano no rotula ninguna polilínea como «Superficie construida cerrada» ni «S. construida cerrada», y sin ese rótulo no se escribe (C-12).",
+      "NUMERO UDS: el plano lo declara, pero leer lo que el plano declara (C-8) no está implementado todavía: se escribe a mano."
+    ],
+    "ok": true,
+    "preguntas_pendientes": [],
+    "titulo": "CUADRO DE SUPERFICIES POR TIPO DE VIVIENDA",
+    "vivienda": "VT1/1"
   },
   "plano.leer_dxf": {
     "capa_de_recintos": "00 areas",
@@ -348,6 +533,7 @@
       "unidad": "metros"
     },
     "geometria_no_leida": [],
+    "geometria_reparada": [],
     "ok": true,
     "recintos": [
       {
@@ -382,12 +568,25 @@
     "agrupacion": "rótulos de vivienda del plano",
     "capa_criterio": null,
     "capa_de_recintos": "00 areas",
+    "capa_de_rotulos": {
+      "ambiguo": false,
+      "capa": "00 areas",
+      "reparto": [
+        [
+          "00 areas",
+          8
+        ]
+      ]
+    },
     "capas_ignoradas": [],
     "escala": "metros",
     "geometria_no_leida": [],
+    "geometria_reparada": [],
     "impedimentos_del_total": [],
     "ok": true,
     "piezas": 8,
+    "rotulos_alineados": null,
+    "rotulos_desplazados": null,
     "rotulos_sin_piezas": [],
     "util_exterior_m2": 18.0,
     "util_interior_m2": 72.0,

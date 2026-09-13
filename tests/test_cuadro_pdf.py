@@ -1,21 +1,23 @@
 # -*- coding: utf-8 -*-
-"""DOC-2 — el cuadro en PDF, y por qué la última columna es la que importa.
+"""DOC-2 — el cuadro en PDF, y por qué lo que va debajo de la tabla es lo que importa.
 
 Ejecutar:  pytest tests/test_cuadro_pdf.py
 
-El DXF relleno lleva los números y vuelve al proyecto. Este PDF lleva **de
+El DXF entregado lleva los números y vuelve al proyecto. Este PDF lleva **de
 dónde sale cada uno y qué falta**: es lo que el arquitecto lee para decidir si
 se fía, y lo que puede enseñar seis meses después si alguien le pregunta.
 
-Lo que se fija aquí:
+**Reescrito el 2026-09-13** con la plantilla fija (PRD
+`docs/prd/2026-09-13-cuadro-plantilla-fija.md`): el PDF presenta la misma
+rejilla que el comando, la web y el DXF, y ya no hay columna de estado ni
+celdas «preexistentes» — la tabla de ArchMuse no copia nada del cuadro del
+arquitecto. Lo que se fija aquí:
 
-1. **Cada celda dice de dónde sale.** Una celda vacía sin motivo es
+1. **Cada hueco vacío dice por qué.** Una celda vacía sin motivo es
    indistinguible de un descuido; con motivo, es una decisión discutible.
 2. **Lo declarado por el arquitecto no se presenta como calculado por
-   ArchMuse.** En un acta esas dos cosas no valen lo mismo, y atribuirse la
-   primera sería apropiarse de un dato ajeno.
-3. **El PDF no calcula nada** ni convierte un `N/D` en número: presenta lo que
-   le dan, tal cual.
+   ArchMuse.** En un acta esas dos cosas no valen lo mismo.
+3. **El PDF no calcula nada** ni inventa una cifra: presenta lo que le dan.
 4. Lleva la marca de borrador en todas las páginas (`DOC-3`) y la huella del
    DXF original, para que «tu plano no se ha tocado» sea comprobable.
 """
@@ -37,32 +39,48 @@ from agente.efectos import ESCRIBE_FICHERO, Autorizaciones, EfectoNoAutorizado  
 from agente.herramientas import plano  # noqa: E402
 from agente.registro import registro  # noqa: E402
 from analyzer.cuadro_pdf import escribir_cuadro_pdf, generar_cuadro_pdf  # noqa: E402
-from tests.test_agente_goldens import construir_dxf  # noqa: E402
+from tests.test_agente_goldens import construir_dxf, construir_dxf_de_planta  # noqa: E402
 
 PERMISO = Autorizaciones.de([ESCRIBE_FICHERO], por="test")
 
+TITULO = "CUADRO DE SUPERFICIES POR TIPO DE VIVIENDA"
+
+
+def _celda(fila, columna, texto):
+    return {"fila": fila, "columna": columna, "texto": texto}
+
+
 DATOS = {
-    "plano": "v2s.dxf",
+    "plano": "piso.dxf",
+    "vivienda": "VT1/1",
     "sello_origen_sha256": "abc123def456",
+    "n_filas": 7,
+    "n_columnas": 4,
     "celdas": [
-        {"campo": "salon_cocina", "texto": "21,90 m²", "estado": "CALCULADO",
-         "motivo": None},
-        {"campo": "dormitorio_2", "texto": "0,00 m²", "estado": "CERO_REAL",
-         "motivo": "se ha buscado y la vivienda no tiene ninguno"},
-        {"campo": "superficie_construida_cerrada", "texto": "N/D",
-         "estado": "NO_DISPONIBLE",
-         "motivo": "no se puede medir sin los espesores de muro"},
-        {"campo": "terraza_1", "texto": "N/D", "estado": "BLOQUEADO",
-         "motivo": "hay dos piezas con esa etiqueta y no se puede saber cuál es"},
-        {"campo": "numero_unidades", "texto": "8", "estado": "CALCULADO",
-         "declarado_por_usuario": True},
-        {"campo": "vivienda_tipo", "texto": "VT1 /3", "estado": "CALCULADO",
-         "preexistente": True},
+        _celda(0, 0, TITULO),
+        _celda(1, 0, "ESPACIOS INTERIORES"), _celda(1, 1, "SUPERFICIES UTILES INT."),
+        _celda(1, 2, "ESPACIOS EXTERIORES"), _celda(1, 3, "SUPERFICIES UTILES EXT."),
+        _celda(2, 0, "Salón/cocina"), _celda(2, 1, "21,90 m²"), _celda(2, 2, "Terraza"),
+        _celda(3, 0, "TOTAL SUP. INTERIOR (m2)"), _celda(3, 1, "21,90 m²"),
+        _celda(3, 2, "TOTAL SUP. EXTERIOR (m2)"),
+        _celda(4, 0, "TOTAL S. UTIL(m2)"),
+        _celda(5, 0, "S. CONSTRUIDA C."),
+        _celda(6, 0, "VIVIENDA TIPO"), _celda(6, 1, "VT1/1"), _celda(6, 2, "NUMERO UDS:"),
+    ],
+    "celdas_sin_resolver": [
+        {"etiqueta": "Terraza",
+         "motivo": "se solapa con otra pieza dibujada: cuenta metros dos veces y no se "
+                   "escribe su cifra."},
+        {"etiqueta": "TOTAL S. UTIL(m2)",
+         "motivo": "la superficie útil interior y la exterior no se suman en una sola "
+                   "cifra: es criterio del técnico que firma (C-1)."},
     ],
     "preguntas_pendientes": [
-        {"titulo": "¿Qué pieza del plano es cada espacio exterior?",
-         "ayuda": "Asigna cada pieza real al hueco que le corresponda."},
+        {"titulo": "ArchMuse no reconoce «Trastero» (Trastero (2,70 m²)). ¿Es un espacio "
+                   "interior o exterior?",
+         "ayuda": "Una respuesta vale para todas las piezas de esa familia."},
     ],
+    "celdas_declaradas_por_el_arquitecto": ["LAVADERO"],
     "no_comprobado": ["no comprueba normativa de ningún tipo"],
 }
 
@@ -79,21 +97,26 @@ def texto_de(pdf_bytes: bytes) -> str:
     return re.sub(r"\s+", " ", crudo)
 
 
-# --- 1. Cada celda dice de dónde sale -------------------------------------
+# --- 1. La tabla es la plantilla, y cada hueco dice por qué ---------------
 
-def test_cada_celda_lleva_su_valor_y_su_porque():
+def test_la_tabla_es_la_plantilla_de_archmuse():
+    contenido = texto_de(generar_cuadro_pdf(DATOS))
+    assert TITULO in contenido
+    assert "ESPACIOS INTERIORES" in contenido and "VIVIENDA TIPO" in contenido
+
+
+def test_cada_cifra_y_cada_hueco_llevan_su_porque():
     contenido = texto_de(generar_cuadro_pdf(DATOS))
     assert "21,90 m²" in contenido
-    assert "no se puede medir sin los espesores de muro" in contenido
-    assert "hay dos piezas con esa etiqueta" in contenido
+    assert "cuenta metros dos veces" in contenido
+    assert "no se suman en una sola cifra" in contenido
 
 
-def test_los_estados_se_leen_en_castellano_de_arquitecto():
-    """Quien lee este PDF no sabe —ni tiene por qué— qué es un `CERO_REAL`."""
+def test_el_vocabulario_del_motor_no_llega_al_papel():
+    """Quien lee este PDF no sabe —ni tiene por qué— qué es un `SIN_CIFRA`."""
     contenido = texto_de(generar_cuadro_pdf(DATOS))
-    assert "No existe en la vivienda" in contenido
-    assert "No se puede saber del plano" in contenido
-    assert "CERO_REAL" not in contenido
+    for interno in ("NO_DIBUJADA", "SIN_CIFRA", "tiene_fila", "BLOQUEADO"):
+        assert interno not in contenido
 
 
 def test_lo_que_no_se_ha_podido_calcular_tiene_su_propia_seccion():
@@ -105,7 +128,7 @@ def test_lo_que_no_se_ha_podido_calcular_tiene_su_propia_seccion():
 def test_las_preguntas_pendientes_estan_para_poder_contestarlas():
     contenido = texto_de(generar_cuadro_pdf(DATOS))
     assert "Qué haría falta para completarlo" in contenido
-    assert "¿Qué pieza del plano es cada espacio exterior?" in contenido
+    assert "¿Es un espacio interior o exterior?" in contenido
 
 
 def test_lo_que_no_se_comprueba_va_dicho():
@@ -120,11 +143,7 @@ def test_lo_declarado_por_el_arquitecto_no_se_presenta_como_calculado():
     """Atribuirse un dato ajeno es lo contrario de lo que hace un acta."""
     contenido = texto_de(generar_cuadro_pdf(DATOS))
     assert "Declarado por el arquitecto, no calculado por ArchMuse" in contenido
-
-
-def test_lo_que_ya_estaba_en_el_dxf_se_dice_que_ya_estaba():
-    contenido = texto_de(generar_cuadro_pdf(DATOS))
-    assert "Ya estaba escrito en el DXF" in contenido
+    assert "LAVADERO" in contenido
 
 
 def test_la_huella_del_original_va_en_el_documento():
@@ -135,14 +154,34 @@ def test_la_huella_del_original_va_en_el_documento():
 
 # --- 3. No calcula nada ----------------------------------------------------
 
-def test_un_ND_sigue_siendo_un_ND():
+def test_el_pdf_no_inventa_ninguna_cifra():
+    """`D-13`: ni un `0,00 m²` en un hueco vacío, ni una cifra que no le hayan dado."""
     contenido = texto_de(generar_cuadro_pdf(DATOS))
-    assert "N/D" in contenido
+    assert "0,00" not in contenido
+    cifras = set(re.findall(r"\d+,\d{2} m²", contenido)) - {"2,70 m²"}   # la de la pregunta
+    assert cifras == {"21,90 m²"}, cifras
 
 
 def test_un_cuadro_vacio_lo_dice_en_vez_de_salir_en_blanco():
     contenido = texto_de(generar_cuadro_pdf({"plano": "x.dxf", "celdas": []}))
     assert "No se ha podido calcular ninguna celda" in contenido
+
+
+def test_el_rotulo_sale_como_esta_en_el_plano():
+    """«Bano» no es una palabra, y este PDF se le enseña a un cliente."""
+    datos = dict(DATOS)
+    datos["celdas"] = DATOS["celdas"] + [_celda(2, 3, ""), _celda(3, 3, "")]
+    datos["celdas"] = [c for c in datos["celdas"] if c["texto"] != "Salón/cocina"] + [
+        _celda(2, 0, "Baño")]
+    contenido = texto_de(generar_cuadro_pdf(datos))
+    assert "Baño" in contenido
+    assert "Bano" not in contenido
+
+
+def test_un_rotulo_con_marcado_no_rompe_el_documento():
+    datos = dict(DATOS)
+    datos["celdas"] = DATOS["celdas"] + [_celda(2, 3, "<b>&")]
+    assert "<b>&" in texto_de(generar_cuadro_pdf(datos))
 
 
 # --- 4. La marca de borrador ----------------------------------------------
@@ -173,14 +212,29 @@ def test_sin_autorizacion_no_escribe_el_pdf(tmp_path):
     assert not (tmp_path / "x.pdf").exists()
 
 
-def test_un_dxf_sin_cuadro_no_produce_un_pdf_vacio(tmp_path):
+def test_un_dxf_que_no_se_puede_calcular_no_produce_un_pdf_vacio(tmp_path):
     """Un PDF con una tabla en blanco se lee como «no hay superficies», que es
-    justo la lectura contraria a «no he podido calcularlas»."""
-    origen = construir_dxf(tmp_path)
+    justo la lectura contraria a «no he podido calcularlas». Con la plantilla
+    fija el caso ya no es «no trae cuadro» sino «trae dos viviendas»."""
+    origen = construir_dxf_de_planta(tmp_path)
     destino = tmp_path / "cuadro.pdf"
     resultado = plano.cuadro_en_pdf(origen, str(destino))
     assert resultado["ok"] is False
     assert not destino.exists()
+
+
+def test_un_dxf_sin_cuadro_del_arquitecto_si_tiene_su_pdf(tmp_path):
+    """De punta a punta y sin el plano real: la plantilla no necesita el cuadro
+    del arquitecto, así que el piso sintético produce su PDF entero."""
+    origen = construir_dxf(tmp_path)
+    destino = tmp_path / "cuadro.pdf"
+    resultado = plano.cuadro_en_pdf(origen, str(destino))
+    assert resultado["ok"] is True, resultado
+    contenido = texto_de(destino.read_bytes())
+    assert TITULO in contenido
+    assert "Salón" in contenido and "Dormitorio 1" in contenido
+    # Con el detector de D-13, no con la subcadena: «20,00 m²» contiene «0,00».
+    assert not re.search(r"(?<![\d.,])0+(?:[.,]0+)?\s*m", contenido), contenido
 
 
 def test_el_pdf_no_puede_sobrescribir_el_dxf(tmp_path):
@@ -194,51 +248,3 @@ def test_escribir_el_pdf_deja_el_fichero_en_su_sitio(tmp_path):
     destino = tmp_path / "cuadro.pdf"
     escribir_cuadro_pdf(DATOS, str(destino))
     assert destino.exists() and destino.read_bytes().startswith(b"%PDF")
-
-
-# --- 6. Lo que enseñó el primer plano real --------------------------------
-#
-# Estos tres se escriben después de pasar `v2s.dxf` por el flujo completo. Los
-# fixtures no podían destaparlos: sus etiquetas no llevan tildes y su geometría
-# no tiene solapes.
-
-def test_la_fila_se_rotula_como_la_escribio_el_arquitecto():
-    """«Bano» no es una palabra, y este PDF se le enseña a un cliente.
-
-    El `campo` es un identificador ASCII y sirve para programar; el rótulo sale
-    de la etiqueta del propio cuadro del DXF, que es donde están las tildes.
-    """
-    datos = dict(DATOS)
-    datos["celdas"] = [
-        {"campo": "bano", "etiqueta": "BAÑO", "texto": "4,01 m²",
-         "estado": "CALCULADO", "motivo": None},
-        {"campo": "salon_cocina", "etiqueta": "SALÓN/COCINA", "texto": "21,90 m²",
-         "estado": "CALCULADO", "motivo": None},
-    ]
-    contenido = texto_de(generar_cuadro_pdf(datos))
-    assert "BAÑO" in contenido
-    assert "SALÓN/COCINA" in contenido
-    assert "Bano" not in contenido
-
-
-def test_sin_etiqueta_se_repliega_al_identificador_en_vez_de_quedarse_en_blanco():
-    """Una fila sin nombre es peor que una fila con un nombre feo."""
-    datos = dict(DATOS)
-    datos["celdas"] = [{"campo": "dormitorio_1", "texto": "12,72 m²",
-                        "estado": "CALCULADO", "motivo": None}]
-    assert "Dormitorio 1" in texto_de(generar_cuadro_pdf(datos))
-
-
-def test_una_celda_bloqueada_se_lee_igual_en_el_pdf_que_en_el_dxf():
-    """El DXF escribe «N/D» en ese hueco; el PDF que lo explica decía
-    «BLOQUEADO». Dos vocabularios para la misma celda obligan al arquitecto a
-    cotejarlos. El porqué sigue entero en las otras dos columnas."""
-    datos = dict(DATOS)
-    datos["celdas"] = [{"campo": "terraza_1", "etiqueta": "TERRAZA 1",
-                        "texto": "BLOQUEADO", "estado": "BLOQUEADO",
-                        "motivo": "hay dos piezas con esa etiqueta"}]
-    contenido = texto_de(generar_cuadro_pdf(datos))
-    assert "BLOQUEADO" not in contenido
-    assert "N/D" in contenido
-    assert "Ambiguo: hay que decidirlo" in contenido
-    assert "hay dos piezas con esa etiqueta" in contenido

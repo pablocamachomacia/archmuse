@@ -1,67 +1,56 @@
 # -*- coding: utf-8 -*-
-"""Fase 3 — escribe una COPIA del DXF con el cuadro de superficies relleno.
+"""La vía web del cuadro: una COPIA del DXF con la tabla de ArchMuse dibujada.
 
-Diseño de referencia: informe de Fase 2 (`analyzer/cuadro_superficies.py`).
-Este módulo es el único punto de todo el trabajo de "cuadro de superficies"
-que escribe algo en disco -- ni `cuadro_superficies.py` (cálculo puro +
-detección de solo lectura) ni `parser.py`/`evaluator.py` tocan un DXF de
-salida.
+PRD `docs/prd/2026-09-13-cuadro-plantilla-fija.md`, §4.7 (decisión 7 de Pablo).
 
-### Por qué se escribe MTEXT nuevo en modelspace, no dentro del `ACAD_TABLE`
+### Qué cambió el 2026-09-13, y por qué
 
-`ezdxf` no soporta editar el contenido interno de un `ACAD_TABLE` (es una
-entidad compleja, en buena parte propietaria de Autodesk; `virtual_entities()`
-solo la **lee**, no expone una forma de reescribir sus celdas). La solución
-que usa este módulo -- y que hay que decir con toda claridad, no ocultarla --
-es dibujar un `MTEXT` real en `modelspace()`, con las mismas coordenadas,
-capa, altura, estilo y alineación que ya usa la celda vacía. Visualmente
-queda idéntico a "la celda rellena" porque ocupa exactamente su hueco; no es
-una edición interna de la tabla, es un texto superpuesto en el sitio exacto.
-Cualquier consumidor futuro que necesite editar el `ACAD_TABLE` de verdad
-(por ejemplo si algún día se reconstruye la tabla entera) debe saber que este
-método no lo hace.
+Hasta ese día esta vía **escribía `MTEXT` encima de las celdas del cuadro del
+arquitecto**: `21,90 m²`, `N/D`… y `0,00 m²` en las filas que el plano no dibuja.
+Y **nunca pasó por `C-4`** (`D-15`): escribía ceros incluso con la medición sucia.
 
-### Regla de escritura (fijada explícitamente para esta fase, distinta de
-### `escribir` en `cuadro_superficies.CeldaRelleno`)
+Ahora usa **la misma plantilla que el comando** (`plantilla_cuadro.construir`):
+si el comando generara plantilla y la web clonara el cuadro ajeno, las dos vías
+dejarían de leer igual y `C-9` saltaría. El cuadro del arquitecto sólo sirve para
+**no dibujar encima** y para **la altura de texto** (`D-14`).
 
-`CeldaRelleno.escribir` (Fase 2) decía "sáltate esta celda" para
-`BLOQUEADO`/`NO_DISPONIBLE`. Para la Fase 3 el encargo cambia esa regla a
-propósito: el cuadro debe quedar **entero** -- ninguna celda vacía sin
-explicación --, así que:
+### Por qué la tabla se dibuja con líneas y textos y no como `ACAD_TABLE`
 
-- `CALCULADO` / `CERO_REAL` -> se escribe el valor (`21,90 m²`, `0,00 m²`).
-- `BLOQUEADO` / `NO_DISPONIBLE` -> se escribe literalmente `N/D`. Nunca una
-  cifra.
-- Celda **preexistente** (ya tenía texto en el DXF, p. ej. `VIVIENDA TIPO`)
-  -> no se toca en absoluto, bajo ningún estado. Es la única celda que se
-  salta de verdad.
+`ezdxf` no sabe crear un `ACAD_TABLE` (`DXFTypeError`, medido el 2026-09-13). Se
+dibuja la rejilla con `LINE` y cada celda con un `MTEXT`, en su propia capa
+(`CAPA_CUADRO`). **Visualmente es la misma tabla; no es una tabla editable de
+AutoCAD**, y eso hay que saberlo antes de prometer otra cosa.
+
+### Dónde, sin ventana
+
+La web no tiene ratón con el que marcar una ventana. Se deduce —y por eso es una
+deducción, no una declaración—: a la derecha del cuadro del arquitecto si lo
+hay, a la derecha de lo dibujado si no, con el texto a la altura mínima legible.
+
+Este módulo es el único de todo el trabajo del cuadro que escribe en disco, y
+nunca sobre el fichero de origen.
 """
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import List, Optional, Sequence
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 import ezdxf
 
+from . import maquetacion_cuadro as mq
+from . import plantilla_cuadro as pc
+from .cuadro_superficies import cajas_y_alturas_de_los_cuadros
 from .marca_borrador import estampar_dxf
-from .cuadro_superficies import (
-    BLOQUEADO,
-    CALCULADO,
-    CERO_REAL,
-    NO_DISPONIBLE,
-    CeldaRelleno,
-    aplicar_respuestas,
-    calcular_relleno_cuadro,
-    celdas_sin_resolver,
-    detectar_cuadro_superficies,
-)
 
-CAPA_CUADRO = "00 CUADROS"
-ESTILO_TEXTO = "Standard"
-ALTURA_TEXTO = 0.09
-PUNTO_INSERCION = 2  # attachment_point: top-center, mismo que ya usa el cuadro original
-TEXTO_NO_DISPONIBLE = "N/D"
+#: La capa de la tabla de ArchMuse. Suya y distinta de las del arquitecto: la
+#: apaga o la borra sin tocar nada de lo que él dibujó. Una sola definición, en
+#: la maquetación, para que la web y el comando dibujen en la misma capa y color.
+CAPA_CUADRO = mq.CAPA
+
+#: Separación entre el cuadro del arquitecto (o lo dibujado) y la tabla, en
+#: alturas de texto.
+SEPARACION = 4.0
 
 
 @dataclass(frozen=True)
@@ -77,191 +66,189 @@ class ResultadoExportacion:
     ruta_origen: str
     ruta_destino: str
     celdas_escritas: List[CeldaEscrita]
-    celdas_omitidas: List[str]     # campos que no se tocaron (preexistentes) + sin celda destino
+    celdas_omitidas: List[str]
     reabierta_sin_errores: bool
     n_entidades_modelspace_origen: int
     n_entidades_modelspace_destino: int
-    # Fase 5: campos que siguen BLOQUEADO/NO_DISPONIBLE en el resultado
-    # final (tras aplicar `respuestas`, si las hubo). Vacía = el cuadro ha
-    # quedado completo de verdad, no solo "sin celdas vacías" (con `N/D`
-    # también queda "completo" en ese sentido más débil de la Fase 3/4).
+    #: Lo que falta para que la tabla esté completa: hoy, las preguntas de
+    #: interior/exterior sin contestar. Vacía = no hay nada que preguntar.
     campos_sin_resolver: List[str] = field(default_factory=list)
-    # Mismo conjunto que `campos_sin_resolver`, con el motivo de cada uno
-    # (por qué sigue pendiente, o el texto exacto del conflicto si una
-    # respuesta contradice una celda preexistente) -- para que el endpoint
-    # HTTP pueda devolver algo útil al formulario sin adivinar nada nuevo.
     detalles_sin_resolver: List[dict] = field(default_factory=list)
 
 
-def _texto_para_celda(r: CeldaRelleno) -> str:
-    if r.estado in (CALCULADO, CERO_REAL):
-        return r.texto
-    if r.estado in (BLOQUEADO, NO_DISPONIBLE):
-        return TEXTO_NO_DISPONIBLE
-    raise AssertionError("estado no contemplado: %r" % r.estado)  # catálogo cerrado, ver cuadro_superficies.py
+def ambitos_de_respuestas(respuestas) -> Dict[str, str]:
+    """Las respuestas de interior/exterior, vengan como vengan del formulario:
+    `{"TRASTERO": "interior"}` o `[{"tipo": "ambito", "familia": "TRASTERO",
+    "ambito": "interior"}]`. Lo que no sea una respuesta de ámbito se ignora."""
+    if isinstance(respuestas, Mapping):
+        return {str(k): str(v) for k, v in respuestas.items()}
+    ambitos: Dict[str, str] = {}
+    for r in respuestas or ():
+        if isinstance(r, Mapping) and r.get("tipo") == "ambito" and r.get("familia"):
+            ambitos[str(r["familia"])] = str(r.get("ambito") or "")
+    return ambitos
 
 
 def _analizar_para_cuadro(ruta_origen: str):
-    """Abre `ruta_origen` (solo lectura), analiza la vivienda y detecta el
-    cuadro -- el mismo primer tramo que necesitan tanto `obtener_solicitudes`
-    como `exportar_cuadro_relleno`, factorizado para no duplicarlo. Devuelve
-    `(doc, unit, cuadro)`; lanza `ValueError` con el mismo mensaje que antes
-    si no hay una única vivienda o no se encuentra el cuadro."""
-    # Import perezoso: `parser`/`evaluator` no son dependencias de
-    # `cuadro_superficies.py` (módulo puro), pero SÍ hacen falta aquí para
-    # poder analizar la vivienda antes de calcular el relleno.
-    from . import evaluator, parser
+    """`(doc, plano, nombre_de_la_vivienda)`. Una sola vivienda, como hasta hoy."""
+    from . import parser
+
+    from .medicion import motivo_c13
 
     doc = ezdxf.readfile(ruta_origen)
     plano = parser.leer_plano(doc)
-    advanced = evaluator.evaluate_advanced(plano.rooms, plano.unit_labels)
-    if len(advanced.units) != 1:
+    viviendas = pc.viviendas(plano)
+    repetidas = sorted({n for n in viviendas if viviendas.count(n) > 1})
+    if repetidas:
+        # `C-13` antes que «tiene 2 viviendas»: si se llaman igual, el motivo no
+        # es que haya dos, es que no se distinguen.
+        raise ValueError("; ".join(motivo_c13(n, viviendas.count(n)) for n in repetidas) + ".")
+    if len(viviendas) != 1:
         raise ValueError(
             "esta función de momento solo admite un DXF con una única vivienda "
-            "detectada (caso de v2s.dxf); %s tiene %d." % (ruta_origen, len(advanced.units))
-        )
-    unit = advanced.units[0]
-
-    cuadro = detectar_cuadro_superficies(doc)
-    if cuadro is None:
-        raise ValueError("no se ha encontrado ningún ACAD_TABLE «CUADRO DE SUPERFICIES...» en %s" % ruta_origen)
-
-    return doc, unit, cuadro
+            "detectada; %s tiene %d." % (ruta_origen, len(viviendas)))
+    return doc, plano, viviendas[0]
 
 
-def obtener_estado_cuadro(ruta_origen: str, respuestas: Optional[Sequence[dict]] = None):
-    """Fase 6 (visualización en pantalla, sin descargar ni escribir nada):
-    calcula el borrador COMPLETO del cuadro de `ruta_origen` -- las 18
-    `CeldaRelleno` tal como quedan hoy -- y las solicitudes pendientes sobre
-    ESE resultado. Solo lectura. Devuelve
-    `(resultado: List[CeldaRelleno], solicitudes: List[Solicitud])`.
-
-    `respuestas` (Fase 6b, opcional): si se pasa, se aplica con
-    `cuadro_superficies.aplicar_respuestas` ANTES de calcular las
-    solicitudes -- así la tabla en pantalla puede reflejar lo que el
-    arquitecto acaba de contestar (p. ej. qué pieza es cada espacio
-    exterior) sin necesidad de generar ni descargar ningún DXF. Sin
-    `respuestas` (o `None`), el comportamiento es EXACTAMENTE el de antes.
-
-    Factoriza el primer tramo que ya usaba `obtener_solicitudes` (Fase 5b)
-    para no analizar el DXF dos veces cuando hace falta lo mismo dos formas
-    (la tabla en pantalla Y las preguntas del formulario vienen del MISMO
-    cálculo, nunca de dos lecturas separadas del plano)."""
-    from .cuadro_superficies import aplicar_respuestas, detectar_solicitudes
-
-    _doc, unit, cuadro = _analizar_para_cuadro(ruta_origen)
-    resultado = calcular_relleno_cuadro(unit, cuadro, unit.rooms)
-    if respuestas:
-        resultado = aplicar_respuestas(resultado, unit.rooms, respuestas)
-    solicitudes = detectar_solicitudes(resultado, unit.rooms)
-    return resultado, solicitudes
+def obtener_plantilla_cuadro(ruta_origen: str, respuestas=None):
+    """`(plantilla, preguntas)` sin escribir nada: lo que la SPA pinta."""
+    doc, plano, vivienda = _analizar_para_cuadro(ruta_origen)
+    plantilla = pc.construir(doc, plano, vivienda, ambitos=ambitos_de_respuestas(respuestas))
+    return plantilla, list(plantilla.preguntas)
 
 
 def obtener_solicitudes(ruta_origen: str):
-    """Fase 5: qué hay que preguntarle al arquitecto para poder completar el
-    cuadro de `ruta_origen` -- lista vacía si ya se puede descargar
-    directamente. Solo lectura, no escribe nada. Devuelve
-    `List[cuadro_superficies.Solicitud]`."""
-    _resultado, solicitudes = obtener_estado_cuadro(ruta_origen)
-    return solicitudes
+    """Las preguntas de interior/exterior pendientes. Lista vacía = nada que preguntar."""
+    _plantilla, preguntas = obtener_plantilla_cuadro(ruta_origen)
+    return preguntas
 
 
-def exportar_cuadro_relleno(
-    ruta_origen: str, ruta_destino: str, respuestas: Optional[Sequence[dict]] = None,
-) -> ResultadoExportacion:
-    """Lee `ruta_origen` en memoria, calcula el borrador de relleno
-    (`cuadro_superficies.calcular_relleno_cuadro`) y escribe una COPIA nueva
-    en `ruta_destino` con las celdas de valor completadas. `ruta_origen`
-    nunca se abre en modo escritura ni se le llama `.save()`/`.saveas()`.
+# `obtener_estado_cuadro` —las 18 celdas clásicas del cuadro del arquitecto—
+# vivía aquí para la capacidad del agente. Se retiró el 2026-09-13, cuando Pablo
+# decidió que el agente también dibuja la plantilla: tres vías que calculan el
+# cuadro de dos formas son un `C-9` roto por el tercer sitio.
 
-    `respuestas` (Fase 5, opcional): si se pasa, se aplica con
-    `cuadro_superficies.aplicar_respuestas` ANTES de escribir -- las celdas
-    que las respuestas resuelven salen con su valor real (marcado
-    `declarado_por_usuario`) en vez de `N/D`. Sin `respuestas` (o con
-    `None`, el valor por defecto), el comportamiento es EXACTAMENTE el de
-    la Fase 3/4: sin cambios.
 
-    Vuelve a abrir `ruta_destino` con `ezdxf.readfile` antes de devolver el
-    resultado, para confirmar que la copia no quedó corrupta -- si falla,
-    la excepción de `ezdxf` se propaga tal cual, no se silencia.
-    """
+def _extension_del_dibujo(msp) -> Optional[Tuple[Tuple[float, float], Tuple[float, float]]]:
+    from ezdxf import bbox
+
+    caja = bbox.extents(msp, fast=True)
+    if not caja.has_data:
+        return None
+    return (caja.extmin.x, caja.extmin.y), (caja.extmax.x, caja.extmax.y)
+
+
+def _ventana_deducida(doc, plantilla, altura, cajas):
+    ancho, alto = mq.tamano_necesario(plantilla.celdas(), plantilla.notas, altura)
+    referencia = None
+    if cajas:
+        referencia = ((min(c[0][0] for c in cajas), min(c[0][1] for c in cajas)),
+                      (max(c[1][0] for c in cajas), max(c[1][1] for c in cajas)))
+    else:
+        referencia = _extension_del_dibujo(doc.modelspace())
+    if referencia is None:
+        x0, y0 = 0.0, 0.0
+    else:
+        x0, y0 = referencia[1][0] + SEPARACION * altura, referencia[1][1]
+    return (x0, y0), (x0 + ancho, y0 - alto)
+
+
+def _dibujar(doc, plantilla, m) -> List[CeldaEscrita]:
+    """La rejilla con `LINE` y cada texto con un `MTEXT`, en `CAPA_CUADRO`."""
+    if CAPA_CUADRO not in doc.layers:
+        doc.layers.add(CAPA_CUADRO, color=m.color_capa)
+    if m.estilo not in doc.styles:
+        doc.styles.add(m.estilo, font=m.fuente)
+    msp = doc.modelspace()
+    x0, y0 = m.esquina
+    xs = [x0]
+    for ancho in m.anchos:
+        xs.append(xs[-1] + ancho)
+    # La fila del título es más alta que las demás, como en los cuadros del arquitecto.
+    alturas_de_fila = [m.alto_fila_titulo] + [m.alto_fila] * (m.n_filas - 1)
+    ys = [y0]
+    for alto in alturas_de_fila:
+        ys.append(ys[-1] - alto)
+    atributos = {"layer": CAPA_CUADRO}
+
+    for y in ys:
+        msp.add_line((xs[0], y), (xs[-1], y), dxfattribs=atributos)
+    for i, x in enumerate(xs):
+        # La fila 0 es el título, fusionado: las verticales interiores no la cruzan.
+        arriba = ys[0] if i in (0, len(xs) - 1) else ys[1]
+        msp.add_line((x, arriba), (x, ys[-1]), dxfattribs=atributos)
+
+    escritas: List[CeldaEscrita] = []
+    for fila, columna, texto in plantilla.celdas():
+        x = xs[columna] + m.margen
+        y = ys[fila] - alturas_de_fila[fila] / 2
+        msp.add_mtext(texto, dxfattribs=dict(
+            atributos, style=m.estilo,
+            char_height=m.altura_titulo if fila == 0 else m.altura_texto,
+            attachment_point=4, insert=(x, y, 0.0)))
+        escritas.append(CeldaEscrita("%d,%d" % (fila, columna), texto, x, y))
+    for x, y, linea in m.notas:
+        msp.add_mtext(linea, dxfattribs=dict(
+            atributos, style=m.estilo, char_height=m.altura_texto,
+            attachment_point=1, insert=(x, y, 0.0)))
+        escritas.append(CeldaEscrita("nota", linea, x, y))
+    return escritas
+
+
+def exportar_cuadro_relleno(ruta_origen: str, ruta_destino: str,
+                            respuestas=None) -> ResultadoExportacion:
+    """Lee `ruta_origen` y escribe en `ruta_destino` una copia con la tabla de
+    ArchMuse dibujada al lado. `ruta_origen` nunca se escribe."""
     ruta_origen = os.path.abspath(ruta_origen)
     ruta_destino = os.path.abspath(ruta_destino)
     if ruta_destino == ruta_origen:
-        raise ValueError("ruta_destino no puede ser igual a ruta_origen -- nunca se sobrescribe el DXF original")
+        raise ValueError("ruta_destino no puede ser igual a ruta_origen -- nunca se "
+                         "sobrescribe el DXF original")
 
-    doc, unit, cuadro = _analizar_para_cuadro(ruta_origen)
+    doc, plano, vivienda = _analizar_para_cuadro(ruta_origen)
     n_entidades_origen = len(doc.modelspace())
+    plantilla = pc.construir(doc, plano, vivienda, ambitos=ambitos_de_respuestas(respuestas))
 
-    resultado = calcular_relleno_cuadro(unit, cuadro, unit.rooms)
-    if respuestas:
-        resultado = aplicar_respuestas(resultado, unit.rooms, respuestas)
+    cajas, alturas_cuadro = cajas_y_alturas_de_los_cuadros(doc)
+    altura = mq.altura_minima(
+        min(alturas_cuadro) if alturas_cuadro else None,
+        mq.alturas_de_rotulos(doc, [r.label for r in plano.rooms if r.label]))
+    if altura is None:
+        raise ValueError("No sé con qué altura de texto dibujar la tabla: el plano no "
+                         "tiene ni cuadro de superficies ni rótulos de estancia.")
+    ventana = _ventana_deducida(doc, plantilla, altura, cajas)
+    maquetacion = mq.maquetar(plantilla.celdas(), plantilla.notas, ventana, altura, cajas)
+    if isinstance(maquetacion, mq.NoCabe):
+        raise ValueError(maquetacion.motivo)
 
-    msp = doc.modelspace()
-    celdas_escritas: List[CeldaEscrita] = []
-    celdas_omitidas: List[str] = []
+    escritas = _dibujar(doc, plantilla, maquetacion)
 
-    for r in resultado:
-        if r.preexistente:
-            # "VIVIENDA TIPO" (o cualquier otra celda que ya trajera texto):
-            # nunca se toca, coincida o no con lo calculado -- regla fija del
-            # encargo, no una interpretación de este módulo.
-            celdas_omitidas.append(r.campo)
-            continue
-        if r.celda is None:
-            # El cuadro detectado no trae celda destino para este campo
-            # (no debería pasar con el cuadro real de v2s.dxf, con sus 18
-            # celdas, pero un cuadro más pequeño de otro DXF sí podría
-            # carecer de alguna) -- no se inventa dónde escribir.
-            celdas_omitidas.append(r.campo)
-            continue
-
-        texto = _texto_para_celda(r)
-        msp.add_mtext(texto, dxfattribs={
-            "layer": CAPA_CUADRO,
-            "style": ESTILO_TEXTO,
-            "char_height": ALTURA_TEXTO,
-            "attachment_point": PUNTO_INSERCION,
-            "insert": (r.celda.x, r.celda.y, 0.0),
-        })
-        celdas_escritas.append(CeldaEscrita(r.campo, texto, r.celda.x, r.celda.y))
-
-    # C3 (tarea DOC-3): todo entregable sale marcado como borrador para la
-    # revisión de un colegiado. Va en su propia capa, así que no cambia nada de
-    # lo que el arquitecto dibujó ni de lo que este módulo escribe en
-    # `00 CUADROS`. Se estampa aquí, en el único sitio que guarda un DXF, para
-    # que no exista ningún camino que produzca una copia sin ella.
+    # C3: todo entregable sale marcado como borrador, en su propia capa.
     estampar_dxf(doc)
-
     doc.saveas(ruta_destino)
 
-    doc_verificacion = ezdxf.readfile(ruta_destino)
-    n_entidades_destino = len(doc_verificacion.modelspace())
-    # `Drawing.audit()` NO lanza por sí solo (corrige lo que puede y deja el
-    # resto en `.errors`) -- se comprueba aquí explícitamente para que
-    # "reabrir y verificar que no está corrupta" sea una garantía real, no
-    # solo que `ezdxf.readfile` no reventara al parsear.
-    auditor = doc_verificacion.audit()
+    verificacion = ezdxf.readfile(ruta_destino)
+    auditor = verificacion.audit()
     if auditor.has_errors:
         raise ValueError(
             "la copia %s se reabre pero el audit de ezdxf encuentra %d error(es): %s" % (
                 ruta_destino, len(auditor.errors),
-                "; ".join(e.message for e in auditor.errors[:5]),
-            )
-        )
+                "; ".join(e.message for e in auditor.errors[:5])))
 
-    pendientes = celdas_sin_resolver(resultado)
     return ResultadoExportacion(
         ruta_origen=ruta_origen,
         ruta_destino=ruta_destino,
-        celdas_escritas=celdas_escritas,
-        celdas_omitidas=celdas_omitidas,
+        celdas_escritas=escritas,
+        celdas_omitidas=[],
         reabierta_sin_errores=True,
         n_entidades_modelspace_origen=n_entidades_origen,
-        n_entidades_modelspace_destino=n_entidades_destino,
-        campos_sin_resolver=[r.campo for r in pendientes],
-        detalles_sin_resolver=[
-            {"campo": r.campo, "estado": r.estado, "motivo": r.motivo}
-            for r in pendientes
-        ],
+        n_entidades_modelspace_destino=len(verificacion.modelspace()),
+        campos_sin_resolver=[p.familia for p in plantilla.preguntas],
+        # Lo que falta por preguntar y, además, cada hueco que la tabla deja vacío
+        # con su motivo: es lo que el acta de `TL-2` tiene que poder enseñar.
+        detalles_sin_resolver=(
+            [{"campo": p.familia, "estado": "PREGUNTA", "motivo": p.texto}
+             for p in plantilla.preguntas]
+            + [{"campo": ", ".join(etiquetas), "estado": "SIN_CIFRA", "motivo": motivo}
+               for etiquetas, motivo in plantilla.notas_por_motivo]),
     )

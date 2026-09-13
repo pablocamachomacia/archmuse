@@ -31,6 +31,7 @@ mínimo, y no resuelve las ambigüedades del plano — las pregunta.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, Optional
 
 from ..afirmacion import Afirmacion, calculo, desconocido
@@ -175,7 +176,10 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
         return _sin_hacer(ctx, borrador.get("error", "cuadro_no_calculable"),
                           borrador.get("detalle", ""), borrador.get("pregunta", ""),
                           ya_hecho=hechas)
-    hechas["cuadro.celdas"] = calculo("cuadro.celdas", borrador["celdas"], fuente=ctx.firma)
+    # Desde la plantilla fija (2.0.0, 2026-09-13) las celdas con cifra son las
+    # de las filas del cuerpo: una por pieza medida, con su ámbito y su valor.
+    # Es lo que se cruza en las verificaciones; la rejilla entera va al DXF.
+    hechas["cuadro.celdas"] = calculo("cuadro.celdas", borrador["filas"], fuente=ctx.firma)
     hechas["cuadro.celdas_sin_resolver"] = calculo(
         "cuadro.celdas_sin_resolver", borrador["celdas_sin_resolver"], fuente=ctx.firma)
 
@@ -211,8 +215,8 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
     preguntas = tuple(pregunta_legible(p)
                       for p in borrador.get("preguntas_pendientes") or ())
     no_hecho = tuple(
-        "«%s»: %s" % (c["campo"], c["motivo"] or "sin motivo declarado")
-        for c in escritura.get("celdas_sin_resolver") or ()
+        "«%s»: %s" % (c["etiqueta"], c["motivo"] or "sin motivo declarado")
+        for c in borrador.get("celdas_sin_resolver") or ()
     )
     notas = [
         "El DXF original conserva su sha256 (%s): no se ha tocado."
@@ -220,8 +224,8 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
     ]
     if borrador.get("celdas_declaradas_por_el_arquitecto"):
         notas.append(
-            "Declarado por el arquitecto, no calculado por ArchMuse: %s."
-            % ", ".join(borrador["celdas_declaradas_por_el_arquitecto"]))
+            "Declarado por el arquitecto, no calculado por ArchMuse: si es interior o "
+            "exterior %s." % ", ".join(borrador["celdas_declaradas_por_el_arquitecto"]))
 
     return ResultadoDeSkill(
         afirmaciones=tuple(hechas.values()),
@@ -277,42 +281,35 @@ def _suma_cuadra(resultado) -> Any:
             "no se pudo medir va declarado junto a «plano.superficie_util_total_m2»."
         )
 
-    # Qué se suma: SÓLO los sumandos de la superficie útil, por el catálogo
-    # cerrado de `cuadro_superficies` (`CAMPOS_SUMANDOS_UTIL`). No por el
-    # nombre del campo.
+    # Qué se suma: las FILAS del cuerpo de la tabla, interiores y exteriores —la
+    # superficie útil de `plano.superficie_util` incluye terraza y tendedero—, y
+    # nada del cierre.
     #
-    # **El bug que esto cierra.** Antes se sumaba toda celda resuelta cuyo
-    # campo no contuviera la palabra "total". Eso deja fuera los totales —bien—
-    # y deja DENTRO las dos celdas de superficie CONSTRUIDA y el `NUMERO UDS`.
-    # La superficie construida y la útil miden lo mismo con criterios distintos
-    # y no se acumulan; el número de unidades no es ni siquiera una superficie.
-    # Con el cuadro de `ejemplo.dxf` («NUMERO UDS: 8») la comprobación sumaba
-    # ocho metros cuadrados inexistentes, y en cuanto el arquitecto declaraba
-    # la construida —que es justo el flujo que las `Solicitud` numéricas le
-    # piden— le sumaba encima una vivienda entera medida por otro criterio. El
-    # resultado se cruzaba contra la superficie útil medida sobre la geometría.
+    # **El bug que esto cerró el 2026-09-03, y por qué ya no puede volver.** Se
+    # sumaba toda celda cuyo campo no dijera «total», y con eso entraban la
+    # superficie CONSTRUIDA y el `NUMERO UDS` («8» sumaba 8 m²). Con la plantilla
+    # fija (2026-09-13) los totales, la construida, la vivienda tipo y el número
+    # de unidades **no están entre las filas por construcción**: no hay ningún
+    # nombre de campo que filtrar.
     #
-    # Además el parseo era propio y más laxo que el del cuadro: quitaba "m²" y
-    # cambiaba la coma por punto, así que "8" colaba como 8 m² y "21.90m2" —el
-    # formato con el que un humano escribió las celdas de `ejemplo.dxf`— no
-    # colaba y se descartaba en silencio. Ahora se usa `superficie_en_m2`, el
-    # mismo parseo estricto con el que el cuadro calcula sus propios totales.
-    from analyzer.cuadro_superficies import CAMPOS_SUMANDOS_UTIL, superficie_en_m2
+    # El parseo sigue siendo `superficie_en_m2`, el estricto con el que se
+    # escriben las cifras: «21.90m2» u «8» no cuelan como metros.
+    from analyzer.cuadro_superficies import superficie_en_m2
 
-    por_campo = {c.get("campo"): c for c in celdas}
     total = 0.0
     incompletos = []
-    for campo in CAMPOS_SUMANDOS_UTIL:
-        celda = por_campo.get(campo)
-        if celda is None:
-            continue          # este cuadro no trae esa fila: no falta nada
-        if celda.get("estado") not in ("CALCULADO", "CERO_REAL"):
-            incompletos.append("«%s» %s" % (campo, celda.get("estado")))
+    for fila in celdas:
+        rotulo = fila.get("rotulo") or "(sin rótulo)"
+        if not fila.get("tiene_fila", True):
+            incompletos.append("«%s» está medida y no tiene fila" % rotulo)
             continue
-        valor_m2 = superficie_en_m2(celda.get("texto"))
+        if not fila.get("valor"):
+            incompletos.append("«%s» no lleva cifra" % rotulo)
+            continue
+        valor_m2 = superficie_en_m2(fila.get("valor"))
         if valor_m2 is None:
             incompletos.append("«%s» dice %r, que no es una superficie en el formato del cuadro"
-                               % (campo, celda.get("texto")))
+                               % (rotulo, fila.get("valor")))
             continue
         total += valor_m2
 
@@ -341,16 +338,25 @@ def _nada_sin_resolver_lleva_un_numero(resultado) -> Any:
     entregado, que es lo que se guarda en el acta. Dos comprobaciones del mismo
     invariante en capas distintas no es redundancia: es lo que hace que quitar
     una no lo desactive.
+
+    Sobre la plantilla fija (2026-09-13): una pieza que tiene nota —su hueco
+    está vacío con motivo— o que no tiene fila no puede llevar un número, y
+    ninguna fila puede decir `0,00 m²` (`D-13`).
     """
-    for celda in valor(resultado, "cuadro.celdas") or ():
-        if celda.get("estado") in ("NO_DISPONIBLE", "BLOQUEADO"):
-            texto = (celda.get("texto") or "").replace("m²", "").replace(",", ".").strip()
-            try:
-                float(texto)
-            except ValueError:
-                continue
-            return ("la celda «%s» está sin resolver y lleva el número %s: eso es "
-                    "exactamente lo que no puede pasar" % (celda.get("campo"), texto))
+    from analyzer.cuadro_superficies import es_superficie_cero
+
+    con_nota = set()
+    for hueco in valor(resultado, "cuadro.celdas_sin_resolver") or ():
+        con_nota.update(e.strip() for e in (hueco.get("etiqueta") or "").split(", "))
+    for fila in valor(resultado, "cuadro.celdas") or ():
+        texto = (fila.get("valor") or "").strip()
+        rotulo = fila.get("rotulo")
+        if es_superficie_cero(texto):
+            return ("la fila «%s» dice %s: ninguna estancia mide cero (D-13)" % (rotulo, texto))
+        sin_resolver = rotulo in con_nota or not fila.get("tiene_fila", True)
+        if sin_resolver and re.search(r"\d", texto):
+            return ("«%s» está sin resolver y lleva el número %s: eso es exactamente lo "
+                    "que no puede pasar" % (rotulo, texto))
     return True
 
 
@@ -375,7 +381,9 @@ def _el_original_no_se_ha_tocado(resultado) -> Any:
 SKILLS = (
     Skill(
         id="superficies.cuadro_de_vivienda",
-        version="1.0.0",
+        # 2.0.0 (2026-09-13): la tabla es la plantilla fija de ArchMuse, la misma
+        # que el comando y la web; `respuestas` pasa a ser interior/exterior.
+        version="2.0.0",
         dominio="superficies",
         objetivo=(
             "Rellenar el cuadro de superficies de una vivienda a partir de su DXF y "
@@ -394,15 +402,16 @@ SKILLS = (
             "saber, PARAR y preguntar: un plano en milímetros leído como metros cumple "
             "todos los mínimos y sale impecable.",
             "2. Medir la superficie útil sobre la geometría, por su propio camino.",
-            "3. Calcular el cuadro celda a celda, incorporando lo que el arquitecto "
-            "haya declarado y marcándolo como suyo.",
-            "4. Cruzar la suma de las celdas contra la superficie medida en el paso 2 "
+            "3. Construir la tabla de superficies de ArchMuse —la misma plantilla que "
+            "dibujan el comando y la web—, una fila por estancia medida, incorporando "
+            "lo que el arquitecto haya declarado y marcándolo como suyo.",
+            "4. Cruzar la suma de las filas contra la superficie medida en el paso 2 "
             "y avisar si no cuadran (aviso, no bloqueo: la tolerancia aún no está "
             "calibrada).",
-            "5. Escribir una COPIA del DXF con el cuadro relleno. El original no se "
+            "5. Escribir una COPIA del DXF con la tabla dibujada. El original no se "
             "toca, y su sha256 se verifica antes y después.",
-            "6. Escribir el PDF que explica el cuadro celda a celda: de dónde sale "
-            "cada número y por qué las demás están en blanco.",
+            "6. Escribir el PDF que explica la tabla: de dónde sale cada número y por "
+            "qué los huecos vacíos están vacíos.",
             "7. Declarar qué celdas han quedado sin resolver y por qué, y qué preguntas "
             "las desbloquearían.",
         ),
@@ -417,8 +426,9 @@ SKILLS = (
                                                  "ya exista.")},
                 "respuestas": {
                     "type": ["array", "null"],
-                    "description": ("Lo que el arquitecto declara para las celdas que no "
-                                    "se pueden calcular del plano."),
+                    "description": ("Lo que el arquitecto declara para lo que el plano no "
+                                    "dice: si una familia que ArchMuse no reconoce es "
+                                    "interior o exterior."),
                     "items": {"type": "object"},
                 },
             },

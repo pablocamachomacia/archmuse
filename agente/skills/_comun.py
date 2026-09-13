@@ -118,4 +118,16 @@ def pregunta_legible(pregunta: Mapping[str, Any]) -> str:
         partes.append(
             'Para contestar: {"tipo": "numerico", "campo": "%s", "valor": <%s>}.'
             % (campos[0] if campos else "<campo>", unidad))
+    elif tipo == "ambito":
+        # La pregunta de la plantilla fija (2026-09-13): una familia que ArchMuse
+        # no reconoce, una sola vez aunque haya tres piezas. Lo decide el
+        # arquitecto; ArchMuse no la coloca a ningún lado por su cuenta.
+        familia = pregunta.get("familia") or (campos[0] if campos else "<familia>")
+        piezas = [p for p in (pregunta.get("piezas") or ()) if p]
+        if piezas:
+            partes.append("Piezas: %s." % "; ".join(piezas))
+        partes.append("Opciones: %s." % "; ".join(pregunta.get("opciones") or ("interior", "exterior")))
+        partes.append(
+            'Para contestar: {"tipo": "ambito", "familia": "%s", "ambito": "interior" | "exterior"}.'
+            % familia)
     return " ".join(partes)

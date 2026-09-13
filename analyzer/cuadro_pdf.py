@@ -1,24 +1,29 @@
 # -*- coding: utf-8 -*-
-"""El cuadro de superficies en PDF, con el porqué de cada celda (tarea `DOC-2`).
+"""El cuadro de superficies en PDF, con el porqué de cada hueco (tarea `DOC-2`).
 
-**Qué añade sobre el DXF relleno,** que ya es el entregable principal. El DXF
+**Qué añade sobre el DXF entregado,** que ya es el entregable principal. El DXF
 lleva los números; este PDF lleva **de dónde sale cada uno y qué falta**. Son
 dos documentos con dos usos distintos: el DXF vuelve al proyecto, y el PDF es
 lo que el arquitecto lee para decidir si se fía —y lo que puede enseñar si
 alguien le pregunta seis meses después.
 
-Por eso la columna que de verdad importa no es la del número: es la última.
+**Desde el 2026-09-13 presenta la plantilla fija** (PRD
+`docs/prd/2026-09-13-cuadro-plantilla-fija.md`): la misma rejilla que dibujan
+el comando de AutoCAD, la web y el DXF entregado, y debajo el motivo de cada
+hueco vacío. Hasta ese día presentaba las 18 celdas del cuadro del arquitecto
+con una columna de estado; esa columna se fue con ellas.
+
 Una celda vacía sin motivo es indistinguible de un descuido; con motivo, es una
 decisión que se puede discutir. Es `C2` —el trabajo hecho con el porqué a un
 clic— en el formato más portátil que hay.
 
 **Tres reglas de este módulo:**
 
-1. **No calcula nada.** Recibe las celdas ya resueltas y las presenta. Si
+1. **No calcula nada.** Recibe la tabla ya resuelta y la presenta. Si
    calculara, habría dos sitios donde se decide qué dice una celda, y el día
    que se separen nadie sabría cuál manda.
-2. **No convierte un `N/D` en un número, ni al revés.** El texto de cada celda
-   se imprime tal cual lo produjo el cálculo.
+2. **No inventa ni transforma una cifra.** El texto de cada celda se imprime tal
+   cual lo produjo el cálculo, y un hueco vacío sigue vacío.
 3. **Sale marcado como borrador**, en todas las páginas, sin forma de
    desactivarlo (`DOC-3`).
 """
@@ -27,6 +32,7 @@ from __future__ import annotations
 import io
 from datetime import date
 from typing import Any, Dict, List, Optional, Sequence
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -38,15 +44,9 @@ from reportlab.platypus import (
 
 from .marca_borrador import estampar
 
-#: Cómo se lee cada estado del catálogo cerrado de `cuadro_superficies.py`. En
-#: castellano de arquitecto, no en el vocabulario del motor: quien lee este PDF
-#: no sabe —ni tiene por qué— qué es un `CERO_REAL`.
-ESTADOS = {
-    "CALCULADO": ("Calculado", colors.HexColor("#1B5E20")),
-    "CERO_REAL": ("No existe en la vivienda", colors.HexColor("#37474F")),
-    "NO_DISPONIBLE": ("No se puede saber del plano", colors.HexColor("#8A2A2A")),
-    "BLOQUEADO": ("Ambiguo: hay que decidirlo", colors.HexColor("#8A2A2A")),
-}
+#: Anchos de las cuatro columnas de la plantilla, en el ancho útil de un A4 con
+#: los márgenes de abajo (17,8 cm): los rótulos piden más que las cifras.
+ANCHOS_CM = (5.2, 3.7, 5.2, 3.7)
 
 
 def _estilos():
@@ -63,74 +63,40 @@ def _estilos():
     }
 
 
-def _valor(celda: Dict[str, Any]) -> str:
-    """Lo que ese hueco lleva **en el DXF entregado**.
-
-    Este PDF explica ese DXF, así que la columna del valor tiene que decir lo
-    mismo que el plano: una celda bloqueada se escribe allí como «N/D», y poner
-    aquí la palabra interna `BLOQUEADO` obligaba al arquitecto a cotejar dos
-    vocabularios para la misma celda. El porqué no se pierde: va entero en las
-    columnas de estado y de procedencia.
-    """
-    texto = (celda.get("texto") or "").strip()
-    return "N/D" if texto == "BLOQUEADO" else texto
-
-
-def _rotulo(celda: Dict[str, Any]) -> str:
-    """El nombre de la fila, tal como lo escribió el arquitecto en su cuadro.
-
-    Con repliegue al identificador interno **sólo** si el cuadro no traía esa
-    celda. El identificador es ASCII a propósito —es una clave de programa— y
-    derivar de él el título de una fila producía «Bano», «Salon cocina» y
-    «Vestibulo» en el documento que el arquitecto le enseña a su cliente. Se vio
-    en el primer plano real; con los fixtures no se veía porque sus etiquetas no
-    llevan tildes.
-    """
-    etiqueta = (celda.get("etiqueta") or "").strip()
-    if etiqueta:
-        return etiqueta
-    return (celda.get("campo", "") or "").replace("_", " ").capitalize()
-
-
 def _p(texto: Any, estilo) -> Paragraph:
     return Paragraph("" if texto is None else str(texto), estilo)
 
 
-def _tabla_de_celdas(celdas: Sequence[dict], estilos) -> Table:
-    filas: List[List[Any]] = [[
-        _p("<b>Concepto</b>", estilos["celda"]),
-        _p("<b>Valor</b>", estilos["celda"]),
-        _p("<b>Estado</b>", estilos["celda"]),
-        _p("<b>De dónde sale, o por qué no</b>", estilos["celda"]),
-    ]]
-    estilo_tabla = [
+def _texto(texto: Any) -> str:
+    """El texto de una celda, a salvo del marcado de `Paragraph`: un rótulo con
+    «&» o «<» no puede romper el documento ni cambiar lo que dice."""
+    return escape("" if texto is None else str(texto))
+
+
+def _tabla_de_la_plantilla(datos: Dict[str, Any], celdas: Sequence[dict], estilos) -> Table:
+    n_columnas = int(datos.get("n_columnas") or 1 + max(int(c["columna"]) for c in celdas))
+    n_filas = int(datos.get("n_filas") or 1 + max(int(c["fila"]) for c in celdas))
+    rejilla: List[List[str]] = [["" for _ in range(n_columnas)] for _ in range(n_filas)]
+    for celda in celdas:
+        rejilla[int(celda["fila"])][int(celda["columna"])] = _texto(celda.get("texto"))
+
+    filas: List[List[Any]] = []
+    for i, fila in enumerate(rejilla):
+        # Título (fila 0) y encabezados (fila 1) en negrita, como en el plano.
+        plantilla = "<b>%s</b>" if i < 2 else "%s"
+        filas.append([_p(plantilla % t if t else "", estilos["celda"]) for t in fila])
+
+    anchos = ([a * cm for a in ANCHOS_CM] if n_columnas == len(ANCHOS_CM)
+              else [sum(ANCHOS_CM) / n_columnas * cm] * n_columnas)
+    tabla = Table(filas, colWidths=anchos, repeatRows=2)
+    tabla.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#BBBBBB")),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
+        ("SPAN", (0, 0), (-1, 0)),                       # el título, a lo ancho
+        ("BACKGROUND", (0, 0), (-1, 1), colors.HexColor("#EEEEEE")),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 4),
         ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-    ]
-    for i, celda in enumerate(celdas, start=1):
-        etiqueta, color = ESTADOS.get(celda.get("estado", ""),
-                                      (celda.get("estado", "—"), colors.black))
-        if celda.get("declarado_por_usuario"):
-            # La distinción que no se puede perder: lo que declaró el
-            # arquitecto no es lo que calculó ArchMuse, y en un acta esas dos
-            # cosas no valen lo mismo.
-            porque = "Declarado por el arquitecto, no calculado por ArchMuse."
-        elif celda.get("preexistente"):
-            porque = "Ya estaba escrito en el DXF. No se ha tocado."
-        else:
-            porque = celda.get("motivo") or "Calculado sobre la geometría del plano."
-        filas.append([
-            _p(_rotulo(celda), estilos["celda"]),
-            _p(_valor(celda), estilos["celda"]),
-            _p(etiqueta, estilos["celda"]),
-            _p(porque, estilos["celda"]),
-        ])
-        estilo_tabla.append(("TEXTCOLOR", (2, i), (2, i), color))
-    tabla = Table(filas, colWidths=[4.4 * cm, 2.4 * cm, 3.4 * cm, 6.8 * cm], repeatRows=1)
-    tabla.setStyle(TableStyle(estilo_tabla))
+    ]))
     return tabla
 
 
@@ -150,44 +116,54 @@ def generar_cuadro_pdf(datos: Dict[str, Any]) -> bytes:
     )
 
     celdas = list(datos.get("celdas") or ())
-    sin_resolver = [c for c in celdas
-                    if c.get("estado") in ("NO_DISPONIBLE", "BLOQUEADO")]
+    sin_resolver = list(datos.get("celdas_sin_resolver") or ())
     preguntas = list(datos.get("preguntas_pendientes") or ())
+    declaradas = list(datos.get("celdas_declaradas_por_el_arquitecto") or ())
 
     story: List[Any] = [
         _p("Cuadro de superficies", estilos["h1"]),
-        _p("Plano: %s" % (datos.get("plano") or "—"), estilos["meta"]),
-        _p("Emitido el %s por ArchMuse." % date.today().isoformat(), estilos["meta"]),
+        _p("Plano: %s" % _texto(datos.get("plano") or "—"), estilos["meta"]),
     ]
+    if datos.get("vivienda"):
+        story.append(_p("Vivienda: %s" % _texto(datos["vivienda"]), estilos["meta"]))
+    story.append(_p("Emitido el %s por ArchMuse." % date.today().isoformat(), estilos["meta"]))
     if datos.get("sello_origen_sha256"):
         story.append(_p(
             "El plano original no se ha modificado. Su huella SHA-256 antes y después "
             "de este trabajo es <font face='Courier'>%s</font>."
-            % datos["sello_origen_sha256"], estilos["meta"]))
+            % _texto(datos["sello_origen_sha256"]), estilos["meta"]))
     story.append(Spacer(1, 0.5 * cm))
 
     if celdas:
-        story.append(_tabla_de_celdas(celdas, estilos))
+        story.append(_tabla_de_la_plantilla(datos, celdas, estilos))
     else:
         story.append(_p("No se ha podido calcular ninguna celda de este plano.",
                         estilos["cuerpo"]))
 
+    if declaradas:
+        # La distinción que no se puede perder: lo que declaró el arquitecto no
+        # es lo que calculó ArchMuse, y en un acta esas dos cosas no valen lo mismo.
+        story.append(Spacer(1, 0.3 * cm))
+        story.append(_p(
+            "Declarado por el arquitecto, no calculado por ArchMuse: si es interior o "
+            "exterior %s." % _texto(", ".join(declaradas)), estilos["cuerpo"]))
+
     if sin_resolver:
         story.append(_p("Lo que no se ha podido calcular", estilos["h2"]))
         story.append(_p(
-            "Estas celdas han quedado en blanco a propósito. ArchMuse no escribe una "
+            "Estos huecos han quedado en blanco a propósito. ArchMuse no escribe una "
             "cifra que no pueda justificar.", estilos["cuerpo"]))
         story.append(Spacer(1, 0.2 * cm))
-        for celda in sin_resolver:
+        for hueco in sin_resolver:
             story.append(_p("• <b>%s</b>: %s" % (
-                _rotulo(celda),
-                celda.get("motivo") or "sin motivo declarado"), estilos["celda"]))
+                _texto(hueco.get("etiqueta") or "—"),
+                _texto(hueco.get("motivo") or "sin motivo declarado")), estilos["celda"]))
 
     if preguntas:
         story.append(_p("Qué haría falta para completarlo", estilos["h2"]))
         for pregunta in preguntas:
-            story.append(_p("• <b>%s</b> %s" % (pregunta.get("titulo", ""),
-                                                pregunta.get("ayuda", "")),
+            story.append(_p("• <b>%s</b> %s" % (_texto(pregunta.get("titulo", "")),
+                                                _texto(pregunta.get("ayuda", ""))),
                             estilos["celda"]))
 
     limitaciones = list(datos.get("no_comprobado") or ())
@@ -197,7 +173,7 @@ def generar_cuadro_pdf(datos: Dict[str, Any]) -> bytes:
             "Derivado de lo que se ha ejecutado, no redactado a mano.", estilos["meta"]))
         story.append(Spacer(1, 0.2 * cm))
         for limitacion in limitaciones:
-            story.append(_p("• %s" % limitacion, estilos["celda"]))
+            story.append(_p("• %s" % _texto(limitacion), estilos["celda"]))
 
     # C3: la marca va en todas las páginas y no hay forma de quitarla.
     doc.build(story, onFirstPage=estampar(), onLaterPages=estampar())

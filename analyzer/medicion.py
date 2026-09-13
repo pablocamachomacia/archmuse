@@ -64,12 +64,17 @@ from shapely.ops import unary_union
 
 from .cuadro_superficies import (
     _PATRON_ASEO,
+    _PATRON_BALCON,
     _PATRON_BANO,
-    _PATRON_PASILLO,
-    _PATRON_SALON_COCINA,
+    _PATRON_DISTRIBUIDOR,
+    _PATRON_PORCHE,
+    _PATRON_SALON_Y_COCINA,
+    _PATRON_SOLO_COCINA,
+    _PATRON_SOLO_PASILLO,
+    _PATRON_SOLO_SALON,
     _PATRON_TENDEDERO,
     _PATRON_TERRAZA,
-    _PATRON_VESTIBULO,
+    _PATRON_VESTIBULO_RECIBIDOR_HALL,
     _normalizar,
 )
 
@@ -105,15 +110,25 @@ HOLGURA_MINIMA_DE_REPARTO = 2.0
 #: enseña con su superficie, y bloquea el total de esa vivienda.
 _PATRON_DORMITORIO = re.compile(r"\bDORMITORIO\b")
 
+#: **Decisión 3 de Pablo (2026-09-13).** «Salón» solo es su propia familia,
+#: igual que «cocina»; «distribuidor» se separa de «pasillo»; «recibidor» y
+#: «hall» son «vestíbulo»; «balcón» y «porche» son exteriores. «salón + cocina»
+#: exige las dos palabras: hasta ese día bastaba cualquiera de ellas, y un
+#: «Salón» a secas se contaba como salón y cocina.
 FAMILIAS: Tuple[Tuple[re.Pattern, str, str], ...] = (
     (_PATRON_TERRAZA, "terraza", AMBITO_EXTERIOR),
+    (_PATRON_BALCON, "balcón", AMBITO_EXTERIOR),
+    (_PATRON_PORCHE, "porche", AMBITO_EXTERIOR),
     (_PATRON_TENDEDERO, "tendedero", AMBITO_EXTERIOR),
-    (_PATRON_SALON_COCINA, "salón + cocina", AMBITO_INTERIOR),
+    (_PATRON_SALON_Y_COCINA, "salón + cocina", AMBITO_INTERIOR),
+    (_PATRON_SOLO_SALON, "salón", AMBITO_INTERIOR),
+    (_PATRON_SOLO_COCINA, "cocina", AMBITO_INTERIOR),
     (_PATRON_DORMITORIO, "dormitorio", AMBITO_INTERIOR),
     (_PATRON_BANO, "baño", AMBITO_INTERIOR),
     (_PATRON_ASEO, "aseo", AMBITO_INTERIOR),
-    (_PATRON_PASILLO, "pasillo", AMBITO_INTERIOR),
-    (_PATRON_VESTIBULO, "vestíbulo", AMBITO_INTERIOR),
+    (_PATRON_SOLO_PASILLO, "pasillo", AMBITO_INTERIOR),
+    (_PATRON_DISTRIBUIDOR, "distribuidor", AMBITO_INTERIOR),
+    (_PATRON_VESTIBULO_RECIBIDOR_HALL, "vestíbulo", AMBITO_INTERIOR),
 )
 
 #: Cómo se han separado las viviendas. Las dos formas no valen lo mismo y por
@@ -178,6 +193,16 @@ class RepartoDudoso:
         return self.distancia_siguiente_m / self.distancia_m
 
 
+def motivo_c13(nombre: str, cuantas: int) -> str:
+    """`C-13` (firmado por Pablo, 2026-09-13): dos viviendas que no se pueden
+    distinguir no se fusionan; se declara y no se escribe ninguna cifra suya.
+
+    Una sola redacción para todas las salidas —medición, cuadro, web, agente—:
+    el arquitecto tiene que leer lo mismo venga por donde venga."""
+    return ("hay %d viviendas rotuladas «%s» en esta planta y ArchMuse no las distingue: "
+            "no se escribe ninguna cifra suya ni se suman entre sí (C-13)" % (cuantas, nombre))
+
+
 @dataclass(frozen=True)
 class ViviendaMedida:
     """Una vivienda de la planta, con sus piezas y con lo que no cuadra."""
@@ -196,6 +221,10 @@ class ViviendaMedida:
     #: céntimo como «metros dibujados dos veces» sería un aviso falso, y un aviso
     #: falso destruye la confianza en los verdaderos.
     suma_cruda_m2: float = 0.0
+    #: Cuántas viviendas de la planta llevan este mismo rótulo, ella incluida.
+    #: `1` es lo normal; más de una es `C-13`: no se distinguen, y ninguna cifra
+    #: suya se publica. Sus piezas sí se enseñan, una a una.
+    viviendas_con_el_mismo_rotulo: int = 1
 
     # -- Sumas por ámbito ---------------------------------------------------
 
@@ -244,6 +273,10 @@ class ViviendaMedida:
         programa.
         """
         motivos: List[str] = []
+        # El primero porque es el más grave: con los otros, la cifra puede estar
+        # mal; con éste, no se sabe ni de qué vivienda es.
+        if self.viviendas_con_el_mismo_rotulo > 1:
+            motivos.append(motivo_c13(self.nombre, self.viviendas_con_el_mismo_rotulo))
         if self.solapes:
             motivos.append(
                 "hay %s dibujados dos veces: la suma de las piezas da %s y la "
@@ -318,6 +351,21 @@ class Medicion:
     #: Geometría que el lector del DXF ha descartado, con su motivo. Un descarte
     #: silencioso es superficie que falta sin que nadie lo sepa.
     geometria_no_leida: Tuple[dict, ...] = field(default_factory=tuple)
+    #: Contornos que estaban mal construidos y han entrado REPARADOS, sin que su
+    #: superficie cambie (`C-10`). Hermano del anterior y por el mismo motivo:
+    #: una reparación callada es peor que un descarte callado, porque el número
+    #: sale bien y nadie va a ir a mirar por qué.
+    geometria_reparada: Tuple[dict, ...] = field(default_factory=tuple)
+    #: La correccion de rotulos APLICADA en esta medicion, si alguna. `None` es
+    #: lo normal. Cuando no lo es, la cifra depende de ella y tiene que constar:
+    #: una medicion que se apoya en un desplazamiento y no lo dice es una cifra
+    #: sin procedencia.
+    rotulos_alineados: Optional[dict] = None
+    #: El desfase DETECTADO, se haya aplicado o no. Es lo que permite al cliente
+    #: preguntar: sin esto, el comando no sabe que hay nada que ofrecer.
+    rotulos_desplazados: Optional[dict] = None
+    #: De que capa salen los nombres de las estancias, y con que reparto.
+    capa_de_rotulos: Optional[dict] = None
 
     @property
     def viviendas_con_total(self) -> int:
@@ -507,6 +555,12 @@ def medir_planta(plano) -> Medicion:
         unidades = evaluator.group_rooms_by_proximity(rooms)
         agrupacion = POR_PROXIMIDAD
 
+    from collections import Counter
+
+    # `C-13`: el agrupador ya no funde dos rótulos iguales; aquí se cuenta cuántas
+    # viviendas comparten cada uno para que ninguna de ellas publique una cifra.
+    mismo_rotulo = Counter(u.name for u in unidades)
+
     viviendas: List[ViviendaMedida] = []
     for unidad in unidades:
         piezas = tuple(_pieza(r) for r in unidad.rooms)
@@ -518,6 +572,7 @@ def medir_planta(plano) -> Medicion:
             repartos_dudosos=_repartos_dudosos(unidad.rooms, unidad.name, unit_labels),
             superficie_por_union_m2=union,
             suma_cruda_m2=sum(r.polygon.area for r in unidad.rooms),
+            viviendas_con_el_mismo_rotulo=mismo_rotulo[unidad.name],
         ))
 
     con_piezas = {v.nombre for v in viviendas}
@@ -534,11 +589,41 @@ def medir_planta(plano) -> Medicion:
             "entidad": getattr(descarte, "handle", None) or "",
         })
 
+    reparaciones: List[dict] = []
+    for reparada in getattr(plano, "geometria_reparada", None) or ():
+        reparaciones.append({
+            "capa": getattr(reparada, "capa", ""),
+            "tipo": getattr(reparada, "tipo", ""),
+            "entidad": getattr(reparada, "handle", None) or "",
+            "detalle": getattr(reparada, "detalle", ""),
+        })
+
+    alineados = getattr(plano, "rotulos_alineados", None)
+    detectado = getattr(plano, "rotulos_desplazados", None)
+    reparto = getattr(plano, "reparto_de_rotulos", None)
+
     return Medicion(
         viviendas=tuple(viviendas),
         agrupacion=agrupacion,
         rotulos_sin_piezas=rotulos_sin_piezas,
         geometria_no_leida=tuple(descartes),
+        geometria_reparada=tuple(reparaciones),
+        rotulos_alineados=(
+            {"dx": alineados.dx, "dy": alineados.dy,
+             "recintos_explicados": alineados.explicados,
+             "recintos_mirados": alineados.mirados}
+            if alineados is not None else None),
+        rotulos_desplazados=(
+            {"dx": detectado.dx, "dy": detectado.dy, "limpio": detectado.limpio,
+             "recintos_sin_rotulo": detectado.sin_rotulo,
+             "recintos_explicados": detectado.explicados,
+             "recintos_mirados": detectado.mirados,
+             "aplicado": alineados is not None}
+            if detectado is not None else None),
+        capa_de_rotulos=(
+            {"capa": reparto.capa, "ambiguo": reparto.ambiguo,
+             "reparto": [list(par) for par in reparto.recuento]}
+            if reparto is not None and reparto.recuento else None),
     )
 
 
@@ -600,4 +685,11 @@ def a_dict(medicion: Medicion) -> Dict:
         "piezas": medicion.piezas,
         "rotulos_sin_piezas": list(medicion.rotulos_sin_piezas),
         "geometria_no_leida": [dict(d) for d in medicion.geometria_no_leida],
+        "geometria_reparada": [dict(d) for d in medicion.geometria_reparada],
+        "rotulos_alineados": (dict(medicion.rotulos_alineados)
+                              if medicion.rotulos_alineados else None),
+        "rotulos_desplazados": (dict(medicion.rotulos_desplazados)
+                                if medicion.rotulos_desplazados else None),
+        "capa_de_rotulos": (dict(medicion.capa_de_rotulos)
+                            if medicion.capa_de_rotulos else None),
     }

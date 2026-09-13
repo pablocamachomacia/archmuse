@@ -2771,54 +2771,39 @@
   // (CALCULADO/CERO_REAL/...) haya quedado. La clase CSS es una función
   // aparte de la etiqueta -- mismo criterio de prioridad, para la
   // "insignia" de color (ver `.cuadro-origen-*` en style.css).
-  function _origenCeldaCuadro(c) {
-    if (c.declarado_por_usuario) return "Declarado por el arquitecto";
-    if (c.preexistente) return "Ya estaba en el DXF";
-    if (c.estado === "BLOQUEADO" || c.estado === "NO_DISPONIBLE") return "Pendiente";
-    return "Calculado por ArchMuse";
-  }
-
-  function _origenClaseCuadro(c) {
-    if (c.declarado_por_usuario) return "cuadro-origen-declarado";
-    if (c.preexistente) return "cuadro-origen-dxf";
-    if (c.estado === "BLOQUEADO" || c.estado === "NO_DISPONIBLE") return "cuadro-origen-pendiente";
-    return "cuadro-origen-calculado";
-  }
-
-  // Agrupación puramente VISUAL, por el mismo `campo` que ya identifica
-  // cada celda (no una segunda clasificación de habitaciones -- eso sigue
-  // viviendo solo en analyzer/cuadro_superficies.py). Solo ordena y titula
-  // lo que el backend ya devolvió; ningún campo sin grupo aquí se pierde
-  // ("Otros" de respaldo, nunca una celda invisible por un campo nuevo).
-  var _GRUPO_CAMPO_CUADRO = {
-    salon_cocina: "Interior", pasillo: "Interior", dormitorio_1: "Interior", dormitorio_2: "Interior",
-    dormitorio_3: "Interior", bano: "Interior", aseo: "Interior", vestibulo: "Interior",
-    tendedero: "Exterior", terraza_1: "Exterior", terraza_2: "Exterior",
-    total_util_interior: "Totales", total_util_exterior: "Totales", total_util: "Totales",
-    superficie_construida_cerrada: "Datos de proyecto", superficie_construida_exterior: "Datos de proyecto",
-    numero_unidades: "Datos de proyecto", vivienda_tipo: "Datos de proyecto",
-  };
-
-  function cuadroTablaHtml(celdas) {
-    var grupoAnterior = null;
-    var filas = (celdas || []).map(function (c) {
-      var grupo = _GRUPO_CAMPO_CUADRO[c.campo] || "Otros";
-      var cabecera = "";
-      if (grupo !== grupoAnterior) {
-        cabecera = '<tr class="cuadro-tabla-grupo"><td colspan="3">' + escapeHtml(grupo) + "</td></tr>";
-        grupoAnterior = grupo;
+  // PRD 2026-09-13 (decisión 7 de Pablo): la tabla de la web es LA MISMA
+  // plantilla fija de 4 columnas que dibuja el comando de AutoCAD. Aquí no se
+  // decide nada: se pinta la rejilla `(fila, columna, texto)` que manda el
+  // backend y, debajo, las notas que explican cada celda vacía. Una celda en
+  // blanco sin nota sería indistinguible de "aún no rellenado".
+  function cuadroTablaHtml(celdas, notas) {
+    var nFilas = 0, nCols = 4, rejilla = {};
+    (celdas || []).forEach(function (c) {
+      nFilas = Math.max(nFilas, c.fila + 1);
+      nCols = Math.max(nCols, c.columna + 1);
+      rejilla[c.fila + "," + c.columna] = c.texto;
+    });
+    var filas = [];
+    for (var f = 0; f < nFilas; f++) {
+      if (f === 0) {
+        filas.push('<tr class="cuadro-tabla-grupo"><td colspan="' + nCols + '">' +
+          escapeHtml(rejilla["0,0"] || "") + "</td></tr>");
+        continue;
       }
-      var pendiente = c.estado === "BLOQUEADO" || c.estado === "NO_DISPONIBLE";
-      return cabecera + '<tr class="' + (pendiente ? "cuadro-fila-pendiente" : "") + '">' +
-        "<td>" + escapeHtml(c.etiqueta || etiquetaCampoLegible(c.campo)) + "</td>" +
-        '<td class="cuadro-tabla-valor">' + escapeHtml(pendiente ? "—" : c.texto) + "</td>" +
-        '<td class="cuadro-tabla-origen"><span class="cuadro-origen-badge ' + _origenClaseCuadro(c) + '">' +
-        escapeHtml(_origenCeldaCuadro(c)) + "</span></td>" +
-        "</tr>";
-    }).join("");
-    return '<div class="cuadro-tabla-wrap"><table class="cuadro-tabla">' +
-      "<thead><tr><th>Campo</th><th>Valor</th><th>Procedencia</th></tr></thead>" +
-      "<tbody>" + filas + "</tbody></table></div>";
+      var tds = "";
+      for (var c = 0; c < nCols; c++) {
+        tds += '<td class="' + (c % 2 === 1 ? "cuadro-tabla-valor" : "") + '">' +
+          escapeHtml(rejilla[f + "," + c] || "") + "</td>";
+      }
+      filas.push("<tr>" + tds + "</tr>");
+    }
+    var notasHtml = (notas || []).length
+      ? '<ol class="cuadro-notas muted">' + notas.map(function (n) {
+          return "<li>" + escapeHtml(n.texto || n) + "</li>";
+        }).join("") + "</ol>"
+      : "";
+    return '<div class="cuadro-tabla-wrap"><table class="cuadro-tabla"><tbody>' +
+      filas.join("") + "</tbody></table></div>" + notasHtml;
   }
 
   // Cuerpo compartido por las dos vistas del cuadro: la pequeña del
@@ -2855,10 +2840,10 @@
     // actualiza esta misma tabla, nunca descarga nada por sí solo.
     var pie = t.solicitudes.length
       ? cuadroFormularioInlineHtml(t.solicitudes, t.valores, t.asignaciones, t.pendientes)
-      : '<p class="muted">Todas las celdas tienen un valor real.</p>' +
+      : '<p class="muted">No queda nada que preguntar. Las celdas vacías llevan su motivo en las notas.</p>' +
         '<button type="button" class="btn-reveal" id="btn-descargar-cuadro-completo" ' +
         'data-accion="descargar-cuadro-completo">Descargar cuadro completo (DXF)</button>';
-    return cuadroTablaHtml(t.celdas) + pie;
+    return cuadroTablaHtml(t.celdas, t.notas) + pie;
   }
 
   // Panel pequeño del inspector: vacío a propósito (petición explícita de
@@ -3764,7 +3749,7 @@
       })
       .then(function (payload) {
         state.cuadroTabla = {
-          celdas: payload.celdas || [], solicitudes: payload.solicitudes || [],
+          celdas: payload.celdas || [], notas: payload.notas || [], solicitudes: payload.solicitudes || [],
           cargando: false, error: null, respuestasAplicadas: [],
           valores: {}, asignaciones: {}, pendientes: {},
         };
@@ -6729,6 +6714,10 @@
   // ausencia) -- solo las numéricas necesitan que el arquitecto escriba algo.
   function todasLasSolicitudesResueltas(solicitudes, valores, asignaciones) {
     return (solicitudes || []).every(function (s) {
+      if (s.tipo === "ambito") {
+        var elegido = ((asignaciones || {})[s.id] || {}).ambito;
+        return elegido === "interior" || elegido === "exterior";
+      }
       if (s.tipo === "numerico") {
         return respuestaNumericaValida(valores[s.campos[0]]);
       }
@@ -6740,6 +6729,9 @@
   // el mismo array de dicts que espera `aplicar_respuestas` en el backend.
   function construirRespuestasCuadro(solicitudes, valores, asignaciones) {
     return (solicitudes || []).map(function (s) {
+      if (s.tipo === "ambito") {
+        return { tipo: "ambito", familia: s.familia, ambito: ((asignaciones || {})[s.id] || {}).ambito || "" };
+      }
       if (s.tipo === "numerico") {
         var campo = s.campos[0];
         var texto = String(valores[campo] || "").trim().replace(",", ".");
@@ -6759,6 +6751,25 @@
       .filter(Boolean)[0];
     var conflictoHtml = motivoConflicto
       ? '<div class="cuadro-conflicto">' + escapeHtml(motivoConflicto) + "</div>" : "";
+
+    // Interior o exterior: la pregunta la redacta el backend, una por familia.
+    // El `<select>` escribe en `asignaciones[s.id].ambito` a través del mismo
+    // listener de `change` que ya usaban las asignaciones.
+    if (s.tipo === "ambito") {
+      var elegido = ((asignaciones || {})[s.id] || {}).ambito || "";
+      var opcionesAmbito = ['<option value="">-- Elige --</option>'].concat(
+        (s.opciones || ["interior", "exterior"]).map(function (o) {
+          return '<option value="' + escapeHtml(o) + '"' + (o === elegido ? " selected" : "") + ">" +
+            escapeHtml(o.charAt(0).toUpperCase() + o.slice(1)) + "</option>";
+        })).join("");
+      return (
+        '<div class="cuadro-solicitud-bloque">' +
+        '<div class="cuadro-solicitud-titulo">' + escapeHtml(s.titulo) + "</div>" +
+        '<p class="cuadro-solicitud-ayuda muted">' + escapeHtml(s.ayuda || "") + "</p>" +
+        '<select data-solicitud="' + escapeHtml(s.id) + '" data-campo="ambito">' + opcionesAmbito + "</select>" +
+        conflictoHtml + "</div>"
+      );
+    }
 
     if (s.tipo === "numerico") {
       var campo = s.campos[0];
@@ -6857,7 +6868,7 @@
       })
       .then(function (payload) {
         state.cuadroTabla = {
-          celdas: payload.celdas || [], solicitudes: payload.solicitudes || [],
+          celdas: payload.celdas || [], notas: payload.notas || [], solicitudes: payload.solicitudes || [],
           cargando: false, error: null, respuestasAplicadas: respuestasAcumuladas,
           valores: {}, asignaciones: {}, pendientes: {},
         };

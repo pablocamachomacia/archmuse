@@ -61,84 +61,83 @@ def test_la_construida_y_el_numero_de_unidades_no_son_sumandos_de_la_util():
 
 
 # --- 2. La suma que se cruza contra la geometría --------------------------
+#
+# **Desde la plantilla fija (2026-09-13) la Skill suma las FILAS del cuerpo de
+# la tabla**, y los totales, la construida, la vivienda tipo y el número de
+# unidades no están entre ellas por construcción. Los cuatro tests que vigilaban
+# que no se colaran por el nombre del campo se sustituyen por uno que lo mira
+# sobre la tabla que produce la capacidad de verdad.
 
-def _resultado(medida, celdas):
+def _resultado(medida, filas):
     from agente.afirmacion import calculo
 
     return ResultadoDeSkill(afirmaciones=(
         calculo("plano.superficie_util_total_m2", medida, fuente="t", unidad="m2"),
-        calculo("cuadro.celdas", celdas, fuente="t"),
+        calculo("cuadro.celdas", filas, fuente="t"),
     ))
 
 
-def _cuadro_util_completo(**cambios):
-    """Un cuadro con TODOS los sumandos de la útil resueltos: 32,00 m²."""
-    celdas = [{"campo": c, "texto": "0,00 m²", "estado": "CERO_REAL"}
-              for c in cs.CAMPOS_SUMANDOS_UTIL]
-    por_campo = {c["campo"]: c for c in celdas}
-    por_campo["salon_cocina"].update(texto="20,00 m²", estado="CALCULADO")
-    por_campo["dormitorio_1"].update(texto="12,00 m²", estado="CALCULADO")
-    for campo, celda in cambios.items():
-        por_campo[campo] = dict(celda, campo=campo)
-    return list(por_campo.values())
+def _fila(rotulo, valor, ambito="interior", tiene_fila=True):
+    return {"rotulo": rotulo, "valor": valor, "ambito": ambito, "tiene_fila": tiene_fila}
 
 
-def test_la_superficie_construida_declarada_no_entra_en_la_suma_de_la_util():
-    """El caso que rompía: el arquitecto declara la construida —que es lo que
-    la `Solicitud` numérica le pide— y la comprobación se la sumaba a la útil."""
-    celdas = _cuadro_util_completo() + [
-        {"campo": "superficie_construida_cerrada", "texto": "95,20 m²", "estado": "CALCULADO"},
-        {"campo": "superficie_construida_exterior", "texto": "12,00 m²", "estado": "CALCULADO"},
-    ]
-    assert superficies._suma_cuadra(_resultado(32.0, celdas)) is True
+def _filas_completas(*extra):
+    """Dos piezas con cifra: 32,00 m²."""
+    return [_fila("Salón/cocina", "20,00 m²"), _fila("Dormitorio 1", "12,00 m²")] + list(extra)
 
 
-def test_el_numero_de_unidades_no_se_suma_como_metros_cuadrados():
-    """`ejemplo.dxf` trae «NUMERO UDS: 8» escrito en el cuadro."""
-    celdas = _cuadro_util_completo() + [
-        {"campo": "numero_unidades", "texto": "8", "estado": "CALCULADO"},
-    ]
-    assert superficies._suma_cuadra(_resultado(32.0, celdas)) is True
+def test_el_cierre_de_la_tabla_no_esta_entre_lo_que_se_suma(tmp_path):
+    """Sobre la tabla real del piso sintético: 20 + 9 + 12 + 4 = 45 m², y ni un
+    total, ni la construida, ni el número de unidades entre las filas."""
+    from agente.herramientas import plano
+    from analyzer import plantilla_cuadro as pc
+    from tests.test_agente_goldens import construir_dxf
+
+    borrador = plano.cuadro_de_superficies(construir_dxf(tmp_path))
+    assert borrador["ok"], borrador
+    rotulos = {f["rotulo"] for f in borrador["filas"]}
+    cierre = {pc.TOTAL_INTERIOR, pc.TOTAL_EXTERIOR, pc.TOTAL_UTIL, pc.CONSTRUIDA,
+              pc.VIVIENDA_TIPO, pc.NUMERO_UDS}
+    assert not rotulos & cierre
+    assert superficies._suma_cuadra(_resultado(45.0, borrador["filas"])) is True
 
 
-def test_la_vivienda_tipo_no_se_suma():
-    celdas = _cuadro_util_completo() + [
-        {"campo": "vivienda_tipo", "texto": "VT1 /3", "estado": "CALCULADO"},
-    ]
-    assert superficies._suma_cuadra(_resultado(32.0, celdas)) is True
+def test_las_exteriores_si_se_suman():
+    """La útil de `plano.superficie_util` incluye terraza y tendedero."""
+    filas = _filas_completas(_fila("Terraza", "4,50 m²", ambito="exterior"))
+    assert superficies._suma_cuadra(_resultado(36.5, filas)) is True
 
 
-def test_los_totales_del_propio_cuadro_no_se_suman_con_sus_partes():
-    celdas = _cuadro_util_completo() + [
-        {"campo": "total_util_interior", "texto": "32,00 m²", "estado": "CALCULADO"},
-        {"campo": "total_util", "texto": "32,00 m²", "estado": "CALCULADO"},
-    ]
-    assert superficies._suma_cuadra(_resultado(32.0, celdas)) is True
-
-
-def test_un_sumando_sin_resolver_no_produce_un_descuadre_falso():
+def test_una_pieza_sin_cifra_no_produce_un_descuadre_falso():
     """Si falta una terraza, la suma es menor que la medida SIEMPRE. Avisar de
     eso acusaría al plano de un descuadre que lo ha causado ArchMuse."""
-    celdas = _cuadro_util_completo(
-        terraza_1={"texto": "BLOQUEADO", "estado": "BLOQUEADO"})
-    veredicto = superficies._suma_cuadra(_resultado(35.0, celdas))
+    filas = _filas_completas(_fila("Terraza", "", ambito="exterior"))
+    veredicto = superficies._suma_cuadra(_resultado(35.0, filas))
     assert isinstance(veredicto, NoSeHaPodidoComprobar)
-    assert "terraza_1" in str(veredicto.motivo)
+    assert "Terraza" in str(veredicto.motivo)
 
 
-def test_una_celda_en_formato_ajeno_se_declara_en_vez_de_saltarse():
-    """`ejemplo.dxf` escribe «21.90m2». El parseo viejo no lo entendía y lo
-    descartaba en silencio, dejando la suma corta sin decirlo."""
-    celdas = _cuadro_util_completo(
-        salon_cocina={"texto": "21.90m2", "estado": "CALCULADO"})
-    veredicto = superficies._suma_cuadra(_resultado(33.9, celdas))
+def test_una_pieza_medida_sin_fila_tampoco():
+    """Una familia sin contestar deja la pieza fuera de la tabla (`C-6`); la
+    suma no puede fingir que no existe."""
+    filas = _filas_completas(_fila("Trastero", "", ambito=None, tiene_fila=False))
+    veredicto = superficies._suma_cuadra(_resultado(34.7, filas))
     assert isinstance(veredicto, NoSeHaPodidoComprobar)
-    assert "salon_cocina" in str(veredicto.motivo)
+    assert "Trastero" in str(veredicto.motivo)
+
+
+def test_una_cifra_en_formato_ajeno_se_declara_en_vez_de_saltarse():
+    """«21.90m2» no es el formato de ArchMuse. Un parseo laxo lo descartaba en
+    silencio, dejando la suma corta sin decirlo."""
+    filas = [_fila("Salón/cocina", "21.90m2"), _fila("Dormitorio 1", "12,00 m²")]
+    veredicto = superficies._suma_cuadra(_resultado(33.9, filas))
+    assert isinstance(veredicto, NoSeHaPodidoComprobar)
+    assert "Salón/cocina" in str(veredicto.motivo)
 
 
 def test_un_descuadre_de_verdad_se_sigue_avisando():
     """El arreglo no puede haber apagado la comprobación."""
-    aviso = superficies._suma_cuadra(_resultado(100.0, _cuadro_util_completo()))
+    aviso = superficies._suma_cuadra(_resultado(100.0, _filas_completas()))
     assert isinstance(aviso, str)
     assert "32.00" in aviso and "100.00" in aviso
 
@@ -191,7 +190,7 @@ class _UnitFalsa:
 class _ContextoFalso:
     """Lo mínimo que `superficies._ejecutar` usa de un `Contexto` real."""
 
-    firma = "superficies.cuadro_de_vivienda@1.0.0"
+    firma = "superficies.cuadro_de_vivienda@2.0.0"
 
     def __init__(self, respuestas):
         self._respuestas = respuestas

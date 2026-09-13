@@ -36,7 +36,7 @@ from agente.memoria import MemoriaDeProyecto, SustratoEnMemoria  # noqa: E402
 from agente.registro import registro, registro_de_skills  # noqa: E402
 from agente.skill import Contexto, ResultadoDeSkill  # noqa: E402
 from agente.skills import superficies  # noqa: E402
-from tests.test_agente_goldens import construir_dxf  # noqa: E402
+from tests.test_agente_goldens import construir_dxf, construir_dxf_de_planta  # noqa: E402
 
 DXF_V2S = os.environ.get("ARCHMUSE_DXF_V2S", "")
 
@@ -61,7 +61,7 @@ def contexto(argumentos, *, autorizada=True):
 
 def test_la_skill_esta_en_el_registro_y_se_valida_al_cargar():
     s = skill()
-    assert s.version == "1.0.0"
+    assert s.version == "2.0.0"      # 2026-09-13: la tabla es la plantilla fija
     assert s.efectos == (ESCRIBE_FICHERO,)
     # El invariante de TL-2: declara el efecto de la capacidad que escribe.
     s.comprobar_registro(registro(recargar=True))
@@ -128,7 +128,9 @@ def test_sin_unidad_determinable_se_para_y_se_pregunta(tmp_path):
 
 def test_lo_que_no_se_ha_producido_sale_UNKNOWN_con_motivo_y_no_ausente(tmp_path):
     """Un hueco mudo se lee como «no aplica», que es la lectura contraria."""
-    ruta = construir_dxf(tmp_path)          # sin ACAD_TABLE: el cuadro no se calcula
+    # Dos viviendas: la tabla no se calcula. Hasta el 2026-09-13 servía el piso sin
+    # `ACAD_TABLE`; la plantilla fija ya no necesita el cuadro del arquitecto.
+    ruta = construir_dxf_de_planta(tmp_path)
     ctx = contexto({"ruta_dxf": ruta, "ruta_destino": str(tmp_path / "copia.dxf")})
     resultado = skill().ejecutar(ctx).resultado
 
@@ -165,73 +167,64 @@ def test_la_verificacion_de_la_suma_es_informativa_y_no_bloqueante():
     assert suma.bloqueante is False
 
 
-def test_un_desajuste_de_la_suma_avisa_con_las_dos_cifras_y_el_porcentaje():
+#: Las filas de la tabla, con la forma que devuelve `plano.cuadro_de_superficies`
+#: desde la 2.0.0 (plantilla fija, 2026-09-13).
+def _fila(rotulo, valor, ambito="interior", tiene_fila=True):
+    return {"rotulo": rotulo, "valor": valor, "ambito": ambito, "tiene_fila": tiene_fila}
+
+
+def _resultado(filas, medida=None, sin_resolver=()):
     from agente.afirmacion import calculo
 
-    resultado = ResultadoDeSkill(afirmaciones=(
-        calculo("plano.superficie_util_total_m2", 100.0, fuente="t", unidad="m2"),
-        calculo("cuadro.celdas", [
-            {"campo": "salon_cocina", "texto": "20,00 m²", "estado": "CALCULADO"},
-            {"campo": "dormitorio_1", "texto": "12,00 m²", "estado": "CALCULADO"},
-        ], fuente="t"),
-    ))
-    aviso = superficies._suma_cuadra(resultado)
+    afirmaciones = [calculo("cuadro.celdas", list(filas), fuente="t"),
+                    calculo("cuadro.celdas_sin_resolver", list(sin_resolver), fuente="t")]
+    if medida is not None:
+        afirmaciones.append(
+            calculo("plano.superficie_util_total_m2", medida, fuente="t", unidad="m2"))
+    return ResultadoDeSkill(afirmaciones=tuple(afirmaciones))
+
+
+DOS_FILAS = (_fila("Salón/cocina", "20,00 m²"), _fila("Dormitorio 1", "12,00 m²"))
+
+
+def test_un_desajuste_de_la_suma_avisa_con_las_dos_cifras_y_el_porcentaje():
+    aviso = superficies._suma_cuadra(_resultado(DOS_FILAS, medida=100.0))
     assert isinstance(aviso, str)
     assert "32.00" in aviso and "100.00" in aviso and "%" in aviso
 
 
 def test_una_suma_que_cuadra_dentro_de_la_tolerancia_pasa():
-    from agente.afirmacion import calculo
-
-    resultado = ResultadoDeSkill(afirmaciones=(
-        calculo("plano.superficie_util_total_m2", 32.5, fuente="t", unidad="m2"),
-        calculo("cuadro.celdas", [
-            {"campo": "salon_cocina", "texto": "20,00 m²", "estado": "CALCULADO"},
-            {"campo": "dormitorio_1", "texto": "12,00 m²", "estado": "CALCULADO"},
-        ], fuente="t"),
-    ))
-    assert superficies._suma_cuadra(resultado) is True
+    assert superficies._suma_cuadra(_resultado(DOS_FILAS, medida=32.5)) is True
 
 
-def test_los_totales_no_se_suman_dos_veces():
-    """Un cuadro trae sus propios totales; sumarlos con las partes duplicaría."""
-    from agente.afirmacion import calculo
-
-    resultado = ResultadoDeSkill(afirmaciones=(
-        calculo("plano.superficie_util_total_m2", 32.0, fuente="t", unidad="m2"),
-        calculo("cuadro.celdas", [
-            {"campo": "salon_cocina", "texto": "20,00 m²", "estado": "CALCULADO"},
-            {"campo": "dormitorio_1", "texto": "12,00 m²", "estado": "CALCULADO"},
-            {"campo": "total_util_interior", "texto": "32,00 m²", "estado": "CALCULADO"},
-        ], fuente="t"),
-    ))
-    assert superficies._suma_cuadra(resultado) is True
-
-
-def test_una_celda_sin_resolver_con_un_numero_se_detecta():
+def test_una_pieza_sin_fila_con_un_numero_se_detecta():
     """La tercera condición de la aprobación de `TL-2`, comprobada también
     sobre el resultado que se guarda en el acta."""
-    from agente.afirmacion import calculo
-
-    resultado = ResultadoDeSkill(afirmaciones=(
-        calculo("cuadro.celdas", [
-            {"campo": "superficie_construida_cerrada", "texto": "65,40 m²",
-             "estado": "NO_DISPONIBLE"},
-        ], fuente="t"),
-    ))
+    resultado = _resultado([_fila("Trastero", "2,70 m²", ambito=None, tiene_fila=False)])
     fallo = superficies._nada_sin_resolver_lleva_un_numero(resultado)
     assert isinstance(fallo, str) and "no puede pasar" in fallo
 
 
-def test_una_celda_sin_resolver_con_ND_esta_bien():
-    from agente.afirmacion import calculo
+def test_una_fila_con_su_nota_no_puede_llevar_cifra():
+    """Si la tabla dice por qué un hueco está vacío, ese hueco no puede tener número."""
+    resultado = _resultado(
+        [_fila("Terraza", "4,50 m²", ambito="exterior")],
+        sin_resolver=[{"etiqueta": "Terraza", "motivo": "se solapa con otra pieza"}])
+    fallo = superficies._nada_sin_resolver_lleva_un_numero(resultado)
+    assert isinstance(fallo, str) and "Terraza" in fallo
 
-    resultado = ResultadoDeSkill(afirmaciones=(
-        calculo("cuadro.celdas", [
-            {"campo": "superficie_construida_cerrada", "texto": "N/D",
-             "estado": "NO_DISPONIBLE"},
-        ], fuente="t"),
-    ))
+
+def test_un_cero_se_detecta_aunque_la_capacidad_lo_dejara_pasar():
+    fallo = superficies._nada_sin_resolver_lleva_un_numero(
+        _resultado([_fila("Pasillo", "0,00 m²")]))
+    assert isinstance(fallo, str) and "D-13" in fallo
+
+
+def test_las_filas_con_cifra_y_los_huecos_vacios_estan_bien():
+    resultado = _resultado(
+        DOS_FILAS + (_fila("Terraza", "", ambito="exterior"),),
+        sin_resolver=[{"etiqueta": "Terraza", "motivo": "se solapa con otra pieza"},
+                      {"etiqueta": "TOTAL S. UTIL(m2)", "motivo": "C-1"}])
     assert superficies._nada_sin_resolver_lleva_un_numero(resultado) is True
 
 
@@ -243,13 +236,47 @@ def test_cortarse_a_mitad_no_se_presenta_como_un_fallo_del_sistema(tmp_path):
     respuesta legítima en un «resultado no verificado», y el arquitecto leería
     un fallo del sistema donde sólo hay una pregunta.
     """
-    ruta = construir_dxf(tmp_path)
+    ruta = construir_dxf_de_planta(tmp_path)          # dos viviendas: se corta
     salida = skill().ejecutar(contexto({"ruta_dxf": ruta,
                                         "ruta_destino": str(tmp_path / "copia.dxf")}))
     assert salida.resultado.entregables == ()
     fallidas = [r.nombre for r in salida.dictamen.resultados if r.bloqueante and not r.ok]
     assert fallidas == [], fallidas
     assert not (tmp_path / "copia.dxf").exists()
+
+
+def test_el_trabajo_completo_sale_entero_sin_el_plano_real(tmp_path):
+    """De punta a punta sobre el piso sintético, sin `v2s.dxf`.
+
+    Hasta el 2026-09-13 esto sólo se podía comprobar con el plano del cliente,
+    porque la 1.x necesitaba un `ACAD_TABLE`. La plantilla fija no lo necesita:
+    el camino bueno entero —medir, construir la tabla, escribir la copia y el
+    PDF, decir qué ha quedado vacío— corre ahora en CI.
+    """
+    import hashlib
+
+    ruta = construir_dxf(tmp_path)
+    antes = hashlib.sha256(Path(ruta).read_bytes()).hexdigest()
+    destino = tmp_path / "copia.dxf"
+
+    salida = skill().ejecutar(contexto({"ruta_dxf": ruta, "ruta_destino": str(destino)}))
+    resultado = salida.resultado
+
+    assert destino.exists() and destino.with_suffix(".pdf").exists()
+    assert [e.tipo for e in resultado.entregables] == ["dxf", "pdf"]
+    assert all(e.borrador and e.sello for e in resultado.entregables)
+    assert hashlib.sha256(Path(ruta).read_bytes()).hexdigest() == antes
+    # Lo que se ha dejado vacío, con nombre y motivo: al menos el número de
+    # unidades (C-8). La útil total ya no: con la medición limpia la escribe
+    # `C-14`, y decirla «no hecha» sería mentir sobre lo entregado.
+    assert any("NUMERO UDS" in n for n in resultado.no_hecho), resultado.no_hecho
+    assert not any("TOTAL S. UTIL" in n for n in resultado.no_hecho), resultado.no_hecho
+    bloqueantes = [r for r in salida.dictamen.resultados if r.bloqueante]
+    assert bloqueantes and all(r.ok for r in bloqueantes), [r.detalle for r in bloqueantes]
+    # Y la suma cuadra: la tabla se ha cruzado de verdad contra la superficie medida.
+    suma = next(r for r in salida.dictamen.resultados
+                if r.nombre == "la_suma_cuadra_con_la_superficie_medida")
+    assert suma.ok, suma.detalle
 
 
 def test_entregar_sin_acreditar_el_sello_si_es_un_fallo():
@@ -320,7 +347,11 @@ def test_un_aviso_de_suma_no_impide_la_entrega(tmp_path):
 # vive en `agente/skills/_comun.py` y se prueba en `test_agente_skills_comun.py`.
 # Lo que se fija AQUI es lo otro: que esta Skill la use de verdad.
 
-@pytest.mark.skipif(not DXF_V2S, reason="define ARCHMUSE_DXF_V2S: un ACAD_TABLE no se sintetiza")
+@pytest.mark.skip(reason=(
+    "CADUCADO el 2026-09-13: describe las preguntas de asignación de la 1.x sobre "
+    "v2s.dxf. Con la plantilla fija la única pregunta es interior/exterior por "
+    "familia (probada en test_agente_skills_comun). Se reescribe cuando v2s.dxf se "
+    "pueda ejecutar."))
 def test_la_pregunta_sale_entera_del_procedimiento_y_no_solo_su_titulo(tmp_path):
     """De punta a punta sobre el plano real: lo que la Skill entrega es lo que
     se puede contestar.

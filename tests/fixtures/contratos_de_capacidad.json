@@ -94,7 +94,7 @@
         "type": "string"
       }
     },
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "plano.entregable_en_pdf": {
     "efectos": [
@@ -202,6 +202,9 @@
       "ruta"
     ],
     "parametros": {
+      "alinear_rotulos": {
+        "type": "boolean"
+      },
       "capa": {
         "type": [
           "string",
@@ -218,7 +221,7 @@
         "type": "string"
       }
     },
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plano.superficie_util": {
     "efectos": [],

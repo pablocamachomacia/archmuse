@@ -212,6 +212,15 @@ def leer_dxf(ruta: str, capa: Optional[str] = None,
             {"capa": d.capa, "tipo": d.tipo, "motivo": d.motivo}
             for d in plano.geometria_no_leida
         ],
+        # Y lo que ha entrado de otra forma que como estaba dibujado (`C-10`).
+        # Va al lado de lo anterior porque responde a la misma pregunta —¿qué le
+        # ha pasado a mi geometría?— y porque callarlo sería peor: el número
+        # sale bien y nadie iría a mirar.
+        "geometria_reparada": [
+            {"capa": r.capa, "tipo": r.tipo, "entidad": r.handle or "",
+             "detalle": r.detalle}
+            for r in getattr(plano, "geometria_reparada", None) or ()
+        ],
     }
 
 
@@ -221,33 +230,37 @@ def leer_dxf(ruta: str, capa: Optional[str] = None,
 
 def cuadro_de_superficies(ruta: str,
                           respuestas: Optional[List[dict]] = None) -> Dict[str, Any]:
-    """El borrador del cuadro de superficies: celda a celda, con su motivo.
+    """La tabla de superficies de ArchMuse para una vivienda, con el porqué de
+    cada hueco. **La misma plantilla fija que dibujan el comando de AutoCAD y la
+    web** (PRD `docs/prd/2026-09-13-cuadro-plantilla-fija.md`).
 
-    `respuestas` cierra el bucle. Sin ellas, la capacidad dice qué no puede
-    calcular y por qué —y ahí se acaba: las celdas bloqueadas lo estarían para
-    siempre, porque los datos que faltan (el espesor de muro, cuántas
-    viviendas de este tipo hay, qué pieza del plano es cada espacio exterior)
-    **no están en el dibujo**, están en la cabeza del arquitecto. Con ellas,
-    el mismo cálculo se rehace incorporando lo que él declara, marcado como
-    declarado por él y no como calculado por ArchMuse: en el acta esas dos
-    cosas no valen lo mismo, y confundirlas sería atribuirse un dato ajeno.
+    **2.0.0 (2026-09-13, decisión de Pablo).** Hasta ese día calculaba las 18
+    celdas del cuadro que el arquitecto tuviera dibujado, y eso era un tercer
+    sitio donde la misma planta podía leerse distinto (`C-9`). Ahora no lee su
+    cuadro: construye la tabla de ArchMuse —una fila por estancia medida— y dice
+    por qué está vacío lo que está vacío. Ninguna cifra es `0,00 m²` (`D-13`).
 
-    Sigue sin escribir nada. Esta capacidad **enseña** el cuadro completo; la
-    que lo escribe en el DXF es `TL-2`, y separarlas es lo que permite que un
+    `respuestas` cierra el bucle de lo único que la tabla no puede saber sola: si
+    una familia que ArchMuse no reconoce es interior o exterior. Lo que declara
+    el arquitecto se devuelve marcado como suyo: en el acta, «lo clasificó él» y
+    «lo clasificó ArchMuse» no valen lo mismo.
+
+    Sigue sin escribir nada. Esta capacidad **enseña** la tabla; la que la
+    escribe en el DXF es `TL-2`, y separarlas es lo que permite que un
     arquitecto pruebe todo el recorrido sin arriesgar su fichero.
     """
     fallo = _falta_el_fichero(ruta)
     if fallo:
         return fallo
 
-    from analyzer.cuadro_superficies_export import obtener_estado_cuadro
+    from analyzer import plantilla_cuadro as pc
+    from analyzer.cuadro_superficies_export import obtener_plantilla_cuadro
 
     try:
-        celdas, solicitudes = obtener_estado_cuadro(ruta, respuestas=respuestas or None)
+        plantilla, preguntas = obtener_plantilla_cuadro(ruta, respuestas=respuestas or None)
     except ValueError as exc:
-        # Dos casos con la misma forma y motivos distintos: no hay ACAD_TABLE
-        # reconocible, o el DXF trae más de una vivienda. Los dos son
-        # preguntas al arquitecto, no fallos del sistema.
+        # Un DXF con varias viviendas, o con ninguna: una pregunta al
+        # arquitecto, no un fallo del sistema.
         return {
             "ok": False,
             "error": "cuadro_no_calculable",
@@ -261,55 +274,47 @@ def cuadro_de_superficies(ruta: str,
         return _fallo_de_lectura(exc)
 
     filas = [
-        {
-            "campo": c.campo,
-            # El rotulo tal cual esta escrito en el cuadro del arquitecto, con
-            # sus tildes y su ñ. El `campo` es un identificador ASCII estable y
-            # sirve para programar; derivar de el el titulo de una fila produjo
-            # «Bano» y «Salon cocina» en el PDF que el arquitecto le enseña a su
-            # cliente. Si el cuadro no trae la celda, no hay rotulo que copiar.
-            "etiqueta": c.celda.etiqueta if c.celda is not None else None,
-            "texto": c.texto,
-            "estado": c.estado,
-            "motivo": c.motivo,
-            "preexistente": c.preexistente,
-            "declarado_por_usuario": c.declarado_por_usuario,
-            "se_escribiria": c.escribir and c.celda is not None,
-        }
-        for c in celdas
+        # El rótulo es el del plano, con sus tildes: es lo que sale en la tabla.
+        {"rotulo": f.rotulo, "ambito": ambito, "familia": f.familia, "valor": f.valor,
+         "area_m2": round(f.area_m2, DECIMALES), "tiene_fila": True}
+        for ambito, lado in ((pc.INTERIOR, plantilla.interiores),
+                             (pc.EXTERIOR, plantilla.exteriores))
+        for f in lado
+    ] + [
+        # Medidas y sin fila (una familia sin contestar). Van aquí y no sólo en
+        # una nota: sin ellas la suma de la Skill saldría corta y acusaría al
+        # plano de un descuadre que no tiene (`C-6`).
+        {"rotulo": nombre, "ambito": None, "familia": "", "valor": "",
+         "area_m2": None, "tiene_fila": False}
+        for nombre in plantilla.sin_fila
     ]
-    preguntas = [
-        {
-            "id": s.id,
-            "tipo": s.tipo,
-            "campos": list(s.campos),
-            "titulo": s.titulo,
-            "ayuda": s.ayuda,
-            "unidad": s.unidad,
-            "candidatos": [
-                {"id": c.id, "etiqueta": c.room_label,
-                 "area_m2": round(c.area_m2, DECIMALES)}
-                for c in (s.candidatos or ())
-            ],
-        }
-        for s in solicitudes
-    ]
-    por_estado: Dict[str, int] = {}
-    for fila in filas:
-        por_estado[fila["estado"]] = por_estado.get(fila["estado"], 0) + 1
 
     return {
         "ok": True,
         "ruta": os.path.abspath(ruta),
-        "celdas": filas,
-        "recuento_por_estado": por_estado,
-        "celdas_sin_resolver": [f["campo"] for f in filas
-                                if f["estado"] in ("NO_DISPONIBLE", "BLOQUEADO")],
-        "preguntas_pendientes": preguntas,
-        "completo": not preguntas,
-        "celdas_declaradas_por_el_arquitecto": [
-            f["campo"] for f in filas if f["declarado_por_usuario"]
+        "vivienda": plantilla.vivienda,
+        "titulo": plantilla.titulo,
+        "n_filas": plantilla.n_filas,
+        "n_columnas": plantilla.n_columnas,
+        # La rejilla, celda a celda: la misma que dibujan el comando y la web.
+        "celdas": [{"fila": f, "columna": c, "texto": t} for f, c, t in plantilla.celdas()],
+        "filas": filas,
+        "notas": list(plantilla.notas),
+        "celdas_sin_resolver": [
+            {"etiqueta": ", ".join(etiquetas), "motivo": motivo}
+            for etiquetas, motivo in plantilla.notas_por_motivo
         ],
+        "preguntas_pendientes": [
+            {"id": "ambito:%s" % p.familia, "tipo": "ambito", "familia": p.familia,
+             "campos": [p.familia], "piezas": list(p.piezas), "titulo": p.texto,
+             "ayuda": "Una respuesta vale para todas las piezas de esa familia.",
+             "opciones": [pc.INTERIOR, pc.EXTERIOR]}
+            for p in preguntas
+        ],
+        "completo": not preguntas,
+        "medicion_limpia": plantilla.medicion_limpia,
+        "impedimentos": list(plantilla.impedimentos),
+        "celdas_declaradas_por_el_arquitecto": list(plantilla.declaradas),
     }
 
 
@@ -334,10 +339,31 @@ def superficie_util(ruta: str, capa: Optional[str] = None) -> Dict[str, Any]:
     except Exception as exc:                      # noqa: BLE001
         return _fallo_de_lectura(exc)
 
+    from collections import Counter
+
+    from analyzer.hechos import UNKNOWN
+    from analyzer.medicion import motivo_c13
+
     avanzado = evaluator.evaluate_advanced(plano.rooms, plano.unit_labels)
+    mismo_rotulo = Counter(u.name for u in avanzado.units)
     viviendas: List[Dict[str, Any]] = []
     for unidad in avanzado.units:
         hecho = superficie_util_db_si(unidad)
+        if mismo_rotulo[unidad.name] > 1:
+            # `C-13`: dos viviendas con el mismo rótulo no se distinguen. Cada una
+            # está medida por separado, pero publicar «VT1/3: 43,70» dos veces es
+            # dar dos cifras que nadie puede atribuir. Sin valor, con motivo.
+            viviendas.append({
+                "vivienda": unidad.name,
+                "estado": UNKNOWN,
+                "valor_m2": None,
+                "unidad": hecho.unidad,
+                "motivos": [{"codigo": "vivienda_indistinguible",
+                             "detalle": motivo_c13(unidad.name, mismo_rotulo[unidad.name])}],
+                "procedencia": list(hecho.procedencia),
+                "explicacion": hecho.explicacion,
+            })
+            continue
         viviendas.append({
             "vivienda": unidad.name,
             "estado": hecho.estado,
@@ -625,16 +651,17 @@ CAPACIDADES = (
     ),
     Capacidad(
         id="plano.cuadro_de_superficies",
-        version="1.0.0",
+        version="2.0.0",
         dominio="plano",
         naturaleza="determinista",
         descripcion=(
-            "Calcula el borrador del cuadro de superficies de una vivienda a partir de su "
-            "DXF: qué texto llevaría cada celda y por qué. Cada celda vuelve con su estado "
-            "— CALCULADO, CERO_REAL (se buscó y no hay ninguno), NO_DISPONIBLE (no se puede "
-            "saber con lo que hay en el plano) o BLOQUEADO (hay ambigüedad real y no se "
-            "elige por el arquitecto) — y con las preguntas que resolverían las pendientes. "
-            "NO escribe nada en ningún fichero."
+            "Construye la tabla de superficies de ArchMuse para una vivienda a partir de "
+            "su DXF: la plantilla fija (título, cuatro columnas, una fila por estancia "
+            "medida y las filas de cierre), LA MISMA que dibujan el comando de AutoCAD y "
+            "la web. Cada hueco vacío vuelve con su motivo, y con las preguntas que lo "
+            "resolverían: si una familia que ArchMuse no reconoce es interior o "
+            "exterior. NUNCA escribe 0,00 m². NO copia ni rellena el cuadro que el "
+            "arquitecto tenga dibujado, y NO escribe nada en ningún fichero."
         ),
         parametros={
             "type": "object",
@@ -645,12 +672,10 @@ CAPACIDADES = (
                     "type": ["array", "null"],
                     "description": (
                         "Lo que el arquitecto declara para resolver las preguntas "
-                        "pendientes. Numérica: {\"tipo\": \"numerico\", \"campo\": "
-                        "\"superficie_construida_cerrada\", \"valor\": 65.4}. Asignación: "
-                        "{\"tipo\": \"asignacion\", \"solicitud_id\": \"...\", "
-                        "\"asignaciones\": {\"terraza_1\": \"cand_0\"}}. Los ids salen de "
-                        "`preguntas_pendientes`. NUNCA se inventan: si no los ha dicho el "
-                        "arquitecto, la celda se queda como está."
+                        "pendientes: {\"tipo\": \"ambito\", \"familia\": \"TRASTERO\", "
+                        "\"ambito\": \"interior\"} (o \"exterior\"). La familia sale de "
+                        "`preguntas_pendientes`. NUNCA se inventa: si no la ha dicho el "
+                        "arquitecto, esas piezas se quedan sin fila y con su nota."
                     ),
                     "items": {"type": "object"},
                 },
@@ -662,12 +687,14 @@ CAPACIDADES = (
         efectos=(),
         limitaciones=(
             "no escribe el DXF: sólo calcula qué llevaría cada celda",
-            "las superficies construidas y el número de unidades no se deducen de la "
-            "geometría; salen como NO_DISPONIBLE hasta que el arquitecto los declare",
+            "no lee el cuadro que el arquitecto tenga dibujado: la tabla es la plantilla "
+            "de ArchMuse y sus filas salen de las estancias medidas",
+            "la superficie construida (C-12, sin confirmar por un arquitecto) y el número "
+            "de unidades (C-8, sin implementar) salen vacíos con su nota; la útil total "
+            "(C-14) sale vacía con su nota cuando la interior o la exterior no se pueden "
+            "afirmar",
             "no comprueba lo que el arquitecto declara en `respuestas`: lo registra como "
             "declarado por él, con esa procedencia, y no lo contrasta contra el dibujo",
-            "cuando el cuadro pide N piezas de una familia y la geometría no da N piezas "
-            "inequívocas, la celda queda BLOQUEADA: no se reparte por orden de aparición",
             "sólo admite un DXF con una única vivienda detectada",
         ),
     ),

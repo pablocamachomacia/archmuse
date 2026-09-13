@@ -17,10 +17,12 @@ Que protege:
      la lista) -> mensaje claro, tampoco pide nada al servidor.
    - con ambos, primera vez (`state.cuadroTabla` aún `null`) -> arranca la
      carga (no se comprueba aquí la llamada de red, solo que no revienta).
-4. `cuadroTablaHtml` (ejecución real): pinta una fila por celda, distingue
-   visualmente las pendientes (`cuadro-fila-pendiente`), y la procedencia
-   (`_origenCeldaCuadro`) prioriza declarado > preexistente > pendiente >
-   calculado, sin inventar un quinto estado.
+4. `cuadroTablaHtml` (ejecución real). **Desde el 2026-09-13 pinta la plantilla
+   fija de 4 columnas** (PRD `2026-09-13-cuadro-plantilla-fija.md`, decisión
+   7): la misma rejilla `(fila, columna, texto)` que dibuja el comando, con el
+   título fusionado y las notas de las celdas vacías debajo. Hasta ese día
+   pintaba las 18 celdas clásicas con su procedencia (`_origenCeldaCuadro`),
+   que se retiró con ellas.
 5. Ninguna de las funciones nuevas de esta fase reimplementa un patrón de
    habitación -- toda esa lógica sigue viviendo solo en
    `analyzer/cuadro_superficies.py`.
@@ -115,7 +117,7 @@ check('data-accion="completar-cuadro-superficies"' not in JS,
 
 check("function cargarCuadroTabla()" in JS, "cargarCuadroTabla existe")
 check("function toolCuadroSuperficiesHtml(v)" in JS, "toolCuadroSuperficiesHtml existe")
-check("function cuadroTablaHtml(celdas)" in JS, "cuadroTablaHtml existe")
+check("function cuadroTablaHtml(celdas, notas)" in JS, "cuadroTablaHtml existe (rejilla + notas)")
 
 check('"aplicar-respuestas-cuadro": function () { aplicarRespuestasCuadroInline(); }' in JS,
       "ACCIONES_CAD conecta aplicar-respuestas-cuadro con aplicarRespuestasCuadroInline")
@@ -175,7 +177,7 @@ check('if (state.modo === "cuadro" || !svgActual()) return;' in fuente_wire_lien
       "el zoom por rueda se desactiva en modo Cuadro -- el scroll normal de la tabla ya no se bloquea")
 
 for nombre_funcion in ("toolCuadroSuperficiesHtml", "renderCuadroLienzo", "contenidoCuadroSuperficies",
-                        "cuadroTablaHtml", "_origenCeldaCuadro", "cargarCuadroTabla"):
+                        "cuadroTablaHtml", "cargarCuadroTabla"):
     fuente = extraer_funcion(nombre_funcion)
     for patron_prohibido in ("DORMITORIO", "TENDEDERO", "TERRAZA", "SALON", "PASILLO", "\\bBANO\\b"):
         check(patron_prohibido not in fuente,
@@ -197,65 +199,39 @@ if not node_disponible:
 else:
     harness = (
         extraer_funcion("escapeHtml") + "\n" +
-        extraer_funcion("etiquetaCampoLegible") + "\n" +
-        extraer_funcion("_origenCeldaCuadro") + "\n" +
-        extraer_funcion("_origenClaseCuadro") + "\n" +
-        extraer_var("_GRUPO_CAMPO_CUADRO") + "\n" +
         extraer_funcion("cuadroTablaHtml") + "\n"
         r"""
         var resultados = [];
         function afirma(cond, etiqueta) { resultados.push([cond, etiqueta]); }
 
-        // --- _origenCeldaCuadro: prioridad de lectura ---------------------
-        afirma(_origenCeldaCuadro({estado: "CALCULADO", preexistente: false, declarado_por_usuario: false})
-               === "Calculado por ArchMuse", "calculado normal -> 'Calculado por ArchMuse'");
-        afirma(_origenCeldaCuadro({estado: "CALCULADO", preexistente: true, declarado_por_usuario: false})
-               === "Ya estaba en el DXF", "preexistente -> 'Ya estaba en el DXF' aunque el estado sea CALCULADO");
-        afirma(_origenCeldaCuadro({estado: "CERO_REAL", preexistente: false, declarado_por_usuario: true})
-               === "Declarado por el arquitecto", "declarado_por_usuario tiene prioridad sobre todo lo demás");
-        afirma(_origenCeldaCuadro({estado: "BLOQUEADO", preexistente: false, declarado_por_usuario: false})
-               === "Pendiente", "BLOQUEADO sin declarar/preexistente -> 'Pendiente'");
-        afirma(_origenCeldaCuadro({estado: "NO_DISPONIBLE", preexistente: false, declarado_por_usuario: false})
-               === "Pendiente", "NO_DISPONIBLE sin declarar/preexistente -> 'Pendiente'");
-
-        // --- cuadroTablaHtml: una fila por celda, pendientes distinguidas --
+        // --- cuadroTablaHtml: la plantilla fija, tal cual la manda el backend ---
         var celdas = [
-          {campo: "salon_cocina", etiqueta: "SALON + COCINA", texto: "21,90 m²", estado: "CALCULADO",
-           preexistente: false, declarado_por_usuario: false},
-          {campo: "tendedero", etiqueta: "TENDEDERO", texto: "BLOQUEADO", estado: "BLOQUEADO",
-           preexistente: false, declarado_por_usuario: false},
-          {campo: "vivienda_tipo", etiqueta: "VIVIENDA TIPO", texto: "VT1 /3", estado: "CALCULADO",
-           preexistente: true, declarado_por_usuario: false}
+          {fila: 0, columna: 0, texto: "CUADRO DE SUPERFICIES POR TIPO DE VIVIENDA"},
+          {fila: 1, columna: 0, texto: "ESPACIOS INTERIORES"}, {fila: 1, columna: 1, texto: "SUPERFICIES UTILES INT."},
+          {fila: 1, columna: 2, texto: "ESPACIOS EXTERIORES"}, {fila: 1, columna: 3, texto: "SUPERFICIES UTILES EXT."},
+          {fila: 2, columna: 0, texto: "Salón/cocina"}, {fila: 2, columna: 1, texto: "21,90 m²"},
+          {fila: 2, columna: 2, texto: "Terraza"}, {fila: 2, columna: 3, texto: "4,50 m²"},
+          {fila: 3, columna: 0, texto: "TOTAL S. UTIL(m2)"}
         ];
-        var html = cuadroTablaHtml(celdas);
+        var notas = [{texto: "TOTAL S. UTIL(m2): la útil interior y la exterior no se suman (C-1)."}];
+        var html = cuadroTablaHtml(celdas, notas);
         afirma(html.indexOf("<table") !== -1, "renderiza una tabla HTML real");
-        afirma(html.indexOf("21,90") !== -1, "el valor calculado aparece tal cual");
-        afirma(html.indexOf("VT1 /3") !== -1, "el valor preexistente aparece tal cual");
-        afirma(html.indexOf("cuadro-fila-pendiente") !== -1, "la fila pendiente lleva su clase distintiva");
-        afirma(/<td>\s*—\s*<\/td>/.test(html) || html.indexOf(">—<") !== -1,
-               "la celda pendiente muestra un guion, nunca 'BLOQUEADO' ni un valor inventado");
-        afirma(html.indexOf("Ya estaba en el DXF") !== -1, "la procedencia preexistente se ve en la tabla");
-        afirma(html.indexOf("Calculado por ArchMuse") !== -1, "la procedencia calculada se ve en la tabla");
-
-        // --- Diseño más profesional (Fase 6e): grupos, insignias, valores alineados ---
-        afirma(html.indexOf('class="cuadro-tabla-grupo"') !== -1,
-               "las celdas se agrupan visualmente (Interior/Exterior/Totales/Datos de proyecto)");
-        afirma(html.indexOf(">Interior<") !== -1, "el grupo de salon_cocina es 'Interior'");
-        afirma(html.indexOf(">Datos de proyecto<") !== -1, "el grupo de vivienda_tipo es 'Datos de proyecto'");
-        afirma(html.indexOf('class="cuadro-origen-badge cuadro-origen-calculado"') !== -1,
-               "la procedencia calculada lleva su insignia de color propia");
-        afirma(html.indexOf('class="cuadro-origen-badge cuadro-origen-dxf"') !== -1,
-               "la procedencia preexistente lleva su insignia de color propia");
+        afirma(html.indexOf("21,90 m²") !== -1 && html.indexOf("4,50 m²") !== -1,
+               "las cifras aparecen tal cual las manda el backend");
+        afirma(html.indexOf('colspan="4"') !== -1, "el título va fusionado a lo ancho de las cuatro columnas");
+        afirma((html.match(/<tr>/g) || []).length === 3,
+               "una fila HTML por fila de la plantilla, sin contar el título");
         afirma(html.indexOf('class="cuadro-tabla-valor"') !== -1,
-               "la columna de valor lleva su propia clase (alineación a la derecha)");
-        // Ningún campo sin grupo declarado se pierde -- respaldo "Otros".
-        afirma(cuadroTablaHtml([{campo: "campo_no_mapeado", etiqueta: "X", texto: "1,00 m²", estado: "CALCULADO",
-                                  preexistente: false, declarado_por_usuario: false}]).indexOf(">Otros<") !== -1,
-               "un campo sin grupo conocido cae en 'Otros', nunca desaparece");
+               "las columnas de valor llevan su propia clase (alineación a la derecha)");
+        afirma(html.indexOf("cuadro-notas") !== -1 && html.indexOf("no se suman") !== -1,
+               "las notas de las celdas vacías van debajo de la tabla");
+        afirma(html.indexOf("0,00") === -1, "ningún cero inventado (D-13)");
+        afirma(cuadroTablaHtml(celdas, []).indexOf("cuadro-notas") === -1,
+               "sin notas no se pinta una lista vacía");
 
         // Sin celdas -> tabla vacía, no revienta.
-        var htmlVacio = cuadroTablaHtml([]);
-        afirma(htmlVacio.indexOf("<table") !== -1, "cuadroTablaHtml([]) no revienta, sigue devolviendo una tabla");
+        var htmlVacio = cuadroTablaHtml([], []);
+        afirma(htmlVacio.indexOf("<table") !== -1, "cuadroTablaHtml([], []) no revienta, sigue devolviendo una tabla");
 
         var resultados_filtrados = resultados.filter(function (r) { return !r[0]; });
         resultados.forEach(function (r) {

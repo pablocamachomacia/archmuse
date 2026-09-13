@@ -3,6 +3,19 @@
 
 Ejecutar:  python tests/test_exportar_cuadro_superficies_endpoint.py
 
+> **AVISO (2026-09-13): varias secciones describen un contrato que ya no existe.**
+> Con la plantilla fija (PRD `docs/prd/2026-09-13-cuadro-plantilla-fija.md`) la
+> web ya no rellena las 18 celdas del cuadro del arquitecto ni escribe
+> `0,00 m²` (`D-13`): dibuja la tabla de ArchMuse al lado. Las comprobaciones de
+> **contenido de la descarga (2-3), `/solicitudes` (8), la descarga completa
+> (9-10), `/estado` (12) y `/estado` con respuestas (14-15)** fallarán en cuanto
+> alguien defina `ARCHMUSE_DXF_V2S`. **No se han reescrito porque este script no
+> se puede ejecutar sin ese plano, y reescribir a ciegas comprobaciones que nadie
+> ve correr es peor que declararlas caducadas.** Lo que cubrían lo cubren ahora,
+> contra el fixture sintético que sí corre en CI, `tests/test_plantilla_cuadro.py`,
+> `tests/test_d13_ninguna_superficie_cero.py` y `tests/test_dos_vias_leen_igual.py`.
+> Siguen vigentes 1, 4-7, 11, 13 y 16.
+
 Usa `v2s.dxf` real y un DXF sintético SIN cuadro (construido en memoria, sin
 tocar disco) para el caso negativo. Mismo patrón de aislamiento que
 `tests/test_analizar_planta.py`: `ARCHMUSE_DATA_DIR` a un directorio temporal

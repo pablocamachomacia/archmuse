@@ -20,10 +20,11 @@ de este DXF» en trabajo real. Lo que se fija aquí:
    conserva su sha256 byte a byte. La escritura es `TL-2`, con su propio PRD.
 
 El DXF de prueba se construye en memoria y se guarda en un temporal, así que
-no hace falta ni red ni el `v2s.dxf` real. El cuadro de superficies completo
-sí lo necesita —un `ACAD_TABLE` no se sintetiza de forma realista— y por eso
-esa parte se salta con motivo si no está `ARCHMUSE_DXF_V2S`, mismo criterio
-que `tests/test_cuadro_superficies.py`.
+no hace falta ni red ni el `v2s.dxf` real. **Desde el 2026-09-13 tampoco para
+el cuadro de superficies**: la capacidad dibuja la plantilla fija de ArchMuse y
+ya no necesita el `ACAD_TABLE` del arquitecto. Los dos tests contra `v2s.dxf`
+que describían la 1.x quedan declarados caducados hasta que ese plano se pueda
+ejecutar.
 """
 from __future__ import annotations
 
@@ -162,45 +163,92 @@ def test_un_fichero_que_no_existe_no_revienta_ni_miente():
     assert "pregunta" in resultado
 
 
-def test_un_dxf_sin_cuadro_lo_dice_en_vez_de_inventarse_uno(dxf):
+def test_un_dxf_sin_cuadro_del_arquitecto_recibe_la_tabla_de_archmuse(dxf):
+    """Hasta el 2026-09-13 esto era una negativa: sin `ACAD_TABLE` no había qué
+    rellenar. La plantilla fija no copia el cuadro del arquitecto, así que el
+    piso mínimo tiene su tabla: una fila por estancia, ninguna cifra a cero."""
     resultado = plano.cuadro_de_superficies(str(dxf))
+    assert resultado["ok"] is True, resultado
+    assert resultado["celdas"][0] == {
+        "fila": 0, "columna": 0, "texto": "CUADRO DE SUPERFICIES POR TIPO DE VIVIENDA"}
+    assert {f["rotulo"] for f in resultado["filas"]} == {p[0] for p in PIEZAS}
+    assert all(f["tiene_fila"] and f["valor"] for f in resultado["filas"])
+    from analyzer.cuadro_superficies import es_superficie_cero
+
+    # Con el detector de D-13, no con la subcadena: «20,00 m²» contiene «0,00».
+    assert not [c for c in resultado["celdas"] if es_superficie_cero(c["texto"])]
+    # Lo que queda vacío, con su motivo: el número de unidades (C-8).
+    assert any("NUMERO UDS" in h["etiqueta"] for h in resultado["celdas_sin_resolver"])
+    # Y la útil total ya no (C-14, que deroga esa parte de C-1): sale escrita y
+    # es exactamente la regla aplicada a las dos cifras de la fila de totales.
+    from analyzer import plantilla_cuadro as pc
+
+    texto = {(c["fila"], c["columna"]): c["texto"] for c in resultado["celdas"]}
+    fila_total = next(f for (f, c), t in texto.items() if c == 0 and t == pc.TOTAL_INTERIOR)
+    fila_util = next(f for (f, c), t in texto.items() if c == 0 and t == pc.TOTAL_UTIL)
+
+    def cifra(clave):
+        valor = texto.get(clave, "")
+        return float(valor.replace(" m²", "").replace(",", ".")) if valor else 0.0
+
+    assert texto[(fila_util, 1)] == pc._m2(pc.superficie_util_total(
+        cifra((fila_total, 1)), cifra((fila_total, 3))))
+    assert not any("TOTAL S. UTIL" in h["etiqueta"] for h in resultado["celdas_sin_resolver"])
+
+
+def test_la_tabla_del_agente_es_la_misma_que_la_de_la_web(dxf):
+    """`C-9` por el tercer sitio, que es por lo que el agente pasó a la plantilla
+    (Pablo, 2026-09-13)."""
+    from analyzer.cuadro_superficies_export import obtener_plantilla_cuadro
+
+    plantilla, _preguntas = obtener_plantilla_cuadro(str(dxf))
+    agente = plano.cuadro_de_superficies(str(dxf))
+    assert [(c["fila"], c["columna"], c["texto"]) for c in agente["celdas"]] == plantilla.celdas()
+    assert agente["notas"] == list(plantilla.notas)
+
+
+def test_un_dxf_con_dos_viviendas_lo_dice_en_vez_de_elegir_una(tmp_path):
+    from tests.test_agente_goldens import construir_dxf_de_planta
+
+    resultado = plano.cuadro_de_superficies(construir_dxf_de_planta(tmp_path))
     assert resultado["ok"] is False
     assert resultado["error"] == "cuadro_no_calculable"
-    assert "ACAD_TABLE" in resultado["detalle"] or "cuadro" in resultado["detalle"].lower()
+    assert resultado["pregunta"]
 
 
 # --- 3b. El bucle se cierra: la pregunta tiene respuesta -------------------
 
-def test_lo_que_declara_el_arquitecto_llega_al_calculo(dxf, monkeypatch):
-    """Sin esto, una celda BLOQUEADA lo estaría para siempre.
+class _Espiado(Exception):
+    """Lo que lanza el espía después de mirar: la capacidad lo traduce a un
+    `ok: false` y el test sólo comprueba lo que llegó."""
 
-    Los datos que faltan —el espesor de muro, cuántas viviendas de este tipo
-    hay, qué pieza es cada espacio exterior— **no están en el dibujo**: están
-    en la cabeza del arquitecto. Una capacidad que sólo sabe decir «no puedo»
-    deja el cuadro a medias para siempre.
-    """
+
+def test_lo_que_declara_el_arquitecto_llega_al_calculo(dxf, monkeypatch):
+    """Sin esto, una familia que ArchMuse no reconoce se quedaría sin fila para
+    siempre: si es interior o exterior **no está en el dibujo**, está en la
+    cabeza del arquitecto."""
     vistas = {}
 
     def espia(ruta, respuestas=None):
         vistas["respuestas"] = respuestas
-        return [], []
+        raise _Espiado()
 
-    monkeypatch.setattr("analyzer.cuadro_superficies_export.obtener_estado_cuadro", espia)
-    declarado = [{"tipo": "numerico", "campo": "numero_unidades", "valor": 8}]
+    monkeypatch.setattr("analyzer.cuadro_superficies_export.obtener_plantilla_cuadro", espia)
+    declarado = [{"tipo": "ambito", "familia": "TRASTERO", "ambito": "interior"}]
     plano.cuadro_de_superficies(str(dxf), respuestas=declarado)
     assert vistas["respuestas"] == declarado
 
 
 def test_sin_respuestas_no_se_le_pasa_una_lista_vacia_como_si_fueran_respuestas(dxf, monkeypatch):
-    """`[]` y `None` no significan lo mismo para `obtener_estado_cuadro`, y
+    """`[]` y `None` no significan lo mismo para `obtener_plantilla_cuadro`, y
     confundirlos cambiaría el camino que toma."""
     vistas = {}
 
     def espia(ruta, respuestas=None):
         vistas["respuestas"] = respuestas
-        return [], []
+        raise _Espiado()
 
-    monkeypatch.setattr("analyzer.cuadro_superficies_export.obtener_estado_cuadro", espia)
+    monkeypatch.setattr("analyzer.cuadro_superficies_export.obtener_plantilla_cuadro", espia)
     plano.cuadro_de_superficies(str(dxf))
     assert vistas["respuestas"] is None
     plano.cuadro_de_superficies(str(dxf), respuestas=[])
@@ -260,7 +308,13 @@ def test_el_registro_sigue_dentro_del_tamano_que_C4_permite():
 
 # --- 6. El cuadro completo, contra el DXF real ---------------------------
 
-@pytest.mark.skipif(not DXF_V2S, reason="define ARCHMUSE_DXF_V2S para probar el cuadro real")
+_CADUCADO_1X = (
+    "CADUCADO el 2026-09-13: describe la 1.x (18 celdas del cuadro del arquitecto, "
+    "respuestas numéricas). La 2.0.0 dibuja la plantilla fija y se prueba arriba con el "
+    "piso sintético. Se reescribe cuando v2s.dxf se pueda ejecutar.")
+
+
+@pytest.mark.skip(reason=_CADUCADO_1X)
 def test_el_cuadro_real_se_calcula_con_sus_celdas_y_sus_preguntas():
     """Un `ACAD_TABLE` no se sintetiza de forma realista, así que esta parte
     depende del plano de cliente. Sin él se salta con motivo, no falla."""
@@ -269,10 +323,10 @@ def test_el_cuadro_real_se_calcula_con_sus_celdas_y_sus_preguntas():
     assert len(resultado["celdas"]) == 18
     assert resultado["preguntas_pendientes"], "v2s.dxf tiene celdas que exigen preguntar"
     assert set(resultado["recuento_por_estado"]) <= {
-        "CALCULADO", "CERO_REAL", "NO_DISPONIBLE", "BLOQUEADO"}
+        "CALCULADO", "NO_DIBUJADA", "NO_DISPONIBLE", "BLOQUEADO"}
 
 
-@pytest.mark.skipif(not DXF_V2S, reason="define ARCHMUSE_DXF_V2S para probar el cuadro real")
+@pytest.mark.skip(reason=_CADUCADO_1X)
 def test_contestar_una_pregunta_resuelve_su_celda_y_deja_dicho_quien_lo_dijo():
     """La procedencia es la mitad del valor: «lo calculó ArchMuse» y «lo
     declaró el arquitecto» no valen lo mismo en un acta, y atribuirse lo
