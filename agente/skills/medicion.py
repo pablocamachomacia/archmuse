@@ -119,12 +119,15 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
     destino = ctx.argumentos.get("ruta_informe") or ""
     capa = ctx.argumentos.get("capa")
     factor = ctx.argumentos.get("factor_escala")
+    # **Una peticion del arquitecto que viaja hasta el parser.** No se pone a
+    # `True` por defecto en ningun punto del camino: si no llega, no se alinea.
+    alinear = ctx.argumentos.get("alinear_rotulos") is True
 
     # --- 1. Medir, sin tocar nada -----------------------------------------
     # Lo primero y sin efectos, para que un plano ilegible se detecte antes de
     # que exista ningún fichero de salida a medio escribir.
     medicion = ctx.invocar("plano.medicion_de_la_planta", ruta=ruta, capa=capa,
-                           factor_escala=factor)
+                           factor_escala=factor, alinear_rotulos=alinear)
     if not medicion.get("ok"):
         return _sin_hacer(ctx, medicion.get("error", "plano_ilegible"),
                           medicion.get("detalle", "no se ha podido leer el plano"),
@@ -147,6 +150,28 @@ def _ejecutar(ctx) -> ResultadoDeSkill:
         "medicion.advertencias_del_total": calculo(
             "medicion.advertencias_del_total",
             list(medicion.get("advertencias_del_total") or ()), fuente=ctx.firma),
+        # `C-10`: los contornos que ArchMuse ha tenido que reparar para poder
+        # medirlos. **Se declara como afirmación y no como un campo suelto**
+        # porque es exactamente eso: algo que el sistema afirma haber hecho con
+        # el dibujo del arquitecto, y que tiene que poder rastrearse hasta quién
+        # lo hizo. Una reparación callada es peor que un descarte callado: el
+        # número sale bien, el cuadro se rellena, y nadie va a mirar por qué.
+        "medicion.geometria_reparada": calculo(
+            "medicion.geometria_reparada",
+            list(medicion.get("geometria_reparada") or ()), fuente=ctx.firma),
+        # **La correccion de rotulos que se ha aplicado, si alguna.** Es
+        # afirmacion y no campo suelto por la regla de oro del proyecto: esta
+        # medicion DEPENDE de un desplazamiento que ArchMuse ha aplicado, y una
+        # cifra que se apoya en algo que no consta es una cifra sin procedencia.
+        "medicion.rotulos_alineados": calculo(
+            "medicion.rotulos_alineados", medicion.get("rotulos_alineados"),
+            fuente=ctx.firma),
+        "medicion.rotulos_desplazados": calculo(
+            "medicion.rotulos_desplazados", medicion.get("rotulos_desplazados"),
+            fuente=ctx.firma),
+        "medicion.capa_de_rotulos": calculo(
+            "medicion.capa_de_rotulos", medicion.get("capa_de_rotulos"),
+            fuente=ctx.firma),
     }
 
     if not viviendas:

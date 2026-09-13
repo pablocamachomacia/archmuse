@@ -40,7 +40,8 @@ from .plano import (
 )
 
 
-def _leer(ruta: str, capa: Optional[str], factor_escala: Optional[float]):
+def _leer(ruta: str, capa: Optional[str], factor_escala: Optional[float],
+          alinear_rotulos: bool = False):
     """Abre el DXF y lo lleva a metros. Devuelve `(plano, None)` o `(None, fallo)`."""
     import ezdxf
 
@@ -48,17 +49,19 @@ def _leer(ruta: str, capa: Optional[str], factor_escala: Optional[float]):
 
     try:
         doc = ezdxf.readfile(ruta)
-        return parser.leer_plano(doc, layer=capa, factor_escala=factor_escala), None
+        return parser.leer_plano(doc, layer=capa, factor_escala=factor_escala,
+                                 alinear_rotulos=alinear_rotulos), None
     except Exception as exc:                      # noqa: BLE001 - se traduce, no se traga
         return None, _fallo_de_lectura(exc)
 
 
 def _medir(ruta: str, capa: Optional[str],
-           factor_escala: Optional[float]) -> Dict[str, Any]:
+           factor_escala: Optional[float],
+           alinear_rotulos: bool = False) -> Dict[str, Any]:
     """El tramo común de las dos capacidades: leer, medir y serializar."""
     from analyzer.medicion import a_dict, medir_planta
 
-    plano, fallo = _leer(ruta, capa, factor_escala)
+    plano, fallo = _leer(ruta, capa, factor_escala, alinear_rotulos)
     if fallo is not None:
         return fallo
     salida = a_dict(medir_planta(plano))
@@ -91,12 +94,13 @@ def _medir(ruta: str, capa: Optional[str],
 # ---------------------------------------------------------------------------
 
 def medicion_de_la_planta(ruta: str, capa: Optional[str] = None,
-                          factor_escala: Optional[float] = None) -> Dict[str, Any]:
+                          factor_escala: Optional[float] = None,
+                          alinear_rotulos: bool = False) -> Dict[str, Any]:
     """Superficie útil de cada vivienda de la planta, pieza a pieza."""
     fallo = _falta_el_fichero(ruta)
     if fallo:
         return fallo
-    return _medir(ruta, capa, factor_escala)
+    return _medir(ruta, capa, factor_escala, alinear_rotulos)
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +108,8 @@ def medicion_de_la_planta(ruta: str, capa: Optional[str] = None,
 # ---------------------------------------------------------------------------
 
 def medicion_en_pdf(ruta: str, ruta_destino: str, capa: Optional[str] = None,
-                    factor_escala: Optional[float] = None) -> Dict[str, Any]:
+                    factor_escala: Optional[float] = None,
+                    alinear_rotulos: bool = False) -> Dict[str, Any]:
     """Escribe la medición en un PDF. El DXF de entrada sólo se lee."""
     fallo = _falta_el_fichero(ruta)
     if fallo:
@@ -114,7 +119,7 @@ def medicion_en_pdf(ruta: str, ruta_destino: str, capa: Optional[str] = None,
         return fallo
 
     sello_antes = _sha256(ruta)
-    medicion = _medir(ruta, capa, factor_escala)
+    medicion = _medir(ruta, capa, factor_escala, alinear_rotulos)
     if not medicion.get("ok"):
         return _con_sello_intacto(ruta, sello_antes, medicion)
 
@@ -187,7 +192,10 @@ def _limitaciones_declaradas() -> list:
 CAPACIDADES = (
     Capacidad(
         id="plano.medicion_de_la_planta",
-        version="1.0.0",
+        # 1.1.0 (2026-09-11): parametro opcional nuevo `alinear_rotulos`. Menor y
+        # no mayor porque nada de lo que ya funcionaba cambia: sin el parametro,
+        # esta capacidad mide exactamente igual que en 1.0.0.
+        version="1.1.0",
         dominio="plano",
         naturaleza="determinista",
         descripcion=(
@@ -205,6 +213,14 @@ CAPACIDADES = (
                 "ruta": {"type": "string", "description": "Ruta del fichero .dxf."},
                 "capa": {"type": ["string", "null"],
                          "description": "Capa de recintos, si ya está confirmada."},
+                "alinear_rotulos": {
+                    "type": "boolean",
+                    "description": (
+                        "Alinear en memoria los rotulos de un plano que los lleva "
+                        "desplazados en bloque respecto de sus recintos. SOLO si el "
+                        "arquitecto lo ha pedido, y solo se aplica si el desfase es "
+                        "limpio. Nunca toca el fichero."),
+                },
                 "factor_escala": {"type": ["number", "null"],
                                   "description": ("Multiplicador a metros, si ya está "
                                                   "confirmado.")},

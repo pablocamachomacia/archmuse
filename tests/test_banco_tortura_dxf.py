@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Regresión: los 13 DXF de tortura de `tests/fixtures/dxf_tortura/` nunca
+"""Regresión: los 15 DXF de tortura de `tests/fixtures/dxf_tortura/` nunca
 deben producir un traceback contra los scripts que analizan un DXF de golpe.
 
 **Qué son los ficheros de tortura.** Cada uno ataca una suposición del parser
 (sin unidades, mm declarados como m, estancias solapadas, bloques anidados,
-geometría degenerada, coordenadas UTM, texto hostil, formato R12...). Se
+geometría degenerada, coordenadas UTM, texto hostil, formato R12, flag de
+cerrada mal puesto, MTEXT y TEXT dentro del mismo recinto...). Se
 generan con `generar_dxf_tortura.py` (raíz del repo) y su ataque está descrito
 en `tests/fixtures/dxf_tortura/MANIFIESTO.md`.
 

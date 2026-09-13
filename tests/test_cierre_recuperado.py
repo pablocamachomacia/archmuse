@@ -308,6 +308,12 @@ def test_vt1_3_sintetico_gap_grande_no_se_recupera(caplog):
 def _ruta_proyecto_real(nombre: str):
     candidatas = [
         os.path.join(os.path.dirname(RAIZ), nombre),
+        # `_material/` junto al repositorio: es donde viven de verdad los dos
+        # planos, y por no mirar aqui estos dos tests llevaban saltandose
+        # incluso en la maquina que los tiene (comprobado el 2026-09-10). Un
+        # test de regresion que no corre en ningun sitio no es una regresion
+        # vigilada, es una que nadie ha visto fallar.
+        os.path.join(os.path.dirname(RAIZ), "_material", nombre),
         os.path.join(os.path.expanduser("~"), "Desktop", nombre),
     ]
     return next((c for c in candidatas if os.path.isfile(c)), None)

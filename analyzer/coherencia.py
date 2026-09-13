@@ -54,6 +54,9 @@ CUADRO_PIDE_PIEZA_NO_DIBUJADA = "el_cuadro_pide_una_pieza_que_no_esta_dibujada"
 PIEZA_DIBUJADA_FUERA_DEL_CUADRO = "pieza_dibujada_que_el_cuadro_no_contempla"
 RECUENTO_NO_COINCIDE = "el_cuadro_y_el_plano_no_cuentan_lo_mismo"
 SIN_RECINTOS = "no_se_ha_leido_ningun_recinto"
+ROTULOS_DESPLAZADOS = "los_rotulos_estan_desplazados_respecto_de_los_recintos"
+GEOMETRIA_REPARADA = "geometria_reparada_para_poder_medirla"
+ROTULOS_DE_VARIAS_CAPAS = "los_nombres_salen_de_varias_capas_y_no_se_elige"
 
 TIPOS = (
     SOLAPE,
@@ -65,6 +68,9 @@ TIPOS = (
     PIEZA_DIBUJADA_FUERA_DEL_CUADRO,
     RECUENTO_NO_COINCIDE,
     SIN_RECINTOS,
+    ROTULOS_DESPLAZADOS,
+    GEOMETRIA_REPARADA,
+    ROTULOS_DE_VARIAS_CAPAS,
 )
 
 #: Lo que se ha mirado, en el orden en que se mira, para que un informe sin
@@ -75,7 +81,13 @@ COMPROBACIONES = (
     ("Solapes entre recintos", "que dos piezas de la misma vivienda no se pisen"),
     ("Polilíneas mal cerradas", "que ningún contorno se haya cerrado por suposición"),
     ("Geometría descartada", "qué entidades no han entrado en el análisis, y por qué"),
+    ("Geometría reparada", "qué contornos estaban mal construidos y han entrado "
+                           "reparados, sin que su superficie cambie"),
     ("Rótulos", "que ninguna pieza esté sin rotular y que ningún rótulo se repita"),
+    ("Rótulos desplazados", "si un plano entero sin rotular se explica porque "
+                            "los textos están movidos en bloque"),
+    ("De qué capa salen los nombres", "que los nombres de las estancias vengan "
+                                      "de una sola capa y no de varias"),
     ("Cuadro contra dibujo", "que el cuadro y el plano nombren las mismas piezas"),
 )
 
@@ -263,6 +275,61 @@ def _agrupar_en_viviendas(plano) -> List:
     return list(evaluator.group_rooms_by_proximity(plano.rooms))
 
 
+def _rotulos_desplazados(plano) -> List[Hallazgo]:
+    """Un solo hallazgo cuando el plano entero sale sin rotular **y hay una
+    traslación que lo explica**. La detección vive en
+    `parser.detectar_desplazamiento_de_rotulos`; aquí sólo se cuenta.
+
+    **Por qué un hallazgo y no doscientos.** Sin esto, `plantasimple.dxf`
+    produce 206 `RECINTO_SIN_ETIQUETA` — uno por recinto, todos ciertos, todos
+    con la misma causa y ninguno diciéndola. Doscientos avisos que repiten el
+    síntoma esconden el diagnóstico en vez de darlo.
+
+    **Y no se corrige.** Ni aquí ni en el parser. La traslación se dice para que
+    el arquitecto la compruebe en su AutoCAD con un `DESPLAZA`; moverle los
+    rótulos nosotros sería decidir por él que su plano está mal dibujado, que es
+    una conclusión que no nos toca y que además puede ser falsa: que dos cosas
+    encajen al moverlas no prueba en qué sitio deberían estar.
+    """
+    desplazamiento = getattr(plano, "rotulos_desplazados", None)
+    if desplazamiento is None:
+        return []
+    return [Hallazgo(
+        tipo=ROTULOS_DESPLAZADOS,
+        descripcion=(
+            "Ningún recinto de la capa «%s» tiene un rótulo dentro: %d de %d "
+            "están sin texto. Los rótulos del plano están %s respecto de los "
+            "recintos — moviéndolos %+.2f, %+.2f encajarían %d "
+            "de %d. ArchMuse NO los ha movido: la superficie está bien medida, "
+            "pero las piezas salen sin nombre y por eso el cuadro no se puede "
+            "rellenar. Compruébalo en tu AutoCAD antes de dar por buena la "
+            "cifra." % (
+                plano.layer, desplazamiento.sin_rotulo, desplazamiento.mirados,
+                _distancia_de(desplazamiento), desplazamiento.dx, desplazamiento.dy,
+                desplazamiento.explicados, desplazamiento.mirados)
+        ),
+        entidad="capa «%s»" % plano.layer,
+        detalle={
+            "capa": plano.layer,
+            "dx": desplazamiento.dx,
+            "dy": desplazamiento.dy,
+            "recintos_sin_rotulo": desplazamiento.sin_rotulo,
+            "recintos_explicados": desplazamiento.explicados,
+            "recintos_mirados": desplazamiento.mirados,
+            "aplicado": False,
+        },
+    )]
+
+
+def _distancia_de(desplazamiento) -> str:
+    """La frase legible del desplazamiento, de donde ya vive: el parser. Se
+    importa aquí dentro y no arriba para no añadir un import circular entre dos
+    módulos que hoy no se conocen en ese sentido."""
+    from analyzer.parser import _distancia_legible
+
+    return _distancia_legible(desplazamiento.dx, desplazamiento.dy)
+
+
 def _solapes(unidades: Sequence) -> List[Hallazgo]:
     """Dos piezas de la misma vivienda que se pisan: metros contados dos veces.
 
@@ -356,6 +423,76 @@ def _geometria_descartada(plano, doc=None, factor: float = 1.0) -> List[Hallazgo
             ubicacion=_bbox_por_handle(doc, handle, factor),
         ))
     return salida
+
+
+def _geometria_reparada(plano, doc=None, factor: float = 1.0) -> List[Hallazgo]:
+    """Lo que ha entrado **reparado**, uno por contorno, con su `handle`.
+
+    **`C-10` exige que esto no se pueda callar.** Una reparación silenciosa es
+    peor que un descarte silencioso: el número sale bien, el cuadro se rellena,
+    y nadie va a ir nunca a mirar por qué. El arquitecto tiene derecho a saber
+    que ArchMuse ha tenido que arreglar un contorno suyo para poder medirlo —
+    entre otras cosas porque ese contorno **sigue estando mal en su dibujo**, y
+    la próxima herramienta que lo abra puede no ser tan amable.
+
+    Se dice la superficie y se dice que no ha cambiado, porque es la pregunta
+    que se hace cualquiera al leer «reparado»: ¿y cuánto me has movido la cifra?
+    Ninguno: si se moviera, no se habría reparado, se habría descartado.
+    """
+    salida = []
+    for r in (getattr(plano, "geometria_reparada", None) or ()):
+        handle = getattr(r, "handle", None)
+        area = getattr(r, "area", 0.0) * factor * factor
+        salida.append(Hallazgo(
+            tipo=GEOMETRIA_REPARADA,
+            descripcion=(
+                "Un contorno %s de la capa «%s» estaba mal construido (%s) y "
+                "ArchMuse lo ha reparado para poder medirlo. **Su superficie no "
+                "ha cambiado**: si hubiera cambiado, no se habría reparado, se "
+                "habría descartado. El contorno sigue estando mal en tu dibujo."
+                % (r.tipo, r.capa, getattr(r, "detalle", "geometría inválida"))
+            ),
+            entidad="handle %s" % handle if handle else "%s en «%s»" % (r.tipo, r.capa),
+            magnitud=round(area, 2) if area else None,
+            unidad="m²" if area else "",
+            detalle={"capa": r.capa, "tipo": r.tipo, "handle": handle,
+                     "detalle": getattr(r, "detalle", ""),
+                     "superficie_cambiada": False},
+            ubicacion=_bbox_por_handle(doc, handle, factor),
+        ))
+    return salida
+
+
+def _rotulos_de_varias_capas(plano) -> List[Hallazgo]:
+    """Cuando dos capas nombran una proporción comparable de recintos, ArchMuse
+    **no elige** y lo dice.
+
+    La regla normal es que gana la capa que más nombra
+    (`docs/prd/2026-09-11-que-capa-nombra-las-estancias.md`), y con el umbral en
+    «más del doble» casi siempre hay una respuesta clara. Cuando no la hay, las
+    dos alternativas son malas: elegir una es adivinar, y no nombrar nada rompe
+    planos que hoy funcionan. Así que se deja todo como estaba y se enseña el
+    reparto con cifras, que es lo único que le permite al arquitecto decidir.
+    """
+    reparto = getattr(plano, "reparto_de_rotulos", None)
+    if reparto is None or not getattr(reparto, "ambiguo", False):
+        return []
+    detalle = ", ".join("«%s» (%d recinto(s))" % (capa, n) for capa, n in reparto.recuento)
+    return [Hallazgo(
+        tipo=ROTULOS_DE_VARIAS_CAPAS,
+        descripcion=(
+            "Los nombres de las estancias de este plano salen de varias capas y "
+            "ninguna destaca: %s. ArchMuse NO elige entre ellas —elegir sería "
+            "adivinar— así que sigue admitiéndolas todas, y por eso alguna "
+            "estancia puede quedarse con un nombre que no es el suyo. Si sabes "
+            "cuál es tu capa de rótulos, dilo." % detalle
+        ),
+        entidad="capa de recintos «%s»" % plano.layer,
+        detalle={"capa_de_recintos": plano.layer,
+                 "reparto": [list(par) for par in reparto.recuento],
+                 "proporcion": round(reparto.proporcion, 3),
+                 "elegida": None},
+    )]
 
 
 def _rotulos(unidades: Sequence) -> List[Hallazgo]:
@@ -633,6 +770,9 @@ def revisar(doc, *, layer=None, factor_escala=None) -> Revision:
     # decidir (ver `_bbox_por_handle`, R-4 del PRD del 2026-08-21).
     factor = getattr(plano.escala, "factor", None) or 1.0
 
+    hallazgos.extend(_geometria_reparada(plano, doc, factor))
+    hallazgos.extend(_rotulos_desplazados(plano))
+    hallazgos.extend(_rotulos_de_varias_capas(plano))
     hallazgos.extend(_solapes(unidades))
     hallazgos.extend(_polilineas_mal_cerradas(avisos, doc, factor))
     hallazgos.extend(_geometria_descartada(plano, doc, factor))

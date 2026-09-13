@@ -35,6 +35,26 @@
 > cuarta** — la tasa real de discrepancias memoria↔plano (`R-2`) —, que es la
 > que gobierna el PRD del 2026-08-22, no éste.
 
+> **CORRECCIÓN DE LOS HECHOS (2026-09-10). El «Tendedero duplicado» no era una
+> duplicación: era un contorno.** Esta nota lleva desde el 2026-09-08 hablando
+> de un fallo de duplicación del «Tendedero», y la duplicación no existía.
+> Medido sobre `v1plantas.dxf`: lo que parecían dos tendederos era **un
+> tendedero de 4,22 m² y el contorno de 8,63 m² que lo agrupa con la terraza** —
+> cubre el 94,8% del uno y el 92,7% de la otra. Se colaba como una habitación
+> más porque `_discard_container_candidates` exigía que el polígono contenido
+> estuviera en BYLAYER, y este estudio dibuja sus piezas exteriores en verde.
+>
+> Consecuencias, todas comprobadas: la vivienda declaraba **7,08 m² dibujados
+> dos veces** y no publicaba **ninguna** superficie. Arreglado el 2026-09-10
+> (`analyzer/parser.py`, `tests/test_contorno_agrupador.py`). El otro fallo de
+> esta lista —el «Baño» en `sin_clasificar`— tampoco era de criterio: era que
+> nadie decodificaba `Ba\U+00F1o` (`analyzer/texto_dxf.py`,
+> `tests/test_escapes_unicode.py`).
+>
+> Los dos se daban por «cambios de criterio validados con el arquitecto». **Eran
+> dos bugs**, y el criterio no hacía falta para ninguno de los dos. Lo que sí
+> hacía falta era mirar el plano.
+
 > **Encargo de Pablo (2026-09-08), literal en su alcance:** prototipo en AutoLISP
 > para validar el flujo; el plugin nativo .NET vendrá después y sólo si el flujo
 > convence; **hoy no se escribe nada de .NET/C#**. Pablo **no tiene AutoCAD
@@ -292,8 +312,8 @@ Consumidores indirectos afectados: **ninguno**. `/medir`, `/api/acta-legible`,
 | 2 | `/api/medicion-geometria`: JSON → DXF temporal (ezdxf) → camino existente | 2 h | **HECHO** 2026-09-08 |
 | 3 | Test de integración: cifras idénticas a `/api/medicion` sobre ambos planos, al céntimo | 1,5 h | **HECHO** 2026-09-08 — 28 tests |
 | 4 | Serializador s-expresión y su test | 1 h | **HECHO** 2026-09-08 |
-| 5 | `archmuse.lsp`: selección, serialización, POST por COM | 2 h | pendiente del trial |
-| 6 | `archmuse.lsp`: tabla nativa (`vla-AddTable`), marca `C3`, motivos de bloqueo | 2 h | pendiente del trial |
+| 5 | `archmuse.lsp`: selección, serialización, POST por COM | 2 h | **HECHO Y EJECUTADO** 2026-09-09 en AutoCAD 2027, sobre `V5.dxf`: capa `00 areas`, 22 polilíneas, POST y respuesta correctos |
+| 6 | `archmuse.lsp`: tabla nativa (`vla-AddTable`), marca `C3`, motivos de bloqueo | 2 h | **HECHO**, ejecutado a medias 2026-09-09: tabla, cifras y marca `C3` correctas; el ancho de columna partía el texto (corregido 2026-09-10, **sin volver a ejecutar**) y **el camino de vivienda bloqueada sigue sin ejecutarse** — `V5.dxf` no tiene ninguna |
 | 7 | Checklist de primera prueba | 1 h | **HECHO** 2026-09-08 |
 | 8 | `PROGRESS.md` con lo no verificado | 0,5 h | **HECHO** 2026-09-08 |
 

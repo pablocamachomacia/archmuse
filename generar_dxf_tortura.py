@@ -219,6 +219,129 @@ def caso_13_r12_antiguo():
     return doc, "Formato R12 de 1992: POLYLINE clasica en vez de LWPOLYLINE, cabecera minima"
 
 
+def caso_14_flag_de_cerrada_mal_puesto():
+    """El flag `closed` dice False y la polilinea esta cerrada de verdad.
+
+    **El defecto mas caro que se ha medido en un plano real**, y hasta el
+    2026-09-10 no lo reproducia ni un solo fixture del repositorio: 3 de 22
+    polilineas en `V5.dxf`, 2 de 10 en `v2s.dxf`, 9 de 53 en `ejemplo.dxf` --
+    hasta un 17%. `parser._esta_cerrada` las recupera por geometria; `ssget`,
+    en AutoCAD, NO puede, porque solo sabe filtrar por el bit del codigo 70.
+    Esa diferencia es superficie que falta en la tabla que se dibuja en el
+    plano, y sin este fichero no habia forma de escribir un test que la
+    distinguiera de cero.
+
+    Los dos fixtures derivados de planos reales NO sirven para esto: se
+    reconstruyen con `derivar_fixture_anonimo.py`, que escribe todas las
+    polilineas con `close=True`, asi que la anonimizacion borra el defecto sin
+    querer (medido: 0 de 22 y 0 de 9). Ver `docs/PROGRESS.md`, 2026-09-10.
+
+    Siete polilineas: **cuatro bien cerradas, dos con el flag mal puesto y una
+    abierta de verdad**. Las dos del defecto reproducen los dos patrones
+    medidos en `V5.dxf`: hueco exactamente cero y hueco del 0,6% de la
+    diagonal. `ssget` cogeria 4; el parser mide 6.
+
+    **Las cuatro bien cerradas no son relleno.** `MINIMO_POLIGONOS_CAPA` son 3,
+    y el heuristico de deteccion de capa cuenta **solo por flag**
+    (`_poligonos_cerrados_por_capa` pasa `recuperar_geometria=False` a
+    proposito). Con menos de 3 bien flagueadas la capa deja de ser candidata y
+    el plano entero no se lee -- comprobado el 2026-09-10 construyendo este
+    mismo fixture con una sola: `CapaIndeterminada`. Es un efecto colateral del
+    defecto que conviene tener presente y que aqui NO se quiere provocar,
+    porque lo que este fichero existe para ejercitar es lo que pasa DENTRO de
+    una capa ya elegida.
+    """
+    doc = ezdxf.new("R2010")
+    doc.units = units.M
+    msp = doc.modelspace()
+
+    # 1-4. Control: flag bien puesto. `ssget` y el parser las cogen las dos.
+    _habitacion(msp, [(0, 0), (4, 0), (4, 3), (0, 3)], "ESTANCIAS", "SALON")
+    _habitacion(msp, [(0, 4), (4, 4), (4, 7), (0, 7)], "ESTANCIAS", "DORMITORIO 1")
+    _habitacion(msp, [(0, 8), (4, 8), (4, 11), (0, 11)], "ESTANCIAS", "DORMITORIO 2")
+    _habitacion(msp, [(0, 12), (4, 12), (4, 15), (0, 15)], "ESTANCIAS", "BANO")
+
+    # 5. Flag mal puesto, hueco CERO: el ultimo vertice es exactamente el
+    #    primero. Es el patron de 2 de las 3 de `V5.dxf`.
+    msp.add_lwpolyline([(5, 0), (9, 0), (9, 3), (5, 3), (5, 0)], close=False,
+                       dxfattribs={"layer": "ESTANCIAS"})
+    msp.add_text("COCINA", dxfattribs={"layer": "ESTANCIAS", "height": 0.2,
+                                       "insert": (7, 1.5)})
+
+    # 6. Flag mal puesto, hueco de 3 cm sobre una diagonal de 5 m (0,6%): por
+    #    debajo de `TOLERANCIA_CIERRE`, se recupera. El mayor hueco real
+    #    medido en `V5.dxf` fue del 0,70%.
+    msp.add_lwpolyline([(5, 4), (9, 4), (9, 7), (5, 7), (5.03, 4)], close=False,
+                       dxfattribs={"layer": "ESTANCIAS"})
+    msp.add_text("TERRAZA", dxfattribs={"layer": "ESTANCIAS", "height": 0.2,
+                                        "insert": (7, 5.5)})
+
+    # 7. Control del camino contrario: abierta DE VERDAD, hueco de 80 cm (16%
+    #    de su diagonal). No se recupera, y tiene que seguir sin recuperarse.
+    msp.add_lwpolyline([(5, 8), (9, 8), (9, 11), (5.8, 11.1)], close=False,
+                       dxfattribs={"layer": "ESTANCIAS"})
+    msp.add_text("ASEO", dxfattribs={"layer": "ESTANCIAS", "height": 0.2,
+                                     "insert": (7, 9.5)})
+
+    return doc, ("Flag 'closed' mal puesto: 7 polilineas, 4 bien cerradas, 2 "
+                 "cerradas de verdad pero declaradas abiertas (hueco 0 y 0,6% "
+                 "de la diagonal) y 1 abierta de verdad. ssget cogeria 4; el "
+                 "parser mide 6")
+
+
+def caso_15_mtext_y_text_en_el_mismo_recinto():
+    """Cada estancia rotulada DOS veces: su nombre en MTEXT y su cifra en TEXT.
+
+    **Es la forma del unico proyecto completo del lote.** En
+    `plantasimple.dxf` la capa `00 TEXTO` lleva **651 MTEXT y 136 TEXT**
+    mezclados, y dentro de un mismo recinto caen los dos: el nombre y el
+    numerito de la superficie. Ningun otro fixture del repositorio mezcla los
+    dos tipos -- medido el 2026-09-12: los seis que corren en `C-9` son
+    "todo MTEXT" (26 y 11) o "todo TEXT" (4, 8, 8 y 7).
+
+    Por eso `parser.extract_labels` ordena los MTEXT antes que los TEXT: es la
+    regla de desempate que decide cual de los dos nombra la estancia. Y por eso
+    la divergencia `C-9` del 2026-09-11 pudo vivir con la suite entera en
+    verde: `geometria_recibida` escribia **todos** los textos como MTEXT, el
+    desempate se quedaba sin dato, y ningun fixture tenia el caso.
+
+    Sobre `plantasimple.dxf` eso valia 157 recintos contra 169 y **16
+    viviendas con superficie contra 3**. Este fichero es ese defecto en
+    cuatro estancias y sin datos de nadie.
+
+    **El orden importa y es deliberado:** la cifra en TEXT se escribe ANTES que
+    el nombre en MTEXT. Con la prioridad puesta gana el nombre; sin ella gana
+    el primero que se encuentre, que es la cifra. Un fixture que los escribiera
+    al reves daria el mismo resultado con regla y sin ella, y no probaria nada.
+    """
+    doc = ezdxf.new("R2010")
+    doc.units = units.M
+    msp = doc.modelspace()
+
+    estancias = [
+        ([(0, 0), (4, 0), (4, 3), (0, 3)], "SALON", "12.00 m2"),
+        ([(0, 4), (4, 4), (4, 7), (0, 7)], "DORMITORIO 1", "12.00 m2"),
+        ([(0, 8), (4, 8), (4, 11), (0, 11)], "DORMITORIO 2", "12.00 m2"),
+        ([(5, 0), (7, 0), (7, 3), (5, 3)], "BANO", "6.00 m2"),
+    ]
+    for puntos, nombre, cifra in estancias:
+        msp.add_lwpolyline(puntos, close=True, dxfattribs={"layer": "ESTANCIAS"})
+        xs = [p[0] for p in puntos]
+        ys = [p[1] for p in puntos]
+        cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
+        # Primero la cifra, en TEXT, y por debajo del centro.
+        msp.add_text(cifra, dxfattribs={"layer": "ESTANCIAS", "height": 0.2,
+                                        "insert": (cx, cy - 0.4)})
+        # Despues el nombre, en MTEXT, por encima. Es el que tiene que ganar.
+        msp.add_mtext(nombre, dxfattribs={"layer": "ESTANCIAS", "char_height": 0.2}
+                      ).set_location((cx, cy + 0.4))
+
+    return doc, ("MTEXT y TEXT dentro del mismo recinto, en la misma capa y con "
+                 "el TEXT escrito primero: el nombre va en MTEXT y la cifra en "
+                 "TEXT. Sin la prioridad MTEXT-sobre-TEXT las cuatro estancias "
+                 "se llaman '12.00 m2' o '6.00 m2'")
+
+
 CASOS = [
     caso_01_limpio,
     caso_02_sin_unidades,
@@ -233,6 +356,8 @@ CASOS = [
     caso_11_vacio_y_ruido,
     caso_12_texto_hostil,
     caso_13_r12_antiguo,
+    caso_14_flag_de_cerrada_mal_puesto,
+    caso_15_mtext_y_text_en_el_mismo_recinto,
 ]
 
 

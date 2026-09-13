@@ -18,3 +18,5 @@ Exito = ninguno produce traceback: preguntan, descartan con motivo o se degradan
 | `11_vacio_y_ruido.dxf` | Sin estancias: solo ejes y cajetin. Debe decir 'no encuentro recintos' y que necesita |
 | `12_texto_hostil.dxf` | MTEXT multilinea con formato, acentos, coma decimal y area declarada que no cuadra con la medida |
 | `13_r12_antiguo.dxf` | Formato R12 de 1992: POLYLINE clasica en vez de LWPOLYLINE, cabecera minima |
+| `14_flag_de_cerrada_mal_puesto.dxf` | Flag 'closed' mal puesto: 7 polilineas, 4 bien cerradas, 2 cerradas de verdad pero declaradas abiertas (hueco 0 y 0,6% de la diagonal) y 1 abierta de verdad. ssget cogeria 4; el parser mide 6 |
+| `15_mtext_y_text_en_el_mismo_recinto.dxf` | MTEXT y TEXT dentro del mismo recinto, en la misma capa y con el TEXT escrito primero: el nombre va en MTEXT y la cifra en TEXT. Sin la prioridad MTEXT-sobre-TEXT las cuatro estancias se llaman '12.00 m2' o '6.00 m2' |

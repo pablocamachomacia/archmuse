@@ -30,11 +30,14 @@ from typing import Dict, List, Optional, Tuple
 
 import ezdxf
 from ezdxf.document import Drawing
+from shapely import STRtree
 from shapely.affinity import scale as escalar_geometria
+from shapely.affinity import translate as trasladar_geometria
 from shapely.geometry import Point, Polygon
-from shapely.validation import explain_validity
+from shapely.validation import explain_validity, make_valid
 
 from . import escala as escala_mod
+from .texto_dxf import decodificar_escapes
 
 _log = logging.getLogger(__name__)
 
@@ -99,6 +102,29 @@ class EntidadDescartada:
     capa: str
     tipo: str
     handle: Optional[str] = None
+    detalle: str = ""
+
+
+@dataclass(frozen=True)
+class GeometriaReparada:
+    """Un recinto que estaba mal construido y ha entrado **reparado**, sin que
+    su superficie cambie ni un centímetro cuadrado.
+
+    Es el reverso de `EntidadDescartada`: aquélla dice qué no ha entrado; ésta,
+    qué ha entrado de otra forma que como estaba dibujado. Las dos existen por
+    lo mismo — que nada pase en silencio (`C-6`) — y ninguna de las dos es
+    opcional: una reparación callada es peor que un descarte callado, porque el
+    número sale bien y nadie va a ir a mirar por qué.
+
+    `area` está en unidades de dibujo, sin escalar, igual que el resto de este
+    nivel del parser.
+    """
+
+    capa: str
+    tipo: str
+    handle: Optional[str] = None
+    area: float = 0.0
+    #: `explain_validity()` del polígono original: dice qué estaba mal y dónde.
     detalle: str = ""
 
 
@@ -258,6 +284,27 @@ class PlanoLeido:
     # frontera entre un hecho declarado y una inferencia -- y una inferencia
     # declara su hipótesis, no se presenta como si fuera un hecho.
     capa_elegida_por_heuristico: bool = False
+    # Una traslacion rigida que meteria los rotulos dentro de los recintos,
+    # cuando el plano sale entero sin rotular y hay una que lo explica. `None`
+    # en un plano normal. **Es un diagnostico, no una correccion**: nadie la
+    # aplica, y `leer_plano` devuelve los recintos tal y como estan dibujados.
+    # Ver `detectar_desplazamiento_de_rotulos`.
+    rotulos_desplazados: Optional["DesplazamientoDeRotulos"] = None
+    # Recintos que estaban mal construidos y han entrado reparados, sin que su
+    # superficie cambie (`C-10`). Hermano de `geometria_no_leida`: aquella dice
+    # que no entro; esta, que entro de otra forma. Ninguna de las dos puede
+    # quedar en silencio.
+    geometria_reparada: List[GeometriaReparada] = field(default_factory=list)
+    # La corrección que SE HA APLICADO a los rótulos en esta lectura, si alguna.
+    # `None` es lo normal: no se alinea nada salvo que el arquitecto lo pida
+    # **y** el desfase sea limpio. Cuando no es `None`, la medición depende de
+    # ella y tiene que constar en el acta — condición de la firma de Pablo, y la
+    # diferencia entre una corrección y una manipulación.
+    rotulos_alineados: Optional["DesplazamientoDeRotulos"] = None
+    # De que capa salen los nombres de las estancias de este plano, y con que
+    # reparto. `capa=None` + `ambiguo=True` significa que hay dos candidatas
+    # parejas y NO se ha elegido: se declara y se deja todo como estaba.
+    reparto_de_rotulos: "RepartoDeRotulos" = field(default_factory=lambda: RepartoDeRotulos())
 
 
 def load_document(dxf_path: str) -> Drawing:
@@ -448,8 +495,138 @@ def _recorrer_plano(doc: Drawing):
     yield from bajar(doc.modelspace(), None, 0)
 
 
+# ---------------------------------------------------------------------------
+# C-10 · REPARAR LA GEOMETRÍA INVÁLIDA, Y DECLARARLO SIEMPRE
+#
+# Firmado por Pablo el 2026-09-11.
+# PRD: `docs/prd/2026-09-11-reparar-geometria-invalida-c10.md`.
+#
+# **El problema.** `plantasimple.dxf` tiene 10 polilíneas auto-intersecantes de
+# 206, y `evaluator.evaluate_room_overlap` revienta al intersecarlas: el plano
+# entero devolvía HTTP 200 con CERO piezas y una `GEOSException` por toda
+# explicación. El modo heredado NO validaba `is_valid` a propósito —«para no
+# excluir de golpe geometría que hoy SÍ se acepta»—, con lo que la geometría no
+# se excluía: entraba rota y tumbaba la medición cuarenta funciones más abajo.
+#
+# **Por qué se repara en vez de descartar, y por qué eso no es decidir por el
+# arquitecto.** Medido en los diez casos: `make_valid` devuelve **exactamente la
+# misma superficie**, hasta el sexto decimal. Son auto-intersecciones
+# degeneradas —picos de área cero, vértices repetidos—, no lazos. Descartarlas
+# costaría el 5,8% de la superficie de un plano real; repararlas no cambia
+# ninguna cifra. **Cuando sí la cambia, no se repara**: una pajarita de verdad
+# tiene un área ambigua, y ahí ArchMuse no elige.
+#
+#     Los 10 de plantasimple .... delta de área  0,000000 m²  -> se reparan
+#     La pajarita de los tests .. delta de área  8,000000 m²  -> se descarta
+#
+# La tolerancia separa las dos cosas sola, sin que nadie tenga que clasificarlas
+# a mano. Ésa es la única razón por la que este criterio es implementable.
+#
+# **Un solo criterio para los dos caminos.** Antes el modo `AM_*` descartaba
+# toda geometría inválida y el heredado la dejaba pasar: dos criterios para el
+# mismo defecto. Ahora los dos llaman aquí. Unificar no relaja el de `AM_*` —la
+# pajarita de sus tests se sigue descartando, con la misma cifra— sino que lo
+# **explica**: descartaba todo porque no sabía distinguir; ahora distingue.
+# ---------------------------------------------------------------------------
+
+#: Cuánto puede moverse la superficie para que la reparación siga siendo una
+#: reparación y no una decisión. Medio centímetro cuadrado. No está ajustado
+#: para que pasen los casos reales: ésos dan cero exacto, así que sobra por seis
+#: órdenes de magnitud. Está puesto donde deja de ser ruido de coma flotante.
+TOLERANCIA_REPARACION = 0.005
+
+#: Detalle que acompaña al descarte cuando la reparación se ha intentado y no
+#: vale. Viajan dentro de `EntidadDescartada.detalle`, junto a
+#: `MOTIVO_GEOMETRIA_INVALIDA`, en vez de como motivos nuevos: el vocabulario de
+#: motivos lo consumen `validacion_capas.py` y el PDF, y ampliarlo obliga a
+#: tocar los dos para decir algo que es un matiz del mismo motivo.
+DETALLE_REPARACION_CAMBIA_EL_AREA = (
+    "se ha intentado reparar y la superficie cambiaba de %.4f a %.4f: no es un "
+    "defecto de dibujo, es una figura ambigua, y ArchMuse no elige por ti")
+DETALLE_REPARACION_PARTE_EL_RECINTO = (
+    "se ha intentado reparar y el recinto se partía en %d piezas: cuál de ellas "
+    "es la habitación no lo puede decidir ArchMuse")
+DETALLE_REPARACION_SIN_SUPERFICIE = (
+    "se ha intentado reparar y no queda ninguna superficie, sólo líneas")
+
+
+def _partes_poligonales(geometria) -> List[Polygon]:
+    """Sólo lo que tiene superficie. `make_valid` devuelve a menudo una
+    `GeometryCollection` con el polígono bueno y, al lado, las líneas del pico
+    degenerado que acaba de deshacer; esas líneas no son un recinto."""
+    if isinstance(geometria, Polygon):
+        return [] if geometria.is_empty else [geometria]
+    if hasattr(geometria, "geoms"):
+        partes: List[Polygon] = []
+        for sub in geometria.geoms:
+            partes.extend(_partes_poligonales(sub))
+        return partes
+    return []
+
+
+def reparar_poligono(polygon: Polygon) -> Tuple[Optional[Polygon], str]:
+    """El mismo recinto, válido — o `(None, motivo)` si repararlo sería decidir.
+
+    Devuelve `(poligono, "")` cuando la reparación es segura, y
+    `(None, detalle)` cuando no lo es, con el detalle ya redactado para que
+    viaje al inventario de descartes.
+
+    **No se llama sobre polígonos válidos**: quien llama comprueba `is_valid`
+    antes, para que el camino normal no pague nada.
+    """
+    try:
+        reparado = make_valid(polygon)
+    except Exception as exc:  # noqa: BLE001 - GEOS puede fallar de muchas formas
+        return None, "make_valid ha fallado: %s" % exc
+
+    partes = _partes_poligonales(reparado)
+
+    # Las astillas de área cero son el residuo del pico que se acaba de
+    # deshacer, no piezas del recinto. Medido: la mayor de todo el corpus real
+    # es de 0,000000196 m², cuatro órdenes de magnitud por debajo del umbral.
+    con_superficie = [p for p in partes if p.area > TOLERANCIA_REPARACION]
+
+    if not con_superficie:
+        return None, DETALLE_REPARACION_SIN_SUPERFICIE
+    if len(con_superficie) > 1:
+        return None, DETALLE_REPARACION_PARTE_EL_RECINTO % len(con_superficie)
+
+    unico = con_superficie[0]
+    if abs(unico.area - polygon.area) > TOLERANCIA_REPARACION:
+        return None, DETALLE_REPARACION_CAMBIA_EL_AREA % (polygon.area, unico.area)
+    return unico, ""
+
+
+def _validar_o_reparar(polygon, capa, tipo, handle, descartes, reparaciones):
+    """El polígono que entra en el resultado, o `None`.
+
+    **El único sitio donde se decide qué hacer con una geometría inválida**, y
+    lo usan los dos caminos (heredado y `AM_*`) para que no vuelvan a divergir.
+    Rellena el inventario que corresponda: `reparaciones` si ha entrado
+    reparado, `descartes` si no ha entrado. Nunca los dos, nunca ninguno.
+    """
+    if polygon.is_valid:
+        return polygon
+
+    detalle_original = explain_validity(polygon)
+    reparado, motivo = reparar_poligono(polygon)
+    if reparado is None:
+        if descartes is not None:
+            descartes.append(EntidadDescartada(
+                motivo=MOTIVO_GEOMETRIA_INVALIDA, capa=capa, tipo=tipo,
+                handle=handle, detalle="%s; %s" % (detalle_original, motivo)))
+        return None
+
+    if reparaciones is not None:
+        reparaciones.append(GeometriaReparada(
+            capa=capa, tipo=tipo, handle=handle, area=reparado.area,
+            detalle=detalle_original))
+    return reparado
+
+
 def _closed_polygons_with_color(
-    doc: Drawing, layer: str, descartes: Optional[List[EntidadDescartada]] = None
+    doc: Drawing, layer: str, descartes: Optional[List[EntidadDescartada]] = None,
+    reparaciones: Optional[List[GeometriaReparada]] = None,
 ) -> List[Tuple[Polygon, int]]:
     """Polilíneas cerradas del layer indicado como (polígono, color DXF),
     bloques incluidos.
@@ -459,10 +636,20 @@ def _closed_polygons_with_color(
     soportado, o polilínea que sigue abierta incluso con la recuperación
     geométrica de `_esta_cerrada`). Es aditivo y opcional a propósito: por
     defecto (`descartes=None`) el resultado y el comportamiento son
-    idénticos a antes de que existiera este parámetro -- el modo heredado
-    NO valida `is_valid` aquí, para no excluir de golpe geometría que hoy SÍ
-    se acepta como `Room` (ver informe de la Fase 1 del contrato de
-    clasificación DXF).
+    idénticos a antes de que existiera este parámetro.
+
+    **CAMBIO DEL 2026-09-11 (`C-10`).** Hasta hoy este camino NO validaba
+    `is_valid` «para no excluir de golpe geometría que hoy SÍ se acepta como
+    `Room`». La intención era buena y el efecto el contrario: la geometría no se
+    excluía, entraba rota y tumbaba la medición entera con una `GEOSException`
+    en `evaluate_room_overlap` — `plantasimple.dxf` devolvía cero piezas por 10
+    polilíneas de 206. Ahora pasa por `_validar_o_reparar`, **el mismo criterio
+    que el camino `AM_*`**, que repara lo que se puede reparar sin cambiar la
+    superficie y descarta lo demás. Ninguno de los cinco planos de referencia
+    cambia ni un m² (medido pieza a pieza antes de escribir esto).
+
+    `reparaciones`, si se pasa una lista, recoge lo que ha entrado reparado.
+    Aditivo y opcional igual que `descartes`, y por el mismo motivo.
     """
     entries: List[Tuple[Polygon, int]] = []
     for entity, capa in _recorrer_plano(doc):
@@ -481,12 +668,16 @@ def _closed_polygons_with_color(
                     motivo=motivo, capa=capa, tipo=tipo, handle=_handle_de(entity)))
             continue
         points = _polyline_points(entity)
-        if len(points) >= 3:
-            entries.append((Polygon(points), entity.dxf.color))
-        elif descartes is not None:
-            descartes.append(EntidadDescartada(
-                motivo=MOTIVO_MENOS_DE_3_VERTICES, capa=capa, tipo=tipo,
-                handle=_handle_de(entity)))
+        if len(points) < 3:
+            if descartes is not None:
+                descartes.append(EntidadDescartada(
+                    motivo=MOTIVO_MENOS_DE_3_VERTICES, capa=capa, tipo=tipo,
+                    handle=_handle_de(entity)))
+            continue
+        polygon = _validar_o_reparar(
+            Polygon(points), capa, tipo, _handle_de(entity), descartes, reparaciones)
+        if polygon is not None:
+            entries.append((polygon, entity.dxf.color))
     return entries
 
 
@@ -505,12 +696,11 @@ def _discard_container_candidates(
     de bug ya detectado y corregido en ArchSurface.
 
     Un polígono se descarta como "contenedor duplicado" solo si:
-    - su color DXF explícito NO es BYLAYER (las habitaciones reales de estos
-      planos siempre usan el color del layer; los contornos agrupadores se
-      dibujan con un color propio, típicamente ACI 10 o ACI 150),
-    - contiene geométricamente a otro polígono real (BYLAYER) más pequeño del
-      mismo layer (la intersección cubre >= `threshold` del área de ese
-      polígono menor), y
+    - su color DXF explícito NO es BYLAYER (una habitación se dibuja con el
+      color de su capa; un contorno agrupador se dibuja aparte, con un color
+      propio, típicamente ACI 10 o ACI 150),
+    - contiene geométricamente a otro polígono más pequeño del mismo layer (la
+      intersección cubre >= `threshold` del área de ese polígono menor), y
     - ese polígono contenido tiene la MISMA etiqueta que el propio contenedor
       (misma habitación, ya representada de forma independiente).
 
@@ -519,13 +709,23 @@ def _discard_container_candidates(
     con su propia etiqueta, se conserva: es la única representación de esa
     habitación en el plano, y descartarlo dejaría a la vivienda sin esa
     superficie habitable.
+
+    **Corregido el 2026-09-10: el polígono contenido ya no tiene que estar en
+    BYLAYER.** Había una cuarta condición que lo exigía, apoyada en una
+    suposición que este mismo docstring daba por buena —«las habitaciones
+    reales de estos planos siempre usan el color del layer»— y que es falsa:
+    en `v1plantas.dxf` el estudio dibuja sus piezas exteriores en verde (ACI 3)
+    y el contorno que las agrupa en 150, así que el contorno de 8,63 m² se
+    colaba como una habitación más y sus 7,08 m² se contaban dos veces, dejando
+    a la vivienda entera sin publicar ninguna superficie. De qué color esté
+    dibujado lo de dentro no dice nada sobre si lo de fuera es un contorno: eso
+    lo dicen las otras tres condiciones. Ver `tests/test_contorno_agrupador.py`.
     """
     kept: List[Polygon] = []
     for i, (polygon, color, label) in enumerate(entries):
         own_label = _normalize_room_label(label)
         is_duplicate = color != BYLAYER_COLOR and own_label != "" and any(
             j != i
-            and other_color == BYLAYER_COLOR
             and _normalize_room_label(other_label) == own_label
             and polygon.area > other.area
             and polygon.intersection(other).area >= threshold * other.area
@@ -537,15 +737,18 @@ def _discard_container_candidates(
 
 
 def extract_room_polygons(
-    doc: Drawing, layer: str = AREA_LAYER, descartes: Optional[List[EntidadDescartada]] = None
+    doc: Drawing, layer: str = AREA_LAYER, descartes: Optional[List[EntidadDescartada]] = None,
+    reparaciones: Optional[List[GeometriaReparada]] = None,
+    desplazamiento: Optional[Tuple[float, float]] = None,
 ) -> List[Polygon]:
     """Busca polilíneas cerradas en el layer indicado, las convierte en
     polígonos shapely y descarta los contornos agrupadores duplicados
-    (ver `_discard_container_candidates`). `descartes`: ver
+    (ver `_discard_container_candidates`). `descartes` y `reparaciones`: ver
     `_closed_polygons_with_color`."""
-    entries = _closed_polygons_with_color(doc, layer, descartes=descartes)
-    labels = extract_labels(doc, con_capa=True)
-    capas_validas = _capas_de_rotulo([p for p, _c in entries], labels, layer)
+    entries = _closed_polygons_with_color(
+        doc, layer, descartes=descartes, reparaciones=reparaciones)
+    labels = extract_labels(doc, con_capa=True, desplazamiento=desplazamiento)
+    capas_validas, _reparto = _capas_que_nombran([p for p, _c in entries], labels, layer)
     labeled_entries = [
         (polygon, color, match_label_to_room(polygon, labels, capas_validas=capas_validas))
         for polygon, color in entries
@@ -577,17 +780,24 @@ def _punto_de_texto(entity) -> Optional[Tuple[float, float]]:
 
 
 def _texto_de(entity) -> str:
-    """Contenido legible de un MTEXT o un TEXT, sin códigos de formato."""
+    """Contenido legible de un MTEXT o un TEXT, sin códigos de formato.
+
+    `plain_text()` quita el formato pero **no decodifica los escapes Unicode**
+    (`ba\\U+00F1o`), y sin decodificarlos el rótulo no casa con ningún patrón de
+    familia: es lo que hacía que el baño de un plano con eñes no se midiera. Ver
+    `analyzer/texto_dxf.py` y `tests/test_escapes_unicode.py`.
+    """
     try:
-        return entity.plain_text().strip()
+        return decodificar_escapes(entity.plain_text()).strip()
     except Exception:  # noqa: BLE001
         try:
-            return str(entity.dxf.text).strip()
+            return decodificar_escapes(str(entity.dxf.text)).strip()
         except Exception:  # noqa: BLE001
             return ""
 
 
-def extract_labels(doc: Drawing, con_capa: bool = False) -> List[Tuple]:
+def extract_labels(doc: Drawing, con_capa: bool = False,
+                   desplazamiento: Optional[Tuple[float, float]] = None) -> List[Tuple]:
     """Rótulos del plano como (texto, x, y) — o (texto, x, y, capa) si
     `con_capa=True` —, **con los MTEXT antes que los TEXT**.
 
@@ -610,8 +820,17 @@ def extract_labels(doc: Drawing, con_capa: bool = False) -> List[Tuple]:
     el heurístico de `capas_candidatas`) no lo necesitan, así que la forma de
     3 elementos se mantiene por defecto para no romper a nadie que ya
     desestructura `(texto, x, y)`.
+
+    `desplazamiento`: `(dx, dy)` que se suma al punto de inserción de cada
+    rótulo, **en memoria y sólo para esta lectura**. Es la única forma que tiene
+    ArchMuse de alinear los rótulos de un plano que los lleva movidos en bloque
+    (`docs/prd/2026-09-11-alinear-rotulos-desplazados.md`), y el sitio donde
+    está puesto no es casual: aquí se leen coordenadas, no se escriben. **El DXF
+    no se toca nunca**, ni el del disco ni el materializado; lo que cambia es la
+    tupla que sale de esta función, que muere al acabar la medición.
     """
     por_tipo = {"MTEXT": [], "TEXT": []}
+    dx, dy = desplazamiento if desplazamiento else (0.0, 0.0)
 
     for entity, capa in _recorrer_plano(doc):
         tipo = entity.dxftype()
@@ -623,7 +842,8 @@ def extract_labels(doc: Drawing, con_capa: bool = False) -> List[Tuple]:
         punto = _punto_de_texto(entity)
         if punto is None:
             continue
-        fila = (text, punto[0], punto[1], capa) if con_capa else (text, punto[0], punto[1])
+        x, y = punto[0] + dx, punto[1] + dy
+        fila = (text, x, y, capa) if con_capa else (text, x, y)
         por_tipo[tipo].append(fila)
 
     # El recorrido devuelve las entidades entremezcladas, así que la prioridad
@@ -678,6 +898,123 @@ def _capas_de_rotulo(polygons: List[Polygon], labels: List[Tuple[str, float, flo
                 capas.add(capa)
     return capas
 
+
+# ---------------------------------------------------------------------------
+# QUÉ CAPA PUEDE DAR NOMBRE A UNA ESTANCIA (2026-09-11)
+#
+# PRD: `docs/prd/2026-09-11-que-capa-nombra-las-estancias.md`, firmado por Pablo.
+#
+# **El agujero que esto tapa.** `_capas_de_rotulo` (arriba) admite cualquier capa
+# que ponga un texto dentro de un recinto. Eso separa bien una capa de nombres de
+# una de cotas —los textos de cota viven en la línea de cota— pero **no separa
+# una capa de nombres de una de anotaciones**, y las dos ponen textos dentro.
+#
+# Se vio al alinear los rótulos de `plantasimple.dxf`: 46 de 159 recintos se
+# llamaban «F», «FR» o «LD», códigos de electrodoméstico de la capa `00-INST`.
+# El salón de 21,90 m² se llamaba «F», de frigorífico.
+#
+# **Es deuda preexistente, no un fallo nuevo**, y conviene que quede escrito:
+# mientras los rótulos de ese plano estuvieron 50 m por debajo de los recintos,
+# ningún texto caía dentro de nada y la regla no se notaba. Que haya salido ahora
+# es suerte, no diseño — el mismo tipo de regla («vale cualquiera que cumpla algo
+# una vez») puede estar en más sitios de este fichero.
+#
+# **La regla: la capa que más nombra, gana.** Medible, y no inventa vocabulario
+# — no mira el texto, sólo cuenta. Lo que NO hace, y es la mitad del criterio:
+# elegir cuando las dos primeras van parejas. Ahí se declara el reparto y se
+# deja todo como estaba, porque elegir sería adivinar y no nombrar nada rompería
+# planos que hoy funcionan.
+# ---------------------------------------------------------------------------
+
+#: Cuánto puede nombrar la segunda capa, en proporción a la primera, antes de que
+#: la respuesta deje de ser única: la primera tiene que nombrar **más del doble**.
+#:
+#: Medido sobre los seis planos disponibles: cinco tienen **una sola** capa que
+#: nombra (ratio 0,000) y el umbral no los toca; el único con varias está en
+#: **0,414** (111 contra 46). El caso que Pablo puso como «no holgado» —111
+#: contra 95— daría 0,856.
+#:
+#: **No hay ni un plano medido en la zona 0,4-0,6**, así que esto es una
+#: convención declarada y no un óptimo medido. Se elige aquí porque «más del
+#: doble» es una frase que un arquitecto puede discutir. Revisar con los planos
+#: que traiga la beta.
+UMBRAL_CAPA_DE_ROTULOS = 0.5
+
+
+@dataclass(frozen=True)
+class RepartoDeRotulos:
+    """De qué capa salen los nombres de las estancias de este plano.
+
+    `capa` es `None` cuando no se ha podido elegir — ni un recinto nombrado, o
+    dos capas parejas. `ambiguo` distingue las dos cosas: no es lo mismo «aquí
+    no hay nada que elegir» que «hay dos candidatas y no elijo».
+    """
+
+    capa: Optional[str] = None
+    #: `(capa, recintos que nombraría)`, de más a menos. Es lo que hace
+    #: discutible la decisión en vez de opaca.
+    recuento: Tuple[Tuple[str, int], ...] = ()
+    ambiguo: bool = False
+
+    @property
+    def proporcion(self) -> float:
+        """Cuánto nombra la segunda respecto de la primera. 0,0 si sólo hay una."""
+        if len(self.recuento) < 2 or not self.recuento[0][1]:
+            return 0.0
+        return self.recuento[1][1] / float(self.recuento[0][1])
+
+
+def elegir_capa_de_rotulos(
+    polygons: List[Polygon], labels: List[Tuple[str, float, float, str]],
+    capas_validas,
+) -> RepartoDeRotulos:
+    """Cuenta cuántos recintos nombraría cada capa y decide, o admite que no.
+
+    Cuenta **un recinto por capa como mucho**: lo que se mide es «a cuántas
+    estancias les pone nombre esta capa», no cuántos textos tiene dentro. Una
+    capa con seis anotaciones en la misma estancia nombra una estancia, no seis.
+    """
+    if not polygons or not labels:
+        return RepartoDeRotulos()
+
+    por_capa: Dict[str, int] = {}
+    for polygon in polygons:
+        vistas = set()
+        minx, miny, maxx, maxy = polygon.bounds
+        for _texto, x, y, capa in labels:
+            if capa in vistas or capa not in capas_validas:
+                continue
+            if minx <= x <= maxx and miny <= y <= maxy and polygon.contains(Point(x, y)):
+                vistas.add(capa)
+                por_capa[capa] = por_capa.get(capa, 0) + 1
+    if not por_capa:
+        return RepartoDeRotulos()
+
+    recuento = tuple(sorted(por_capa.items(), key=lambda par: (-par[1], par[0])))
+    reparto = RepartoDeRotulos(recuento=recuento)
+    if reparto.proporcion > UMBRAL_CAPA_DE_ROTULOS:
+        return RepartoDeRotulos(recuento=recuento, ambiguo=True)
+    return RepartoDeRotulos(capa=recuento[0][0], recuento=recuento)
+
+
+def _capas_que_nombran(polygons, labels, capa_recintos):
+    """`(capas admitidas, reparto)` — el filtro de verdad, ya estrechado.
+
+    Es lo que hay que llamar en lugar de `_capas_de_rotulo` a secas: aquella
+    dice de qué capas *podría* salir un nombre y ésta cuál lo da. Cuando el
+    reparto es ambiguo NO se estrecha nada: se devuelve lo de siempre y el
+    `reparto` lleva el aviso, porque elegir en el empate sería adivinar y no
+    nombrar nada rompería planos que hoy funcionan.
+
+    La capa de los recintos se admite siempre, gane o no: hay planos que rotulan
+    sobre la propia geometría (`v1plantas.dxf`), y quitarla los dejaría mudos.
+    """
+    capas = _capas_de_rotulo(polygons, labels, capa_recintos)
+    reparto = elegir_capa_de_rotulos(polygons, labels, capas)
+    if reparto.capa is None:
+        return capas, reparto
+    return {capa_recintos, reparto.capa}, reparto
+
 # Cuánto tiene que ganarle el candidato más cercano al segundo más cercano
 # para no ser ambiguo. Mismo criterio y mismo valor que `VENTAJA_MINIMA` en
 # `capas_candidatas`: dos candidatos casi empatados en distancia no se
@@ -695,6 +1032,40 @@ _PATRON_SOLO_NUMERO = re.compile(r"^[+-]?\d+([.,]\d+)?\s*$")
 
 def _es_solo_numero(texto: str) -> bool:
     return bool(_PATRON_SOLO_NUMERO.match(texto.strip()))
+
+
+# Un TÍTULO DE CAMPO: el texto que dice **qué magnitud** se mide, no **qué
+# estancia** es. Los planos de este estudio rotulan cada recinto con dos MTEXT
+# independientes, uno encima del otro:
+#
+#     superficie util          <- el título de campo
+#     Dormitorio 1             <- el nombre
+#
+# Los dos caen dentro del polígono, así que hasta el 2026-09-11 el rótulo de la
+# estancia era **el primero que llegara**, y eso no es lo mismo en
+# `doc.modelspace()` que en un `ssget` de AutoCAD: el mismo plano daba
+# «Dormitorio 1» leído de un DXF y «superficie util» leído desde el comando.
+#
+# El patrón es deliberadamente corto y literal. No intenta reconocer «cualquier
+# cosa que parezca un título»: reconoce las cuatro fórmulas con las que un
+# arquitecto nombra una magnitud —superficie útil, superficie construida, y sus
+# variantes—, que además nunca son el nombre de una habitación. Una estancia no
+# se llama «superficie útil»; si en algún plano se llamara, se queda sin rótulo,
+# que es honesto, y no hereda el nombre de una magnitud.
+_PATRON_TITULO_DE_CAMPO = re.compile(
+    r"^\s*(superficie|sup\.?|s\.)\s*(util|construida|utiles|construidas)\b",
+    re.IGNORECASE,
+)
+
+
+def _es_titulo_de_campo(texto: str) -> bool:
+    """`"superficie util exterior"` sí; `"Salón/cocina"` no.
+
+    Se compara sobre el texto con los escapes ya decodificados: en un DXF real
+    llega con la tilde escapada (la «ú» como una secuencia `U+00FA`), y
+    `decodificar_escapes` la deja en «superficie útil` antes de comparar.
+    """
+    return bool(_PATRON_TITULO_DE_CAMPO.match(decodificar_escapes(texto or "")))
 
 
 def match_label_to_room(
@@ -726,6 +1097,13 @@ def match_label_to_room(
        pinta de una superficie cuando cae cerca de una estancia pequeña, pero
        no es un nombre.
 
+    Y entre los que quedan dentro del polígono, **un nombre gana siempre a un
+    título de campo** («superficie util», «superficie construida cerrada»), que
+    dice qué magnitud se mide y no cómo se llama la estancia — ver
+    `_es_titulo_de_campo`. Sin esa preferencia el resultado dependía del orden
+    de llegada de los textos, y el mismo plano daba «Dormitorio 1» por una vía y
+    «superficie util» por la otra.
+
     Sobre lo que queda, primero busca rótulos cuyo punto de inserción caiga
     dentro del polígono (caso habitual: el texto está dentro de la
     habitación). Como `extract_labels` devuelve los MTEXT antes que los TEXT,
@@ -751,7 +1129,19 @@ def match_label_to_room(
 
     inside = [texto for texto, x, y in candidatos if polygon.contains(Point(x, y))]
     if inside:
-        return inside[0]
+        # **Un nombre gana siempre a un título de campo**, esté donde esté en la
+        # lista. Devolver `inside[0]` hacía que el rótulo dependiera del orden en
+        # que llegaran los textos, que no es el mismo leyendo el DXF que
+        # recibiéndolo de un `ssget`: el mismo plano daba dos resultados
+        # distintos según por dónde entrara (`tests/test_rotulo_con_titulo_de_campo.py`).
+        nombres = [texto for texto in inside if not _es_titulo_de_campo(texto)]
+        if nombres:
+            return nombres[0]
+        # Sólo títulos dentro: esta pieza **se queda sin nombre**. Es lo honesto
+        # —el informe ya tiene sitio para un `recinto_sin_etiqueta`— y evita que
+        # se mida una estancia llamada «superficie util», que es lo que rompía el
+        # reparto del cuadro.
+        return None
 
     if not candidatos or polygon.is_empty or polygon.area <= 0:
         return None
@@ -776,7 +1166,9 @@ def match_label_to_room(
     return texto
 
 
-def extract_unit_labels(doc: Drawing) -> List[Tuple[str, float, float]]:
+def extract_unit_labels(
+    doc: Drawing, desplazamiento: Optional[Tuple[float, float]] = None
+) -> List[Tuple[str, float, float]]:
     """Etiquetas de vivienda del plano: rótulos con formato 'VT<n>/<m>'
     (ej. 'VT1/3'), que identifican las viviendas reales del proyecto — a
     diferencia de las etiquetas de nombre de habitación que devuelve
@@ -784,12 +1176,243 @@ def extract_unit_labels(doc: Drawing) -> List[Tuple[str, float, float]]:
 
     Lee MTEXT y TEXT, igual que `extract_labels`: no hay ninguna razón para que
     la etiqueta de una vivienda tenga que estar dibujada como MTEXT.
+
+    `desplazamiento`: ver `extract_labels`. **Tiene que recibir el mismo que los
+    rótulos de estancia**, y por un motivo que no es simetría: las etiquetas de
+    vivienda viven en la misma fila del dibujo que los nombres de habitación, así
+    que un plano con los rótulos movidos las tiene movidas también. Alinear unos
+    y no las otras dejaría cada pieza bien nombrada y en la vivienda equivocada,
+    que es peor que no alinear nada.
     """
-    return [etiqueta for etiqueta in extract_labels(doc) if UNIT_LABEL_PATTERN.match(etiqueta[0])]
+    return [etiqueta for etiqueta in extract_labels(doc, desplazamiento=desplazamiento)
+            if UNIT_LABEL_PATTERN.match(etiqueta[0])]
+
+
+# ---------------------------------------------------------------------------
+# Rótulos desplazados en bloque (2026-09-11)
+#
+# **Qué es esto y por qué existe.** En `plantasimple.dxf` las 206 polilíneas de
+# «00 areas» no reciben ni un rótulo: los textos del plano están **50,00
+# unidades de dibujo por debajo**, dx = 0 exacto. Medido, no supuesto — al
+# aplicar (0, +50) encajan **152 de 152**, y el barrido de dy enseña una meseta
+# limpia de 49,50 a 50,25 con dx=0, que es la forma que tiene un `DESPLAZA`
+# deliberado y no una deriva.
+#
+# **No es la convención del estudio: es de este plano.** Comprobado en los otros
+# cuatro DXF del mismo arquitecto (`v1plantas`, `v2s`, `v3s`, `V5`) y en
+# `ejemplo.dxf`: los seis rotulan al 100% sin desplazar nada.
+#
+# **Por eso esto DETECTA y NO CORRIGE.** Aplicar el desplazamiento solo sería
+# exactamente la decisión implícita sin dueño que prohíbe el cierre de
+# `CLAUDE.md` («cada vez que el código parece resolver una ambigüedad que nadie
+# escribió...»), y mover los rótulos de un plano ajeno para que cuadren es
+# sustituir el dibujo del arquitecto por nuestra idea de su dibujo. Lo que sí se
+# puede hacer, y es lo que se hace, es **decir la cifra**: tantos recintos sin
+# rótulo, y una traslación concreta que los explicaría todos. Con eso él decide
+# si su plano tiene un error o si ArchMuse no entiende su forma de dibujar.
+# ---------------------------------------------------------------------------
+
+#: Qué fracción de recintos tiene que estar sin rótulo para ir siquiera a mirar
+#: si hay un desplazamiento. Por debajo de esto el plano está esencialmente
+#: rotulado y los huecos son casos sueltos, que ya tienen su propio hallazgo
+#: (`coherencia.RECINTO_SIN_ETIQUETA`) y no se explican con una traslación.
+UMBRAL_SIN_ROTULO = 0.8
+
+#: Y qué fracción tiene que explicar la traslación candidata para poder
+#: afirmarla. Una que arregle la mitad del plano no es un desplazamiento en
+#: bloque: es una coincidencia, y decirla sería peor que callarse.
+UMBRAL_EXPLICADOS = 0.8
+
+#: Y cuánto tiene que explicar para poder **ofrecer** aplicarla, que es otra
+#: cosa. Declarar «aquí pasa algo raro» con el 80% es útil; proponerle al
+#: arquitecto que mueva sus rótulos con el 80% sería proponerle que estropee uno
+#: de cada cinco. Ver `docs/prd/2026-09-11-alinear-rotulos-desplazados.md`, §4.1.
+UMBRAL_LIMPIO = 0.95
+
+#: A partir de qué distancia dos traslaciones candidatas son **distintas** y no
+#: la misma leída con una casilla de diferencia. Una unidad de dibujo: por
+#: debajo de eso, en un plano en metros, es el mismo desplazamiento.
+DISTANCIA_ENTRE_CANDIDATAS = 1.0
+
+#: Cuánto puede explicar una candidata rival, en proporción a la ganadora, antes
+#: de que la respuesta deje de ser única. Si otra traslación distinta explica el
+#: 90% de lo que explica la mejor, hay dos hipótesis y elegir sería adivinar.
+RIVAL_ACEPTABLE = 0.9
+
+#: A cuánto se redondean los vectores al votar, en unidades de dibujo. Es la
+#: resolución de la respuesta: un desplazamiento real se vota muchas veces y
+#: cae siempre en la misma casilla; el ruido se reparte entre todas.
+PASO_DEL_VOTO = 0.25
+
+#: Cuántas traslaciones candidatas se verifican de verdad. La votación tiene un
+#: sesgo conocido —el rótulo más cercano al centro de un recinto no siempre es
+#: el suyo, y con 939 textos en el plano casi nunca lo es—, así que la más
+#: votada puede no ser la buena y hay que probar varias.
+CANDIDATAS_A_VERIFICAR = 8
+
+#: Topes de la muestra, para que un plano enorme no convierta esto en un
+#: producto cartesiano. Mismo criterio que `_MUESTRA_MAXIMA`.
+_MUESTRA_POLIGONOS = 200
+_MUESTRA_ROTULOS = 2000
+
+
+@dataclass(frozen=True)
+class DesplazamientoDeRotulos:
+    """Una traslación rígida que metería los rótulos dentro de los recintos.
+
+    **Es un diagnóstico, no una corrección.** Nadie la aplica: viaja hasta el
+    arquitecto para que él diga qué hacer con ella.
+
+    `dx`/`dy` están en **unidades de dibujo**, sin escalar, porque es lo que él
+    teclearía en un `DESPLAZA` para comprobarlo en su AutoCAD.
+    """
+
+    dx: float
+    dy: float
+    #: Recintos que la traslación deja con rótulo dentro, sobre los mirados.
+    explicados: int
+    #: Los que estaban sin rótulo antes de trasladar nada.
+    sin_rotulo: int
+    #: Cuántos recintos se han mirado (la muestra, no siempre el plano entero).
+    mirados: int
+    #: **La frontera entre declarar y ofrecer.** `True` sólo cuando la respuesta
+    #: es única: explica casi todo (`UMBRAL_LIMPIO`) y ninguna otra traslación
+    #: distinta explica algo comparable. Un desfase detectado pero no limpio se
+    #: dice y no se ofrece — proponerle al arquitecto que mueva sus rótulos con
+    #: una hipótesis entre dos es peor que no proponerle nada.
+    limpio: bool = False
+    #: Cuántas traslaciones distintas explicarían el plano casi igual de bien.
+    #: 0 en el caso limpio. Es la cifra que hace discutible el `limpio`.
+    competidoras: int = 0
+
+    def __str__(self) -> str:
+        return ("los rótulos están %s respecto de los recintos "
+                "(%d de %d encajarían al moverlos %+.2f, %+.2f)"
+                % (_distancia_legible(self.dx, self.dy), self.explicados,
+                   self.mirados, self.dx, self.dy))
+
+
+def _distancia_legible(dx: float, dy: float) -> str:
+    """«50,00 hacia abajo» / «50,00 hacia abajo y 3,00 a la izquierda».
+
+    Se dice en la dirección en la que están LOS RÓTULOS respecto del recinto,
+    que es lo que él ve al mirar el plano, no el vector de corrección.
+
+    **Un eje sólo se nombra por encima de dos casillas de votación.** Con una
+    sola no se está midiendo un desplazamiento: se está leyendo la rejilla con
+    la que se votó. En `plantasimple.dxf` la ganadora sale `(+0,25, +50,00)` y
+    lo honesto es decir «50,00 hacia abajo», no «y además 0,25 a la izquierda»,
+    que suena a una precisión que este método no tiene. Las dos cifras exactas
+    viajan igualmente en `dx`/`dy` para quien quiera comprobarlas.
+    """
+    minimo = 2 * PASO_DEL_VOTO
+    partes = []
+    if abs(dy) >= minimo:
+        partes.append("%s hacia %s" % (_con_coma(abs(dy)), "abajo" if dy > 0 else "arriba"))
+    if abs(dx) >= minimo:
+        partes.append("%s hacia la %s" % (_con_coma(abs(dx)), "izquierda" if dx > 0 else "derecha"))
+    if not partes:
+        return "a menos de media unidad de dibujo"
+    return "%s unidades de dibujo %s" % (partes[0].split(" ", 1)[0],
+                                         " y ".join(p.split(" ", 1)[1] for p in partes))
+
+
+def _con_coma(valor: float) -> str:
+    """`50,00` y no `50.00`. Toda cifra que ve el arquitecto lleva coma decimal
+    en el resto del producto; una que no la lleve delata de dónde sale."""
+    return ("%.2f" % valor).replace(".", ",")
+
+
+def _sin_rotulo_dentro(polygons: List[Polygon], arbol) -> int:
+    """Cuántos de esos polígonos no contienen el punto de inserción de ningún
+    texto. Con el índice espacial ya construido: sin él, un plano de 200
+    recintos y 900 textos son 180.000 comprobaciones por cada traslación que se
+    quiera probar."""
+    fuera = 0
+    for polygon in polygons:
+        if len(arbol.query(polygon, predicate="contains")) == 0:
+            fuera += 1
+    return fuera
+
+
+def detectar_desplazamiento_de_rotulos(
+    polygons: List[Polygon],
+    labels: List[Tuple[str, float, float]],
+) -> Optional[DesplazamientoDeRotulos]:
+    """La traslación que explicaría un plano entero sin rotular, o `None`.
+
+    `None` significa las tres cosas que no hay que confundir, y en este orden:
+    que el plano sí está rotulado (lo normal), que no hay con qué mirarlo, o
+    que **no se ha encontrado ninguna traslación que lo explique** — y esta
+    última es un resultado, no un fallo: quiere decir que los recintos están
+    sin rótulo por otro motivo y que no hay que ir por aquí.
+    """
+    if not polygons or not labels:
+        return None
+
+    muestra = polygons[:_MUESTRA_POLIGONOS]
+    textos = labels[:_MUESTRA_ROTULOS]
+    puntos = [Point(x, y) for _texto, x, y in textos]
+    arbol = STRtree(puntos)
+
+    sin_rotulo = _sin_rotulo_dentro(muestra, arbol)
+    if sin_rotulo < UMBRAL_SIN_ROTULO * len(muestra):
+        return None
+
+    # Un voto por cada pareja (recinto, rótulo): el vector que llevaría ese
+    # rótulo al centro de ese recinto. La pareja verdadera vota siempre la
+    # misma casilla; las 190.000 falsas se reparten.
+    votos: Dict[Tuple[float, float], int] = {}
+    for polygon in muestra:
+        centro = polygon.centroid
+        cx, cy = centro.x, centro.y
+        for _texto, x, y in textos:
+            casilla = (
+                round((cx - x) / PASO_DEL_VOTO) * PASO_DEL_VOTO,
+                round((cy - y) / PASO_DEL_VOTO) * PASO_DEL_VOTO,
+            )
+            votos[casilla] = votos.get(casilla, 0) + 1
+
+    if not votos:
+        return None
+
+    candidatas = sorted(votos.items(), key=lambda par: (-par[1], par[0]))
+    verificadas: List[Tuple[float, float, int]] = []
+    for (dx, dy), _n in candidatas[:CANDIDATAS_A_VERIFICAR]:
+        if dx == 0.0 and dy == 0.0:
+            continue
+        # Se traslada el RECINTO al revés en vez de los rótulos: así el índice
+        # espacial de los textos se construye una sola vez para todo.
+        movidos = [trasladar_geometria(p, xoff=-dx, yoff=-dy) for p in muestra]
+        explicados = len(movidos) - _sin_rotulo_dentro(movidos, arbol)
+        if explicados >= UMBRAL_EXPLICADOS * len(muestra):
+            verificadas.append((dx, dy, explicados))
+
+    if not verificadas:
+        return None
+
+    dx, dy, explicados = max(verificadas, key=lambda v: v[2])
+
+    # **La prueba de rival, que es lo que separa declarar de ofrecer.** Una
+    # traslación *distinta* —a más de una unidad de la ganadora— que explique
+    # casi lo mismo no es una confirmación: es una segunda hipótesis. Dos
+    # hipótesis y una sola respuesta significa adivinar, y aquí no se adivina.
+    competidoras = sum(
+        1 for otro_dx, otro_dy, otros in verificadas
+        if math.hypot(otro_dx - dx, otro_dy - dy) > DISTANCIA_ENTRE_CANDIDATAS
+        and otros >= RIVAL_ACEPTABLE * explicados
+    )
+    limpio = (explicados >= UMBRAL_LIMPIO * len(muestra)) and competidoras == 0
+
+    return DesplazamientoDeRotulos(
+        dx=dx, dy=dy, explicados=explicados, sin_rotulo=sin_rotulo,
+        mirados=len(muestra), limpio=limpio, competidoras=competidoras)
 
 
 def build_rooms_from_document(
-    doc: Drawing, layer: str = AREA_LAYER, descartes: Optional[List[EntidadDescartada]] = None
+    doc: Drawing, layer: str = AREA_LAYER, descartes: Optional[List[EntidadDescartada]] = None,
+    reparaciones: Optional[List[GeometriaReparada]] = None,
+    desplazamiento: Optional[Tuple[float, float]] = None,
 ) -> List[Room]:
     """Habitaciones del documento, **en unidades de dibujo**.
 
@@ -799,11 +1422,13 @@ def build_rooms_from_document(
     guardián de regresión (`tests/test_ingesta_regresion.py`) la usa
     precisamente para vigilar que la lectura en crudo no cambie.
 
-    `descartes`: ver `_closed_polygons_with_color`.
+    `descartes` y `reparaciones`: ver `_closed_polygons_with_color`.
     """
-    polygons = extract_room_polygons(doc, layer, descartes=descartes)
-    labels = extract_labels(doc, con_capa=True)
-    capas_validas = _capas_de_rotulo(polygons, labels, layer)
+    polygons = extract_room_polygons(
+        doc, layer, descartes=descartes, reparaciones=reparaciones,
+        desplazamiento=desplazamiento)
+    labels = extract_labels(doc, con_capa=True, desplazamiento=desplazamiento)
+    capas_validas, _reparto = _capas_que_nombran(polygons, labels, layer)
 
     rooms: List[Room] = []
     for polygon in polygons:
@@ -819,19 +1444,28 @@ def build_rooms_from_document(
 # ---------------------------------------------------------------------------
 
 
-def _leer_capa_am(doc: Drawing, capa: str) -> Tuple[List[Polygon], List[EntidadDescartada]]:
-    """Polígonos válidos de una capa `AM_*` operativa, y el inventario de lo
-    que se ha descartado y por qué.
+def _leer_capa_am(
+    doc: Drawing, capa: str
+) -> Tuple[List[Polygon], List[EntidadDescartada], List[GeometriaReparada]]:
+    """Polígonos válidos de una capa `AM_*` operativa, el inventario de lo que
+    se ha descartado y por qué, y el de lo que ha entrado reparado.
 
     Reutiliza `_recorrer_plano` (herencia de capa dentro de bloques) y
     `_esta_cerrada` (con la recuperación geométrica ya existente) tal cual
     están -- esta función no reimplementa nada de eso. Lo único que añade es
     la validación que el contrato de clasificación exige para una capa
-    `AM_*`: cerrada, >= 3 vértices, polígono geométricamente válido. Ninguna
-    geometría inválida se repara nunca aquí -- se descarta y se reporta.
+    `AM_*`: cerrada, >= 3 vértices, polígono geométricamente válido.
+
+    **CAMBIO DEL 2026-09-11 (`C-10`).** Hasta hoy el docstring decía «ninguna
+    geometría inválida se repara nunca aquí». Ya no es cierto, y el cambio es
+    deliberado: se repara **lo que se puede reparar sin que la superficie se
+    mueva**, que es justamente lo que no tiene contenido profesional. Lo demás
+    se sigue descartando exactamente igual que antes — la pajarita de
+    `tests/test_capas_am.py` incluida, cuya área pasaría de 0,00 a 8,00 m².
     """
     poligonos: List[Polygon] = []
     descartes: List[EntidadDescartada] = []
+    reparaciones: List[GeometriaReparada] = []
     for entity, capa_efectiva in _recorrer_plano(doc):
         if capa_efectiva != capa:
             continue
@@ -854,14 +1488,18 @@ def _leer_capa_am(doc: Drawing, capa: str) -> Tuple[List[Polygon], List[EntidadD
                 motivo=MOTIVO_MENOS_DE_3_VERTICES, capa=capa, tipo=tipo,
                 handle=_handle_de(entity)))
             continue
-        polygon = Polygon(points)
-        if not polygon.is_valid:
-            descartes.append(EntidadDescartada(
-                motivo=MOTIVO_GEOMETRIA_INVALIDA, capa=capa, tipo=tipo,
-                handle=_handle_de(entity), detalle=explain_validity(polygon)))
-            continue
-        poligonos.append(polygon)
-    return poligonos, descartes
+        # **`C-10`, y aquí está la unificación.** Antes esta rama descartaba
+        # TODA geometría inválida y el modo heredado la dejaba pasar: dos
+        # criterios distintos para el mismo defecto. Ahora los dos llaman a
+        # `_validar_o_reparar`. Esto no relaja el criterio de las capas `AM_*`
+        # —una pajarita de verdad se sigue descartando, porque repararla movería
+        # su área de 0,00 a 8,00 m²— sino que lo explica: descartaba todo porque
+        # no sabía distinguir un defecto de dibujo de una figura ambigua.
+        polygon = _validar_o_reparar(
+            Polygon(points), capa, tipo, _handle_de(entity), descartes, reparaciones)
+        if polygon is not None:
+            poligonos.append(polygon)
+    return poligonos, descartes, reparaciones
 
 
 def _capas_ignoradas(doc: Drawing, capas_miradas) -> List[CapaIgnorada]:
@@ -887,7 +1525,8 @@ def _capas_ignoradas(doc: Drawing, capas_miradas) -> List[CapaIgnorada]:
     ]
 
 
-def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optional[float] = None) -> PlanoLeido:
+def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optional[float] = None,
+               alinear_rotulos: bool = False) -> PlanoLeido:
     """Lee el plano entero y lo lleva a metros. Entrada única del pipeline.
 
     Resuelve dos incógnitas, en este orden, y con el mismo criterio en las dos:
@@ -941,34 +1580,92 @@ def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optiona
     heredado; las otras tres solo se leen, sin sustituir nada.
     """
     geometria_no_leida: List[EntidadDescartada] = []
+    geometria_reparada: List[GeometriaReparada] = []
 
-    poligonos_util_int, descartes_util = _leer_capa_am(doc, CAPA_UTIL_INTERIOR)
+    poligonos_util_int, descartes_util, reparadas_util = _leer_capa_am(doc, CAPA_UTIL_INTERIOR)
     geometria_no_leida.extend(descartes_util)
-    poligonos_cons_cer, descartes_cons = _leer_capa_am(doc, CAPA_CONSTRUIDA_CERRADA)
+    geometria_reparada.extend(reparadas_util)
+    poligonos_cons_cer, descartes_cons, reparadas_cons = _leer_capa_am(doc, CAPA_CONSTRUIDA_CERRADA)
     geometria_no_leida.extend(descartes_cons)
-    poligonos_util_ext, descartes_util_ext = _leer_capa_am(doc, CAPA_UTIL_EXTERIOR)
+    geometria_reparada.extend(reparadas_cons)
+    poligonos_util_ext, descartes_util_ext, reparadas_util_ext = _leer_capa_am(doc, CAPA_UTIL_EXTERIOR)
     geometria_no_leida.extend(descartes_util_ext)
-    poligonos_cons_ext, descartes_cons_ext = _leer_capa_am(doc, CAPA_CONSTRUIDA_EXTERIOR)
+    geometria_reparada.extend(reparadas_util_ext)
+    poligonos_cons_ext, descartes_cons_ext, reparadas_cons_ext = _leer_capa_am(doc, CAPA_CONSTRUIDA_EXTERIOR)
     geometria_no_leida.extend(descartes_cons_ext)
+    geometria_reparada.extend(reparadas_cons_ext)
 
+    # **Primero se leen los recintos sin alinear nada.** El detector necesita la
+    # geometría ya leída para poder medir el desfase, así que este primer paso
+    # es inevitable — y es también el único que ocurre en un plano normal.
     usa_capa_am = bool(poligonos_util_int) or bool(descartes_util)
     if usa_capa_am:
-        labels = extract_labels(doc, con_capa=True)
-        capas_validas = _capas_de_rotulo(poligonos_util_int, labels, CAPA_UTIL_INTERIOR)
-        rooms = [
-            Room(label=match_label_to_room(polygon, labels, capas_validas=capas_validas),
-                 polygon=polygon, layer=CAPA_UTIL_INTERIOR)
-            for polygon in poligonos_util_int
-        ]
         capa = None
         nombre_capa = CAPA_UTIL_INTERIOR
         capa_por_heuristico = False
     else:
         capa, capa_por_heuristico = _resolver_capa(doc, layer)
         nombre_capa = capa.nombre
-        rooms = build_rooms_from_document(doc, capa.nombre, descartes=geometria_no_leida)
 
+    reparto_visto = {}
+
+    def _leer_recintos(desplazamiento):
+        """Los recintos con los rótulos donde diga `desplazamiento`. `None` es
+        «donde el arquitecto los dibujó», que es siempre la primera lectura."""
+        if usa_capa_am:
+            etiquetas = extract_labels(doc, con_capa=True, desplazamiento=desplazamiento)
+            capas_validas, reparto = _capas_que_nombran(
+                poligonos_util_int, etiquetas, CAPA_UTIL_INTERIOR)
+            reparto_visto["r"] = reparto
+            return [
+                Room(label=match_label_to_room(p, etiquetas, capas_validas=capas_validas),
+                     polygon=p, layer=CAPA_UTIL_INTERIOR)
+                for p in poligonos_util_int
+            ]
+        rooms_leidos = build_rooms_from_document(
+            doc, nombre_capa, descartes=geometria_no_leida,
+            reparaciones=geometria_reparada, desplazamiento=desplazamiento)
+        # El reparto de la ULTIMA lectura, que es la que produce los `Room` que
+        # se devuelven: si se ha alineado, el bueno es el de la lectura alineada.
+        reparto_visto["r"] = _capas_que_nombran(
+            [r.polygon for r in rooms_leidos],
+            extract_labels(doc, con_capa=True, desplazamiento=desplazamiento),
+            nombre_capa)[1]
+        return rooms_leidos
+
+    rooms = _leer_recintos(None)
     unit_labels = extract_unit_labels(doc)
+
+    # Antes de escalar, porque `dx`/`dy` se dicen en unidades de dibujo: es lo
+    # que el arquitecto teclearia en un DESPLAZA para comprobarlo el mismo.
+    #
+    # Se le pasan TODOS los recintos, no sólo los que se han quedado sin
+    # `label`: el detector cuenta por su cuenta cuántos no tienen ningún texto
+    # dentro, y ése es justo el guardián que hace que en un plano normal esto no
+    # cueste nada (un índice espacial y una consulta por recinto, y fuera).
+    # Pasarle sólo los que no casaron daría el 100% siempre y el guardián no
+    # llegaría a actuar nunca.
+    rotulos_desplazados = detectar_desplazamiento_de_rotulos(
+        [room.polygon for room in rooms],
+        list(extract_labels(doc)),
+    )
+
+    # **Y sólo aquí, si alguien lo ha pedido Y el desfase es limpio, se alinea.**
+    # Las dos condiciones, nunca una: `alinear_rotulos` es una petición del
+    # arquitecto, no una orden, y un desfase con dos hipótesis no se aplica
+    # aunque la pida (`docs/prd/2026-09-11-alinear-rotulos-desplazados.md`).
+    #
+    # Se vuelve a leer con los rótulos corridos. **Los polígonos son los mismos
+    # objetos**: lo único que cambia es dónde se cree que están los textos, y eso
+    # vive en una lista de tuplas que muere al terminar esta función. El DXF no
+    # se toca, ni el del disco ni el que hay en memoria.
+    rotulos_alineados = None
+    if (alinear_rotulos and rotulos_desplazados is not None
+            and rotulos_desplazados.limpio):
+        corrimiento = (rotulos_desplazados.dx, rotulos_desplazados.dy)
+        rooms = _leer_recintos(corrimiento)
+        unit_labels = extract_unit_labels(doc, desplazamiento=corrimiento)
+        rotulos_alineados = rotulos_desplazados
 
     if factor_escala is not None:
         deteccion = escala_mod.escala_confirmada(factor_escala)
@@ -1013,8 +1710,12 @@ def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optiona
         superficies_utiles_exteriores=poligonos_util_ext,
         envolventes_exteriores=poligonos_cons_ext,
         geometria_no_leida=geometria_no_leida,
+        geometria_reparada=geometria_reparada,
+        rotulos_alineados=rotulos_alineados,
+        reparto_de_rotulos=reparto_visto.get("r") or RepartoDeRotulos(),
         capas_ignoradas=capas_ignoradas,
-        capa_elegida_por_heuristico=capa_por_heuristico)
+        capa_elegida_por_heuristico=capa_por_heuristico,
+        rotulos_desplazados=rotulos_desplazados)
 
 
 

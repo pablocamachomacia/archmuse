@@ -322,12 +322,24 @@ def test_solo_am_util_int_presente_sin_envolvente():
 # ---------------------------------------------------------------------------
 
 
-def test_inventario_en_modo_heredado_no_excluye_geometria_invalida():
-    """El modo heredado NO valida is_valid (a proposito, ver docstring de
-    `_closed_polygons_with_color`): un poligono invalido en "00 areas" sigue
-    convirtiendose en Room, exactamente igual que antes de la Fase 1 -- solo
-    que ahora, ademas, el tipo-no-soportado y la polilinea abierta de esa
-    misma capa SI quedan inventariados."""
+def test_inventario_en_modo_heredado_aplica_el_mismo_criterio_que_las_capas_am():
+    """**Este test decia lo contrario hasta el 2026-09-11, y el cambio esta
+    firmado** (`C-10`, `docs/prd/2026-09-11-reparar-geometria-invalida-c10.md`).
+
+    Decia: «el modo heredado NO valida is_valid a proposito: un poligono
+    invalido en "00 areas" sigue convirtiendose en Room». La intencion era no
+    excluir geometria que se venia aceptando, y el efecto medido fue el
+    contrario: no se excluia, entraba rota, y reventaba en
+    `evaluator.evaluate_room_overlap` con una `GEOSException` que dejaba
+    `plantasimple.dxf` en CERO piezas.
+
+    Ahora los dos caminos aplican el mismo criterio: se repara lo que se puede
+    reparar sin que la superficie se mueva, y se descarta lo demas. La pajarita
+    de aqui es «lo demas» -- repararla moveria su area de 0,00 a 8,00 m2 -- asi
+    que se descarta, igual que ya se descartaba en una capa `AM_*`.
+
+    Lo que NO cambia, y por eso los cinco planos de referencia siguen dando la
+    misma cifra: ninguna geometria valida se toca."""
     doc = _doc_vacio(parser.AREA_LAYER)
     msp = doc.modelspace()
     bowtie = [(0, 0), (4, 4), (4, 0), (0, 4)]
@@ -343,13 +355,25 @@ def test_inventario_en_modo_heredado_no_excluye_geometria_invalida():
 
     plano = parser.leer_plano(doc)
 
-    # El poligono invalido SIGUE leyendose como Room: comportamiento heredado
-    # intacto, no una exclusion nueva.
-    assert len(plano.rooms) == 4  # bowtie + Dormitorio 1 + Dormitorio 2 + Baño
+    # La pajarita ya NO se lee como Room: su area es ambigua y ArchMuse no
+    # elige. Quedan los tres recintos sanos.
+    assert len(plano.rooms) == 3
+    assert all(r.polygon.is_valid for r in plano.rooms)
+
     motivos = sorted(d.motivo for d in plano.geometria_no_leida)
-    assert motivos == sorted([parser.MOTIVO_TIPO_NO_SOPORTADO, parser.MOTIVO_POLILINEA_ABIERTA])
-    assert all(not d.detalle or d.motivo != parser.MOTIVO_GEOMETRIA_INVALIDA
-               for d in plano.geometria_no_leida)
+    assert motivos == sorted([parser.MOTIVO_TIPO_NO_SOPORTADO,
+                              parser.MOTIVO_POLILINEA_ABIERTA,
+                              parser.MOTIVO_GEOMETRIA_INVALIDA])
+
+    # Y el descarte dice que se intento repararla y por que no valia: no es lo
+    # mismo «tu polilinea esta mal» que «esta mal, y arreglarla te cambiaria la
+    # superficie».
+    invalida = next(d for d in plano.geometria_no_leida
+                    if d.motivo == parser.MOTIVO_GEOMETRIA_INVALIDA)
+    assert "reparar" in invalida.detalle
+
+    # Nada ha entrado reparado en este plano: la unica candidata era la pajarita.
+    assert plano.geometria_reparada == []
 
 
 # ---------------------------------------------------------------------------
