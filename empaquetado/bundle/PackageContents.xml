@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Paquete de AutoCAD de la beta (PRD 2026-09-11, §4.3). El instalador lo deja en
+  %APPDATA%\Autodesk\ApplicationPlugins\ArchMuse.bundle\ y el actualizador copia
+  en Contents\ el archmuse.lsp de la versión activa. Desinstalar es borrar la
+  carpeta.
+
+  Platform="AutoCAD*" incluye las verticales (Architecture, MEP...). En AutoCAD
+  LT no carga LISP y el comando no existiría: está en el folio.
+  SeriesMin R24.0 = AutoCAD 2021. Sólo verificado en 2027 (§12.3).
+-->
+<ApplicationPackage SchemaVersion="1.0"
+                    AutodeskProduct="AutoCAD"
+                    ProductType="Application"
+                    Name="ArchMuse"
+                    Description="Mide las superficies útiles de tu planta y dibuja su cuadro."
+                    AppVersion="0.3.1"
+                    Author="ArchMuse"
+                    ProductCode="{A1C4E8B2-3F5D-4E6A-8B90-2D7C1E4F6A35}"
+                    UpgradeCode="{D2B7F9A4-6C1E-4A83-B5D0-9E3F8C2A7B16}">
+  <CompanyDetails Name="ArchMuse" />
+  <Components Description="Comando ARCHMUSE">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.0" />
+    <ComponentEntry AppName="ArchMuse"
+                    ModuleName="./Contents/archmuse.lsp"
+                    AppDescription="Comandos ARCHMUSE y ARCHMUSE-INFORME"
+                    LoadOnAutoCADStartup="True"
+                    PerDocument="True" />
+  </Components>
+</ApplicationPackage>

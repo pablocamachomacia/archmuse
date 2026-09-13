@@ -28,24 +28,65 @@ llame decide cómo servirlo (ver `app.py`, mismo patrón que
 `exportar_planta_dxf`)."""
 from __future__ import annotations
 
-from typing import Iterable
-
-import ifcopenshell
-import ifcopenshell.api.aggregate
-import ifcopenshell.api.context
-import ifcopenshell.api.project
-import ifcopenshell.api.root
-import ifcopenshell.api.unit
-import ifcopenshell.util.shape_builder
+from typing import TYPE_CHECKING, Iterable
 
 from .dxf_export import _puntos_validos
+
+if TYPE_CHECKING:  # pragma: no cover - solo para el anotador de tipos
+    import ifcopenshell
 
 IFC_SCHEMA = "IFC4"
 
 
+# ---------------------------------------------------------------------------
+# POR QUÉ `ifcopenshell` SE IMPORTA DENTRO DE LA FUNCIÓN Y NO ARRIBA
+# ---------------------------------------------------------------------------
+# **Son 93 MB**, el paquete más pesado de todo `site-packages` (303,7 MB en
+# total, medido el 2026-09-11) — y el camino del comando de AutoCAD no lo toca
+# ni una vez. Hasta hoy se importaba en la cabecera de este módulo, `app.py`
+# importaba este módulo en la suya, y el resultado era que **el servidor no
+# arrancaba sin `ifcopenshell` instalado**, aunque nadie fuera a exportar un
+# IFC en toda la sesión.
+#
+# Eso deja de ser un detalle en cuanto el servidor se instala en el ordenador
+# del arquitecto (`docs/prd/2026-09-11-beta-instalable-en-el-ordenador-del-
+# arquitecto.md`): 93 MB en un instalador que va a viajar por WhatsApp, por una
+# función que esa beta no ofrece.
+#
+# El import dentro de la función es la forma barata y reversible de que el
+# paquete sea **opcional en tiempo de ejecución** sin tocar nada más: quien
+# exporte un IFC lo necesita y lo dice; quien mida un plano, no. `TYPE_CHECKING`
+# conserva la anotación de tipo sin cargar nada, y `from __future__ import
+# annotations` (arriba) hace que la firma no se evalúe al importar.
+
+
+def _ifcopenshell():
+    """El paquete, con sus submódulos de la API, o un error que se entiende.
+
+    Un `ModuleNotFoundError: ifcopenshell` desnudo, en un servidor instalado y
+    sin consola, no le dice nada a nadie. Este dice qué falta y por qué no
+    estaba."""
+    try:
+        import ifcopenshell
+        import ifcopenshell.api.aggregate  # noqa: F401
+        import ifcopenshell.api.context  # noqa: F401
+        import ifcopenshell.api.project  # noqa: F401
+        import ifcopenshell.api.root  # noqa: F401
+        import ifcopenshell.api.unit  # noqa: F401
+        import ifcopenshell.util.shape_builder  # noqa: F401
+    except ImportError as exc:  # pragma: no cover - depende del paquete instalado
+        raise RuntimeError(
+            "La exportación a IFC necesita `ifcopenshell`, que esta instalación "
+            "de ArchMuse no trae: son 93 MB y el resto del producto no los usa. "
+            "Se instala con `pip install ifcopenshell`. Medir planos y rellenar "
+            "cuadros no lo necesita y sigue funcionando sin él."
+        ) from exc
+    return ifcopenshell
+
+
 def exportar_espacios_ifc(
     habitaciones: Iterable[dict], nombre_planta: str = "Planta", nombre_proyecto: str = "Proyecto ArchMuse",
-) -> ifcopenshell.file:
+) -> "ifcopenshell.file":
     """Construye un `ifcopenshell.file` IFC4 con un `IfcSpace` por estancia
     de `habitaciones` -- mismo dato de entrada (`poligono`, `nombre`, y
     opcionalmente `area_m2`/`tipo`) que ya recibe `exportar_planta_dxf`.
@@ -57,6 +98,7 @@ def exportar_espacios_ifc(
 
     Cualquier entrada sin `poligono` válido (menos de 3 puntos utilizables)
     se omite en silencio, mismo criterio que `exportar_planta_dxf`."""
+    ifcopenshell = _ifcopenshell()
     f = ifcopenshell.api.project.create_file(version=IFC_SCHEMA)
     proyecto = ifcopenshell.api.root.create_entity(f, ifc_class="IfcProject", name=nombre_proyecto)
     ifcopenshell.api.unit.assign_unit(f)  # SI por defecto: metro, metro cuadrado.
