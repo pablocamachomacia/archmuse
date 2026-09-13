@@ -403,3 +403,100 @@ Si una idea aporta poco valor, es prematura, o contradice la visión ya establec
 - `docs/design/2026-08-18-alineacion-estrategica-paso0.md` — **léelo antes que `docs/NORTH_STAR_2031.md` y que el ADR del Cerebro Arquitecto.** Resuelve cuál manda sobre qué y fija cinco consecuencias vinculantes (C1-C5) que son criterios de aceptación de cualquier PRD nuevo.
 
 **Esta regla de proceso (PRD antes de implementar) aplica a capacidades nuevas del producto.** Las correcciones de bugs y las tareas de endurecimiento ya planificadas en `docs/REFACTOR_MASTERPLAN.md` no son "capacidad nueva" — son arreglos sobre lo que ya existe — así que no requieren un PRD nuevo por defecto; si surge duda sobre si algo cuenta como "nuevo" o como "corrección", preguntar antes de asumir.
+
+
+---
+
+# Regla de proceso: una causa sin medir es una hipótesis, no un hallazgo
+
+**Añadida el 2026-09-10, después de que el mismo patrón costara dos correcciones
+en un solo día. Ampliada el 2026-09-11, cuando costó una tercera** — esa vez el
+dato estaba escrito y lo que faltó fue la pregunta; ver el apartado final.
+
+Cuando se anota por qué falla algo —en `PROGRESS.md`, en un PRD, en un
+comentario del código o en una nota de diseño— hay que distinguir dos cosas que
+se escriben igual y valen distinto:
+
+- **Hallazgo:** alguien abrió el fichero, ejecutó el código, midió, y la cifra
+  está en la nota. Se escribe como un hecho.
+- **Hipótesis:** una explicación que encaja con los síntomas y que **nadie ha
+  comprobado todavía**. Se escribe marcada como tal, con qué habría que medir
+  para confirmarla.
+
+**Una hipótesis no asciende a hallazgo por repetirse, ni por sonar razonable, ni
+porque la escribiera alguien con criterio.** Asciende cuando alguien la mide, y
+entonces la nota se actualiza con la medida.
+
+### Por qué esta regla existe
+
+El 2026-09-10, dos veces en el mismo día:
+
+1. **«3 de 22 polilíneas con el flag de cerrada mal puesto» que en AutoCAD daban
+   cero.** Se anotó como una contradicción a investigar. No era una
+   contradicción: eran **dos ficheros distintos** — el original y el fixture
+   anonimizado, que el anonimizador reconstruye con `close=True`. Una hora de
+   medición lo resolvió; llevaba anotado como misterio desde el día anterior.
+2. **El «Tendedero duplicado» y el «Baño en sin_clasificar».** Llevaban desde el
+   2026-09-08 anotados como **«cambios de criterio validados con el
+   arquitecto»** — la categoría más alta de certeza que hay en este proyecto.
+   Ninguno de los dos era un criterio: eran **dos bugs**. No había dos
+   tendederos (era un contorno agrupador que el parser no descartaba) y el baño
+   no era ambiguo (su rótulo llevaba la eñe escapada y ningún patrón casaba).
+
+Los dos casos comparten la forma: una explicación plausible, anotada sin abrir
+el plano, que sobrevivió días porque **sonaba bien**. Y cuanto mejor suena, más
+tarda alguien en comprobarla — que es justo lo que la hace cara.
+
+### Qué hacer en la práctica
+
+- Al anotar una causa, escribir **cómo se midió**: qué fichero, qué función, qué
+  cifra salió. Si no se midió, empezar la frase por «hipótesis:» y decir qué
+  mediría.
+- Desconfiar especialmente de lo que ya está etiquetado como resuelto o
+  validado: **una etiqueta de certeza alta es una razón para comprobar, no para
+  no comprobar**. Los dos bugs de arriba estaban protegidos por la suya.
+- Cuando una hipótesis se confirme o se caiga, **corregir la nota donde vive**,
+  no solo escribir la verdad en un sitio nuevo. Una nota falsa que sigue en pie
+  vuelve a costar el mismo tiempo dentro de tres meses.
+- Esto vale también para las suposiciones escritas en los docstrings del código.
+  La condición que ocultaba el contorno agrupador se apoyaba en una frase del
+  propio docstring —«las habitaciones reales de estos planos siempre usan el
+  color del layer»— que nadie había medido y que era falsa.
+
+### La tercera vez, y la pregunta que faltaba (2026-09-11)
+
+El barrido de los planos del arquitecto anotó, en su propio informe, que había
+**diez textos en la capa `00 areas` que no eran nombres de estancia** —
+«superficie util» ×6, «superficie util exterior» ×2, dos de superficie
+construida. Quedó escrito como una curiosidad del plano y se pasó a otra cosa.
+
+Al día siguiente esos diez textos eran el bug: el parser cogía uno de ellos como
+nombre de la estancia, y el cuadro salía vacío.
+
+**Lo que falló no fue no ver el dato: fue no hacerle la pregunta buena.** La
+pregunta que se hizo era «¿qué son estos textos?», y tenía respuesta inmediata:
+títulos de campo, ruido, nada que hacer. La pregunta que faltaba era la otra:
+
+> Si hay dos textos dentro de cada recinto, **¿por qué entonces el rótulo sale
+> bien?**
+
+Esa pregunta habría llevado en cinco minutos a `inside[0]` y al hecho de que el
+resultado dependía del orden de llegada. En su lugar, el fallo apareció un día
+después, en AutoCAD, y costó una sesión entera de diagnóstico.
+
+**La regla, y es la más corta de este documento:**
+
+> **Cuando algo funciona y no sabes por qué, es tan investigable como cuando
+> falla.**
+
+Un acierto sin explicación es una hipótesis con suerte. Aguanta hasta que cambia
+lo que no sabías que importaba —el orden de una lista, la versión de una
+librería, el ordenador de otro— y entonces falla en el sitio más caro, que es
+delante del usuario.
+
+En la práctica, el aviso a buscar es este: **cada vez que el código parece
+resolver una ambigüedad que nadie escribió, hay una decisión implícita sin
+dueño.** Dos textos dentro de un recinto y uno gana; dos capas candidatas y se
+elige una; dos polilíneas solapadas y se conserva la mayor. Si no se encuentra la
+línea donde eso se decidió a propósito, es que no se decidió: está saliendo del
+orden de un `for`, y ese orden no es parte del contrato de nadie.
