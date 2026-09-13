@@ -17,9 +17,10 @@ Deliberadamente **separado de `parser.py` y de `evaluator.py`**:
 
 ### Las cuatro reglas de producto que gobiernan este módulo
 
-1. **Estancia pedida por el cuadro que no existe en la vivienda → `0,00 m²`**
-   (`CERO_REAL`). Es un hecho negativo verificado (se buscó y no hay ninguna),
-   no una ausencia de información.
+1. **Estancia pedida por el cuadro que no existe en la vivienda → celda vacía**
+   (`NO_DIBUJADA`), con su motivo. Hasta el 2026-09-13 era `0,00 m²`
+   (`CERO_REAL`, «un hecho negativo verificado»); `D-13` lo deroga: ninguna
+   habitación mide cero, así que un cero escrito es una cifra no medida.
 2. **Superficie que no puede conocerse de forma fiable → `N/D`**
    (`NO_DISPONIBLE`). Dato estructuralmente inalcanzable con lo que hay hoy
    (superficie construida sin espesores de muro; nº de unidades sin
@@ -49,19 +50,33 @@ from __future__ import annotations
 
 import re
 import unicodedata
+import dataclasses
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence
+
+# `texto_dxf` no importa nada del proyecto: traerlo aquí no acopla este módulo
+# a `parser.py` ni a `evaluator.py`, que es la separación que su docstring
+# defiende.
+from .emparejador_cuadro import emparejar
+from .texto_dxf import decodificar_escapes
 
 # ---------------------------------------------------------------------------
 # Estados — catálogo cerrado de 4, tal como pide el encargo. No se amplía.
 # ---------------------------------------------------------------------------
 
 CALCULADO = "CALCULADO"
-CERO_REAL = "CERO_REAL"
+#: **`D-13` (Pablo, 2026-09-13), que deroga `C-4`: un `0,00 m²` no es nunca una
+#: superficie válida de estancia.** Hasta ese día este estado se llamaba
+#: `CERO_REAL` y escribía `0,00 m²` para una fila del cuadro que el plano no
+#: dibuja. Verificado en AutoCAD: el cuadro del arquitecto pedía `pasillo` y
+#: `vestibulo`, ese estudio mete el pasillo en el salón, y ArchMuse escribió dos
+#: ceros. Una estancia no dibujada no mide cero: **no existe**, y la celda se
+#: queda vacía con su motivo.
+NO_DIBUJADA = "NO_DIBUJADA"
 NO_DISPONIBLE = "NO_DISPONIBLE"
 BLOQUEADO = "BLOQUEADO"
 
-_ESTADOS_VALIDOS = (CALCULADO, CERO_REAL, NO_DISPONIBLE, BLOQUEADO)
+_ESTADOS_VALIDOS = (CALCULADO, NO_DIBUJADA, NO_DISPONIBLE, BLOQUEADO)
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +159,14 @@ def _normalizar(texto: str) -> str:
 
     Duplicado a propósito (ver docstring del módulo) — no se importa de
     `evaluator.py`.
+
+    Antes de nada se decodifican los escapes Unicode del DXF: la etiqueta del
+    cuadro llega tal cual la escribió AutoCAD, y `sal\\U+00F3n + cocina` sin
+    decodificar no es «SALON + COCINA» ni se parece. Es la misma conversión que
+    aplica `parser._texto_de` al rótulo del plano, desde el mismo sitio, para
+    que las dos mitades del emparejamiento hablen el mismo idioma.
     """
+    texto = decodificar_escapes(texto)
     texto = unicodedata.normalize("NFKD", texto)
     texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
     return texto.upper().strip()
@@ -172,6 +194,55 @@ class CeldaCuadro:
     x: float
     y: float
     texto_actual: Optional[str] = None  # contenido ya presente, o None si está vacía
+    #: Posición en la rejilla de la tabla, base 0. Es lo que viaja al cliente
+    #: CAD: `vla-SetText` pide fila y columna, no coordenadas. `x`/`y` siguen
+    #: aquí porque la vía web escribe un MTEXT superpuesto y necesita el punto.
+    fila: int = -1
+    columna_indice: int = -1
+    #: Dónde estaba la etiqueta de la que sale `columna_indice`. **Se guarda para
+    #: que la relación entre las dos sea comprobable**: el valor va siempre a la
+    #: celda de la derecha de su etiqueta, y un test lo verifica sobre cuadros
+    #: que no son el de este estudio. Hasta el 2026-09-11 la columna de valor era
+    #: una constante (1 y 3) y un cuadro con otra disposición recibía **cifras
+    #: correctas en la columna equivocada**, sin error ni aviso.
+    columna_etiqueta: int = -1
+
+
+@dataclass(frozen=True)
+class FilaDeCuadro:
+    """Una fila del cuadro del arquitecto **tal cual está escrita**.
+
+    Existe para poder **copiar su cuadro** al dibujar el de ArchMuse al lado
+    (PRD `2026-09-12`, §4.4): la comparación sólo sirve si la fila N de una
+    tabla es la fila N de la otra, y eso obliga a conservar **todas** las filas
+    —encabezados de grupo, título y filas que ArchMuse no entiende incluidos—,
+    con su redacción literal y su ortografía. `EXPACIOS INTERORES` se copia con
+    su errata: corregirla sería editarle el documento por la puerta de atrás.
+
+    `CuadroSuperficies.celdas` no sirve para esto y no se sustituye: aquella
+    lista es «dónde va cada cifra» y tiene una entrada por campo reconocido;
+    ésta es «cómo es su tabla» y tiene una entrada por fila, reconocida o no.
+    """
+
+    fila: int
+    #: El texto de la etiqueta como está en el DXF. Nunca normalizado.
+    etiqueta: str
+    #: El campo que reclama, o `None` si es un encabezado, el título, o una fila
+    #: que ArchMuse no ha sabido resolver.
+    campo: Optional[str] = None
+    #: Por qué no tiene campo, cuando lo parecía. `None` en un encabezado, que no
+    #: es un fallo de nadie.
+    motivo: Optional[str] = None
+    #: En qué columna está la etiqueta, y en cuál su valor.
+    #:
+    #: **Su cuadro no es una lista de filas: son dos pares etiqueta/valor por
+    #: fila** —los interiores a la izquierda, los exteriores a la derecha—, y
+    #: por eso una misma `fila` aparece aquí varias veces. Aplanarlo a una
+    #: columna al copiarlo perdería justo lo que hace útil la copia: que la
+    #: fila N de la tabla de ArchMuse esté **a la misma altura** que la fila N
+    #: de la suya cuando se dibujan una al lado de otra.
+    columna_etiqueta: int = -1
+    columna_valor: int = -1
 
 
 @dataclass(frozen=True)
@@ -179,12 +250,49 @@ class CuadroSuperficies:
     """El cuadro detectado, ya reducido a datos: una celda de valor por campo."""
 
     celdas: Sequence[CeldaCuadro]
+    #: Filas del cuadro que parecían pedir un campo y no se han podido resolver,
+    #: con su motivo. No se rellenan y **no desaparecen**: se declaran (`C-6`).
+    etiquetas_sin_campo: Sequence[tuple] = ()
+    #: Todas sus filas, en orden y literales. Vacío en un cuadro construido a
+    #: mano desde celdas sueltas (`cuadro_desde_celdas`), que no tiene tabla que
+    #: copiar.
+    filas: Sequence[FilaDeCuadro] = ()
 
     def celda(self, campo: str) -> Optional[CeldaCuadro]:
         for c in self.celdas:
             if c.campo == campo:
                 return c
         return None
+
+    def como_plantilla(self) -> "CuadroSuperficies":
+        """El mismo cuadro con **todas las celdas de valor vacías**.
+
+        ### Esto es el núcleo del cambio de diseño del 2026-09-12
+
+        Hasta hoy, una celda con texto **impedía el cálculo**:
+        `_resolver_o_preexistente` veía contenido y devolvía «ya había un valor,
+        no se recalcula» sin llegar a medir nada. Era la forma correcta de
+        cumplir «nunca sobrescribir» **mientras el destino era su celda**.
+
+        Con destino propio deja de serlo, y el precio estaba medido: sobre
+        `plantasimple.dxf`, de las 396 celdas de sus 22 cuadros emparejados,
+        ArchMuse afirmaba **74 —y 73 eran `0,00 m²`—**. Calculando sobre la
+        plantilla afirma **232, de las cuales 158 son cifras reales**. La
+        diferencia no es una mejora: es la capacidad entera.
+
+        **«Nunca sobrescribir» no se debilita, se cumple mejor.** Pasa de ser una
+        regla del cálculo —frágil, porque depende de acertar qué celda está
+        llena— a ser una propiedad de la arquitectura: su tabla no se toca
+        porque no se escribe en ella.
+
+        Lo que **sí** se conserva es su tabla como molde: mismas filas, mismo
+        orden, mismas etiquetas. Se vacía el valor, no la forma.
+        """
+        return CuadroSuperficies(
+            celdas=[dataclasses.replace(c, texto_actual=None) for c in self.celdas],
+            etiquetas_sin_campo=tuple(self.etiquetas_sin_campo),
+            filas=tuple(self.filas),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -195,8 +303,8 @@ class CuadroSuperficies:
 @dataclass(frozen=True)
 class CeldaRelleno:
     campo: str
-    texto: str                    # "21,90 m²" | "0,00 m²" | "N/D" | el texto ya existente
-    estado: str                    # CALCULADO | CERO_REAL | NO_DISPONIBLE | BLOQUEADO
+    texto: str                    # "21,90 m²" | "" | "N/D" | el texto ya existente -- nunca "0,00 m²" (D-13)
+    estado: str                    # CALCULADO | NO_DIBUJADA | NO_DISPONIBLE | BLOQUEADO
     motivo: Optional[str]          # por qué, cuando no es un CALCULADO limpio
     celda: Optional[CeldaCuadro]   # coordenada/celda destino (None si el cuadro no la trae)
     preexistente: bool = False     # True si la celda YA tenía texto en el DXF
@@ -226,6 +334,20 @@ _PATRON_BANO = re.compile(r"\bBANO\b")  # "BAÑO" tras `_normalizar` (NFKD) -> "
 _PATRON_ASEO = re.compile(r"\bASEO\b")
 _PATRON_TENDEDERO = re.compile(r"\bTENDEDERO\b")
 _PATRON_TERRAZA = re.compile(r"\bTERRAZA\b")
+
+# Las familias de la plantilla fija (decisión 3 de Pablo, 2026-09-13). Viven
+# aquí, junto a las de arriba, para que el vocabulario siga siendo uno. **Las de
+# arriba no se tocan**: sirven a las 18 filas fijas del cuadro clásico, donde
+# «pasillo» incluye el distribuidor y «salón + cocina» es cualquiera de los dos.
+# En la plantilla cada una es su propia familia.
+_PATRON_SALON_Y_COCINA = re.compile(r"(?=.*\bSALON\b)(?=.*\bCOCINA\b)")
+_PATRON_SOLO_SALON = re.compile(r"\bSALON\b")
+_PATRON_SOLO_COCINA = re.compile(r"\bCOCINA\b")
+_PATRON_SOLO_PASILLO = re.compile(r"\bPASILLO\b")
+_PATRON_DISTRIBUIDOR = re.compile(r"\bDISTRIBUIDOR\b")
+_PATRON_VESTIBULO_RECIBIDOR_HALL = re.compile(r"\bVESTIBULO\b|\bRECIBIDOR\b|\bHALL\b")
+_PATRON_BALCON = re.compile(r"\bBALCON\b")
+_PATRON_PORCHE = re.compile(r"\bPORCHE\b")
 
 
 def _patron_dormitorio(numero: int) -> re.Pattern:
@@ -269,14 +391,13 @@ def _celda_familia_simple(
     campo: str, celda: Optional[CeldaCuadro], rooms: Sequence, patron: re.Pattern,
     nombre_familia: str,
 ) -> CeldaRelleno:
-    """0 coincidencias -> CERO_REAL. 1 -> CALCULADO. >1 -> BLOQUEADO (nunca se
-    suman ni se elige una): el cuadro solo tiene un hueco para esta familia,
-    así que más de una pieza real es una ambigüedad, no un dato con matices."""
+    """0 coincidencias -> NO_DIBUJADA (`D-13`). 1 -> CALCULADO. >1 -> BLOQUEADO
+    (nunca se suman ni se elige una): el cuadro solo tiene un hueco para esta
+    familia, así que más de una pieza real es una ambigüedad, no un dato con
+    matices."""
     coincidencias = _habitaciones_que_coinciden(rooms, patron)
     if len(coincidencias) == 0:
-        return CeldaRelleno(campo, _formatear_area(0.0), CERO_REAL,
-                             "No existe ninguna estancia «%s» en esta vivienda." % nombre_familia,
-                             celda)
+        return _celda_no_dibujada(campo, celda, nombre_familia)
     if len(coincidencias) == 1:
         return CeldaRelleno(campo, _formatear_area(coincidencias[0].area_m2), CALCULADO, None, celda)
     return CeldaRelleno(
@@ -294,8 +415,7 @@ def _celda_salon_cocina(celda: Optional[CeldaCuadro], rooms: Sequence) -> CeldaR
     propia etiqueta ("salón + cocina") pide una suma, no una pieza única."""
     coincidencias = _habitaciones_que_coinciden(rooms, _PATRON_SALON_COCINA)
     if not coincidencias:
-        return CeldaRelleno("salon_cocina", _formatear_area(0.0), CERO_REAL,
-                             "No existe ninguna estancia «Salón» ni «Cocina» en esta vivienda.", celda)
+        return _celda_no_dibujada("salon_cocina", celda, "salón» ni «cocina")
     total = sum(r.area_m2 for r in coincidencias)
     return CeldaRelleno("salon_cocina", _formatear_area(total), CALCULADO, None, celda)
 
@@ -346,10 +466,7 @@ def _celdas_familia_multiple(
     coincidencias = _habitaciones_que_coinciden(rooms, patron)
 
     if len(coincidencias) == 0:
-        return [CeldaRelleno(c, _formatear_area(0.0), CERO_REAL,
-                              "No existe ninguna estancia «%s» en esta vivienda." % nombre_familia,
-                              celdas.get(c))
-                for c in campos]
+        return [_celda_no_dibujada(c, celdas.get(c), nombre_familia) for c in campos]
 
     # ¿Cada pieza real numera exactamente uno de los huecos, sin ambigüedad?
     asignacion: Dict[str, object] = {}
@@ -381,6 +498,15 @@ def _celda_no_disponible(campo: str, celda: Optional[CeldaCuadro], motivo: str) 
     return CeldaRelleno(campo, "N/D", NO_DISPONIBLE, motivo, celda)
 
 
+def _celda_no_dibujada(campo: str, celda: Optional[CeldaCuadro], nombre_familia: str) -> CeldaRelleno:
+    """El cuadro pide una fila que el plano no dibuja: **vacía, con motivo**."""
+    return CeldaRelleno(
+        campo, "", NO_DIBUJADA,
+        "El plano no dibuja ninguna estancia «%s» en esta vivienda. No se escribe "
+        "0,00 m²: ninguna habitación mide cero (D-13)." % nombre_familia,
+        celda, escribir=False)
+
+
 def _total_util_no_se_suma(celda: Optional[CeldaCuadro]) -> CeldaRelleno:
     """La celda «TOTAL S. ÚTIL», siempre `N/D` y siempre con su motivo.
 
@@ -405,7 +531,9 @@ def _celda_total(
     """Suma de un grupo de celdas ya resueltas. Si CUALQUIERA de los
     componentes está `BLOQUEADO`, el total se bloquea también -- sumar con un
     componente desconocido produciría una cifra falsa, no una aproximación
-    razonable. `CERO_REAL` sí participa en la suma (es un cero verificado).
+    razonable. Una fila `NO_DIBUJADA` no participa: no es un cero, es una
+    estancia que no existe (`D-13`). Si no queda ninguna, el total tampoco se
+    escribe — un total de `0,00 m²` sería el mismo fallo un nivel más arriba.
 
     Un componente PREEXISTENTE (Fase 4: descubierto en `ejemplo.dxf`, cuyo
     cuadro ya trae "21.90m2", "8.48"... en formatos que este módulo no
@@ -447,7 +575,14 @@ def _celda_total(
             ),
             celda, escribir=False,
         )
-    valores = [(c, _valor_numerico(c)) for c in componentes]
+    presentes = [c for c in componentes if c.estado != NO_DIBUJADA]
+    if not presentes:
+        return CeldaRelleno(
+            campo, "", NO_DIBUJADA,
+            "%s no se escribe: el plano no dibuja ninguna estancia de este lado, y un "
+            "total de 0,00 m² no es una superficie (D-13)." % etiqueta_total,
+            celda, escribir=False)
+    valores = [(c, _valor_numerico(c)) for c in presentes]
     no_sumables = [c for c, v in valores if v is None]
     if no_sumables:
         return CeldaRelleno(
@@ -601,7 +736,7 @@ def calcular_relleno_cuadro(unit, cuadro: CuadroSuperficies, rooms: Sequence) ->
     # --- Vivienda tipo: conservar si ya está bien, nunca sobrescribir ---
     resultados.append(_celda_vivienda_tipo(cuadro.celda("vivienda_tipo"), unit))
 
-    return resultados
+    return guardian_d13(resultados)
 
 
 def _celda_vivienda_tipo(celda: Optional[CeldaCuadro], unit) -> CeldaRelleno:
@@ -642,12 +777,104 @@ TIPO_ASIGNACION = "asignacion"
 TIPO_NUMERICO = "numerico"
 _TIPOS_SOLICITUD = (TIPO_ASIGNACION, TIPO_NUMERICO)
 
+#: Cómo se llama cada campo cuando **lo escribe ArchMuse**, no el arquitecto.
+#:
+#: Se usa en dos sitios y conviene saber que son distintos: al preguntarle por
+#: una celda que no ha podido resolver, y al dibujar el cuadro canónico de
+#: `plantilla_canonica()`. Cuando hay cuadro en el plano **esto no se usa**: se
+#: copian sus etiquetas, que son las suyas.
 _ETIQUETA_CAMPO = {
+    "salon_cocina": "Salón + cocina",
+    "pasillo": "Pasillo",
+    "dormitorio_1": "Dormitorio 1",
+    "dormitorio_2": "Dormitorio 2",
+    "dormitorio_3": "Dormitorio 3",
+    "bano": "Baño",
+    "aseo": "Aseo",
+    "vestibulo": "Vestíbulo",
     "tendedero": "Tendedero", "terraza_1": "Terraza 1", "terraza_2": "Terraza 2",
+    "total_util_interior": "TOTAL SUP. ÚTIL INTERIOR (m2)",
+    "total_util_exterior": "TOTAL SUP. ÚTIL EXTERIOR (m2)",
+    "total_util": "TOTAL S. ÚTIL (m2)",
     "superficie_construida_cerrada": "Superficie construida cerrada",
     "superficie_construida_exterior": "Superficie construida exterior",
     "numero_unidades": "Número de unidades",
+    "vivienda_tipo": "VIVIENDA TIPO",
 }
+
+#: Las filas del cuadro canónico, en orden, y en qué lado van. `True` = columna
+#: izquierda (interiores y totales), `False` = derecha (exteriores).
+#:
+#: **El orden no es libre: es el de sus cuadros.** Interiores arriba a la
+#: izquierda, exteriores arriba a la derecha, totales debajo. Se ha copiado la
+#: disposición de los tres cuadros del estudio porque es la única referencia que
+#: hay de cómo se lee un cuadro de superficies en este despacho.
+_ORDEN_CANONICO = (
+    ("salon_cocina", True), ("pasillo", True),
+    ("dormitorio_1", True), ("dormitorio_2", True), ("dormitorio_3", True),
+    ("bano", True), ("aseo", True), ("vestibulo", True),
+    ("tendedero", False), ("terraza_1", False), ("terraza_2", False),
+    ("total_util_interior", True), ("total_util_exterior", False),
+    ("total_util", True),
+    ("superficie_construida_cerrada", True),
+    ("superficie_construida_exterior", True),
+    ("numero_unidades", False), ("vivienda_tipo", True),
+)
+
+#: Encabezados del cuadro canónico: (fila, columna, texto).
+_ENCABEZADOS_CANONICOS = (
+    (0, 0, "ESPACIOS INTERIORES"), (0, 1, "SUPERFICIES ÚTILES"),
+    (0, 2, "ESPACIOS EXTERIORES"), (0, 3, "SUPERFICIES ÚTILES"),
+)
+
+
+def plantilla_canonica() -> CuadroSuperficies:
+    """El cuadro que ArchMuse dibuja cuando **el plano no trae ninguno**.
+
+    ### Por qué esto puede existir sin elegir por el arquitecto
+
+    El PRD del 2026-09-11 se frenó en parte porque **no existe «el formato del
+    estudio»**: sus tres cuadros tienen 17, 18 y 18 campos y escriben la misma
+    fila de tres maneras (`S. CONSTRUIDA C.`, `S. CONSTRUIDA CERRADA`,
+    `S. CONSTRUIDA CERRADA.`). Copiar uno era elegir por él cuál de sus tres
+    formatos es el bueno, que es el tipo de decisión que `C-1`, `C-2` y `C-8`
+    dicen que ArchMuse no toma.
+
+    **Con el diseño del 2026-09-12 esa objeción se cae en los casos B, C y D**:
+    no se elige formato, se copia el que hay delante. Sobrevive sólo aquí,
+    cuando no hay ninguno, y se resuelve **declarándolo**: la tabla dice
+    «ArchMuse · BORRADOR» y usa `CAMPOS_DEL_CUADRO`, que es **el formato de
+    ArchMuse**. No se le atribuye a él un formato que no ha elegido, y por eso
+    deja de ser una decisión tomada en su nombre.
+
+    Las celdas no llevan coordenadas de dibujo (`x=0, y=0`): aquí no hay tabla
+    que leer, y el punto de inserción lo pone el arquitecto con el ratón.
+    """
+    celdas: List[CeldaCuadro] = []
+    filas: List[FilaDeCuadro] = []
+
+    for f, c, texto in _ENCABEZADOS_CANONICOS:
+        filas.append(FilaDeCuadro(fila=f, etiqueta=texto, campo=None,
+                                  columna_etiqueta=c, columna_valor=c))
+
+    siguiente = {True: 1, False: 1}
+    for campo, izquierda in _ORDEN_CANONICO:
+        col_etiqueta = 0 if izquierda else 2
+        fila = siguiente[izquierda]
+        siguiente[izquierda] += 1
+        filas.append(FilaDeCuadro(
+            fila=fila, etiqueta=_ETIQUETA_CAMPO[campo], campo=campo,
+            columna_etiqueta=col_etiqueta, columna_valor=col_etiqueta + 1))
+        celdas.append(CeldaCuadro(
+            campo=campo, etiqueta=_ETIQUETA_CAMPO[campo],
+            columna="B" if col_etiqueta == 0 else "D",
+            x=0.0, y=0.0, texto_actual=None,
+            fila=fila, columna_indice=col_etiqueta + 1,
+            columna_etiqueta=col_etiqueta))
+
+    filas.sort(key=lambda x: (x.fila, x.columna_etiqueta))
+    return CuadroSuperficies(celdas=celdas, etiquetas_sin_campo=(),
+                             filas=tuple(filas))
 
 
 @dataclass(frozen=True)
@@ -868,18 +1095,18 @@ def aplicar_respuestas(
                         ),
                     )
                 else:
-                    # El arquitecto confirma explícitamente que no hay pieza
-                    # real para este hueco -- es un cero declarado, no un
-                    # cero automático (por eso CERO_REAL con
-                    # declarado_por_usuario=True, no la rama CERO_REAL de
-                    # `_celda_familia_simple`).
-                    texto = _formatear_area(0.0)
+                    # El arquitecto confirma que no hay pieza real para este
+                    # hueco. Hasta el 2026-09-13 eso escribía un `0,00 m²`
+                    # «declarado»; con `D-13` una estancia que no existe no mide
+                    # cero, ni aunque lo confirme él: la celda queda vacía y el
+                    # motivo dice que lo ha confirmado.
                     por_campo[campo] = _con_conflicto_o(
-                        campo, texto,
-                        lambda campo=campo, texto=texto, celda_destino=celda_destino: CeldaRelleno(
-                            campo, texto, CERO_REAL,
-                            "El arquitecto confirma que no hay ninguna pieza real para este hueco.",
-                            celda_destino, declarado_por_usuario=True,
+                        campo, "",
+                        lambda campo=campo, celda_destino=celda_destino: CeldaRelleno(
+                            campo, "", NO_DIBUJADA,
+                            "El arquitecto confirma que no hay ninguna pieza real para este "
+                            "hueco. No se escribe 0,00 m² (D-13).",
+                            celda_destino, escribir=False, declarado_por_usuario=True,
                         ),
                     )
         else:
@@ -902,7 +1129,7 @@ def aplicar_respuestas(
     por_campo["total_util"] = _total_util_no_se_suma(por_campo["total_util"].celda)
 
     # Mismo orden que `resultados` de entrada, para que la salida sea estable.
-    return [por_campo[r.campo] for r in resultados]
+    return guardian_d13([por_campo[r.campo] for r in resultados])
 
 
 # ---------------------------------------------------------------------------
@@ -916,38 +1143,201 @@ def aplicar_respuestas(
 
 TITULO_CUADRO = "CUADRO DE SUPERFICIES POR TIPO DE VIVIENDA"
 
-# Texto de etiqueta normalizado (sin acentos, sin puntuación final, en
-# mayúsculas) -> campo. Es la única parte de este módulo que depende de la
-# redacción exacta de ESTE cuadro; detectar_cuadro_superficies() ya deja
-# dicho en su docstring que otra redacción exigiría ampliar esta tabla, no
-# tocar la rejilla ni el resto de la detección.
-_ETIQUETA_A_CAMPO = {
-    "SALON + COCINA": "salon_cocina",
-    "PASILLO": "pasillo",
-    "DORMITORIO 1": "dormitorio_1",
-    "DORMITORIO 2": "dormitorio_2",
-    "DORMITORIO 3": "dormitorio_3",
-    "BANO": "bano",
-    "ASEO": "aseo",
-    "VESTIBULO": "vestibulo",
-    "TENDEDERO": "tendedero",
-    "TERRAZA 1": "terraza_1",
-    "TERRAZA 2": "terraza_2",
-    "TOTAL SUP.UTIL INTERIOR (M2)": "total_util_interior",
-    "TOTAL SUP.UTIL EXTERIOR (M2)": "total_util_exterior",
-    "TOTAL S. UTIL (M2)": "total_util",
-    "S. CONSTRUIDA CERRADA": "superficie_construida_cerrada",
-    "S.CONSTRUIDA EXTERIOR": "superficie_construida_exterior",
-    "VIVIENDA TIPO": "vivienda_tipo",
-    "NUMERO UDS": "numero_unidades",
-}
+# El diccionario de cadenas exactas que vivía aquí se retiró el 2026-09-10.
+# Reconocía 13 de 17 campos del segundo cuadro del mismo arquitecto —fallaba por
+# un espacio, un punto y una abreviatura— y su docstring ya avisaba de que otra
+# redacción «exigiría ampliar esta tabla». Ampliarla plano a plano era el
+# camino a una capacidad que hay que parchear por cliente.
+#
+# Lo sustituye `emparejador_cuadro.emparejar`, que empareja por palabras
+# presentes y **empareja todas las etiquetas a la vez**, para poder ver que dos
+# filas pidan el mismo campo.
 
 
-def _normalizar_etiqueta(texto: str) -> str:
-    t = _normalizar(texto)
-    t = t.rstrip(".:")
-    t = re.sub(r"\s+", " ", t).strip()
-    return t
+
+# ---------------------------------------------------------------------------
+# `D-13` · Ninguna celda de superficie dice `0,00 m²`. Deroga `C-4`.
+# ---------------------------------------------------------------------------
+#
+# **`C-4` (2026-09-10) decía que un cero se escribía sobre una medición limpia.**
+# Se aplicaba sólo en la vía del comando (`D-15`: la web nunca pasó por él), y
+# sobre medición limpia dejaba pasar justo el caso que Pablo vio en AutoCAD el
+# 2026-09-13: filas `pasillo` y `vestibulo` que el plano no dibuja. `D-13` lo
+# sustituye por algo más simple y más fuerte: **ninguna habitación mide cero**.
+#
+# **Por qué el guardián no se calla.** Si algún día un cálculo vuelve a producir
+# un cero, esta función no lo convierte en silencio en una celda vacía —eso
+# taparía el fallo y los tests seguirían verdes—: lo convierte en una celda vacía
+# con `MOTIVO_GUARDIAN_D13`, que dice que es un fallo de ArchMuse. Los tests
+# buscan ese motivo. El arquitecto no ve un cero; el repositorio ve un rojo.
+
+#: Lo que lleva una celda en la que ArchMuse **iba** a escribir un cero. Si
+#: aparece en algún sitio, hay un productor de ceros nuevo que buscar.
+MOTIVO_GUARDIAN_D13 = (
+    "ArchMuse iba a escribir 0,00 m² en esta celda y el guardián de D-13 lo ha "
+    "impedido. Es un fallo de ArchMuse, no de tu plano: la celda se queda vacía."
+)
+
+
+def es_superficie_cero(texto: Optional[str]) -> bool:
+    """`True` para `0,00 m²` y sus variantes (`0.00m2`, `0 m²`)."""
+    return bool(re.search(r"(?<![\d.,])0+(?:[.,]0+)?\s*m", texto or "", re.IGNORECASE))
+
+
+def guardian_d13(celdas: Sequence[CeldaRelleno]) -> List[CeldaRelleno]:
+    """`D-13` sobre la salida: ninguna celda sale con una superficie cero."""
+    resultado: List[CeldaRelleno] = []
+    for c in celdas:
+        if es_superficie_cero(c.texto) and not c.preexistente:
+            resultado.append(CeldaRelleno(
+                c.campo, "", BLOQUEADO, MOTIVO_GUARDIAN_D13, c.celda,
+                escribir=False, declarado_por_usuario=c.declarado_por_usuario))
+        else:
+            resultado.append(c)
+    return resultado
+
+
+#: Familia -> campo del cuadro. Es el mismo vocabulario de `FAMILIAS` en
+#: `medicion.py`, que importa estos patrones de aquí: una sola definición de qué
+#: es un tendedero, tanto para medir como para repartir.
+_PATRON_A_CAMPO = (
+    (_PATRON_SALON_COCINA, "salon_cocina"),
+    (_PATRON_PASILLO, "pasillo"),
+    (_PATRON_VESTIBULO, "vestibulo"),
+    (_PATRON_BANO, "bano"),
+    (_PATRON_ASEO, "aseo"),
+    (_PATRON_TENDEDERO, "tendedero"),
+)
+
+
+def campo_de_la_pieza(rotulo: str) -> Optional[str]:
+    """En qué fila del cuadro va una pieza medida, por su rótulo.
+
+    Devuelve `None` cuando el rótulo no es de ninguna familia conocida — y eso
+    **no se descarta en silencio**: quien llama lo declara como pieza sin fila
+    (`C-6`). Los dormitorios y las terrazas llevan número, así que se resuelven
+    aparte: «Dormitorio 2» va a `dormitorio_2`, no a un `dormitorio` genérico.
+    """
+    normalizado = _normalizar(rotulo or "")
+    if not normalizado.strip():
+        return None
+    for n in (1, 2, 3):
+        if _patron_dormitorio(n).search(normalizado):
+            return "dormitorio_%d" % n
+    if _PATRON_TERRAZA.search(normalizado):
+        numero = re.search(r"\b([12])\b", normalizado)
+        return "terraza_%s" % (numero.group(1) if numero else "1")
+    for patron, campo in _PATRON_A_CAMPO:
+        if patron.search(normalizado):
+            return campo
+    return None
+
+
+
+def cuadro_desde_celdas(celdas: Sequence[Sequence]) -> Optional[CuadroSuperficies]:
+    """El cuadro construido a partir de las celdas que manda el cliente CAD.
+
+    `celdas` son tripletas `(fila, columna, texto)` leídas de la tabla del
+    arquitecto con la API de AutoCAD. Es la otra forma de llegar al mismo
+    `CuadroSuperficies` que `detectar_cuadro_superficies` obtiene de un DXF, y
+    existe porque **desde AutoCAD no hace falta reconstruir la rejilla**: la
+    tabla ya dice en qué fila y en qué columna está cada cosa. Lo que se evita
+    con eso es tener dos maneras de decidir qué fila es cada etiqueta; la
+    decisión sigue siendo una sola, la de `emparejar`.
+
+    Convención de columnas, la misma de siempre: las pares (0, 2) llevan las
+    etiquetas y las impares (1, 3) los valores. Una etiqueta de la columna 0
+    tiene su valor en la 1; una de la 2, en la 3.
+
+    Devuelve `None` si no hay ninguna etiqueta reconocible, que es como decir
+    «esto no es un cuadro de superficies»; nunca un cuadro vacío que luego
+    parezca que no tenía filas.
+    """
+    # **Qué celda es una etiqueta lo decide el emparejador, no su posición.**
+    # Antes se clasificaba por paridad —pares etiqueta, impares valor—, que es
+    # como son los tres cuadros de este estudio y nada más lo garantizaba. Un
+    # cuadro con otra disposición no fallaba: escribía las cifras correctas en la
+    # columna equivocada. Ahora se prueba cada celda contra el vocabulario y la
+    # que reclama un campo es la etiqueta, esté donde esté.
+    todas = []
+    for celda in celdas:
+        try:
+            fila, columna, texto = int(celda[0]), int(celda[1]), str(celda[2] or "")
+        except (TypeError, ValueError, IndexError):
+            continue
+        todas.append((fila, columna, texto))
+
+    ultima_columna = max((c for _f, c, _t in todas), default=-1)
+    valores: Dict[tuple, str] = {(f, c): t for f, c, t in todas}
+
+    candidatas = [(f, c, t) for f, c, t in todas if t.strip()]
+    emparejadas = emparejar([texto for _f, _c, texto in candidatas])
+
+    resultado: List[CeldaCuadro] = []
+    sin_campo: List[tuple] = []
+    filas_literales: List[FilaDeCuadro] = []
+    for (fila, columna, texto), pareja in zip(candidatas, emparejadas, strict=True):
+        if pareja.campo is None:
+            if pareja.motivo:
+                sin_campo.append((texto, pareja.motivo))
+            filas_literales.append(FilaDeCuadro(
+                fila=fila, etiqueta=texto, campo=None, motivo=pareja.motivo,
+                columna_etiqueta=columna,
+                columna_valor=min(columna + 1, ultima_columna)))
+            continue
+        # **La celda a rellenar es la de la derecha de su etiqueta**, sea cual
+        # sea su índice. Si la etiqueta está en la última columna no hay ninguna,
+        # y eso se declara en vez de escribir en otro sitio.
+        col_valor = columna + 1
+        if col_valor > ultima_columna:
+            motivo_borde = (
+                "la fila «%s» tiene su etiqueta en la última columna del cuadro "
+                "(la %d): no hay ninguna celda a su derecha donde escribir la "
+                "cifra" % (texto, columna))
+            sin_campo.append((texto, motivo_borde))
+            filas_literales.append(FilaDeCuadro(
+                fila=fila, etiqueta=texto, campo=None, motivo=motivo_borde,
+                columna_etiqueta=columna, columna_valor=columna))
+            continue
+        actual = valores.get((fila, col_valor)) or None
+        resultado.append(CeldaCuadro(
+            campo=pareja.campo, etiqueta=texto,
+            columna="B" if col_valor == 1 else "D",
+            fila=fila, columna_indice=col_valor, columna_etiqueta=columna,
+            # Sin coordenadas: por esta vía escribe AutoCAD en la celda, no un
+            # MTEXT superpuesto, así que el punto no hace falta y poner un cero
+            # es más honesto que inventarse una posición.
+            x=0.0, y=0.0,
+            texto_actual=actual,
+        ))
+        filas_literales.append(FilaDeCuadro(
+            fila=fila, etiqueta=texto, campo=pareja.campo,
+            columna_etiqueta=columna, columna_valor=col_valor))
+    # **«No hay cuadro» y «hay cuadro y no se puede rellenar» son distintos.**
+    # Si no se ha reconocido NINGUNA etiqueta, esto no es un cuadro de
+    # superficies y se dice que no hay. Pero si se reconocieron y aun así no
+    # queda ninguna celda escribible —todas con su etiqueta en la última
+    # columna, por ejemplo— el cuadro **sí existe** y devolver `None` haría que
+    # el arquitecto leyera «no se reconoce ningún cuadro», que es falso y le
+    # manda a mirar donde no es. Se devuelve con cero celdas y con los motivos
+    # puestos, que es lo que de verdad pasa.
+    if not resultado and not sin_campo:
+        return None
+
+    # Mismo filtro que al leer el DXF: **una celda de valor suya no es una fila
+    # de su cuadro**. Sin esto, el cuadro que ArchMuse dibuja al lado sale con
+    # las cifras del arquitecto dentro, presentadas como medidas por él.
+    posiciones_de_valor = {(c.fila, c.columna_indice) for c in resultado}
+    filas_literales = [
+        f for f in filas_literales
+        if f.campo is not None
+        or (f.fila, f.columna_etiqueta) not in posiciones_de_valor
+    ]
+    filas_literales.sort(key=lambda f: (f.fila, f.columna_etiqueta))
+
+    return CuadroSuperficies(celdas=tuple(resultado),
+                             etiquetas_sin_campo=tuple(sin_campo),
+                             filas=tuple(filas_literales))
 
 
 def detectar_cuadro_superficies(doc) -> Optional[CuadroSuperficies]:
@@ -959,17 +1349,102 @@ def detectar_cuadro_superficies(doc) -> Optional[CuadroSuperficies]:
     cualquier `ACAD_TABLE` de `doc.modelspace()` cuyo primer MTEXT normalizado
     sea `TITULO_CUADRO` se acepta; la rejilla de celdas se reconstruye en cada
     caso a partir de las LINE de ESE `ACAD_TABLE`, no de una tabla fija.
+
+    ### LÍMITE: devuelve **el primero**, y un proyecto real tiene varios
+
+    Este `return` dentro del bucle no es una optimización: es el techo de lo que
+    ArchMuse sabe ver por esta vía. **`plantasimple.dxf` tiene 25 cuadros**, uno
+    por vivienda, y es el único proyecto completo del lote —así que varios
+    cuadros no son la rareza, son la forma normal de un proyecto de verdad
+    (medido el 2026-09-12, `docs/PROGRESS.md`)—.
+
+    Por la vía del comando el límite no se nota, porque el cliente CAD manda las
+    celdas del cuadro que el arquitecto ha elegido y el servidor reparte **ese**.
+
+    Por la vía web no es una pérdida muda —`coherencia.revisar` mete el contraste
+    en `no_comprobado` en cuanto el plano tiene más de una vivienda— pero **sí
+    está mal nombrada**: lo que dice es *«un cuadro describe una sola vivienda»*,
+    y en `plantasimple.dxf` lo cierto es que **hay 25 cuadros y se ha leído 1**.
+    El arquitecto lee que no se puede contrastar por culpa de su plano, cuando el
+    motivo real es el techo de esta función. Un motivo que señala al sitio
+    equivocado manda la búsqueda al sitio equivocado, que es lo que ya costó una
+    sesión con el recuento de polilíneas de `v1plantas.dxf`.
+
+    Mientras esto siga así, **no vale recorrer las tablas desde fuera** —ni desde
+    un test, ni desde un script—: sería una segunda implementación del criterio
+    de detección fuera de este módulo, que es lo que prohibe `D-7`. El barrido,
+    cuando haga falta, se escribe **aquí**.
     """
-    msp = doc.modelspace()
-    for tabla in msp.query("ACAD_TABLE"):
-        entidades = list(tabla.virtual_entities())
+    cuadros = detectar_cuadros_superficies(doc)
+    return cuadros[0] if cuadros else None
+
+
+def detectar_cuadros_superficies(doc) -> List[CuadroSuperficies]:
+    """**Todos** los cuadros del plano, en el orden en que están en el dibujo.
+
+    ### Por qué el plural no es una comodidad
+
+    `plantasimple.dxf` —el único proyecto completo del lote— tiene **25 cuadros**,
+    uno por vivienda. Con el detector en singular, ArchMuse leía **uno** y los 24
+    restantes no existían para el producto: `coherencia` acababa diciendo que no
+    podía contrastar *«porque un cuadro describe una sola vivienda»*, que es
+    verdad y **no era el motivo**. Un motivo que señala al sitio equivocado manda
+    la búsqueda al sitio equivocado.
+
+    Varios cuadros por plano no es un caso límite: es la forma normal de un
+    proyecto de verdad. Medido el 2026-09-12; PRD `2026-09-12`, §10.
+
+    Un cuadro cuya rejilla no se pueda reconstruir **no tumba a los demás**: se
+    salta. Un plano de 25 cuadros donde el tercero venga raro tiene que seguir
+    dando 24, no cero.
+    """
+    cuadros: List[CuadroSuperficies] = []
+    for tabla in doc.modelspace().query("ACAD_TABLE"):
+        try:
+            entidades = list(tabla.virtual_entities())
+        except Exception:  # noqa: BLE001 - tabla de un cliente ajeno
+            continue
         mtexts = [e for e in entidades if e.dxftype() == "MTEXT"]
         lines = [e for e in entidades if e.dxftype() == "LINE"]
-        titulos = [m for m in mtexts if _normalizar(m.text) == TITULO_CUADRO]
-        if not titulos:
+        if not any(_normalizar(m.text) == TITULO_CUADRO for m in mtexts):
             continue
-        return _construir_cuadro(mtexts, lines)
-    return None
+        try:
+            cuadros.append(_construir_cuadro(mtexts, lines))
+        except ValueError:
+            # `_construir_cuadro` se niega si la rejilla no tiene 4 columnas.
+            # Negarse es correcto; contagiar la negativa a los otros 24, no.
+            continue
+    return cuadros
+
+
+def cajas_y_alturas_de_los_cuadros(doc):
+    """`(cajas, alturas)` de los cuadros de superficies del plano (vía web).
+
+    **Para qué, desde el 2026-09-13.** Con la plantilla fija el cuadro del
+    arquitecto ya no aporta filas: sólo dice **dónde no dibujar** (sus cajas) y
+    **por debajo de qué altura de texto no se escribe** (la menor de sus celdas,
+    `D-14`). El cliente CAD manda lo mismo leído de la tabla viva.
+
+    Vive aquí y no en quien lo usa por la regla del docstring de
+    `detectar_cuadro_superficies`: qué tabla es un cuadro se decide en este
+    módulo, en un solo sitio.
+    """
+    cajas, alturas = [], []
+    for tabla in doc.modelspace().query("ACAD_TABLE"):
+        try:
+            entidades = list(tabla.virtual_entities())
+        except Exception:  # noqa: BLE001 - tabla de un cliente ajeno
+            continue
+        mtexts = [e for e in entidades if e.dxftype() == "MTEXT"]
+        if not any(_normalizar(m.text) == TITULO_CUADRO for m in mtexts):
+            continue
+        xs = [v for e in entidades if e.dxftype() == "LINE" for v in (e.dxf.start.x, e.dxf.end.x)]
+        ys = [v for e in entidades if e.dxftype() == "LINE" for v in (e.dxf.start.y, e.dxf.end.y)]
+        if xs and ys:
+            cajas.append(((min(xs), min(ys)), (max(xs), max(ys))))
+        alturas.extend(float(m.dxf.char_height) for m in mtexts
+                       if m.dxf.get("char_height"))
+    return cajas, alturas
 
 
 def _construir_cuadro(mtexts: Sequence, lines: Sequence) -> CuadroSuperficies:
@@ -990,30 +1465,104 @@ def _construir_cuadro(mtexts: Sequence, lines: Sequence) -> CuadroSuperficies:
     # Columnas: 0=label-int, 1=valor-int(B), 2=label-ext, 3=valor-ext(D).
     col_centro = [(xs[i] + xs[i + 1]) / 2 for i in range(len(xs) - 1)]
 
+    # Igual que en `cuadro_desde_celdas`: **la etiqueta la decide el
+    # emparejador, no la paridad de su columna**. Aquí se recogen todos los
+    # textos con su celda y se prueba después cuáles reclaman un campo.
     etiquetas = []
     valores_existentes: Dict[tuple, str] = {}
+    ultima_columna = len(col_centro) - 1
     for m in mtexts:
         ip = m.dxf.insert
         col = _banda(ip.x, xs)
         fila = _banda(ip.y, ys)
-        if col in (0, 2):
-            etiquetas.append((fila, col, m.text, ip.x, ip.y))
-        elif col in (1, 3):
-            valores_existentes[(fila, col)] = m.text
+        if col < 0 or fila < 0:
+            continue
+        valores_existentes[(fila, col)] = m.text
+        etiquetas.append((fila, col, m.text, ip.x, ip.y))
+
+    # Las etiquetas se emparejan TODAS A LA VEZ, no una a una: de una en una no
+    # se puede ver que dos filas distintas pidan el mismo campo, que es la
+    # ambigüedad que hace daño de verdad (ver `emparejador_cuadro.emparejar`).
+    emparejadas = emparejar([texto for _f, _c, texto, _x, _y in etiquetas])
 
     celdas = []
-    for fila, col_etiqueta, texto_etiqueta, _lx, ly in etiquetas:
-        campo = _ETIQUETA_A_CAMPO.get(_normalizar_etiqueta(texto_etiqueta))
-        if campo is None:
-            continue  # encabezado de grupo (p. ej. "ESPACIOS INTERIORES") o título -- no es un campo
-        col_valor = col_etiqueta + 1  # label-int(0)->valor(1); label-ext(2)->valor(3)
+    sin_campo = []
+    # Todas las filas, reconocidas o no, para poder **copiar su cuadro** al
+    # dibujar el de ArchMuse al lado. Ver `FilaDeCuadro`.
+    filas_literales = []
+    # `strict=True`: `emparejar` devuelve un resultado por etiqueta, siempre. Si
+    # algún día dejara de hacerlo, truncar en silencio dejaría filas del cuadro
+    # sin emparejar sin que nadie se enterara — que es justo lo que `C-6` no
+    # permite.
+    for (fila, col_etiqueta, texto_etiqueta, _lx, ly), pareja in zip(
+            etiquetas, emparejadas, strict=True):
+        if pareja.campo is None:
+            # Un encabezado de grupo («ESPACIOS EXTERIORES») o el título no son
+            # una fila y no llevan motivo. Una fila que sí lo parecía y no se ha
+            # podido resolver, sí: se guarda para poder decirlo.
+            if pareja.motivo:
+                sin_campo.append((texto_etiqueta, pareja.motivo))
+            # Va a las filas literales **igual**: el título y los encabezados son
+            # parte de su tabla, y copiarla sin ellos desalinearía la
+            # comparación, que es justo para lo que existe.
+            filas_literales.append(FilaDeCuadro(
+                fila=fila, etiqueta=texto_etiqueta, campo=None,
+                motivo=pareja.motivo, columna_etiqueta=col_etiqueta,
+                columna_valor=min(col_etiqueta + 1, ultima_columna)))
+            continue
+        # La celda de la derecha de su etiqueta, sea cual sea su índice.
+        col_valor = col_etiqueta + 1
+        if col_valor > ultima_columna:
+            motivo_borde = (
+                "la fila «%s» tiene su etiqueta en la última columna del cuadro "
+                "(la %d): no hay ninguna celda a su derecha donde escribir la "
+                "cifra" % (texto_etiqueta, col_etiqueta))
+            sin_campo.append((texto_etiqueta, motivo_borde))
+            filas_literales.append(FilaDeCuadro(
+                fila=fila, etiqueta=texto_etiqueta, campo=None,
+                motivo=motivo_borde, columna_etiqueta=col_etiqueta,
+                columna_valor=col_etiqueta))
+            continue
         texto_actual = valores_existentes.get((fila, col_valor))
         celdas.append(CeldaCuadro(
-            campo=campo,
+            campo=pareja.campo,
             etiqueta=texto_etiqueta,
             columna="B" if col_valor == 1 else "D",
+            fila=fila,
+            columna_indice=col_valor,
+            columna_etiqueta=col_etiqueta,
             x=col_centro[col_valor],
             y=ly,
             texto_actual=texto_actual,
         ))
-    return CuadroSuperficies(celdas=celdas)
+        filas_literales.append(FilaDeCuadro(
+            fila=fila, etiqueta=texto_etiqueta, campo=pareja.campo,
+            columna_etiqueta=col_etiqueta, columna_valor=col_valor))
+
+    # **Sus cifras no son filas de su cuadro, y esto es lo que lo impide.**
+    #
+    # `etiquetas` (arriba) contiene TODOS los MTEXT de la rejilla, y una celda de
+    # valor —«23.85m²»— es un MTEXT como cualquier otro: no casa con ningún
+    # campo, así que llega aquí indistinguible de un encabezado de grupo. Sin
+    # este filtro, **el cuadro que ArchMuse dibuja al lado sale con las cifras
+    # del arquitecto dentro**, presentadas como suyas. Es el peor fallo posible
+    # de esta capacidad: no es que falte un dato, es que ArchMuse firma un
+    # número que no ha medido.
+    #
+    # Se filtra por posición y no por aspecto: una celda es de valor cuando es
+    # **la celda de valor de un campo que sí se ha reconocido**, no cuando su
+    # texto se parece a una superficie. Un encabezado que viva en una columna de
+    # valor —«SUPERFICIES UTILES», que es el caso de estos cuadros— no está en
+    # ninguna fila con campo y **sobrevive**, que es lo que tiene que pasar.
+    posiciones_de_valor = {(c.fila, c.columna_indice) for c in celdas}
+    filas_literales = [
+        f for f in filas_literales
+        if f.campo is not None
+        or (f.fila, f.columna_etiqueta) not in posiciones_de_valor
+    ]
+
+    # Por fila y, dentro de la fila, por columna: es como se dibuja. Ni el
+    # recorrido de MTEXT ni el de `virtual_entities` lo garantizan.
+    filas_literales.sort(key=lambda f: (f.fila, f.columna_etiqueta))
+    return CuadroSuperficies(celdas=celdas, etiquetas_sin_campo=tuple(sin_campo),
+                             filas=tuple(filas_literales))

@@ -300,3 +300,45 @@ def test_el_dxf_materializado_no_mete_ni_un_texto_que_no_venga_del_cliente():
 
     assert textos == ["Salón"], (
         "el DXF materializado lleva texto que no mandó el cliente: %r" % textos)
+
+
+def test_las_dos_vias_marcan_en_LA_MISMA_capa():
+    """`C-9` aplicado a lo que se escribe, no sólo a lo que se mide.
+
+    Hasta el 2026-09-11 la vía web marcaba en `00 ARCHMUSE BORRADOR` y el
+    comando de AutoCAD en `ARCHMUSE - BORRADOR`. **El mismo plano marcado por
+    los dos caminos acababa con dos capas**, y el arquitecto que apagara una
+    seguiría viendo la otra — o creería haber quitado la marca sin quitarla.
+
+    No lo cazaba nadie: `tests/test_dos_vias_leen_igual.py` compara **lo que
+    cada vía mide**, y esto es un efecto sobre el dibujo. Que el invariante no lo
+    viera es su carencia, no su defensa.
+
+    Entre Python y LISP no hay forma de compartir una constante, así que la
+    única defensa posible es comparar las dos cadenas. Cuando el servidor declare
+    sus convenciones y el cliente las lea al arrancar —deuda P2 del PRD del
+    2026-09-10— este test dejará de hacer falta.
+    """
+    from pathlib import Path
+
+    lsp = (Path(__file__).parent.parent / "autocad" / "archmuse.lsp").read_text(
+        encoding="utf-8")
+
+    declaradas = re.findall(r'\(setq \*am:capa-de-la-marca\* "([^"]+)"\)', lsp)
+    assert declaradas, (
+        "el .lsp ya no declara `*am:capa-de-la-marca*`: si la capa ha vuelto a "
+        "ser un literal suelto, este test no puede vigilarla")
+    assert declaradas[0] == CAPA_DXF, (
+        "las dos vías marcan en capas distintas: la web en %r y AutoCAD en %r. "
+        "El mismo plano acabaría con dos capas de marca." % (CAPA_DXF, declaradas[0]))
+
+    # Y que el .lsp no escriba la capa a mano en ningún otro sitio. Se dejan
+    # fuera las cadenas que empiezan por un salto de línea —son mensajes para el
+    # arquitecto, que se imprimen con `princ`— y la leyenda de `C3`, que lleva la
+    # palabra BORRADOR porque es lo que dice.
+    literales = [l for l in re.findall(r'"([^"]*BORRADOR[^"]*)"', lsp)
+                 if l != CAPA_DXF
+                 and not l.startswith('\\n')
+                 and "BORRADOR PARA" not in l]
+    assert literales == [], (
+        "el .lsp menciona otras capas de borrador: %s" % literales)

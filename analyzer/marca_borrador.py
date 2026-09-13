@@ -47,7 +47,22 @@ LEYENDA = (
 #: motivos: el arquitecto puede apagarla para imprimir sin que eso borre nada de
 #: su trabajo, y las consultas que ya hace el producto sobre `00 CUADROS`
 #: siguen viendo exactamente lo que veían.
-CAPA_DXF = "00 ARCHMUSE BORRADOR"
+#:
+#: **Renombrada el 2026-09-11, de `00 ARCHMUSE BORRADOR` a ésta.** Las dos vías
+#: escribían en capas distintas —la web en aquélla y `autocad/archmuse.lsp` en
+#: ésta— y el mismo plano marcado por los dos caminos acababa con dos capas: el
+#: arquitecto que apagara una seguiría viendo la otra, o creería haber quitado la
+#: marca sin haberla quitado. Es una violación de `C-9` en la práctica (las dos
+#: vías no hacen lo mismo) que el invariante no cazaba porque sólo comparaba
+#: mediciones, no lo que cada vía escribe.
+#:
+#: Se queda el nombre de la vía AutoCAD porque **ésa es la que va a ser el
+#: producto** y la web es la demo (§0.0 del PRD del 2026-09-10). Planos marcados
+#: con el nombre viejo: sólo los hay en la máquina de desarrollo y en pruebas,
+#: ningún cliente tiene ninguno, así que **no hay migración**. Si algún día
+#: aparece un plano con `00 ARCHMUSE BORRADOR`, es de antes de esta fecha y su
+#: marca sigue siendo válida — lo único que pasa es que está en otra capa.
+CAPA_DXF = "ARCHMUSE - BORRADOR"
 
 #: Altura del texto en el DXF, en unidades de dibujo (metros, tras la
 #: conversión). 0,25 m se lee en una impresión a 1:100 sin taparlo todo.

@@ -36,7 +36,7 @@ sys.path.insert(0, RAIZ)
 
 from analyzer.cuadro_superficies import (  # noqa: E402
     BLOQUEADO,
-    CERO_REAL,
+    NO_DIBUJADA,
     CeldaCuadro,
     CuadroSuperficies,
     aplicar_respuestas,
@@ -238,8 +238,12 @@ else:
           "tendedero queda marcado declarado_por_usuario=True")
     check(por_campo_final["terraza_1"].declarado_por_usuario is True,
           "terraza_1 queda marcado declarado_por_usuario=True")
-    check(por_campo_final["terraza_2"].estado == CERO_REAL and por_campo_final["terraza_2"].declarado_por_usuario is True,
-          "terraza_2 (sin asignar) -> CERO_REAL declarado, no un CERO_REAL automático",
+    # `D-13` (2026-09-13): antes salía un «0,00 m²» declarado (`CERO_REAL`). Ni
+    # confirmándolo él una estancia inexistente mide cero: vacía y declarada.
+    check(por_campo_final["terraza_2"].estado == NO_DIBUJADA
+          and por_campo_final["terraza_2"].declarado_por_usuario is True
+          and por_campo_final["terraza_2"].texto == "",
+          "terraza_2 (sin asignar) -> NO_DIBUJADA declarada y vacía (D-13)",
           por_campo_final["terraza_2"].texto)
     check(por_campo_final["superficie_construida_cerrada"].texto == "70,50 m²",
           "superficie_construida_cerrada = 70,50 m² (declarada)", por_campo_final["superficie_construida_cerrada"].texto)

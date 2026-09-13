@@ -36,7 +36,7 @@ sys.path.insert(0, RAIZ)
 from analyzer.cuadro_superficies import (  # noqa: E402
     BLOQUEADO,
     CALCULADO,
-    CERO_REAL,
+    NO_DIBUJADA,
     NO_DISPONIBLE,
     CeldaCuadro,
     CuadroSuperficies,
@@ -111,11 +111,13 @@ check(por_campo["salon_cocina"].estado == CALCULADO and por_campo["salon_cocina"
       "salon_cocina calculado", por_campo["salon_cocina"].texto)
 check(por_campo["dormitorio_1"].texto == "10,00 m²", "dormitorio_1 calculado")
 check(por_campo["dormitorio_2"].texto == "8,00 m²", "dormitorio_2 calculado")
-check(por_campo["dormitorio_3"].estado == CERO_REAL and por_campo["dormitorio_3"].texto == "0,00 m²",
-      "dormitorio_3 (no existe) -> CERO_REAL, no un fallo")
-check(por_campo["bano"].estado == CERO_REAL, "bano (no existe) -> CERO_REAL")
-check(por_campo["pasillo"].estado == CERO_REAL, "pasillo (no existe) -> CERO_REAL")
-check(por_campo["vestibulo"].estado == CERO_REAL, "vestibulo (no existe) -> CERO_REAL")
+# `D-13` (2026-09-13), que deroga `C-4`: hasta ese día estas cuatro filas salían
+# `CERO_REAL` con «0,00 m²». Una estancia que no existe no mide cero.
+check(por_campo["dormitorio_3"].estado == NO_DIBUJADA and por_campo["dormitorio_3"].texto == "",
+      "dormitorio_3 (no existe) -> NO_DIBUJADA vacía, nunca 0,00 (D-13)")
+check(por_campo["bano"].estado == NO_DIBUJADA, "bano (no existe) -> NO_DIBUJADA")
+check(por_campo["pasillo"].estado == NO_DIBUJADA, "pasillo (no existe) -> NO_DIBUJADA")
+check(por_campo["vestibulo"].estado == NO_DIBUJADA, "vestibulo (no existe) -> NO_DIBUJADA")
 check(por_campo["aseo"].texto == "3,00 m²", "aseo calculado")
 
 # Terraza 1/2: dos piezas reales, dos huecos, cada una numerada en su propia
@@ -223,8 +225,8 @@ else:
         check(por_campo_real[campo].estado == CALCULADO, "%s -> CALCULADO" % campo,
               por_campo_real[campo].estado)
     for campo in esperado_cero:
-        check(por_campo_real[campo].estado == CERO_REAL and por_campo_real[campo].texto == "0,00 m²",
-              "%s -> CERO_REAL (0,00 m²)" % campo, por_campo_real[campo].texto)
+        check(por_campo_real[campo].estado == NO_DIBUJADA and por_campo_real[campo].texto == "",
+              "%s -> NO_DIBUJADA vacía (D-13; antes 0,00 m²)" % campo, por_campo_real[campo].texto)
     for campo in esperado_bloqueado:
         check(por_campo_real[campo].estado == BLOQUEADO, "%s -> BLOQUEADO" % campo,
               por_campo_real[campo].estado)
@@ -303,8 +305,8 @@ else:
     # ninguna estancia real que los rellene -> siguen siendo CERO_REAL, el
     # camino normal, no BLOQUEADO ni preexistente.
     for campo in ("pasillo", "vestibulo"):
-        check(por_campo_ej[campo].estado == CERO_REAL and por_campo_ej[campo].preexistente is False,
-              "%s sigue siendo CERO_REAL normal (no preexistente)" % campo)
+        check(por_campo_ej[campo].estado == NO_DIBUJADA and por_campo_ej[campo].preexistente is False,
+              "%s sigue siendo NO_DIBUJADA normal (no preexistente; antes CERO_REAL)" % campo)
 
 
 print()
