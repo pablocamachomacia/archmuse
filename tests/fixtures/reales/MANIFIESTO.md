@@ -21,8 +21,8 @@ Todo lo que no se copia explícitamente no existe en la salida porque nunca
 llegó a existir.
 
 La diferencia no es teórica. El original de `planta_tres_viviendas.dxf` traía
-`$LASTSAVEDBY = '<nombre omitido>'` en la cabecera — **el nombre de pila de quien lo
-guardó**, que ningún borrado de capas habría quitado. En el derivado esa
+en `$LASTSAVEDBY` **el nombre de pila de quien lo guardó**, que ningún borrado
+de capas habría quitado. (Hasta el 2026-09-14 este párrafo lo citaba; ya no.) En el derivado esa
 variable vale `ezdxf` y los dos GUID del documento son nuevos.
 
 `scripts/auditar_fixture_anonimo.py` comprueba el resultado como si viniera de
