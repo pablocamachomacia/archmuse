@@ -136,6 +136,17 @@ PRIMITIVAS = {
     #   `textbox` -- (textbox lista-de-entidad) la caja ((x1 y1 z) (x2 y2 z)) que
     #       ocuparía un TEXT con los códigos dados: 1 texto, 7 estilo, 40 altura.
     "textbox",
+    # `C-15`, referencias externas (3.7.0, 2026-09-15). Contrastadas contra la
+    # referencia de AutoLISP **y ejecutadas en AutoCAD Core Console 2027** sobre
+    # copias de DWG reales (ver `docs/PROGRESS.md`, 2026-09-15):
+    #   `tblnext` -- (tblnext tabla [rebobinar]) la siguiente entrada de una tabla
+    #       de símbolos como lista DXF; con T empieza por la primera.
+    #   `tblobjname` -- (tblobjname tabla nombre) el ename de esa entrada; para un
+    #       bloque, `entnext` desde ahí recorre su definición.
+    #   `entnext` -- (entnext [ename]) la entidad siguiente; nil al acabar.
+    #   `vl-filename-base` / `vl-filename-extension` -- el nombre sin carpeta ni
+    #       extensión, y la extensión con su punto (nil si no tiene).
+    "tblnext", "tblobjname", "entnext", "vl-filename-base", "vl-filename-extension",
 }
 
 

@@ -845,6 +845,57 @@ usa y nadie ha decidido si debería.
 
 ---
 
+## C-15 · Si los recintos están en una referencia externa, se dice dónde y no se mide
+
+**Dictaminado por:** Pablo, 2026-09-15, tras medir los 70 DWG de un estudio:
+«que el comando detecte la xref y diga "este dibujo referencia plantas base.dwg;
+los recintos y el cuadro están ahí, abre ese fichero", en vez de culpar a la
+capa», y «que ArchMuse no ofrezca elegir otra capa cuando ha detectado que los
+recintos están en una xref. Elegir mal ahí acaba en cifra falsa, que es lo único
+que no nos podemos permitir».
+
+**Qué dice.** Antes de buscar el cuadro y antes de ofrecer la lista de capas, el
+comando mira las referencias externas cargadas del dibujo. Si alguna tiene
+polilíneas en la capa de recintos, dice qué fichero es, que los recintos —y el
+cuadro, si también está— están ahí, y que lo abra. **No ofrece otra capa y no
+mide.** Con la capa que él elija, si es otra, se repite la comprobación.
+
+**Por qué.** `ssget "_X"` no ve el contenido de una xref, y el parser no puede
+verlo nunca: en el DXF la definición de la xref tiene cero entidades. En una hoja
+montada sobre un maestro, el comando no encontraba la capa, culpaba a su nombre y
+ofrecía la lista; elegir otra capa ahí mide lo que no es. Medido el 2026-09-15:
+19 de 58 DWG distintos del estudio tienen sus recintos sólo en una xref.
+
+**Lo que NO firma este criterio, dicho:**
+
+1. **Recintos a la vez en el dibujo y en la xref: también se para.** No lo dijo
+   Pablo con estas palabras; lo decidió Claude al aplicar la misma regla, porque
+   medir sólo los de aquí es una cifra de menos y no se ve. En los 58 DWG no
+   apareció ningún caso real. Si hay que medir los de aquí con un aviso, es otra
+   decisión.
+2. **Xref sin cargar: se avisa y se sigue ofreciendo la lista.** De una xref sin
+   cargar no se sabe qué tiene, así que no hay detección que firme pararse.
+   Pararse también ahí queda **pendiente**.
+3. **La vía web no cambia.** El parser sigue sin ver las xref y su mensaje de
+   `CapaIndeterminada` sigue hablando de «bloques».
+
+**Alcance — medido en UN estudio.** En ese estudio el cuadro vive con sus
+recintos en el plano maestro (521 cuadros, todos en los maestros; ninguno propio
+en las hojas), así que el caso es molesto: basta abrir el maestro. **Otro estudio
+que ponga el cuadro en la hoja y los recintos en la xref cae en este caso cada
+vez**, y con este criterio no mide nada allí. Eso no se ha medido en ningún otro
+estudio.
+
+**Dónde se aplica.** `autocad/archmuse.lsp` 3.7.0: `am:xrefs`,
+`am:contenido-de-xref`, `am:recintos-en-xref-p`, `am:avisar-xrefs-sin-cargar`, y
+`c:ARCHMUSE` antes de buscar el cuadro y después de elegir capa.
+
+**Cómo se guarda.** `tests/test_c15_referencias_externas.py` sobre el fuente, y la
+ejecución de las funciones de detección en AutoCAD Core Console sobre copias de
+DWG reales (`docs/PROGRESS.md`, 2026-09-15).
+
+---
+
 ## Lo que sigue sin firmar
 
 De los tres criterios que `D-7` enumera desde el 2026-08-19, **`C-1` y `C-2`

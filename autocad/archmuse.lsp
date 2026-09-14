@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.6.2")
-(setq *am:version*  "3.6.2 (2026-09-14, la rama C lanza lanzar.pyw, sin uniones)")
+(setq *am:version-corta* "3.7.0")
+(setq *am:version*  "3.7.0 (2026-09-15, C-15: recintos en una referencia externa)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -472,6 +472,160 @@
 
 
 ;;; ---------------------------------------------------------------------------
+;;; C-15 · LOS RECINTOS EN UNA REFERENCIA EXTERNA: SE DICE DÓNDE, Y NO SE MIDE
+;;; ---------------------------------------------------------------------------
+;;; Firmado por Pablo el 2026-09-15. Criterio en
+;;; `docs/design/2026-09-08-criterios-firmados-de-medicion.md` (`C-15`); las
+;;; mediciones, en `docs/PROGRESS.md` del mismo día.
+;;;
+;;; **El caso.** Un estudio monta sus hojas referenciando un plano maestro
+;;; (`plantas base.dwg`): al pinchar una habitación, AutoCAD cambia a la pestaña
+;;; «Referencia externa». `ssget "_X"` no ve nada de lo que hay dentro de una
+;;; xref —medido con AutoCAD Core Console—, así que en una hoja el comando no
+;;; encontraba la capa de recintos, **culpaba a su nombre** y ofrecía elegir
+;;; otra de la lista. Elegir otra ahí acaba en una cifra falsa.
+;;;
+;;; **Lo que hace ahora, antes de buscar el cuadro y antes de ofrecer capa:**
+;;; · si una xref CARGADA tiene polilíneas en la capa de recintos, dice qué
+;;;   fichero es, que los recintos —y el cuadro, si también está— están ahí, y
+;;;   que lo abra. **No ofrece otra capa** y no mide.
+;;; · si además hay recintos en este dibujo, tampoco mide: medir sólo los de
+;;;   aquí daría una cifra de menos, y ésa no se ve.
+;;; · con la capa que él elija, si es otra, se repite la comprobación.
+;;; · si hay xrefs SIN CARGAR y ningún recinto en la capa por defecto, avisa de
+;;;   que pueden estar ahí y **sigue ofreciendo la lista**: de una xref sin
+;;;   cargar no se puede saber qué tiene, así que no hay detección. Si también
+;;;   ahí hay que pararse es una decisión pendiente, no tomada.
+;;;
+;;; **Leer una xref cargada sí se puede** (medido): su contenido vive en la
+;;; definición de su bloque y se recorre con `tblobjname` + `entnext`. Sus capas
+;;; llegan como «plantas base|00 areas». Aquí sólo se cuenta: medir dentro
+;;; exigiría transformar las coordenadas por la inserción, y eso no se ha probado.
+;;;
+;;; **Alcance, dicho:** medido en UN estudio (70 DWG), donde el cuadro vive con
+;;; sus recintos en el maestro y el caso es molesto. Otro estudio que ponga el
+;;; cuadro en la hoja y los recintos en la xref caerá aquí cada vez.
+
+(defun am:capa-sin-xref (nombre / p)
+  ;; «plantas base|00 areas» -> «00 areas». Con xrefs anidadas hay más de un
+  ;; prefijo, y la capa es siempre lo que va tras la última barra.
+  (while (setq p (vl-string-search "|" nombre))
+    (setq nombre (substr nombre (+ p 2))))
+  nombre)
+
+(defun am:fichero-de-xref (ruta / ext)
+  ;; Sólo el nombre del fichero, nunca la carpeta: la carpeta de un proyecto
+  ;; suele llevar el nombre del cliente (la misma regla que el registro).
+  (setq ext (vl-filename-extension ruta))
+  (strcat (vl-filename-base ruta) (if ext ext "")))
+
+(defun am:textos-de-entidad (datos / res)
+  ;; Todas las cadenas de una entidad (códigos 1, 3, 302 y 303), juntas. Sirve
+  ;; para reconocer el título de un cuadro dentro de una xref, donde se lee con
+  ;; `entget` y no con el objeto ActiveX de la tabla.
+  (setq res "")
+  (foreach g datos
+    (if (and (member (car g) '(1 3 302 303)) (= (type (cdr g)) 'STR))
+      (setq res (strcat res " " (cdr g)))))
+  res)
+
+(defun am:xrefs ( / b fl res)
+  ;; Las referencias externas del dibujo: ((bloque fichero cargada) ...). En la
+  ;; tabla de bloques, el bit 4 del código 70 es «xref» y el 32 «cargada».
+  (setq res nil b (tblnext "BLOCK" T))
+  (while b
+    (setq fl (cdr (assoc 70 b)))
+    (if (= 4 (logand 4 fl))
+      (setq res (cons (list (cdr (assoc 2 b))
+                            (am:fichero-de-xref (if (assoc 1 b) (cdr (assoc 1 b)) (cdr (assoc 2 b))))
+                            (= 32 (logand 32 fl)))
+                      res)))
+    (setq b (tblnext "BLOCK")))
+  (reverse res))
+
+(defun am:contenido-de-xref (bloque capa / e datos recintos cuadros titulo)
+  ;; (polilíneas-en-la-capa cuadros) dentro de una xref cargada. Una xref
+  ;; anidada es otro bloque de la tabla con su propio bit 4: `am:xrefs` la
+  ;; lista aparte, así que aquí no se baja por las inserciones.
+  (setq recintos 0 cuadros 0
+        titulo (am:mayusculas-sin-tildes *am:titulo-del-cuadro*)
+        e (tblobjname "BLOCK" bloque))
+  (if e
+    (while (setq e (entnext e))
+      (setq datos (entget e))
+      (cond
+        ((and (= (cdr (assoc 0 datos)) "LWPOLYLINE")
+              (= (strcase (am:capa-sin-xref (cdr (assoc 8 datos)))) (strcase capa)))
+          (setq recintos (1+ recintos)))
+        ((and (= (cdr (assoc 0 datos)) "ACAD_TABLE")
+              (vl-string-search titulo (strcase (am:textos-de-entidad datos))))
+          (setq cuadros (1+ cuadros))))))
+  (list recintos cuadros))
+
+(defun am:xrefs-con-recintos (capa / res c)
+  ;; Las xref CARGADAS con polilíneas en `capa`: ((fichero recintos cuadros) ...).
+  (setq res nil)
+  (foreach x (am:xrefs)
+    (if (caddr x)
+      (progn
+        (setq c (am:contenido-de-xref (car x) capa))
+        (if (> (car c) 0)
+          (setq res (cons (list (cadr x) (car c) (cadr c)) res))))))
+  (reverse res))
+
+(defun am:xrefs-sin-cargar ( / res)
+  ;; Los ficheros de las xref que AutoCAD no ha podido cargar: de ésas no se
+  ;; puede saber qué tienen.
+  (setq res nil)
+  (foreach x (am:xrefs)
+    (if (not (caddr x)) (setq res (cons (cadr x) res))))
+  (reverse res))
+
+(defun am:polilineas-en-capa (capa / ss)
+  ;; Las del propio dibujo, con la misma selección que `am:recolectar`.
+  (setq ss (ssget "_X" (list '(0 . "LWPOLYLINE") (cons 8 capa))))
+  (if ss (sslength ss) 0))
+
+(defun am:recintos-en-xref-p (capa / en-xref propios x)
+  ;; `C-15`. Si los recintos de `capa` están, todos o en parte, en una xref
+  ;; cargada, lo dice y devuelve T: el comando se para sin ofrecer otra capa.
+  (setq en-xref (am:xrefs-con-recintos capa))
+  (if (null en-xref)
+    nil
+    (progn
+      (setq propios (am:polilineas-en-capa capa))
+      (princ "\n\nNO MIDO ESTE DIBUJO.")
+      (foreach x en-xref
+        (princ (strcat "\n  Este dibujo referencia «" (car x) "», y los recintos de «" capa
+                       "» (" (itoa (cadr x)) " polilínea(s))"
+                       (if (> (caddr x) 0) " y el cuadro de superficies" "")
+                       " están ahí.")))
+      (if (> propios 0)
+        (princ (strcat "\n  En este dibujo hay otras " (itoa propios) " en «" capa
+                       "»: medir sólo ésas daría una cifra de menos.")))
+      (princ (strcat "\n  Abre "
+                     (if (= (length en-xref) 1) (strcat "«" (car (car en-xref)) "»") "esos ficheros")
+                     " y teclea ARCHMUSE allí."))
+      (princ "\n  No te ofrezco medir otra capa: con los recintos en una referencia externa,")
+      (princ "\n  cualquier otra daría una cifra falsa.")
+      T)))
+
+(defun am:avisar-xrefs-sin-cargar ( / sin-cargar)
+  ;; `C-15`, la parte que NO para. Xrefs sin cargar y ningún recinto en la capa
+  ;; por defecto: pueden estar ahí, pero no se puede saber. Se avisa y se sigue.
+  (setq sin-cargar (am:xrefs-sin-cargar))
+  (if (and sin-cargar (= 0 (am:polilineas-en-capa *am:capa-por-defecto*)))
+    (progn
+      (princ (strcat "\n\nAVISO — Este dibujo referencia " (itoa (length sin-cargar))
+                     " fichero(s) que AutoCAD no ha podido cargar:"))
+      (foreach f sin-cargar (princ (strcat "\n  · " f)))
+      (princ "\n  Si los recintos están en uno de ellos, ábrelo y teclea ARCHMUSE allí:")
+      (princ "\n  desde aquí no se pueden ver. Elige capa sólo si están dibujados en ESTE dibujo.")
+      T)
+    nil))
+
+
+;;; ---------------------------------------------------------------------------
 ;;; QUÉ CAPA SE MIDE, Y QUIÉN LO DECIDE
 ;;; ---------------------------------------------------------------------------
 ;;; Hasta el 2026-09-11 esto pedía **el nombre de la capa escrito a mano** y no
@@ -501,6 +655,10 @@
 ;;; comando, porque `ssget "_X"` no baja a las referencias de bloque. En los
 ;;; cinco planos disponibles no pasa —los recintos están siempre en el
 ;;; modelspace—, pero es un hueco real entre las dos vías, no una suposición.
+;;;
+;;; **Las referencias externas son otro problema, no éste** (`C-15`, arriba). En
+;;; un bloque la geometría está en este fichero y el servidor la ve; en una xref
+;;; está en otro fichero y no la ve ninguna de las dos vías.
 
 (defun am:elegir-capa ( / capas por-defecto intentos respuesta elegida i par)
   (setq capas (am:ordena-capas (am:capas-con-recintos)))
@@ -2021,6 +2179,20 @@
 
   (princ (strcat "\nArchMuse " *am:version*))
 
+  ;; 0. **`C-15`: los recintos en una referencia externa.** Va lo primero, antes
+  ;;    incluso de buscar el cuadro: en una hoja montada sobre un maestro el
+  ;;    cuadro TAMBIÉN está en la xref, y «este plano no tiene ningún cuadro»
+  ;;    sería otra causa falsa. Si están ahí, se dice dónde y se sale **sin
+  ;;    ofrecer la lista de capas**: elegir otra ahí acaba en una cifra falsa.
+  (if (am:recintos-en-xref-p *am:capa-por-defecto*)
+    (progn
+      (am:log "C-15: los recintos de la capa por defecto estan en una referencia externa. No se mide")
+      (setvar "CMDECHO" eco) (princ) (exit)))
+  ;;    Xrefs sin cargar: no se puede saber qué tienen. Se avisa y se sigue (la
+  ;;    parte de `C-15` que queda pendiente).
+  (if (am:avisar-xrefs-sin-cargar)
+    (am:log "C-15: referencias externas sin cargar y ningun recinto en la capa por defecto"))
+
   ;; 1. Los cuadros del arquitecto, si los tiene. **Ya no es un requisito.**
   ;;
   ;;    Hasta el 2026-09-12 esto era una puerta: sin cuadro el comando se
@@ -2058,6 +2230,13 @@
   (setq capa (am:elegir-capa))
   (if (null capa)
     (progn (setvar "CMDECHO" eco) (princ) (exit)))
+  ;; `C-15` otra vez, con la capa que él ha elegido si no es la de por defecto:
+  ;; la comprobación de arriba sólo sabía buscar ésa.
+  (if (and (/= (strcase capa) (strcase *am:capa-por-defecto*))
+           (am:recintos-en-xref-p capa))
+    (progn
+      (am:log "C-15: los recintos de la capa elegida estan en una referencia externa. No se mide")
+      (setvar "CMDECHO" eco) (princ) (exit)))
 
   ;; **Dónde va la tabla, ANTES de medir** (`D-14`, enmendado el 2026-09-13).
   ;; Un punto: la esquina de arriba a la izquierda. El servidor devuelve la

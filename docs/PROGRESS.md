@@ -5,6 +5,195 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 (tarde) · `C-15` implementado: el comando dice dónde están los recintos y no ofrece otra capa (`.lsp` 3.7.0)
+
+**Firmado por Pablo**, sobre las mediciones de la entrada de abajo: que el comando
+detecte la xref y diga «este dibujo referencia plantas base.dwg; los recintos y
+el cuadro están ahí, abre ese fichero» en vez de culpar a la capa, y que **no
+ofrezca elegir otra capa** cuando lo ha detectado, porque elegir mal ahí acaba en
+cifra falsa. Criterio escrito como `C-15` en
+`docs/design/2026-09-08-criterios-firmados-de-medicion.md`. Es la corrección de
+un mensaje con causa falsa y de una puerta a una cifra falsa, no una capacidad
+nueva: no lleva PRD.
+
+> **Alcance, y hay que leerlo antes que lo demás: medido en UN estudio.** Allí
+> el cuadro vive con sus recintos en el maestro y el caso es molesto: basta abrir
+> `plantas base.dwg`. **Otro estudio que ponga el cuadro en la hoja y los
+> recintos en la xref cae en el caso malo siempre**, y con `C-15` el comando no
+> mide nada allí. No hay DWG de ningún otro estudio para comprobarlo.
+
+### Qué hace
+
+- **Antes de buscar el cuadro y antes de la lista de capas**, recorre la tabla de
+  bloques (bit 4 = xref, bit 32 = cargada) y, en cada xref cargada, cuenta con
+  `tblobjname` + `entnext` las polilíneas de la capa de recintos (comparando sin
+  el prefijo «xref|») y los cuadros por su título. Si hay recintos, dice el
+  fichero —sólo el nombre, nunca la carpeta— y sale **sin ofrecer capa**.
+- **Con la capa que él elija**, si no es la de por defecto, repite la comprobación.
+- Registra el suceso con un literal, sin nombre de fichero ni capa.
+
+### Dos decisiones que NO firmó Pablo, dichas
+
+1. **Recintos a la vez aquí y en la xref: también se para**, con «medir sólo ésas
+   daría una cifra de menos». Lo decidió Claude aplicando la misma regla; en los 58
+   DWG no hay ningún caso real.
+2. **Xref sin cargar: avisa y sigue ofreciendo la lista.** De una xref sin cargar
+   no se sabe qué tiene, así que no hay detección que firme pararse. Queda
+   **pendiente** si también ahí hay que parar. Un test fija el comportamiento
+   actual para que cambiarlo sea a propósito.
+
+### Ejecutado en AutoCAD Core Console, con las funciones sacadas del `.lsp` real
+
+Sobre copias, en solo lectura:
+
+| Dibujo | Qué tiene | Resultado |
+|---|---|---|
+| anfitrión de prueba | 1 recinto propio + 1 en la xref | **para**, «cifra de menos» |
+| `PB VTC` | recintos y cuadros sólo en `plantas base.dwg` | **para**: 677 recintos y 25 cuadros ahí |
+| `alzados` | la xref se llama «plantas base 48» y apunta a `plantas base.dwg` | **para**, con el nombre del fichero, no el del bloque |
+| `plantas base` | 677 recintos propios; su xref `replanteo` no tiene ninguno | sigue |
+| `saneamiento` | 14 xrefs sin cargar, ningún recinto propio | **avisa** y sigue |
+| `pablo\v1plantas` | sin xrefs, 211 recintos propios | sigue |
+
+El mensaje, tal como sale en `PB VTC`:
+
+```
+NO MIDO ESTE DIBUJO.
+  Este dibujo referencia «plantas base.dwg», y los recintos de «00 areas» (677 polilínea(s)) y el cuadro de superficies están ahí.
+  Abre «plantas base.dwg» y teclea ARCHMUSE allí.
+  No te ofrezco medir otra capa: con los recintos en una referencia externa,
+  cualquier otra daría una cifra falsa.
+```
+
+**Lo que no se ha ejecutado:** el comando entero en AutoCAD con la interfaz (Core
+Console no tiene ActiveX). Se han ejecutado las funciones de detección y el
+mensaje; el orden dentro de `c:ARCHMUSE` lo guardan los tests.
+
+### Lo que queda igual, y lo que falta
+
+- **La beta instalada lleva el `.lsp` 3.6.2**: `C-15` llega con el próximo
+  paquete.
+- **La vía web no cambia.** El parser sigue sin ver las xref, y su
+  `CapaIndeterminada` sigue diciendo «bloques». Detectarlas ahí es posible (en el
+  DXF quedan la ruta y las capas `xref|capa`), pero no se ha hecho.
+- **Medir dentro de la xref** no se ha intentado: exige transformar las
+  coordenadas por la inserción.
+
+### El barrido, versionado sin datos
+
+Las sondas y el lanzador están en `herramientas/barrido_dwg/` (`LEEME.md` con las
+trampas: SECURELOAD, Git Bash, siempre sobre copias). **Los resultados no**:
+llevan rutas de planos de clientes y el repositorio es público; `barrer.ps1` se
+niega a escribirlos dentro. Están en `Proyectos/archmuse/_barrido/2026-09-15-xref/`,
+junto al barrido del 2026-09-10. Por la misma razón se han quitado de la entrada
+de abajo las rutas de red que identificaban al estudio.
+
+Tests: `tests/test_c15_referencias_externas.py` (10) y cinco primitivas nuevas en
+la lista contrastada de `test_archmuse_lsp.py`. Suite entera en verde: **1.990
+pasan, 39 se saltan, 1 xfail** (14 min 55 s).
+
+---
+
+## 2026-09-15 · Referencias externas: medidas en los 70 DWG. Es un agujero grande
+
+**Origen:** Pablo abrió un plano de otro proyecto del estudio y, al pinchar una
+habitación, AutoCAD cambió a la pestaña «Referencia externa». Diagnóstico sin
+tocar código.
+
+**Método, para poder repetirlo.** AutoCAD 2027 Core Console
+(`accoreconsole.exe /i <dwg> /s <scr> /readonly`) sobre **copias** de los 70 DWG,
+nunca los originales. Una sonda en AutoLISP recorre la tabla de bloques (bit 4 =
+xref, bit 32 = cargada), cuenta con `ssget "_X"` lo que ve el comando y, con
+`tblobjname` + `entnext`, lo que hay dentro de cada xref cargada. **Recinto =
+polilínea en una capa cuyo nombre contiene «area»**: es una aproximación, no la
+elección de capa del servidor. Dos trampas: `load` de un `.lsp` fuera de las rutas
+de confianza lo cancela SECURELOAD (la sonda va incrustada en el `.scr`), y desde
+Git Bash los argumentos `/i` `/s` llegan rotos (lanzar desde PowerShell).
+
+### Lo que ve cada vía (medido con dibujos de prueba)
+
+- **`ssget "_X"` no ve el contenido de una xref.** Anfitrión con un recinto propio
+  y otro dentro de la xref: devuelve 1.
+- **AutoLISP sí puede leerlo** si la xref está cargada: recorriendo su definición
+  salen las 9.897 polilíneas de `plantas base.dwg` desde cada hoja. Capas como
+  `plantas base|00 areas`; coordenadas en el sistema de la xref (hay que aplicar la
+  inserción — sin probar). Una xref **no cargada** no tiene nada que leer.
+- **El parser no puede verla nunca.** En el DXF, tanto el de ezdxf como el
+  `DXFOUT` de AutoCAD, la definición de la xref tiene **0 entidades**: sólo la ruta
+  y las capas `hijo|00 areas`. Por la web, además, sólo se sube un fichero.
+
+### ¿Lo dice o mide de menos en silencio?
+
+- **Recintos sólo en la xref:** no se escribe una cifra de menos, pero la causa
+  que se da es falsa. El comando dice que ninguna capa se llama «00 areas»; el
+  parser, `CapaIndeterminada` hablando de «bloques». Ninguno menciona la xref.
+- **Recintos repartidos entre el fichero y la xref: mide de menos y calla.**
+  Medido en el parser: 8 recintos propios + 8 en la xref → mide 8,
+  `geometria_no_leida = 0`, ningún aviso. El comando, por código, igual. Y la
+  celda del cuadro diría «El plano no dibuja ninguna estancia», que es falso. **En
+  los 58 planos distintos no se ha visto este caso con recintos de verdad** (los
+  cuatro «mixtos» tienen en su propia capa `AREA` 2-5 polígonos de parcela).
+
+### Tamaño
+
+| | 70 ficheros | 58 distintos |
+|---|---:|---:|
+| Tienen alguna xref | 43 | 35 |
+| **Recintos sólo a través de xref** | **26** | **19** |
+| Recintos dibujados en el propio fichero | — | 12 |
+
+El montaje del estudio: `plantas base.dwg` es el maestro (677 polilíneas en
+`00 areas` y 140 en `00 areas 2`), y las hojas `PB AA/AQ/AS/CN/DC/SUC/VTC/VTM`,
+`alzados` y `forzada` lo referencian. **Cota inferior:** 23 ficheros distintos
+tienen alguna xref que en la copia no se resuelve (rutas a una unidad de red, a
+Dropbox, o a una carpeta hermana que no estaba en la copia); `saneamiento` y
+`saneamiento2` apuntan a un `plantas base` de la unidad de red y en el estudio
+probablemente caigan también del lado malo.
+
+**No es `C-9`.** En un bloque la geometría está en el mismo fichero: el parser la
+ve y el comando no. En una xref está en otro fichero: sólo AutoCAD abierto puede
+llegar a ella. Los arreglos van en direcciones opuestas.
+
+### Dónde están los cuadros: con sus recintos. Molesto, no fatal (en este estudio)
+
+Era lo que decidía la gravedad: si el cuadro estuviera en las hojas, cada
+`ARCHMUSE` caería en el caso de la xref. **Medido en los 58 DWG distintos**, con la
+misma Core Console y otra sonda: `ACAD_TABLE` que ve `ssget "_X"`, cuántas llevan
+«SUPERFICIE» o «S. UTIL» en sus textos, en qué espacio, cuántas hay dentro de las
+xref cargadas, y textos sueltos con «SUPERFICIE». Validada antes sobre
+`pablo\v1plantas.dwg`: 25 tablas, las 25 con el título «CUADRO DE SUPERFICIES POR
+TIPO DE VIVIENDA».
+
+- **Las 521 tablas que son cuadros están en el mismo fichero que sus recintos**:
+  las 12 versiones de `plantas base*`, `pablo\plantas` y `pablo\v1plantas`, todas
+  en el espacio modelo. Ninguna tabla del corpus deja de ser cuadro.
+- **Las hojas no tienen ni una tabla propia.** Las 19 hojas que ven sus recintos por
+  xref ven también sus 25 cuadros **dentro de la misma xref**. El arquitecto no
+  puede editar ahí ese cuadro: lo edita en `plantas base.dwg`, que es donde
+  ArchMuse funciona.
+- **Tampoco hay un cuadro dibujado a mano en las hojas.** Los 75 textos con
+  «SUPERFICIE» de `PB VTC` son 25 títulos de cajetín, uno por presentación
+  («ARQUITECTURA- VIVIENDAS TIPO COTAS Y SUPERFICIES»), y 50 notas en el espacio
+  modelo sobre la superficie construida de almacenamiento. `PB VTM`: las mismas 50
+  notas.
+- Fuera de ese patrón, `paneles entrega` (15 y 10) y `propuesta fin3` (5) tienen
+  cuadros sin recintos ni xref: son láminas de entrega.
+
+**Conclusión, con su alcance.** En este estudio, **cuadro y recintos viven juntos
+en el maestro**, y ahí el comando funciona. La xref daña cuando se ejecuta
+`ARCHMUSE` en una hoja: no mide nada y da una causa falsa. Hipótesis sin medir: si
+entonces elige otra capa de la lista (en `PB CN` hay una `AREA` con polígonos de
+parcela), ArchMuse mediría lo que no es. **Es un estudio y un proyecto**: otro
+estudio que ponga el cuadro en la hoja y los recintos en la xref caería en el caso
+malo cada vez, y eso aquí no se puede medir.
+
+**Lo barato que hay que hacer igualmente:** que el comando detecte la xref (bit 4
+de la tabla de bloques) y lo diga en vez de culpar a la capa: «este dibujo
+referencia `plantas base.dwg`, y los recintos y el cuadro están ahí; abre ese
+fichero». Convierte el peor mensaje en el correcto. Propuesto, no hecho.
+
+---
+
 ## 2026-09-14 · 0.3.3 instalado en la VM encima de 0.3.2: funciona
 
 **Medido por Pablo** (`.exe` de `f9a0df7`, hash verificado, sin desinstalar lo
@@ -1346,6 +1535,12 @@ recinto ni un rótulo de recinto vive dentro de una referencia de bloque, y no h
 un solo `ATTRIB` en todo el corpus. Lo que `ssget "_X"` no ve, en estos planos,
 no existe.
 
+> **Corregido el 2026-09-15.** La última frase vale para los **bloques de estos
+> seis DXF**, y nada más. **No vale para el trabajo real del estudio:** en los 70
+> DWG, 26 ficheros (19 de 58 distintos) tienen sus recintos **sólo dentro de una
+> referencia externa**, que `ssget "_X"` tampoco ve y el parser no puede ver
+> nunca. Es otro problema, no éste: ver la entrada del 2026-09-15 arriba.
+
 | Plano | Recintos | En bloque | Rótulos sólo dentro de bloque |
 |---|---:|---:|---:|
 | `plantasimple` | 206 | 0 | 0 |
@@ -1353,12 +1548,21 @@ no existe.
 | `V5` / `ejemplo` | 22 / 51 | 0 | 0 |
 
 **El límite de esta medición, dicho:** cubre los 6 DXF legibles. Los 70 DWG no
-los lee `ezdxf`, así que de ellos no se sabe — y averiguarlo es, literalmente,
-para lo que existe la beta. Lo barato mientras tanto no es arreglar la
-divergencia, es **detectarla**: que el comando recorra la tabla de bloques por
-ActiveX y diga «esta capa además tiene N polilíneas dentro de bloques, que no
-puedo medir». Convierte una pérdida invisible en una declarada (`C-6`). Propuesto,
-no hecho.
+los lee `ezdxf`, así que de ellos no se sabía.
+
+> **Corregido el 2026-09-15: los 70 DWG ya se han medido, con AutoCAD Core
+> Console, y lo que apareció no son bloques sino referencias externas.** De
+> bloques en los DWG sigue sin haber cifra (la sonda contó xrefs, no bloques
+> normales), así que `C-9` en los DWG **sigue sin medir**. Pero el hueco grande
+> no era `C-9`: el estudio monta sus hojas referenciando `plantas base.dwg`, y
+> ahí ni el comando ni el parser ven un solo recinto. Cifras y método en la
+> entrada del 2026-09-15.
+
+Lo barato mientras tanto no es arreglar la divergencia, es **detectarla**: que el
+comando recorra la tabla de bloques por ActiveX y diga «esta capa además tiene N
+polilíneas dentro de bloques, que no puedo medir». Convierte una pérdida invisible
+en una declarada (`C-6`). Propuesto, no hecho. **La misma detección sirve para las
+xref** (bit 4 de la tabla de bloques), y allí es más urgente.
 
 ### `C-10` (reparar y declarar): PRD escrito, con las cifras medidas antes de tocar nada
 
