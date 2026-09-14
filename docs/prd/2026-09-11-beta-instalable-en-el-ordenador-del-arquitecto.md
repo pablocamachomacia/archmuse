@@ -861,6 +861,15 @@ escribe en el registro**: la próxima vez que muera, dejará dicho dónde.
    La base es `import app` en 15,6 s en caliente en la VM; **el arranque en frío
    no se ha medido**. Cada arranque escribe ya «listo … s después de arrancar»,
    que es la medida que falta.
+
+   **Medido después, el mismo día, en la VM:** el arranque al iniciar sesión
+   tras reiniciar escribió `import en 21.5 s` (registro, 18:12:35). Es más lento
+   que los 15,6 s en caliente y **ya pasaba de los 20 s viejos de la rama C**.
+   Tampoco es el caso más frío: los `.pyc` ya estaban compilados desde la
+   instalación, y esa versión del lanzador no escribía todavía el tiempo total.
+   Márgenes sobre esta medida: la rama C (90 s), unas 4,2 veces; el
+   actualizador (180 s), unas 8,4 veces. Los tests de plazos se miden ahora
+   contra 21,5 s.
 4. **El mensaje** dice si el servidor sigue arrancando o con qué código murió, y
    lo último que escribió en el registro. No supone la causa y no manda a nadie
    a AutoCAD.

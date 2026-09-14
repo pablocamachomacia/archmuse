@@ -101,14 +101,16 @@ def test_la_rama_c_lanza_lo_que_deja_el_instalador():
     assert r"{app}\app\actual\lanzador.pyw" in ISS
 
 
-#: `import app` en la VM de Windows 11 limpia, en caliente (medido el
-#: 2026-09-14). Los 20 s que hubo en la rama C salían de una máquina rápida.
-IMPORT_EN_CALIENTE_VM_S = 15.6
+#: `import app` en la VM de Windows 11 limpia (medido el 2026-09-14): 15,6 s en
+#: caliente y **21,5 s al iniciar sesión tras reiniciar**, que es la peor medida
+#: que hay. Los 20 s que hubo en la rama C salían de una máquina rápida y se
+#: quedaban cortos hasta en ese caso.
+IMPORT_TRAS_REINICIAR_VM_S = 21.5
 
 
 def test_la_rama_c_espera_con_margen_sobre_lo_medido_en_una_maquina_lenta():
     plazo = int(re.search(r"\(setq \*am:plazo-arranque-s\* (\d+)\)", LSP).group(1))
-    assert plazo >= 5 * IMPORT_EN_CALIENTE_VM_S, "la rama C no daría tiempo ni a importar"
+    assert plazo >= 4 * IMPORT_TRAS_REINICIAR_VM_S, "la rama C no daría tiempo ni a importar"
     cuerpo = _defun("am:levantar-servidor")
     assert "(< i *am:plazo-arranque-s*)" in cuerpo
     assert "(< i 20)" not in cuerpo and "20 s" not in cuerpo

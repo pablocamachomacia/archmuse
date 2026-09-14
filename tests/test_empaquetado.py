@@ -418,10 +418,11 @@ def test_el_lanzador_deja_rastro_antes_de_nada():
 
 
 def test_los_plazos_de_arranque_tienen_margen_sobre_lo_medido_en_la_vm(arbol):
-    """`import app` en 15,6 s en caliente en la VM limpia (2026-09-14). El 60 que
-    hubo antes no salía de ninguna medida."""
+    """`import app` en la VM limpia (2026-09-14): 15,6 s en caliente y 21,5 s al
+    iniciar sesión tras reiniciar, la peor medida que hay. El 60 que hubo antes
+    no salía de ninguna medida."""
     local, actualizador, _, _ = arbol
-    assert local.PLAZO_ARRANQUE_S >= 10 * 15.6
+    assert local.PLAZO_ARRANQUE_S >= 8 * 21.5
     assert actualizador.LIMITES_S["activar"] > local.PLAZO_ARRANQUE_S
     assert actualizador.LIMITES_S["instalar"] > local.PLAZO_ARRANQUE_S
     assert actualizador.LIMITES_S["volver"] > local.PLAZO_ARRANQUE_S

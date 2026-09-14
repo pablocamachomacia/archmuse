@@ -37,6 +37,13 @@ PRD** que lo daba por probado.
    Ahora 180 s y 90 s (`.lsp` 3.6.1), sobre `import app` en 15,6 s en caliente en
    la VM. **El arranque en frío sigue sin medir**; cada arranque escribe ya «listo
    … s después de arrancar».
+   **Medido después en la VM: `import en 21.5 s` al iniciar sesión tras
+   reiniciar** (18:12:35). Los 20 s viejos de la rama C se quedaban cortos
+   incluso ahí, que no es el caso más frío (los `.pyc` ya estaban compilados).
+   Márgenes: rama C 4,2 veces, actualizador 8,4 veces. Los tests de plazos se
+   miden ahora contra esta cifra. Los comentarios del código empaquetado citan
+   todavía sólo los 15,6 s: se actualizan en el próximo build, para no separar
+   el repositorio del `.exe` de `c5dd444`.
 4. **El mensaje** dice si sigue arrancando o con qué código murió y lo último
    que escribió; no supone la causa ni manda a AutoCAD.
 5. **El registro del lanzador se lee por posición, no por PID**: el `python.exe`
