@@ -32,15 +32,19 @@ nueva: no lleva PRD.
 - **Con la capa que él elija**, si no es la de por defecto, repite la comprobación.
 - Registra el suceso con un literal, sin nombre de fichero ni capa.
 
-### Dos decisiones que NO firmó Pablo, dichas
+### Las dos decisiones que quedaban, ya tomadas por Pablo
 
-1. **Recintos a la vez aquí y en la xref: también se para**, con «medir sólo ésas
-   daría una cifra de menos». Lo decidió Claude aplicando la misma regla; en los 58
-   DWG no hay ningún caso real.
-2. **Xref sin cargar: avisa y sigue ofreciendo la lista.** De una xref sin cargar
-   no se sabe qué tiene, así que no hay detección que firme pararse. Queda
-   **pendiente** si también ahí hay que parar. Un test fija el comportamiento
-   actual para que cambiarlo sea a propósito.
+1. **Recintos a la vez aquí y en la xref: se para.** Lo propuso Claude y lo firmó
+   Pablo: «Una cifra de menos es peor que no medir». En los 58 DWG no hay ningún
+   caso real.
+2. **Xref sin cargar: avisa y deja elegir capa, por ahora.** Pablo: «Es un caso
+   sin medir y no quiero cerrar la puerta a ciegas». Un test fija el
+   comportamiento para que cambiarlo sea a propósito.
+
+> **RIESGO ABIERTO.** Si la xref no está cargada y el arquitecto elige una capa
+> cualquiera, **puede salir una cifra falsa igual**. Lo único delante es el aviso.
+> En el estudio medido, 23 de 58 DWG distintos tienen alguna xref sin resolver en
+> la copia, y no se sabe en cuántas están los recintos.
 
 ### Ejecutado en AutoCAD Core Console, con las funciones sacadas del `.lsp` real
 
@@ -73,9 +77,11 @@ mensaje; el orden dentro de `c:ARCHMUSE` lo guardan los tests.
 
 - **La beta instalada lleva el `.lsp` 3.6.2**: `C-15` llega con el próximo
   paquete.
-- **La vía web no cambia.** El parser sigue sin ver las xref, y su
-  `CapaIndeterminada` sigue diciendo «bloques». Detectarlas ahí es posible (en el
-  DXF quedan la ruta y las capas `xref|capa`), pero no se ha hecho.
+- **Incumplimiento abierto de `C-9`: la vía web no sabe de xrefs.** El parser no
+  las ve y su `CapaIndeterminada` sigue diciendo «bloques»; el comando, sobre el
+  mismo plano, se para y dice dónde están los recintos. **Las dos vías ya no leen
+  igual.** Detectarlas en la web es posible (en el DXF quedan la ruta y las capas
+  `xref|capa`), pero no se ha hecho. Registrado en `C-9`.
 - **Medir dentro de la xref** no se ha intentado: exige transformar las
   coordenadas por la inserción.
 

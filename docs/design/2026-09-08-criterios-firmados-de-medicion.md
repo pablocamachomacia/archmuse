@@ -570,7 +570,19 @@ verde, la otra rota, y nadie mirando el hueco entre ellas:
    sigue viviendo en `extract_labels`, que es donde estaba probada. Después del
    arreglo las dos vías dan **157 / 156 / 16**, idénticas pieza a pieza.
 
-Los cuatro tenían tests, y los cuatro tenían **todos sus tests en verde**: cada
+5. **2026-09-15, las referencias externas — ABIERTO, sin arreglar.** Con `C-15`
+   el comando detecta que los recintos están en una xref, se para y dice qué
+   fichero abrir. La vía web no sabe de xrefs: el parser no puede verlas (en el
+   DXF la definición tiene cero entidades) y su `CapaIndeterminada` dice que
+   las superficies pueden estar «dentro de bloques», que es otra causa. **Sobre
+   el mismo plano, las dos vías dan motivos distintos: ya no leen igual.** En el
+   DXF sí quedan la ruta de la xref y las capas `xref|capa`, así que la web
+   podría detectarlas y decir lo mismo; no se ha hecho. Ningún test de
+   `test_dos_vias_leen_igual.py` lo cubre: el banco no tiene ningún plano con
+   xrefs. Declarado por Pablo como incumplimiento de este criterio el
+   2026-09-15.
+
+Los cuatro primeros tenían tests, y los cuatro tenían **todos sus tests en verde**: cada
 vía se probaba por separado y ninguno cruzaba. El hueco entre dos caminos
 correctos no lo vigila nadie salvo que se vigile a propósito — y el tercero
 enseña algo más: **un invariante también tiene huecos**, y el suyo estaba en
@@ -866,18 +878,27 @@ montada sobre un maestro, el comando no encontraba la capa, culpaba a su nombre 
 ofrecía la lista; elegir otra capa ahí mide lo que no es. Medido el 2026-09-15:
 19 de 58 DWG distintos del estudio tienen sus recintos sólo en una xref.
 
-**Lo que NO firma este criterio, dicho:**
+**Recintos a la vez en el dibujo y en la xref: también se para.** Lo propuso
+Claude al aplicar la regla y **lo firmó Pablo el 2026-09-15**: «si hay recintos
+aquí y en la xref, parar. Una cifra de menos es peor que no medir». En los 58 DWG
+no apareció ningún caso real.
 
-1. **Recintos a la vez en el dibujo y en la xref: también se para.** No lo dijo
-   Pablo con estas palabras; lo decidió Claude al aplicar la misma regla, porque
-   medir sólo los de aquí es una cifra de menos y no se ve. En los 58 DWG no
-   apareció ningún caso real. Si hay que medir los de aquí con un aviso, es otra
-   decisión.
-2. **Xref sin cargar: se avisa y se sigue ofreciendo la lista.** De una xref sin
-   cargar no se sabe qué tiene, así que no hay detección que firme pararse.
-   Pararse también ahí queda **pendiente**.
-3. **La vía web no cambia.** El parser sigue sin ver las xref y su mensaje de
-   `CapaIndeterminada` sigue hablando de «bloques».
+**Xref sin cargar: se avisa y se puede elegir capa. Decidido, y con un riesgo
+abierto.** Pablo, 2026-09-15: «por ahora deja el aviso y que se pueda elegir
+capa. Es un caso sin medir y no quiero cerrar la puerta a ciegas». De una xref
+sin cargar no se puede saber qué tiene, así que no hay detección que justifique
+pararse.
+
+> **RIESGO ABIERTO.** Si la xref no está cargada y el arquitecto elige una capa
+> cualquiera de la lista, **puede salir una cifra falsa igual**: es exactamente
+> el fallo que `C-15` cierra para las xref cargadas. Lo único que hay delante es
+> el aviso. En el estudio medido, 23 de 58 DWG distintos tienen alguna xref que
+> no se resolvía en la copia; cuántas de ésas llevan los recintos no se sabe.
+
+**Incumplimiento abierto de `C-9`: la vía web no sabe de xrefs.** El parser no las
+ve y su `CapaIndeterminada` sigue diciendo «bloques». Con `C-15` el comando se
+para y dice dónde están los recintos; la web, sobre el mismo plano, da otra causa.
+**Las dos vías ya no leen igual.** Registrado en `C-9`.
 
 **Alcance — medido en UN estudio.** En ese estudio el cuadro vive con sus
 recintos en el plano maestro (521 cuadros, todos en los maestros; ninguno propio

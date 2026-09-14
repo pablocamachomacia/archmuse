@@ -119,9 +119,12 @@ def test_el_registro_de_c15_no_lleva_nombres_de_fichero():
 
 
 def test_la_xref_sin_cargar_avisa_pero_no_para():
-    """De una xref sin cargar no se puede saber qué tiene: no hay detección, y
-    `C-15` sólo firma pararse cuando la hay. Si se decide parar también aquí,
-    este test tiene que cambiar a propósito, no por accidente."""
+    """De una xref sin cargar no se puede saber qué tiene: no hay detección.
+    Pablo, 2026-09-15: «por ahora deja el aviso y que se pueda elegir capa».
+
+    **Riesgo abierto:** si elige una capa cualquiera, puede salir una cifra falsa
+    igual. Si se decide parar también aquí, este test tiene que cambiar a
+    propósito, no por accidente."""
     assert "(exit)" not in _defun("am:avisar-xrefs-sin-cargar")
     comando = _defun("c:ARCHMUSE")
     aviso = comando.index("(am:avisar-xrefs-sin-cargar)")

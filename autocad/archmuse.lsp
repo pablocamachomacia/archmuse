@@ -490,12 +490,14 @@
 ;;;   fichero es, que los recintos —y el cuadro, si también está— están ahí, y
 ;;;   que lo abra. **No ofrece otra capa** y no mide.
 ;;; · si además hay recintos en este dibujo, tampoco mide: medir sólo los de
-;;;   aquí daría una cifra de menos, y ésa no se ve.
+;;;   aquí daría una cifra de menos, y ésa no se ve (firmado por Pablo: «una
+;;;   cifra de menos es peor que no medir»).
 ;;; · con la capa que él elija, si es otra, se repite la comprobación.
 ;;; · si hay xrefs SIN CARGAR y ningún recinto en la capa por defecto, avisa de
 ;;;   que pueden estar ahí y **sigue ofreciendo la lista**: de una xref sin
-;;;   cargar no se puede saber qué tiene, así que no hay detección. Si también
-;;;   ahí hay que pararse es una decisión pendiente, no tomada.
+;;;   cargar no se puede saber qué tiene, así que no hay detección. Decidido así
+;;;   por Pablo, por ahora. **RIESGO ABIERTO:** si elige una capa cualquiera,
+;;;   puede salir una cifra falsa igual.
 ;;;
 ;;; **Leer una xref cargada sí se puede** (medido): su contenido vive en la
 ;;; definición de su bloque y se recorre con `tblobjname` + `entnext`. Sus capas
@@ -2188,8 +2190,9 @@
     (progn
       (am:log "C-15: los recintos de la capa por defecto estan en una referencia externa. No se mide")
       (setvar "CMDECHO" eco) (princ) (exit)))
-  ;;    Xrefs sin cargar: no se puede saber qué tienen. Se avisa y se sigue (la
-  ;;    parte de `C-15` que queda pendiente).
+  ;;    Xrefs sin cargar: no se puede saber qué tienen. Se avisa y se sigue,
+  ;;    decidido así por Pablo por ahora. RIESGO ABIERTO: si elige una capa
+  ;;    cualquiera, puede salir una cifra falsa igual.
   (if (am:avisar-xrefs-sin-cargar)
     (am:log "C-15: referencias externas sin cargar y ningun recinto en la capa por defecto"))
 
