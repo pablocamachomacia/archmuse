@@ -1009,3 +1009,29 @@ reproducía la regresión real.
 RedirectionGuard (con `lanzar.pyw` la rama C ya no pasa por ninguna unión, así
 que no debería importar); y un proceso del runtime que corriera como
 administrador, que la parada no podría terminar (lo diría y no instalaría).
+
+### Cuarta instalación · 0.3.3 encima de 0.3.2: funciona
+
+**Medido por Pablo en la VM**, con el `.exe` del commit `f9a0df7` (SHA-256
+verificado), instalado encima de 0.3.2 sin desinstalar:
+- **Pantalla final:** «ArchMuse está instalado. Listo. Abre AutoCAD, abre tu plano
+  y teclea ARCHMUSE.»
+- **`/api/salud`:** `ok`, versión 0.3.3, `.lsp` 3.6.2.
+- **Registro:** «arrancando (pid 1280)» → «servidor 0.3.3 en 127.0.0.1:5000
+  (import en 2.7 s, listo 2.7 s después de arrancar)» → «activada la versión
+  0.3.3 (antes: 0.3.2)». **Ningún reintento.**
+- **La migración funcionó sola:** `app\actual` ya no existe y `actual.txt` dice
+  0.3.3.
+
+Queda confirmado en el contexto real lo que se había medido aquí: sin la unión,
+el servidor arranca a la primera dentro del instalador aunque RedirectionGuard
+siga activado.
+
+**Primera instalación completa en máquina limpia que termina bien.** El
+arranque dentro del instalador tardó 2,7 s: no es el arranque en frío que se
+temía (la instalación anterior ya había dejado los `.pyc` compilados).
+
+**Sin comprobar todavía en la VM, de la lista del 2026-09-14:** que arranque solo
+al iniciar sesión con `lanzar.pyw`; instalar encima de un servidor lanzado a mano
+(la parada nueva por el runtime); actualizar a 0.3.4 y volver a 0.3.3; y
+desinstalar 0.3.3.

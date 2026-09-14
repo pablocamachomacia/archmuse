@@ -5,6 +5,25 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 · 0.3.3 instalado en la VM encima de 0.3.2: funciona
+
+**Medido por Pablo** (`.exe` de `f9a0df7`, hash verificado, sin desinstalar lo
+anterior): pantalla final «ArchMuse está instalado», `/api/salud` con 0.3.3 y
+`.lsp` 3.6.2, y en el registro «arrancando» → «servidor 0.3.3 … listo 2.7 s
+después de arrancar» → «activada la versión 0.3.3 (antes: 0.3.2)». **Ningún
+reintento. La migración desde la unión funcionó sola**: `app\actual` ya no
+existe y `actual.txt` dice 0.3.3.
+
+Confirma en el contexto real lo medido aquí: sin la unión, el servidor arranca a
+la primera dentro del instalador con RedirectionGuard activado. **Es la primera
+instalación en máquina limpia que termina bien.**
+
+**Sin comprobar todavía en la VM:** arranque al iniciar sesión por `lanzar.pyw`,
+instalar encima de un servidor lanzado a mano (la parada nueva), actualizar a
+0.3.4 y volver, y desinstalar.
+
+---
+
 ## 2026-09-14 (noche, 3) · La causa del Errno 22: RedirectionGuard. Sin uniones, y parada por el runtime (0.3.3)
 
 **Tercera instalación en la VM** (0.3.2 encima de 0.3.1, con un servidor vivo):
