@@ -17,7 +17,10 @@ import os
 import re
 import shutil
 import sys
+import threading
+import traceback
 import zipfile
+from typing import Optional
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
@@ -58,6 +61,49 @@ def validar_paquete(ruta: str) -> str:
     return version
 
 
+#: Tope duro de cada orden, en segundos. Si se pasa, el vigilante lo apunta,
+#: deja el resultado para el instalador y termina el proceso. El instalador
+#: espera un poco más que esto (`empaquetado/ArchMuse-Beta.iss`; un test lo
+#: compara). `activar` incluye el plazo de arranque del servidor.
+LIMITES_S = {
+    "activar": local.PLAZO_ARRANQUE_S + 60,
+    "instalar": local.PLAZO_ARRANQUE_S + 120,      # descomprimir el .archmuse, además
+    "volver": local.PLAZO_ARRANQUE_S + 60,
+    "parar": 60,
+    "desinstalar": 60,
+}
+
+_paso_actual = "empezar"
+
+
+def _paso(texto: str) -> None:
+    """Dónde va la orden: lo que dirá el vigilante si se agota el tope."""
+    global _paso_actual
+    _paso_actual = texto
+
+
+def vigilar(segundos: float, resultado: Optional[str]) -> threading.Timer:
+    """Si la orden no ha terminado en `segundos`: lo apunta, deja el resultado
+    para el instalador y termina el proceso. Sin esto, cualquier cosa que se
+    quede esperando dentro deja al instalador esperando para siempre (en la VM
+    limpia, el 2026-09-14, fue una ventana de mensaje que nadie veía)."""
+    def vencido():
+        texto = ("ArchMuse no ha terminado en %d s. Se había quedado en: %s. Mándanos la "
+                 "carpeta %s." % (segundos, _paso_actual, local.carpeta_registro()))
+        local.registrar("actualizador: " + texto)
+        if resultado:
+            try:
+                local.escribir_resultado(resultado, False, texto)
+            except OSError:
+                pass
+        os._exit(3)
+
+    temporizador = threading.Timer(segundos, vencido)
+    temporizador.daemon = True
+    temporizador.start()
+    return temporizador
+
+
 def _parar_o_abortar() -> None:
     local.parar_servidor()
     if local.servidor_vivo() is not None:
@@ -69,6 +115,7 @@ def activar(version: str, arrancar: bool = True):
     # Lo primero, antes de parar o mover nada (enmienda del PRD, 2026-09-14):
     # nuestra carpeta en las rutas de confianza de AutoCAD. Con AutoCAD abierto
     # y algo que escribir, se para aquí sin haber cambiado nada.
+    _paso("añadir la carpeta a las rutas de confianza de AutoCAD")
     try:
         perfiles = local.cambiar_confianza_con_autocad_cerrado()
     except RuntimeError as e:
@@ -76,8 +123,11 @@ def activar(version: str, arrancar: bool = True):
                            "de AutoCAD: %s. No se ha cambiado nada." % e)
     if perfiles:
         local.registrar("ruta de confianza añadida en %d perfil(es) de AutoCAD" % perfiles)
+    _paso("parar el ArchMuse que estuviera en marcha")
     _parar_o_abortar()
+    _paso("apuntar app\\actual a la versión %s" % version)
     previa = local.apuntar_actual(version)
+    _paso("copiar el comando al paquete de AutoCAD")
     try:
         local.copiar_lsp_al_bundle(version)
     except RuntimeError as e:
@@ -87,12 +137,13 @@ def activar(version: str, arrancar: bool = True):
             "ARCHMUSE: %s. Vuelve a ejecutar el instalador; si sigue igual, avísanos."
             % (version, e))
     if arrancar:
-        local.arrancar_lanzador()
-        if local.esperar_servidor(version) is None:
-            raise RuntimeError(
-                "ArchMuse %s está instalado, pero el servidor no ha arrancado. "
-                "Reinicia el ordenador; si sigue igual, abre AutoCAD y teclea "
-                "ARCHMUSE-INFORME." % version)
+        _paso("arrancar el servidor")
+        desde = local.tamano_del_registro()
+        proceso = local.arrancar_lanzador()
+        _paso("esperar a que el servidor conteste")
+        if local.esperar_servidor(version, local.PLAZO_ARRANQUE_S, proceso) is None:
+            raise RuntimeError(local.por_que_no_contesta(version, proceso,
+                                                         local.PLAZO_ARRANQUE_S, desde))
     local.registrar("activada la versión %s (antes: %s)" % (version, previa))
     return previa
 
@@ -159,31 +210,68 @@ def main(argv=None) -> int:
     g.add_argument("--activar", metavar="VERSION")
     g.add_argument("--parar", action="store_true")
     g.add_argument("--desinstalar", action="store_true")
-    p.add_argument("--silencioso", action="store_true")
+    p.add_argument("--silencioso", action="store_true",
+                   help="ninguna ventana: quien lo lanza es otro programa, que lee --resultado")
+    p.add_argument("--resultado", metavar="FICHERO",
+                   help="deja aquí OK o ERROR y el mensaje (lo lee el instalador)")
     p.add_argument("--sin-arrancar", action="store_true")
     a = p.parse_args(argv)
     arrancar = not a.sin_arrancar
+    orden = next(o for o in LIMITES_S if getattr(a, o))
+    vigilante = vigilar(LIMITES_S[orden], a.resultado)
 
     try:
-        if a.instalar:
-            version = instalar(a.instalar, arrancar)
-            if not a.silencioso:
-                local.avisar("ArchMuse", "ArchMuse %s instalado. %s" % (version, CERRAR_AUTOCAD))
-        elif a.volver:
-            anterior, activa = volver(arrancar)
-            if not a.silencioso:
-                local.avisar("ArchMuse", "ArchMuse ha vuelto a la versión %s (estaba en la %s). %s"
-                             % (anterior, activa, CERRAR_AUTOCAD))
-        elif a.activar:
-            activar(a.activar, arrancar)
-        elif a.parar:
-            local.parar_servidor()
-        elif a.desinstalar:
-            desinstalar()
-    except (ValueError, RuntimeError, OSError) as e:
-        local.avisar("ArchMuse", str(e), error=True)
-        return 1
-    return 0
+        mensaje = ""
+        try:
+            if a.instalar:
+                version = instalar(a.instalar, arrancar)
+                mensaje = "ArchMuse %s instalado. %s" % (version, CERRAR_AUTOCAD)
+            elif a.volver:
+                anterior, activa = volver(arrancar)
+                mensaje = ("ArchMuse ha vuelto a la versión %s (estaba en la %s). %s"
+                           % (anterior, activa, CERRAR_AUTOCAD))
+            elif a.activar:
+                activar(a.activar, arrancar)
+                mensaje = "ArchMuse %s está en marcha." % a.activar
+            elif a.parar:
+                _paso("parar el servidor")
+                local.parar_servidor()
+            elif a.desinstalar:
+                _paso("quitar la ruta de confianza y parar el servidor")
+                desinstalar()
+        except (ValueError, RuntimeError, OSError) as e:
+            return _fallo(a, str(e))
+        except Exception as e:
+            local.registrar("actualizador, error inesperado:\n" + traceback.format_exc())
+            return _fallo(a, "ArchMuse ha tenido un error inesperado (%s). Los detalles están en "
+                             "%s: mándanos esa carpeta." % (type(e).__name__, local.carpeta_registro()))
+        if mensaje and not a.silencioso:
+            local.avisar("ArchMuse", mensaje)
+        if a.resultado:
+            try:
+                local.escribir_resultado(a.resultado, True, mensaje)
+            except OSError as e:
+                local.registrar("no se ha podido escribir el resultado: %s" % e)
+        return 0
+    finally:
+        vigilante.cancel()
+
+
+def _fallo(a, texto: str) -> int:
+    """**Con `--silencioso`, ni una ventana.** Quien espera es otro programa: una
+    ventana de mensaje dentro de un proceso que alguien espera lo deja colgado
+    si nadie la ve (VM limpia, 2026-09-14: 14 minutos). Queda en el registro y en
+    `--resultado`, y lo enseña quien lo lanzó."""
+    if a.silencioso:
+        local.registrar("ArchMuse: %s" % texto)
+    else:
+        local.avisar("ArchMuse", texto, error=True)
+    if a.resultado:
+        try:
+            local.escribir_resultado(a.resultado, False, texto)
+        except OSError as e:
+            local.registrar("no se ha podido escribir el resultado: %s" % e)
+    return 1
 
 
 if __name__ == "__main__":

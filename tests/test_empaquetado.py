@@ -17,6 +17,7 @@ import importlib.util
 import json
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -268,6 +269,164 @@ def test_si_la_copia_del_lsp_falla_tambien_se_dice(arbol):
         actualizador.activar("0.3.1", arrancar=False)
 
 
+# ── el instalador no puede quedarse esperando para siempre (VM, 2026-09-14) ─
+
+def _leer_resultado(fichero) -> list:
+    return Path(fichero).read_text(encoding="utf-8-sig").splitlines()
+
+
+def test_el_resultado_es_utf8_con_marca_y_lineas_de_windows(arbol, tmp_path):
+    local, _, _, _ = arbol
+    fichero = tmp_path / "resultado.txt"
+    local.escribir_resultado(str(fichero), True, "Instalado: áñ")
+    assert fichero.read_bytes() == "﻿OK\r\nInstalado: áñ\r\n".encode("utf-8")
+    assert not (tmp_path / "resultado.txt.tmp").exists()
+
+
+def test_con_silencioso_no_hay_ventanas_y_el_resultado_lo_dice(arbol, monkeypatch, tmp_path):
+    """Una ventana de mensaje dentro de un proceso que el instalador espera lo
+    dejó colgado 14 minutos en la VM: nadie la veía. Con `--silencioso`, ni una."""
+    local, actualizador, _, tmp = arbol
+
+    def ventana(*_a, **_k):
+        raise AssertionError("ha abierto una ventana con --silencioso")
+
+    monkeypatch.setattr(local, "avisar", ventana)
+    _capa_falsa(local, "0.3.1")
+    fichero = tmp_path / "resultado.txt"
+    assert actualizador.main(["--activar", "0.3.1", "--sin-arrancar", "--silencioso",
+                              "--resultado", str(fichero)]) == 0
+    assert _leer_resultado(fichero)[0] == "OK"
+
+    shutil.rmtree(tmp / "bundle")
+    assert actualizador.main(["--activar", "0.3.1", "--sin-arrancar", "--silencioso",
+                              "--resultado", str(fichero)]) == 1
+    lineas = _leer_resultado(fichero)
+    assert lineas[0] == "ERROR" and "comando ARCHMUSE" in lineas[1]
+
+
+def test_un_error_inesperado_tambien_deja_resultado(arbol, monkeypatch, tmp_path):
+    local, actualizador, _, _ = arbol
+
+    def revienta(*_a, **_k):
+        return 1 / 0
+
+    monkeypatch.setattr(actualizador, "activar", revienta)
+    fichero = tmp_path / "resultado.txt"
+    assert actualizador.main(["--activar", "0.3.1", "--silencioso", "--resultado", str(fichero)]) == 1
+    lineas = _leer_resultado(fichero)
+    assert lineas[0] == "ERROR" and "ZeroDivisionError" in lineas[1]
+
+
+def test_el_vigilante_corta_una_orden_que_no_acaba(arbol, tmp_path):
+    """El tope duro: dentro de un proceso aparte, porque termina el proceso."""
+    fichero = tmp_path / "resultado.txt"
+    codigo = (
+        "import importlib.machinery, importlib.util, os, sys, time\n"
+        "sys.path.insert(0, %r)\n"
+        "c = importlib.machinery.SourceFileLoader('act', os.path.join(%r, 'actualizador.pyw'))\n"
+        "m = importlib.util.module_from_spec(importlib.util.spec_from_loader('act', c))\n"
+        "c.exec_module(m)\n"
+        "m._paso('una espera que no acaba')\n"
+        "m.vigilar(1, %r)\n"
+        "time.sleep(30)\n" % (str(CAPA_B), str(CAPA_B), str(fichero)))
+    t0 = time.monotonic()
+    r = subprocess.run([sys.executable, "-c", codigo], capture_output=True, timeout=60)
+    assert r.returncode == 3, r.stderr
+    assert time.monotonic() - t0 < 15
+    lineas = _leer_resultado(fichero)
+    assert lineas[0] == "ERROR"
+    assert "no ha terminado en 1 s" in lineas[1] and "una espera que no acaba" in lineas[1]
+
+
+def test_toda_orden_arranca_su_tope_duro_y_lo_cancela_al_acabar(arbol, monkeypatch, tmp_path):
+    """El vigilante sólo sirve si `main` lo pone en marcha: el test de arriba lo
+    llama directamente y no cazaría que alguien lo quitase de `main`."""
+    _, actualizador, _, _ = arbol
+    vistos = []
+
+    class _Temporizador:
+        def cancel(self):
+            vistos.append("cancelado")
+
+    def vigilar(segundos, resultado):
+        vistos.append((segundos, resultado))
+        return _Temporizador()
+
+    monkeypatch.setattr(actualizador, "vigilar", vigilar)
+    fichero = tmp_path / "resultado.txt"
+    assert actualizador.main(["--parar", "--silencioso", "--resultado", str(fichero)]) == 0
+    assert vistos == [(actualizador.LIMITES_S["parar"], str(fichero)), "cancelado"]
+
+
+def _lanzador_falso(local, codigo_python: str) -> subprocess.Popen:
+    return subprocess.Popen([sys.executable, "-c", codigo_python],
+                            env=dict(os.environ), cwd=str(CAPA_B))
+
+
+def test_si_el_lanzador_muere_se_deja_de_esperar_y_se_dice_por_que(arbol, monkeypatch):
+    local, actualizador, _, _ = arbol
+    _capa_falsa(local, "0.3.1")
+    muere = (
+        "import os, sys; sys.path.insert(0, %r)\n"
+        "import archmuse_local as l\n"
+        "l.registrar('arrancando (pid %%d)' %% os.getpid())\n"
+        "l.registrar('NO ARRANCA: prueba')\n"
+        "sys.exit(7)\n" % str(CAPA_B))
+    monkeypatch.setattr(local, "arrancar_lanzador", lambda: _lanzador_falso(local, muere))
+    t0 = time.monotonic()
+    with pytest.raises(RuntimeError) as e:
+        actualizador.activar("0.3.1", arrancar=True)
+    assert time.monotonic() - t0 < 30, "ha esperado el plazo entero a un proceso muerto"
+    texto = str(e.value)
+    assert "se ha cerrado al arrancar (código 7)" in texto
+    assert "«NO ARRANCA: prueba»" in texto
+    for supuesto in ("AutoCAD", "ARCHMUSE-INFORME", "einicia"):
+        assert supuesto not in texto, supuesto
+
+
+def test_si_el_lanzador_no_contesta_se_rinde_al_plazo_y_lo_dice(arbol, monkeypatch):
+    local, actualizador, _, _ = arbol
+    _capa_falsa(local, "0.3.1")
+    # Algo escrito ANTES de lanzar: el mensaje sólo puede citar lo que el
+    # servidor escribe después, no la última línea del fichero.
+    local.registrar("una línea de antes de lanzar el servidor")
+    colgado = _lanzador_falso(local, "import time; time.sleep(60)")
+    monkeypatch.setattr(local, "arrancar_lanzador", lambda: colgado)
+    monkeypatch.setattr(local, "PLAZO_ARRANQUE_S", 2)
+    try:
+        with pytest.raises(RuntimeError) as e:
+            actualizador.activar("0.3.1", arrancar=True)
+        texto = str(e.value)
+        assert "no ha contestado en 2 s y sigue arrancando" in texto
+        assert "No ha llegado a escribir nada en el registro." in texto
+        assert "AutoCAD" not in texto
+    finally:
+        colgado.kill()
+
+
+def test_el_lanzador_deja_rastro_antes_de_nada():
+    """VM limpia, 2026-09-14: un lanzador murió sin escribir ni una línea,
+    porque la primera se escribía después de `import app`."""
+    fuente = (CAPA_B / "lanzador.pyw").read_text(encoding="utf-8")
+    main = fuente[fuente.index("def main()"):]
+    assert main.index('local.registrar("arrancando (pid %d)"') < main.index("faulthandler.enable(") \
+        < main.index("local.mutex_unico(") < main.index('local.registrar("importando la aplicación")') \
+        < main.index("import app as aplicacion")
+    cabecera = fuente[:fuente.index("def main()")]
+    assert "except BaseException:" in cabecera and "NO ARRANCA" in cabecera
+
+
+def test_los_plazos_de_arranque_tienen_margen_sobre_lo_medido_en_la_vm(arbol):
+    """`import app` en 15,6 s en caliente en la VM limpia (2026-09-14). El 60 que
+    hubo antes no salía de ninguna medida."""
+    local, actualizador, _, _ = arbol
+    assert local.PLAZO_ARRANQUE_S >= 10 * 15.6
+    assert actualizador.LIMITES_S["activar"] > local.PLAZO_ARRANQUE_S
+    assert actualizador.LIMITES_S["instalar"] > local.PLAZO_ARRANQUE_S
+    assert actualizador.LIMITES_S["volver"] > local.PLAZO_ARRANQUE_S
+
+
 # ── la confianza de AutoCAD (enmienda del 2026-09-14, vía B) ────────────────
 
 NUESTRA = r"C:\Users\x\AppData\Roaming\Autodesk\ApplicationPlugins\ArchMuse.bundle\Contents"
@@ -456,7 +615,8 @@ def test_el_desinstalador_se_entera_si_no_puede_quitar_la_ruta():
     codigo = secciones["Code"]
     inicio = codigo.index("procedure CurUninstallStepChanged")
     cuerpo = codigo[inicio:codigo.index("\nend;", inicio)]
-    assert "--desinstalar" in cuerpo and "Quitada := (Codigo = 0)" in cuerpo
+    assert "'--desinstalar', LIMITE_BREVE_S" in cuerpo
+    assert "Quitada := (EjecutarActualizador(" in cuerpo and "= ACTUALIZADOR_OK)" in cuerpo
     assert "if not Quitada then" in cuerpo and "rutas de confianza" in cuerpo
 
 
@@ -517,14 +677,50 @@ def _secciones_iss() -> dict:
     return dict(re.findall(r"^\[(\w+)\][ \t]*$(.*?)(?=^\[\w+\][ \t]*$|\Z)", iss, re.M | re.S))
 
 
+ESPERA_ISS = EMPAQUETADO / "esperar_actualizador.iss"
+
+
 def test_el_instalador_se_entera_si_la_activacion_falla():
     """`[Run]` de Inno Setup no mira el código de salida: con `--activar` allí,
     una activación fallida terminaba en la pantalla de «Listo»."""
     secciones = _secciones_iss()
     assert "--activar" not in secciones.get("Run", "")
     codigo = secciones["Code"]
-    assert "--activar" in codigo and "Codigo <> 0" in codigo
-    assert "wpFinished" in codigo and "no ha quedado listo" in codigo
+    assert '#include "esperar_actualizador.iss"' in codigo
+    paso = codigo[codigo.index("procedure CurStepChanged"):codigo.index("procedure CurPageChanged")]
+    assert "EjecutarActualizador(" in paso and "'--activar {#Version}'" in paso
+    assert "ActivacionFallida := (Resultado <> ACTUALIZADOR_OK)" in paso
+    assert "EnsenarQueNoHaQuedadoListo(MensajeActivacion)" in codigo
+    assert "no ha quedado listo" in ESPERA_ISS.read_text(encoding="utf-8")
+
+
+def test_el_instalador_no_espera_a_nada_sin_limite():
+    """VM limpia, 2026-09-14: `ewWaitUntilTerminated` sin límite dejó el
+    instalador 14 minutos colgado. Ninguna espera ciega, y el actualizador
+    siempre con `--silencioso` y `--resultado`."""
+    def sin_comentarios(texto: str) -> str:
+        # Los comentarios cuentan lo que pasó en la VM y nombran lo que ya no se usa.
+        return "\n".join(l for l in texto.splitlines() if not l.strip().startswith(("//", ";")))
+
+    iss = sin_comentarios((EMPAQUETADO / "ArchMuse-Beta.iss").read_text(encoding="utf-8-sig"))
+    espera = sin_comentarios(ESPERA_ISS.read_text(encoding="utf-8"))
+    assert "ewWaitUntilTerminated" not in iss and "ewWaitUntilTerminated" not in espera
+    assert re.findall(r"\bExec\(", iss) == []
+    assert re.findall(r"\bExec\(", espera) == ["Exec("]
+    assert "ewNoWait" in espera
+    assert "' --silencioso --resultado \"' + Fichero" in espera
+    assert "while Transcurridos < LimiteS do" in espera and "ACTUALIZADOR_SIN_RESPUESTA" in espera
+
+
+def test_el_instalador_espera_algo_mas_que_el_tope_del_actualizador(arbol):
+    _, actualizador, _, _ = arbol
+    iss = (EMPAQUETADO / "ArchMuse-Beta.iss").read_text(encoding="utf-8-sig")
+    activar = int(re.search(r"LIMITE_ACTIVAR_S = (\d+);", iss).group(1))
+    breve = int(re.search(r"LIMITE_BREVE_S = (\d+);", iss).group(1))
+    assert activar >= actualizador.LIMITES_S["activar"] + 20
+    assert breve >= max(actualizador.LIMITES_S["parar"], actualizador.LIMITES_S["desinstalar"]) + 20
+    assert "'--parar', LIMITE_BREVE_S" in iss and "'--desinstalar', LIMITE_BREVE_S" in iss
+    assert "'--activar {#Version}', LIMITE_ACTIVAR_S" in iss
 
 
 def test_el_instalador_avisa_de_la_ruta_de_confianza_antes_de_instalar():
@@ -568,6 +764,10 @@ def test_el_lanzador_arranca_una_sola_vez_declara_su_puerto_y_se_deja_parar(cons
         assert vivo is not None, (Path(local.carpeta_registro()).glob("*.log"), "no arranca")
         assert vivo["puerto"] in puertos
         assert local.pid_escuchando(vivo["puerto"]) == vivo["pid"]
+        log = (Path(local.carpeta_registro()) / ("servidor-%s.log" % time.strftime("%Y-%m"))) \
+            .read_text(encoding="utf-8")
+        assert "arrancando (pid %d)" % vivo["pid"] in log
+        assert "importando la aplicación" in log and "después de arrancar" in log
 
         local.arrancar_lanzador()          # el segundo tiene que retirarse
         time.sleep(6)

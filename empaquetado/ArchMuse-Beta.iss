@@ -83,8 +83,18 @@ Type: filesandordirs; Name: "{userappdata}\Autodesk\ApplicationPlugins\ArchMuse.
 ; haber desinstalado.
 
 [Code]
+#include "esperar_actualizador.iss"
+
+// Cuánto espera el instalador a cada orden del actualizador: algo más que el
+// tope duro del propio actualizador (`LIMITES_S` en actualizador.pyw; un test
+// compara las cifras). Pasado esto, se rinde y lo dice.
+const
+  LIMITE_ACTIVAR_S = 270;
+  LIMITE_BREVE_S = 90;
+
 var
   ActivacionFallida: Boolean;
+  MensajeActivacion: String;
   ConfianzaPagina: TOutputMsgWizardPage;
 
 // TRUSTEDPATHS no se escribe nunca con AutoCAD abierto (enmienda del PRD): puede
@@ -154,27 +164,30 @@ begin
   ConfianzaPagina.MsgLabel.Height := ConfianzaPagina.SurfaceHeight;
 end;
 
-// La activación (copiar el .lsp a AutoCAD, mover el puntero, arrancar el
-// servidor) va aquí y NO en [Run]: [Run] no mira el código de salida, y hasta
-// el 2026-09-14 una activación fallida acababa en «Listo» y, en AutoCAD, en
-// «comando desconocido». El motivo concreto lo enseña el propio actualizador.
+// La activación (rutas de confianza, puntero, comando en AutoCAD, servidor) va
+// aquí y NO en [Run], que no mira el resultado. Y desde el 2026-09-14 sin
+// esperar a ciegas: en la VM limpia la espera sin límite dejó el instalador
+// 14 minutos en «Poniendo en marcha». `EjecutarActualizador` lee el resultado
+// que deja el actualizador, enseña los segundos y se rinde a LIMITE_ACTIVAR_S.
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  Codigo: Integer;
+  Pagina: TOutputProgressWizardPage;
+  Resultado: Integer;
 begin
   if CurStep = ssPostInstall then
   begin
-    WizardForm.StatusLabel.Caption := 'Poniendo en marcha ArchMuse (unos segundos)...';
-    if not Exec(ExpandConstant('{app}\runtime\pythonw.exe'),
-                '"' + ExpandConstant('{app}\app\{#Version}\actualizador.pyw') + '" --activar {#Version} --silencioso',
-                ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Codigo) then
-    begin
-      ActivacionFallida := True;
-      MsgBox('ArchMuse no ha podido ponerse en marcha: ' + SysErrorMessage(Codigo),
-             mbError, MB_OK);
-    end
-    else if Codigo <> 0 then
-      ActivacionFallida := True;
+    Pagina := CreateOutputProgressPage('Poniendo en marcha ArchMuse',
+      'No cierres esta ventana. La primera vez puede tardar un par de minutos.');
+    Pagina.Show;
+    try
+      Resultado := EjecutarActualizador(ExpandConstant('{app}\runtime\pythonw.exe'),
+                                        ExpandConstant('{app}\app\{#Version}\actualizador.pyw'),
+                                        '--activar {#Version}', LIMITE_ACTIVAR_S, Pagina,
+                                        MensajeActivacion);
+    finally
+      Pagina.Hide;
+    end;
+    ActivacionFallida := (Resultado <> ACTUALIZADOR_OK);
   end;
 end;
 
@@ -183,13 +196,7 @@ begin
   if CurPageID = ConfianzaPagina.ID then
     WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
   if (CurPageID = wpFinished) and ActivacionFallida then
-  begin
-    WizardForm.FinishedHeadingLabel.Caption := 'ArchMuse no ha quedado listo';
-    WizardForm.FinishedLabel.Caption :=
-      'Los ficheros están copiados, pero ArchMuse no ha terminado de ponerse en marcha. ' +
-      'En AutoCAD el comando ARCHMUSE no va a estar. Vuelve a ejecutar el instalador; ' +
-      'si sigue igual, avísanos.';
-  end;
+    EnsenarQueNoHaQuedadoListo(MensajeActivacion);
 end;
 
 // Desinstalar: parar el servidor y quitar NUESTRA ruta de confianza de AutoCAD
@@ -198,26 +205,26 @@ end;
 // seguiría confiando en una carpeta que ya no es de nadie.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  Codigo: Integer;
+  Mensaje: String;
   Pythonw, Actualizador: String;
   Quitada: Boolean;
 begin
   if CurUninstallStep = usUninstall then
   begin
     Quitada := False;
+    Mensaje := '';
     Pythonw := ExpandConstant('{app}\runtime\pythonw.exe');
     Actualizador := ExpandConstant('{app}\app\actual\actualizador.pyw');
     if not FileExists(Actualizador) then
       Actualizador := ExpandConstant('{app}\app\{#Version}\actualizador.pyw');
     if FileExists(Pythonw) and FileExists(Actualizador) then
-      if Exec(Pythonw, '"' + Actualizador + '" --desinstalar --silencioso',
-              ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Codigo) then
-        Quitada := (Codigo = 0);
+      Quitada := (EjecutarActualizador(Pythonw, Actualizador, '--desinstalar', LIMITE_BREVE_S,
+                                       nil, Mensaje) = ACTUALIZADOR_OK);
     if not Quitada then
       MsgBox('ArchMuse se va a desinstalar, pero NO ha podido quitar su carpeta de las ' +
              'rutas de confianza de AutoCAD. AutoCAD seguiría cargando sin preguntar lo que ' +
              'haya en ' + ExpandConstant('{userappdata}\Autodesk\ApplicationPlugins\ArchMuse.bundle\Contents') +
-             '. Avísanos para quitarla.', mbError, MB_OK);
+             '. Avísanos para quitarla.' + #13#10#13#10 + Mensaje, mbError, MB_OK);
   end;
 end;
 
@@ -243,7 +250,7 @@ end;
 // (si no, runtime\ está en uso y la copia falla a medias).
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  Codigo: Integer;
+  Mensaje: String;
   Pythonw, Actualizador: String;
 begin
   Result := '';
@@ -255,6 +262,8 @@ begin
   Pythonw := ExpandConstant('{app}\runtime\pythonw.exe');
   Actualizador := ExpandConstant('{app}\app\actual\actualizador.pyw');
   if FileExists(Pythonw) and FileExists(Actualizador) then
-    Exec(Pythonw, '"' + Actualizador + '" --parar', ExpandConstant('{app}'),
-         SW_HIDE, ewWaitUntilTerminated, Codigo);
+    if EjecutarActualizador(Pythonw, Actualizador, '--parar', LIMITE_BREVE_S, nil,
+                            Mensaje) <> ACTUALIZADOR_OK then
+      // Ninguna línea puede empezar por # (el preprocesador la tomaría por directiva).
+      Result := 'No se ha podido parar el ArchMuse que está en marcha. No se ha instalado nada.' + #13#10#13#10 + Mensaje;
 end;

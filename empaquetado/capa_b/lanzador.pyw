@@ -16,6 +16,7 @@ propio comando `ARCHMUSE` cuando no encuentra servidor.
 consola, sin compilar un ejecutable propio que el antivirus aún no conoce.
 """
 import atexit
+import faulthandler
 import os
 import sys
 import time
@@ -24,15 +25,37 @@ import traceback
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 
-import archmuse_local as local  # noqa: E402
+try:
+    import archmuse_local as local  # noqa: E402
+except BaseException:
+    # Sin `archmuse_local` no hay `registrar`: se escribe a mano en el mismo
+    # fichero, para que ni esto pase sin dejar rastro.
+    try:
+        _registro = os.path.join(os.environ.get("ARCHMUSE_BASE") or os.path.join(
+            os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "ArchMuse"), "registro")
+        os.makedirs(_registro, exist_ok=True)
+        with open(os.path.join(_registro, "servidor-%s.log" % time.strftime("%Y-%m")),
+                  "a", encoding="utf-8") as _f:
+            _f.write("%s | NO ARRANCA (pid %d, sin archmuse_local):\n%s"
+                     % (time.strftime("%Y-%m-%d %H:%M:%S"), os.getpid(), traceback.format_exc()))
+    except OSError:
+        pass
+    raise
 
 
 def main() -> int:
+    t0 = time.monotonic()
+    # Lo primero de todo (2026-09-14). En la VM limpia un lanzador murió sin
+    # escribir ni una línea, porque la primera se escribía después de `import
+    # app`. Ahora queda constancia de que empezó, y `faulthandler` escribe en el
+    # registro si el proceso muere de golpe.
+    local.registrar("arrancando (pid %d)" % os.getpid())
     os.makedirs(local.carpeta_registro(), exist_ok=True)
     salida = open(os.path.join(local.carpeta_registro(),
                                "servidor-%s.log" % time.strftime("%Y-%m")),
                   "a", encoding="utf-8", buffering=1)
     sys.stdout = sys.stderr = salida
+    faulthandler.enable(file=salida, all_threads=True)
 
     mutex = local.mutex_unico(local.nombre_de_mutex())
     if mutex is None:
@@ -49,7 +72,8 @@ def main() -> int:
         local.registrar("NO ARRANCA: %s" % e)
         return 1
 
-    t0 = time.monotonic()
+    local.registrar("importando la aplicación")
+    t_import = time.monotonic()
     os.chdir(AQUI)
     import app as aplicacion
     version = local.leer_version(AQUI) or "desconocida"
@@ -61,8 +85,11 @@ def main() -> int:
         "arrancado": time.strftime("%Y-%m-%dT%H:%M:%S"),
     })
     atexit.register(local.borrar_estado_si_es_de, os.getpid())
-    local.registrar("servidor %s en 127.0.0.1:%d (pid %d, import en %.1f s)"
-                    % (version, puerto, os.getpid(), time.monotonic() - t0))
+    # Las dos cifras, para que cada arranque en su máquina mida los plazos:
+    # `PLAZO_ARRANQUE_S` (actualizador) y `*am:plazo-arranque-s*` (rama C).
+    local.registrar("servidor %s en 127.0.0.1:%d (pid %d, import en %.1f s, listo %.1f s "
+                    "después de arrancar)" % (version, puerto, os.getpid(),
+                                               time.monotonic() - t_import, time.monotonic() - t0))
 
     from waitress import serve
     serve(aplicacion.app, sockets=[sock], threads=aplicacion.HILOS_WAITRESS)

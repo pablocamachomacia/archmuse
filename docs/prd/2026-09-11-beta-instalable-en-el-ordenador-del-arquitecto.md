@@ -626,6 +626,15 @@ máquina, pero la VM no está montada.
   reciclado, instalar/reinstalar/volver sobre un árbol de mentira con uniones
   reales, y que un `.archmuse` con un plano dentro no se instala
   (`tests/test_empaquetado.py`, `tests/test_beta_lsp.py`).
+- **Corregido el 2026-09-14: «con el lanzador de verdad» no decía con qué
+  Python, y era otro.** El test lanza el lanzador desde un árbol de mentira sin
+  `runtime\`, y `arrancar_lanzador` cae entonces en `sys.executable`: el
+  `python.exe` del venv. La prueba de humo del build usa `runtime\python.exe -c
+  "import app"`: ni `pythonw`, ni `lanzador.pyw`, ni desacoplado. **La
+  combinación que se instala —`runtime\pythonw.exe lanzador.pyw`, desacoplado,
+  lanzado por el actualizador— no se ejecutó en ningún sitio** hasta la VM del
+  2026-09-14, y allí murió sin escribir nada (ver *Primera instalación en máquina
+  limpia*, al final).
 
 ---
 
@@ -802,3 +811,73 @@ elimina. Por eso la condición 1 no es cortesía: es informarle de lo que acepta
 **Sin verificar:** T12 (máquina limpia), la instalación real del `.exe` en esta
 máquina (sólo se abrió hasta su primera página y se cerró), M2, y la reposición
 al iniciar sesión en un inicio de sesión real (sí con tests).
+
+---
+
+## Primera instalación en máquina limpia · 2026-09-14
+
+**VM Windows 11 limpia, sin AutoCAD, usuario sin administrador.** El `.exe` del
+commit `10a4c8b`, con su SHA-256 verificado. Lo midió Pablo en la VM.
+
+**Lo que fue bien.**
+- No pide administrador. La página previa se ve entera. Extrae los ficheros.
+- **Tras reiniciar, el servidor arranca solo al iniciar sesión:** `servidor.json`
+  con puerto 5000, `127.0.0.1:5000` escuchando (sólo loopback) y `/api/salud`
+  con `ok`, versión 0.3.1 y `.lsp` 3.6.0.
+- **La desinstalación** deja sólo `registro\` (a propósito), quita el acceso
+  directo de Inicio y libera el puerto.
+
+**Lo que fue mal: el instalador se quedó 14 minutos en «Poniendo en marcha
+ArchMuse».** La cadena, medida:
+1. El actualizador (`--activar 0.3.1 --silencioso`, PID 520) esperó 60 s al
+   servidor, que no contestó.
+2. `avisar()` escribió el error en el registro —178 bytes, exactamente lo que
+   ocupa la línea con su prefijo— y **abrió una ventana de mensaje**. El PID 520
+   tenía una ventana `#32770` «ArchMuse» que Windows daba por visible y que nadie
+   veía. `--silencioso` sólo callaba los mensajes de éxito.
+3. El instalador esperaba al actualizador con `ewWaitUntilTerminated`, **sin
+   límite**, y no leía nada más.
+
+**Sin explicar: por qué murió el lanzador.** No había un segundo `pythonw`, ni
+evento de cierre de Python, ni detección del antivirus; y `import app` en
+consola, con el mismo runtime, terminó sin error en 15,6 s. Al iniciar sesión sí
+arranca. Lo que distingue a los dos casos es cómo se lanzó: `runtime\pythonw.exe
+lanzador.pyw` desacoplado, desde el actualizador, que es justo la combinación
+que no se había ejecutado nunca (corrección de *Ejecución · 2026-09-13*).
+**Desde hoy el lanzador escribe «arrancando» antes de nada y `faulthandler`
+escribe en el registro**: la próxima vez que muera, dejará dicho dónde.
+
+**Corregido el mismo día.**
+1. **El instalador no espera a ciegas** (`empaquetado/esperar_actualizador.iss`).
+   Lanza el actualizador con `--silencioso --resultado`, lee `OK` o `ERROR` y el
+   mensaje, enseña los segundos y se rinde a los 270 s (activar) o 90 s (parar,
+   desinstalar). El actualizador lleva su propio tope duro (`LIMITES_S`: 240 y
+   60 s) y, con `--silencioso`, **no abre ninguna ventana**, tampoco de error.
+2. **El lanzador deja rastro antes de nada**, y el actualizador vigila su
+   proceso: si muere, lo dice en el acto con su código de salida.
+3. **Plazos.** El 60 del actualizador entró en `43c0793` sin ninguna medida (la
+   única era `import` en 2,75 s en la máquina de desarrollo); los 20 s de la rama
+   C, igual. Ahora `PLAZO_ARRANQUE_S = 180` y la rama C, 90 s (`.lsp` 3.6.1).
+   La base es `import app` en 15,6 s en caliente en la VM; **el arranque en frío
+   no se ha medido**. Cada arranque escribe ya «listo … s después de arrancar»,
+   que es la medida que falta.
+4. **El mensaje** dice si el servidor sigue arrancando o con qué código murió, y
+   lo último que escribió en el registro. No supone la causa y no manda a nadie
+   a AutoCAD.
+
+**Sin verificar: la espera nueva del instalador no se ha ejecutado en ningún
+sitio.** Se escribió un instalador de prueba que incluye el mismo
+`esperar_actualizador.iss`, con cuatro casos (bien, error, colgado, muere sin
+resultado), y **Windows lo bloqueó en esta máquina**: Smart App Control
+activado (`VerifiedAndReputablePolicyState = 1`), eventos de integridad de
+código 3077 y 3033, «did not meet the Enterprise signing level requirements».
+Compila; ejecutarse, se ejecutará en la VM. La parte de Python sí está probada:
+13 fallos reintroducidos.
+
+**Riesgo nuevo, medido en esta máquina: Smart App Control bloquea ejecutables
+sin firmar.** Bloqueó el `.exe` de Inno recién compilado; los instaladores de
+ArchMuse de ayer y de hoy no los bloqueó (0 eventos). *Hipótesis sin medir:* lo
+decide la reputación de cada ejecutable, caso a caso, así que el instalador del
+primer usuario de la beta puede quedar bloqueado si su Windows 11 lo tiene
+activado. Sin comprobar si ofrece alguna forma de saltárselo. Pesa sobre la
+decisión de firmar de §9.

@@ -79,8 +79,16 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.6.0")
-(setq *am:version*  "3.6.0 (2026-09-13, C-12: construida rotulada, de cualquier capa)")
+(setq *am:version-corta* "3.6.1")
+(setq *am:version*  "3.6.1 (2026-09-14, la rama C espera al servidor hasta 90 s)")
+;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
+;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
+;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente; el
+;; arranque en frío no se ha medido. 90 s son unas cinco veces eso. El
+;; actualizador espera más (`PLAZO_ARRANQUE_S`, 180 s) porque el primer arranque
+;; tras instalar es el más frío. Cada arranque deja su tiempo real en el
+;; registro del servidor («listo … s después de arrancar»).
+(setq *am:plazo-arranque-s* 90)
 (setq *am:capa-por-defecto* "00 areas")
 
 ;; Cuántas celdas del cuadro se mandaron en la última llamada. Es global porque
@@ -870,30 +878,35 @@
       (not (vl-catch-all-error-p r)))))
 
 
-(defun am:levantar-servidor ( / instalado i vivo)
+(defun am:levantar-servidor ( / instalado i vivo punto)
   ;; **Rama C de D-1.** El servidor no responde: el comando lo levanta y espera
-  ;; hasta 20 s preguntando a `/api/salud` cada segundo. Sólo si la beta está
-  ;; instalada; en la máquina de desarrollo no hay nada que lanzar y se dice.
-  ;; Devuelve T si al final contesta.
+  ;; hasta `*am:plazo-arranque-s*` preguntando a `/api/salud` cada segundo. Sólo
+  ;; si la beta está instalada; en la máquina de desarrollo no hay nada que
+  ;; lanzar y se dice. Devuelve T si al final contesta.
   (setq instalado (am:servidor-instalado))
   (if (null instalado)
     nil
     (progn
-      (princ "\nArchMuse no estaba en marcha. Lo pongo en marcha: unos segundos")
+      (princ (strcat "\nArchMuse no estaba en marcha. Lo pongo en marcha: puede tardar hasta "
+                     (itoa *am:plazo-arranque-s*) " s"))
       (am:log "el servidor no responde: el comando lo levanta")
       (am:lanzar-sin-ventana (strcat "\"" (car instalado) "\" \"" (cdr instalado) "\""))
-      (setq i 0 vivo nil)
-      (while (and (not vivo) (< i 20))
+      (setq i 0 vivo nil punto 0)
+      (while (and (not vivo) (< i *am:plazo-arranque-s*))
         (command "_.DELAY" 1000)
-        (princ ".")
-        (setq i (1+ i))
+        (setq i (1+ i) punto (1+ punto))
+        ;; Un punto cada cinco segundos: con un plazo largo, uno por segundo
+        ;; llenaría la línea de comandos. Con un contador y no con `rem`, que no
+        ;; está en la lista de primitivas verificadas.
+        (if (= punto 5) (progn (princ ".") (setq punto 0)))
         (setq vivo (am:salud-responde)))
       (if vivo
         (progn
           (am:log (strcat "servidor levantado por el comando en " (itoa i) " s"))
           T)
         (progn
-          (am:log "el servidor no se ha levantado en 20 s")
+          (am:log (strcat "el servidor no se ha levantado en "
+                          (itoa *am:plazo-arranque-s*) " s"))
           nil)))))
 
 

@@ -5,6 +5,64 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-14 (noche) · Primera instalación en máquina limpia: se colgó el instalador
+
+**VM Windows 11 limpia, sin AutoCAD** (Pablo, `.exe` del commit `10a4c8b`). Sin
+administrador, página previa entera, ficheros extraídos. **Tras reiniciar el
+servidor arranca solo** (puerto 5000 en loopback, `/api/salud` con 0.3.1 y
+`.lsp` 3.6.0) y **la desinstalación** deja sólo `registro\`. El único fallo: **el
+instalador se quedó 14 minutos en «Poniendo en marcha ArchMuse»**. Detalle
+completo en el PRD de la beta, *Primera instalación en máquina limpia*.
+
+**La cadena del cuelgue, medida.** El actualizador esperó 60 s al servidor, que
+no contestó; `avisar()` escribió el error (178 bytes, justo su línea) y abrió
+una ventana de mensaje que Windows daba por visible y nadie veía; y el instalador
+lo esperaba con `ewWaitUntilTerminated`, sin límite.
+
+**Sin explicar: por qué murió el lanzador** lanzado por el actualizador. Sin
+evento de cierre ni antivirus, `import app` sin error en consola (15,6 s), y al
+iniciar sesión sí arranca. La combinación que falló —`runtime\pythonw.exe
+lanzador.pyw`, desacoplado— no se había ejecutado nunca: el test usaba el
+Python del venv y la prueba de humo, `python.exe -c`. **Corregida la nota del
+PRD** que lo daba por probado.
+
+**Corregido:**
+1. **El instalador ya no espera a ciegas** (`empaquetado/esperar_actualizador.iss`):
+   `--silencioso --resultado`, lee `OK`/`ERROR`, enseña los segundos y se rinde
+   a 270 s (activar) o 90 s. El actualizador lleva su propio tope duro y con
+   `--silencioso` no abre ninguna ventana.
+2. **El lanzador escribe «arrancando» antes de nada** y `faulthandler` va al
+   registro. El actualizador vigila su proceso: si muere, lo dice al momento.
+3. **Plazos.** El 60 s y los 20 s de la rama C no salían de ninguna medida.
+   Ahora 180 s y 90 s (`.lsp` 3.6.1), sobre `import app` en 15,6 s en caliente en
+   la VM. **El arranque en frío sigue sin medir**; cada arranque escribe ya «listo
+   … s después de arrancar».
+4. **El mensaje** dice si sigue arrancando o con qué código murió y lo último
+   que escribió; no supone la causa ni manda a AutoCAD.
+5. **El registro del lanzador se lee por posición, no por PID**: el `python.exe`
+   de un venv arranca el intérprete como hijo y el PID no coincide (lo cazó un
+   test).
+
+**Método.** 13 fallos reintroducidos, 13 en rojo, restaurados byte a byte. Uno
+de ellos (`main` sin tope duro) no lo cazaba ningún test hasta que se escribió
+el suyo.
+
+**Sin ejecutar: la espera nueva del instalador.** El instalador de prueba que
+incluye la misma rutina **lo bloqueó Smart App Control en esta máquina**
+(activado; eventos 3077 y 3033, «Enterprise signing level»). Compila; se
+ejecutará en la VM. **Riesgo medido, que va a §9:** Smart App Control puede
+bloquear un `.exe` sin firmar en el Windows 11 del primer usuario.
+
+**Suite entera:** 1970 pasan, 39 saltados, 1 xfail (D-7), 0 fallos, en
+13 min 8 s. Los dos avisos de `ifcopenshell` de siempre.
+
+**Instalador reconstruido:** `ArchMuse-Beta-0.3.1.exe`, 37.109.631 bytes, SHA-256
+`b653df12dfeea3b23c826085db30ca2219955d908d4bca31474b8fce0514ccfd`. Sigue
+numerado 0.3.1 aunque ya hubo otro 0.3.1 en la VM; los distingue el `.lsp`
+(3.6.0 frente a 3.6.1).
+
+---
+
 ## 2026-09-14 (tarde) · Vía B implementada: la carpeta del `.lsp` en `TRUSTEDPATHS`
 
 **Decisión de Pablo:** vía B, con cuatro condiciones (enmienda del PRD de la

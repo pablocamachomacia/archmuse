@@ -240,26 +240,111 @@ def mutex_unico(nombre: str):
     return manejador
 
 
-def arrancar_lanzador() -> None:
-    """Lanza el servidor de `app\\actual`, desacoplado de quien lo lanza."""
+#: Cuánto se espera a que el servidor conteste después de lanzarlo.
+#:
+#: **Hasta el 2026-09-14 eran 60 s, y no salían de ninguna medida**: la única
+#: que había era `import app` en 2,75 s en la máquina de desarrollo. Medido ese
+#: día en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente. **El
+#: arranque en frío no se ha medido**, y el primero tras instalar es el más frío
+#: que hay (primera lectura del runtime, `.pyc` de la capa B sin compilar).
+#: 180 s son unas diez veces el arranque en caliente de la VM. Esperar tanto no
+#: cuesta nada cuando el servidor falla: quien lo lanza vigila el proceso y deja
+#: de esperar en cuanto muere.
+PLAZO_ARRANQUE_S = 180
+
+
+def arrancar_lanzador() -> subprocess.Popen:
+    """Lanza el servidor de `app\\actual`, desacoplado de quien lo lanza.
+
+    Devuelve el proceso para que quien espera sepa si ha muerto: el 2026-09-14,
+    en la VM limpia, el lanzador murió sin escribir nada y el actualizador
+    siguió esperando a ciegas hasta agotar el plazo."""
     carpeta = carpeta_actual()
     pythonw = os.path.join(base(), "runtime", "pythonw.exe")
     if not os.path.isfile(pythonw):
         pythonw = sys.executable
-    subprocess.Popen([pythonw, os.path.join(carpeta, "lanzador.pyw")], cwd=carpeta,
-                     creationflags=DESACOPLADO, close_fds=True,
-                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                     stderr=subprocess.DEVNULL)
+    return subprocess.Popen([pythonw, os.path.join(carpeta, "lanzador.pyw")], cwd=carpeta,
+                            creationflags=DESACOPLADO, close_fds=True,
+                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL)
 
 
-def esperar_servidor(version: Optional[str] = None, segundos: float = 60.0) -> Optional[dict]:
+def esperar_servidor(version: Optional[str] = None, segundos: float = PLAZO_ARRANQUE_S,
+                     proceso: Optional[subprocess.Popen] = None) -> Optional[dict]:
+    """El servidor vivo de `version`, o None. Con el `proceso` del lanzador, deja
+    de esperar en cuanto ese proceso termina sin que el servidor conteste."""
     limite = time.monotonic() + segundos
     while time.monotonic() < limite:
         datos = servidor_vivo()
         if datos and (version is None or datos.get("version_que_responde") == version):
             return datos
+        if proceso is not None and proceso.poll() is not None:
+            return None
         time.sleep(0.5)
     return None
+
+
+def fichero_del_registro() -> str:
+    return os.path.join(carpeta_registro(), "servidor-%s.log" % time.strftime("%Y-%m"))
+
+
+def tamano_del_registro() -> int:
+    """Hasta dónde llega el registro ahora: se anota antes de lanzar el servidor
+    para leer después sólo lo que ha escrito desde entonces."""
+    try:
+        return os.path.getsize(fichero_del_registro())
+    except OSError:
+        return 0
+
+
+def lo_ultimo_escrito_desde(desde: int) -> Optional[str]:
+    """La última línea escrita en el registro a partir del byte `desde`, sin la
+    fecha. None si desde entonces no se ha escrito nada.
+
+    **Por posición y no por PID**, a propósito: un intérprete puede arrancar el
+    de verdad como proceso hijo (el `python.exe` de un venv lo hace), y entonces
+    el PID que escribe no es el del proceso que se lanzó."""
+    try:
+        with open(fichero_del_registro(), "rb") as f:
+            f.seek(desde)
+            nuevo = f.read()
+    except OSError:
+        return None
+    lineas = [linea for linea in nuevo.decode("utf-8", errors="replace").splitlines() if linea.strip()]
+    if not lineas:
+        return None
+    ultima = lineas[-1]
+    return ultima.split(" | ", 1)[1] if " | " in ultima else ultima.strip()
+
+
+def por_que_no_contesta(version: str, proceso: subprocess.Popen, segundos: float,
+                        desde: int = 0) -> str:
+    """El mensaje cuando el servidor recién lanzado no contesta: lo que se sabe
+    (si el proceso vive o con qué código murió, y lo último que escribió), sin
+    suponer la causa y sin mandar a nadie a AutoCAD."""
+    codigo = proceso.poll()
+    if codigo is None:
+        que = "el servidor no ha contestado en %d s y sigue arrancando" % segundos
+    else:
+        que = "el servidor se ha cerrado al arrancar (código %d)" % codigo
+    ultimo = lo_ultimo_escrito_desde(desde)
+    if ultimo is None:
+        rastro = "No ha llegado a escribir nada en el registro."
+    else:
+        rastro = "Lo último que ha escrito: «%s»." % ultimo
+    return ("ArchMuse %s está instalado, pero %s. %s Al iniciar sesión en Windows ArchMuse "
+            "se pone en marcha solo; si después sigue sin funcionar, mándanos la carpeta %s."
+            % (version, que, rastro, carpeta_registro()))
+
+
+def escribir_resultado(fichero: str, correcto: bool, texto: str) -> None:
+    """Lo que lee el instalador (`empaquetado/esperar_actualizador.iss`): `OK` o
+    `ERROR` en la primera línea y el mensaje debajo. UTF-8 con marca, y de un
+    golpe (temporal + `os.replace`): el instalador lo lee en cualquier instante."""
+    temporal = fichero + ".tmp"
+    with open(temporal, "w", encoding="utf-8-sig", newline="\r\n") as f:
+        f.write("%s\n%s\n" % ("OK" if correcto else "ERROR", texto))
+    os.replace(temporal, fichero)
 
 
 # ── las dos capas y el puntero `actual` ─────────────────────────────────────
