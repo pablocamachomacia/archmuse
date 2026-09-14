@@ -405,6 +405,54 @@ def test_si_el_lanzador_no_contesta_se_rinde_al_plazo_y_lo_dice(arbol, monkeypat
         colgado.kill()
 
 
+def test_si_python_no_puede_abrir_el_lanzador_se_reintenta_y_se_dice_la_causa(arbol, monkeypatch):
+    """VM limpia, 2026-09-14: durante la instalación `pythonw` salió con código 2
+    («can't open file») y el mensaje se perdía en DEVNULL. Aquí se provoca de
+    verdad, sin simular nada: la capa no trae `lanzador.pyw`."""
+    local, actualizador, _, _ = arbol
+    _capa_falsa(local, "0.3.1")
+    monkeypatch.setattr(local, "PLAZO_ARRANQUE_S", 8)
+    t0 = time.monotonic()
+    with pytest.raises(RuntimeError) as e:
+        actualizador.activar("0.3.1", arrancar=True)
+    assert time.monotonic() - t0 < 30
+    texto = str(e.value)
+    assert "Python no ha podido abrir el programa del servidor (código 2), en 3 intentos" in texto
+    assert "Python dijo: «" in texto and "can't open file" in texto and "lanzador.pyw" in texto
+    log = (Path(local.carpeta_registro()) / ("servidor-%s.log" % time.strftime("%Y-%m"))).read_text(encoding="utf-8")
+    assert "reintento en 2 s" in log and "reintento en 4 s" in log
+    for supuesto in ("AutoCAD", "ARCHMUSE-INFORME", "einicia"):
+        assert supuesto not in texto, supuesto
+
+
+def test_un_codigo_2_pasajero_se_supera_con_otro_intento(arbol, monkeypatch):
+    local, actualizador, _, _ = arbol
+    _capa_falsa(local, "0.3.1")
+    procesos = [subprocess.Popen([sys.executable, "-c", "import sys; sys.exit(2)"]),
+                subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])]
+    lanzados = []
+
+    def arrancar():
+        lanzados.append(procesos[len(lanzados)])
+        return lanzados[-1]
+
+    def esperar(version, segundos, proceso):
+        if proceso is procesos[1]:
+            return {"ok": True}
+        proceso.wait()
+        return None
+
+    monkeypatch.setattr(local, "arrancar_lanzador", arrancar)
+    monkeypatch.setattr(local, "esperar_servidor", esperar)
+    try:
+        assert actualizador.activar("0.3.1", arrancar=True) is None
+        assert lanzados == procesos
+        log = (Path(local.carpeta_registro()) / ("servidor-%s.log" % time.strftime("%Y-%m"))).read_text(encoding="utf-8")
+        assert "reintento en 2 s" in log and "ha arrancado al intento 2" in log
+    finally:
+        procesos[1].kill()
+
+
 def test_el_lanzador_deja_rastro_antes_de_nada():
     """VM limpia, 2026-09-14: un lanzador murió sin escribir ni una línea,
     porque la primera se escribía después de `import app`."""

@@ -83,8 +83,9 @@
 (setq *am:version*  "3.6.1 (2026-09-14, la rama C espera al servidor hasta 90 s)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
-;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente; el
-;; arranque en frío no se ha medido. 90 s son unas cinco veces eso. El
+;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
+;; iniciar sesión tras reiniciar; el arranque en frío no se ha medido. 90 s son
+;; unas cuatro veces la peor medida. El
 ;; actualizador espera más (`PLAZO_ARRANQUE_S`, 180 s) porque el primer arranque
 ;; tras instalar es el más frío. Cada arranque deja su tiempo real en el
 ;; registro del servidor («listo … s después de arrancar»).

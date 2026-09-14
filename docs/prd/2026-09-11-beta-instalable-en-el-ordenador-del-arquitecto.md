@@ -890,3 +890,56 @@ decide la reputación de cada ejecutable, caso a caso, así que el instalador de
 primer usuario de la beta puede quedar bloqueado si su Windows 11 lo tiene
 activado. Sin comprobar si ofrece alguna forma de saltárselo. Pesa sobre la
 decisión de firmar de §9.
+
+### Segunda instalación · el instalador de `c5dd444`
+
+**El cuelgue está resuelto.** El instalador termina y enseña la pantalla final:
+la espera nueva se ejecutó así por primera vez, en la VM.
+
+**Pero el servidor no arrancó:** «ArchMuse 0.3.1 está instalado, pero el
+servidor se ha cerrado al arrancar (código 2). No ha llegado a escribir nada en
+el registro.» El lanzador escribe «arrancando» lo primero, y no llegó a esa
+línea.
+
+**Qué significa el código 2, medido aquí** con el `pythonw.exe` embebido,
+lanzado igual que lo lanza el actualizador y con su salida de errores a un
+fichero: Python sale con 2 cuando **no puede abrir el script** («can't open
+file '…'»), tanto si no existe como si otro proceso lo tiene bloqueado. En
+cambio, una unión recién creada con `mklink /J` y el lanzamiento desacoplado
+funcionan.
+
+**Medido en la VM, sin reiniciar, justo después de instalar:**
+- El mismo lanzamiento arranca por la unión y desacoplado (3,5 s), por la ruta
+  directa (1,0 s) y sin desacoplar (1,1 s).
+- La activación repetida exactamente como la hace el instalador (`--activar
+  0.3.1 --silencioso --resultado`) termina en `OK`, con el servidor listo en
+  0,8 s.
+- **Conclusión: el código 2 sólo pasa durante la instalación, con los ficheros
+  recién extraídos.**
+
+**Sin explicar: qué impide abrir el fichero en ese momento.** Python lo decía, y
+el mensaje se perdía en DEVNULL.
+
+**Corregido:**
+1. La salida de errores de `pythonw` va a `registro\lanzador-errores.txt`, con
+   una cabecera por lanzamiento (no entra en `ARCHMUSE-INFORME`: lleva rutas con
+   el nombre de usuario). El mensaje final cita lo que dijo Python.
+2. **Con código 2, el actualizador reintenta**: 2, 4, 8 y luego 10 s entre
+   intentos, dentro de los 180 s, y cada reintento queda en el registro.
+   Cualquier otro código no se reintenta y se dice en el acto.
+
+**De paso, medido: por qué la consola de la VM no devolvía el prompt** tras la
+activación a mano. `Start-Process -Wait` de Windows PowerShell espera también a
+los procesos hijos, y el servidor que deja en marcha el actualizador no termina.
+Con un hijo desacoplado de 15 s, `-Wait` volvió a los 16,1 s; con `-PassThru` y
+`WaitForExit()`, a los 0,1 s. No es el actualizador dejando algo abierto.
+
+**Versión 0.3.2, y una regla (Pablo, 2026-09-14): cada build que sale de esta
+máquina lleva un número que ningún otro build ha tenido.** Hasta aquí hubo tres
+0.3.1 distintos (el de `10a4c8b`, el de `c5dd444` y el de los reintentos, que no
+llegó a salir); el día que haya que diagnosticar algo en el ordenador de un
+arquitecto, la versión tiene que identificar el build sin ambigüedad. El
+instalador con los reintentos es `ArchMuse-Beta-0.3.2.exe`, y el paquete para
+ensayar la actualización en la VM pasa a `ArchMuse-0.3.3.archmuse`. Los
+artefactos 0.3.1 se retiraron de `_empaquetado\salida` para que no se pueda coger
+el que no es: se reconstruyen desde sus commits.

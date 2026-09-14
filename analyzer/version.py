@@ -27,7 +27,13 @@ from typing import Optional
 
 #: La versión cuando se ejecuta sobre el repositorio, sin paquete. Se sube a
 #: mano al preparar un `.archmuse`, igual que `*am:version*` en el `.lsp`.
-VERSION_DEL_REPOSITORIO = "0.3.1"
+#:
+#: **Regla (Pablo, 2026-09-14): cada build que sale de esta máquina lleva un
+#: número que ningún otro build ha tenido.** Hasta ese día hubo tres 0.3.1
+#: distintos (commits 10a4c8b, c5dd444 y el de los reintentos); el día que haya
+#: que diagnosticar algo en el ordenador de un arquitecto, la versión tiene que
+#: identificar el build sin ambigüedad.
+VERSION_DEL_REPOSITORIO = "0.3.2"
 
 _RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _FICHERO = os.path.join(_RAIZ, "version.json")

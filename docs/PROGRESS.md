@@ -5,6 +5,53 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-14 (noche, 2) · Código 2 al instalar: errores de Python al registro, reintentos y 0.3.2
+
+**Segunda instalación en la VM** (`c5dd444`, hash verificado). **El cuelgue está
+resuelto**: el instalador termina y enseña la pantalla final, así que la espera
+nueva ya se ha ejecutado. **Pero el servidor no arrancó**: «se ha cerrado al
+arrancar (código 2). No ha llegado a escribir nada en el registro.»
+
+**Qué es el código 2, medido aquí** con el `pythonw.exe` embebido lanzado igual
+que el actualizador: Python no pudo abrir el script («can't open file»), tanto
+si no existe como si otro proceso lo tiene bloqueado. Una unión recién hecha y
+el lanzamiento desacoplado funcionan.
+
+**Medido en la VM, justo después de instalar y sin reiniciar:** el mismo
+lanzamiento arranca por la unión (3,5 s), por la ruta directa (1,0 s) y sin
+desacoplar (1,1 s), y la activación repetida como la hace el instalador termina
+en `OK` con el servidor listo en 0,8 s. **El código 2 sólo pasa durante la
+instalación, con los ficheros recién extraídos. Qué lo bloquea sigue sin
+explicar**: Python lo decía, y se perdía en DEVNULL.
+
+**Corregido:**
+1. La salida de errores de `pythonw` va a `registro\lanzador-errores.txt` y el
+   mensaje final cita «Python dijo: «…»».
+2. Con código 2, el actualizador reintenta (2, 4, 8, 10 s, dentro de los 180 s)
+   y lo apunta. Cualquier otro código se dice en el acto.
+
+**De paso, medido:** la consola de la VM no volvía tras la activación a mano
+porque `Start-Process -Wait` espera también a los hijos (el servidor): 16,1 s
+con `-Wait` frente a 0,1 s con `WaitForExit()` sobre un hijo de 15 s.
+
+**Método.** 4 fallos reintroducidos (errores a DEVNULL, sin reintento,
+reintento con cualquier código, mensaje sin Python): 4 de 4 en rojo. El test del
+código 2 lo provoca de verdad, con una capa sin `lanzador.pyw`.
+
+**Versión 0.3.2, con regla nueva de Pablo: cada build que sale de esta máquina
+lleva un número que ningún otro build ha tenido.** Hubo tres 0.3.1 distintos
+(`10a4c8b`, `c5dd444` y el de los reintentos, que no llegó a salir). El ensayo
+de actualización pasa a 0.3.3, y los artefactos 0.3.1 se retiraron de
+`_empaquetado\salida`. Los comentarios de los plazos citan ya los 21,5 s.
+
+**Suite entera sobre 0.3.2:** 1972 pasan, 39 saltados, 1 xfail (D-7), 0 fallos,
+en 14 min 45 s. Los dos avisos de `ifcopenshell` de siempre.
+
+**Instalador:** `ArchMuse-Beta-0.3.2.exe`, 37.111.228 bytes, SHA-256
+`a4398fdaf50553f340694bc66dccf9837271a982d99d9c9b11b326cd8d785efd`.
+
+---
+
 ## 2026-09-14 (noche) · Primera instalación en máquina limpia: se colgó el instalador
 
 **VM Windows 11 limpia, sin AutoCAD** (Pablo, `.exe` del commit `10a4c8b`). Sin

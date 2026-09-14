@@ -18,6 +18,7 @@ import re
 import shutil
 import sys
 import threading
+import time
 import traceback
 import zipfile
 from typing import Optional
@@ -137,15 +138,41 @@ def activar(version: str, arrancar: bool = True):
             "ARCHMUSE: %s. Vuelve a ejecutar el instalador; si sigue igual, avísanos."
             % (version, e))
     if arrancar:
-        _paso("arrancar el servidor")
-        desde = local.tamano_del_registro()
-        proceso = local.arrancar_lanzador()
-        _paso("esperar a que el servidor conteste")
-        if local.esperar_servidor(version, local.PLAZO_ARRANQUE_S, proceso) is None:
-            raise RuntimeError(local.por_que_no_contesta(version, proceso,
-                                                         local.PLAZO_ARRANQUE_S, desde))
+        _arrancar_con_reintentos(version)
     local.registrar("activada la versión %s (antes: %s)" % (version, previa))
     return previa
+
+
+def _arrancar_con_reintentos(version: str) -> None:
+    """Lanza el servidor y espera a que conteste, dentro de `PLAZO_ARRANQUE_S`.
+
+    **Si Python no puede abrir el script (código 2), espera y vuelve a
+    intentarlo** mientras quede plazo: 2, 4, 8 y luego 10 s entre intentos. En
+    la VM limpia, el 2026-09-14, pasó sólo durante la instalación y minutos
+    después el mismo arranque tardaba 0,8 s. **Cualquier otro código no se
+    reintenta**: es un fallo que se repetiría igual, y se dice en el acto."""
+    limite = time.monotonic() + local.PLAZO_ARRANQUE_S
+    intento = 0
+    while True:
+        intento += 1
+        _paso("arrancar el servidor (intento %d)" % intento)
+        desde = local.tamano_del_registro()
+        desde_errores = local.tamano_de(local.fichero_de_errores_del_lanzador())
+        proceso = local.arrancar_lanzador()
+        _paso("esperar a que el servidor conteste (intento %d)" % intento)
+        restante = max(0.0, limite - time.monotonic())
+        if local.esperar_servidor(version, restante, proceso) is not None:
+            if intento > 1:
+                local.registrar("el servidor ha arrancado al intento %d" % intento)
+            return
+        espera = min(2 ** intento, 10)
+        if proceso.poll() == local.NO_PUEDE_ABRIR_EL_SCRIPT and time.monotonic() + espera < limite:
+            local.registrar("Python no ha podido abrir el programa del servidor (código 2, intento %d): "
+                            "reintento en %d s" % (intento, espera))
+            time.sleep(espera)
+            continue
+        raise RuntimeError(local.por_que_no_contesta(version, proceso, local.PLAZO_ARRANQUE_S,
+                                                     desde, desde_errores, intento))
 
 
 def instalar(ruta: str, arrancar: bool = True) -> str:

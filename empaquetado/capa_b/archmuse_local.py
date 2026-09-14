@@ -244,29 +244,49 @@ def mutex_unico(nombre: str):
 #:
 #: **Hasta el 2026-09-14 eran 60 s, y no salían de ninguna medida**: la única
 #: que había era `import app` en 2,75 s en la máquina de desarrollo. Medido ese
-#: día en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente. **El
+#: día en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y
+#: **21,5 s al iniciar sesión tras reiniciar**, la peor medida que hay. **El
 #: arranque en frío no se ha medido**, y el primero tras instalar es el más frío
 #: que hay (primera lectura del runtime, `.pyc` de la capa B sin compilar).
-#: 180 s son unas diez veces el arranque en caliente de la VM. Esperar tanto no
-#: cuesta nada cuando el servidor falla: quien lo lanza vigila el proceso y deja
-#: de esperar en cuanto muere.
+#: 180 s son unas ocho veces la peor medida. Esperar tanto no cuesta nada cuando
+#: el servidor falla: quien lo lanza vigila el proceso y deja de esperar en
+#: cuanto muere.
 PLAZO_ARRANQUE_S = 180
+
+#: El código con el que sale Python cuando no puede abrir el script que se le
+#: pasa: «can't open file '…': [Errno N] …», tanto si no existe como si otro
+#: proceso lo tiene bloqueado (medido el 2026-09-14 con el `pythonw.exe`
+#: embebido). En la VM limpia pasó **sólo durante la instalación**, con los
+#: ficheros recién extraídos; minutos después el mismo arranque tardaba 0,8 s.
+NO_PUEDE_ABRIR_EL_SCRIPT = 2
+
+
+def fichero_de_errores_del_lanzador() -> str:
+    """Lo que Python escribe antes de que el lanzador tome el control de su
+    salida (p. ej. «can't open file»). Como `servidor-*.log`, no entra en
+    `ARCHMUSE-INFORME`: lleva rutas con el nombre de usuario dentro."""
+    return os.path.join(carpeta_registro(), "lanzador-errores.txt")
 
 
 def arrancar_lanzador() -> subprocess.Popen:
     """Lanza el servidor de `app\\actual`, desacoplado de quien lo lanza.
 
-    Devuelve el proceso para que quien espera sepa si ha muerto: el 2026-09-14,
-    en la VM limpia, el lanzador murió sin escribir nada y el actualizador
-    siguió esperando a ciegas hasta agotar el plazo."""
+    Devuelve el proceso para que quien espera sepa si ha muerto. **Su salida de
+    errores va a `fichero_de_errores_del_lanzador()`**, con una línea de
+    cabecera por lanzamiento: hasta el 2026-09-14 iba a DEVNULL, y en la VM
+    limpia `pythonw` murió con código 2 sin que nadie pudiera leer por qué."""
     carpeta = carpeta_actual()
     pythonw = os.path.join(base(), "runtime", "pythonw.exe")
     if not os.path.isfile(pythonw):
         pythonw = sys.executable
-    return subprocess.Popen([pythonw, os.path.join(carpeta, "lanzador.pyw")], cwd=carpeta,
-                            creationflags=DESACOPLADO, close_fds=True,
-                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
+    script = os.path.join(carpeta, "lanzador.pyw")
+    os.makedirs(carpeta_registro(), exist_ok=True)
+    with open(fichero_de_errores_del_lanzador(), "ab") as errores:
+        errores.write(("%s | lanzando %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), script)).encode("utf-8"))
+        errores.flush()
+        return subprocess.Popen([pythonw, script], cwd=carpeta,
+                                creationflags=DESACOPLADO, close_fds=True,
+                                stdin=subprocess.DEVNULL, stdout=errores, stderr=errores)
 
 
 def esperar_servidor(version: Optional[str] = None, segundos: float = PLAZO_ARRANQUE_S,
@@ -288,13 +308,28 @@ def fichero_del_registro() -> str:
     return os.path.join(carpeta_registro(), "servidor-%s.log" % time.strftime("%Y-%m"))
 
 
+def tamano_de(fichero: str) -> int:
+    try:
+        return os.path.getsize(fichero)
+    except OSError:
+        return 0
+
+
 def tamano_del_registro() -> int:
     """Hasta dónde llega el registro ahora: se anota antes de lanzar el servidor
     para leer después sólo lo que ha escrito desde entonces."""
+    return tamano_de(fichero_del_registro())
+
+
+def lineas_escritas_desde(fichero: str, desde: int) -> list[str]:
+    """Las líneas no vacías escritas en `fichero` a partir del byte `desde`."""
     try:
-        return os.path.getsize(fichero_del_registro())
+        with open(fichero, "rb") as f:
+            f.seek(desde)
+            nuevo = f.read()
     except OSError:
-        return 0
+        return []
+    return [linea for linea in nuevo.decode("utf-8", errors="replace").splitlines() if linea.strip()]
 
 
 def lo_ultimo_escrito_desde(desde: int) -> Optional[str]:
@@ -304,13 +339,7 @@ def lo_ultimo_escrito_desde(desde: int) -> Optional[str]:
     **Por posición y no por PID**, a propósito: un intérprete puede arrancar el
     de verdad como proceso hijo (el `python.exe` de un venv lo hace), y entonces
     el PID que escribe no es el del proceso que se lanzó."""
-    try:
-        with open(fichero_del_registro(), "rb") as f:
-            f.seek(desde)
-            nuevo = f.read()
-    except OSError:
-        return None
-    lineas = [linea for linea in nuevo.decode("utf-8", errors="replace").splitlines() if linea.strip()]
+    lineas = lineas_escritas_desde(fichero_del_registro(), desde)
     if not lineas:
         return None
     ultima = lineas[-1]
@@ -318,23 +347,32 @@ def lo_ultimo_escrito_desde(desde: int) -> Optional[str]:
 
 
 def por_que_no_contesta(version: str, proceso: subprocess.Popen, segundos: float,
-                        desde: int = 0) -> str:
+                        desde: int = 0, desde_errores: int = 0, intentos: int = 1) -> str:
     """El mensaje cuando el servidor recién lanzado no contesta: lo que se sabe
-    (si el proceso vive o con qué código murió, y lo último que escribió), sin
-    suponer la causa y sin mandar a nadie a AutoCAD."""
+    (si el proceso vive o con qué código murió, lo que dijo Python y lo último
+    que escribió el servidor), sin suponer la causa y sin mandar a AutoCAD."""
     codigo = proceso.poll()
     if codigo is None:
         que = "el servidor no ha contestado en %d s y sigue arrancando" % segundos
+    elif codigo == NO_PUEDE_ABRIR_EL_SCRIPT:
+        que = "Python no ha podido abrir el programa del servidor (código %d)" % codigo
     else:
         que = "el servidor se ha cerrado al arrancar (código %d)" % codigo
+    if intentos > 1:
+        que += ", en %d intentos" % intentos
+    rastro = []
+    python = [linea for linea in lineas_escritas_desde(fichero_de_errores_del_lanzador(), desde_errores)
+              if " | lanzando " not in linea]
+    if python:
+        rastro.append("Python dijo: «%s»." % " ".join(python[-3:]))
     ultimo = lo_ultimo_escrito_desde(desde)
     if ultimo is None:
-        rastro = "No ha llegado a escribir nada en el registro."
+        rastro.append("No ha llegado a escribir nada en el registro.")
     else:
-        rastro = "Lo último que ha escrito: «%s»." % ultimo
+        rastro.append("Lo último que ha escrito: «%s»." % ultimo)
     return ("ArchMuse %s está instalado, pero %s. %s Al iniciar sesión en Windows ArchMuse "
             "se pone en marcha solo; si después sigue sin funcionar, mándanos la carpeta %s."
-            % (version, que, rastro, carpeta_registro()))
+            % (version, que, " ".join(rastro), carpeta_registro()))
 
 
 def escribir_resultado(fichero: str, correcto: bool, texto: str) -> None:
