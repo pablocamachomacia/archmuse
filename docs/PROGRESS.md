@@ -5,6 +5,52 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-14 (noche, 3) · La causa del Errno 22: RedirectionGuard. Sin uniones, y parada por el runtime (0.3.3)
+
+**Tercera instalación en la VM** (0.3.2 encima de 0.3.1, con un servidor vivo):
+falló la copia de `runtime\libcrypto-3.dll` («DeleteFile falló; código 5»)
+porque el instalador no paró el servidor. Y `lanzador-errores.txt` dio por fin
+la causa del código 2: **«can't open file '…\app\actual\lanzador.pyw': [Errno 22]
+Invalid argument»**, 19 reintentos en 3 minutos, siempre igual.
+
+**Hallazgo, documentado y medido: Inno Setup 6.7.0 activa por defecto
+RedirectionGuard en el instalador**, y los procesos que lanza la heredan. Esa
+protección de Windows prohíbe atravesar uniones creadas sin administrador, y
+`app\actual` lo era. Medido aquí con el Python embebido: abrir por la unión da
+`errno 22`, un hijo `pythonw` hereda la protección y sale con código 2 y el mismo
+texto de la VM, y `readlink` y borrar la unión sí funcionan. Explica el código 2
+de las tres instalaciones, la parada que se saltó (el instalador buscaba el
+actualizador a través de la unión) y por qué desinstalar sí funcionaba.
+
+**Fallo aparte, `parar_servidor`:** sólo paraba lo que decía `servidor.json`; si
+no casaba, no mataba nada; `--parar` devolvía `OK` igual; y nadie miraba
+`taskkill`.
+
+**Corregido sin esperar el visto bueno de Pablo, a petición suya (0.3.3, `.lsp`
+3.6.2):**
+1. **Sin uniones.** Versión activa en `app\actual.txt`; `{app}\lanzar.pyw` lanza
+   la versión activa (Inicio, «volver», `.archmuse`, rama C). Migración automática
+   desde la unión. RedirectionGuard, activado.
+2. **Parada por la ruta del runtime.** El instalador termina antes de copiar todo
+   proceso cuyo ejecutable esté en `{app}\runtime\`, comprueba que no queda
+   ninguno y, si no puede, no instala nada. En Python igual, y `--parar` falla con
+   el PID de lo que quede.
+3. **Un solo reintento con código 2.**
+
+**Método.** Un test reproduce la cadena con RedirectionGuard activado de verdad
+(se ejecuta, no se salta). 8 fallos reintroducidos, 8 en rojo; uno de ellos (L2)
+sólo tras rehacer el fallo, porque la primera versión no reproducía la regresión
+real.
+
+**Suite entera sobre 0.3.3:** 1979 pasan, 39 saltados, 1 xfail (D-7), 0 fallos,
+en 13 min 37 s.
+
+**Instalador:** `ArchMuse-Beta-0.3.3.exe`, 37.116.868 bytes, SHA-256
+`b1f76220f92353dc97cd44a9bb8ab64fd07a698a9cb9ebdaa83154548f78ebc8`. Ensayo de
+actualización: `ArchMuse-0.3.4.archmuse`. **Sin probar en la VM.**
+
+---
+
 ## 2026-09-14 (noche, 2) · Código 2 al instalar: errores de Python al registro, reintentos y 0.3.2
 
 **Segunda instalación en la VM** (`c5dd444`, hash verificado). **El cuelgue está

@@ -38,6 +38,10 @@ CloseApplications=no
 UninstallDisplayName=ArchMuse Beta
 WizardStyle=modern
 SetupLogging=yes
+; RedirectionGuard se queda activado (Inno Setup lo activa por defecto desde la
+; 6.7.0): prohíbe atravesar uniones creadas sin administrador, también a los
+; procesos que lanza el instalador. ArchMuse ya no usa ninguna: desde el
+; 2026-09-14 la versión activa es app\actual.txt y todo entra por lanzar.pyw.
 
 [Languages]
 Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
@@ -55,6 +59,9 @@ Type: filesandordirs; Name: "{app}\app\{#Version}"
 Source: "{#Salida}\runtime\*"; DestDir: "{app}\runtime"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#Salida}\app\{#Version}\*"; DestDir: "{app}\app\{#Version}"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#Salida}\bundle\PackageContents.xml"; DestDir: "{userappdata}\Autodesk\ApplicationPlugins\ArchMuse.bundle"; Flags: ignoreversion
+; El punto de entrada fijo: lee app\actual.txt y ejecuta la versión activa. Del
+; repositorio y no de la capa B: tiene que valer con cualquier versión.
+Source: "lanzar.pyw"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; D-1: el servidor arranca al iniciar sesión. Con un acceso directo en la
@@ -62,15 +69,15 @@ Source: "{#Salida}\bundle\PackageContents.xml"; DestDir: "{userappdata}\Autodesk
 ; ONLOGON` sin elevar devuelve «Acceso denegado» (medido el 2026-09-13), y el
 ; PRD no admite pedir administrador. La semántica es la misma: por usuario, al
 ; iniciar sesión, sin privilegios.
-Name: "{userstartup}\ArchMuse (servidor)"; Filename: "{app}\runtime\pythonw.exe"; Parameters: """{app}\app\actual\lanzador.pyw"""; WorkingDir: "{app}\app\actual"
-Name: "{userprograms}\ArchMuse\ArchMuse - volver a la versión anterior"; Filename: "{app}\runtime\pythonw.exe"; Parameters: """{app}\app\actual\actualizador.pyw"" --volver"; WorkingDir: "{app}"
+Name: "{userstartup}\ArchMuse (servidor)"; Filename: "{app}\runtime\pythonw.exe"; Parameters: """{app}\lanzar.pyw"""; WorkingDir: "{app}"
+Name: "{userprograms}\ArchMuse\ArchMuse - volver a la versión anterior"; Filename: "{app}\runtime\pythonw.exe"; Parameters: """{app}\lanzar.pyw"" actualizador --volver"; WorkingDir: "{app}"
 Name: "{userprograms}\ArchMuse\Desinstalar ArchMuse"; Filename: "{uninstallexe}"
 
 [Registry]
 ; Doble clic en un .archmuse = instalar esa versión (D-2).
 Root: HKCU; Subkey: "Software\Classes\.archmuse"; ValueType: string; ValueName: ""; ValueData: "ArchMuse.Actualizacion"; Flags: uninsdeletevalue
 Root: HKCU; Subkey: "Software\Classes\ArchMuse.Actualizacion"; ValueType: string; ValueName: ""; ValueData: "Actualización de ArchMuse"; Flags: uninsdeletekey
-Root: HKCU; Subkey: "Software\Classes\ArchMuse.Actualizacion\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\runtime\pythonw.exe"" ""{app}\app\actual\actualizador.pyw"" --instalar ""%1"""
+Root: HKCU; Subkey: "Software\Classes\ArchMuse.Actualizacion\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\runtime\pythonw.exe"" ""{app}\lanzar.pyw"" actualizador --instalar ""%1"""
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\app"
@@ -127,6 +134,115 @@ begin
     Result := SuppressibleMsgBox('No he podido comprobar si AutoCAD está abierto. ' +
                                  'Asegúrate de que está cerrado y pulsa Sí para seguir.',
                                  mbConfirmation, MB_YESNO, IDNO) = IDYES;
+  end;
+end;
+
+// Parar ArchMuse desde aquí, sin depender de Python ni de servidor.json (VM
+// limpia, 2026-09-14: el instalador creía haber parado el servidor y la copia
+// chocó con su libcrypto-3.dll). Todo proceso cuyo ejecutable esté en
+// {app}\runtime\ es de ArchMuse: es nuestro Python y no lo usa nadie más.
+const
+  LIMITE_PARADA_S = 20;
+
+function ProcesosDelRuntime(Terminar: Boolean; var Descripcion: String): Integer;
+var
+  Localizador, Servicio, Procesos, Proceso: Variant;
+  Runtime, Ruta: String;
+  I: Integer;
+begin
+  Result := 0;
+  Descripcion := '';
+  Runtime := Lowercase(AddBackslash(ExpandConstant('{app}\runtime')));
+  Localizador := CreateOleObject('WbemScripting.SWbemLocator');
+  Servicio := Localizador.ConnectServer('.', 'root\CIMV2');
+  Procesos := Servicio.ExecQuery('SELECT ProcessId, ExecutablePath FROM Win32_Process ' +
+                                 'WHERE Name = ''python.exe'' OR Name = ''pythonw.exe''');
+  for I := 0 to Procesos.Count - 1 do
+  begin
+    Proceso := Procesos.ItemIndex(I);
+    if not VarIsNull(Proceso.ExecutablePath) then
+    begin
+      Ruta := Proceso.ExecutablePath;
+      if Pos(Runtime, Lowercase(Ruta)) = 1 then
+      begin
+        Result := Result + 1;
+        Descripcion := Descripcion + #13#10 + '  pid ' + IntToStr(Proceso.ProcessId) + ': ' + Ruta;
+        if Terminar then
+          Proceso.Terminate();
+      end;
+    end;
+  end;
+end;
+
+function PararArchMuse(var Mensaje: String): Boolean;
+var
+  Inicio, Transcurridos: DWORD;
+  Descripcion: String;
+begin
+  Mensaje := '';
+  Result := False;
+  try
+    repeat
+      if ProcesosDelRuntime(True, Descripcion) = 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
+      Inicio := GetTickCount;
+      Transcurridos := 0;
+      while (Transcurridos < LIMITE_PARADA_S) and (ProcesosDelRuntime(False, Descripcion) > 0) do
+      begin
+        Sleep(500);
+        Transcurridos := (GetTickCount - Inicio) div 1000;
+      end;
+      if ProcesosDelRuntime(False, Descripcion) = 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
+    until SuppressibleMsgBox('ArchMuse está en marcha y no se deja parar:' + Descripcion + #13#10#13#10 +
+                             'Pulsa Reintentar. Si sigue igual, cierra la sesión de Windows, vuelve a entrar y ' +
+                             'ejecuta otra vez el instalador.', mbError, MB_RETRYCANCEL, IDCANCEL) = IDCANCEL;
+    Mensaje := 'ArchMuse está en marcha y no se deja parar:' + Descripcion;
+  except
+    Result := SuppressibleMsgBox('No he podido comprobar si ArchMuse está en marcha. Si lo está, ' +
+                                 'la copia de ficheros puede fallar. ¿Seguir?',
+                                 mbConfirmation, MB_YESNO, IDNO) = IDYES;
+    if not Result then
+      Mensaje := 'No se ha podido comprobar si ArchMuse está en marcha.';
+  end;
+end;
+
+// El actualizador de una versión instalada, SIN pasar por uniones: primero el de
+// app\actual.txt; si no lo hay (instalación anterior al 2026-09-14, con la unión
+// app\actual), el de cualquier carpeta de versión real. Todos saben desinstalar.
+function ActualizadorInstalado(): String;
+var
+  Leido: AnsiString;
+  Version: String;
+  Busqueda: TFindRec;
+begin
+  Result := '';
+  if LoadStringFromFile(ExpandConstant('{app}\app\actual.txt'), Leido) then
+  begin
+    Version := Trim(String(Leido));
+    if FileExists(ExpandConstant('{app}\app\') + Version + '\actualizador.pyw') then
+    begin
+      Result := ExpandConstant('{app}\app\') + Version + '\actualizador.pyw';
+      Exit;
+    end;
+  end;
+  if FindFirst(ExpandConstant('{app}\app\*'), Busqueda) then
+  try
+    repeat
+      // $10: carpeta; $400: punto de reparación (la unión antigua), que no se toca.
+      if ((Busqueda.Attributes and $10) <> 0) and ((Busqueda.Attributes and $400) = 0) and
+         (Busqueda.Name <> '.') and (Busqueda.Name <> '..') and
+         FileExists(ExpandConstant('{app}\app\') + Busqueda.Name + '\actualizador.pyw') then
+        Result := ExpandConstant('{app}\app\') + Busqueda.Name + '\actualizador.pyw';
+    until not FindNext(Busqueda);
+  finally
+    FindClose(Busqueda);
   end;
 end;
 
@@ -205,7 +321,7 @@ end;
 // seguiría confiando en una carpeta que ya no es de nadie.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  Mensaje: String;
+  Mensaje, Parada: String;
   Pythonw, Actualizador: String;
   Quitada: Boolean;
 begin
@@ -214,10 +330,8 @@ begin
     Quitada := False;
     Mensaje := '';
     Pythonw := ExpandConstant('{app}\runtime\pythonw.exe');
-    Actualizador := ExpandConstant('{app}\app\actual\actualizador.pyw');
-    if not FileExists(Actualizador) then
-      Actualizador := ExpandConstant('{app}\app\{#Version}\actualizador.pyw');
-    if FileExists(Pythonw) and FileExists(Actualizador) then
+    Actualizador := ActualizadorInstalado();
+    if FileExists(Pythonw) and (Actualizador <> '') then
       Quitada := (EjecutarActualizador(Pythonw, Actualizador, '--desinstalar', LIMITE_BREVE_S,
                                        nil, Mensaje) = ACTUALIZADOR_OK);
     if not Quitada then
@@ -225,6 +339,11 @@ begin
              'rutas de confianza de AutoCAD. AutoCAD seguiría cargando sin preguntar lo que ' +
              'haya en ' + ExpandConstant('{userappdata}\Autodesk\ApplicationPlugins\ArchMuse.bundle\Contents') +
              '. Avísanos para quitarla.' + #13#10#13#10 + Mensaje, mbError, MB_OK);
+    // Lo que siga en marcha desde runtime\ (también el actualizador que acaba de
+    // terminar) tiene que haber terminado antes de que se borren sus ficheros.
+    if not PararArchMuse(Parada) then
+      MsgBox('ArchMuse se desinstala, pero algo suyo sigue en marcha y puede que no se borren ' +
+             'todos sus ficheros.' + #13#10#13#10 + Parada, mbError, MB_OK);
   end;
 end;
 
@@ -251,7 +370,6 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Mensaje: String;
-  Pythonw, Actualizador: String;
 begin
   Result := '';
   if not EsperarAutoCADCerrado() then
@@ -259,11 +377,15 @@ begin
     Result := 'AutoCAD sigue abierto. No se ha instalado nada.';
     Exit;
   end;
-  Pythonw := ExpandConstant('{app}\runtime\pythonw.exe');
-  Actualizador := ExpandConstant('{app}\app\actual\actualizador.pyw');
-  if FileExists(Pythonw) and FileExists(Actualizador) then
-    if EjecutarActualizador(Pythonw, Actualizador, '--parar', LIMITE_BREVE_S, nil,
-                            Mensaje) <> ACTUALIZADOR_OK then
-      // Ninguna línea puede empezar por # (el preprocesador la tomaría por directiva).
-      Result := 'No se ha podido parar el ArchMuse que está en marcha. No se ha instalado nada.' + #13#10#13#10 + Mensaje;
+  // Antes de copiar un solo fichero, y comprobando que no queda nada. Sin Python:
+  // hasta el 2026-09-14 esto lo hacía el actualizador de la versión instalada,
+  // que se buscaba a través de la unión app\actual (RedirectionGuard: «no
+  // existe», y se saltaba la parada sin decir nada).
+  if not PararArchMuse(Mensaje) then
+  begin
+    // Ninguna línea puede empezar por # (el preprocesador la tomaría por directiva).
+    Result := 'No se ha instalado nada.' + #13#10#13#10 + Mensaje;
+    Exit;
+  end;
+  DeleteFile(ExpandConstant('{app}\servidor.json'));
 end;

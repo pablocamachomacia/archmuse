@@ -179,7 +179,8 @@ def test_apuntar_actual_y_volver_a_la_anterior_sin_borrar_nada(arbol):
     _capa_falsa(local, "0.3.2")
 
     assert local.apuntar_actual("0.3.1") is None
-    assert os.path.isjunction(local.carpeta_actual())
+    assert Path(local.fichero_actual()).read_text(encoding="utf-8").strip() == "0.3.1"
+    assert local.carpeta_actual() == os.path.join(local.carpeta_app(), "0.3.1")
     assert local.apuntar_actual("0.3.2") == "0.3.1"
     assert local.version_activa() == "0.3.2"
     assert local.version_anterior() == "0.3.1"
@@ -417,10 +418,10 @@ def test_si_python_no_puede_abrir_el_lanzador_se_reintenta_y_se_dice_la_causa(ar
         actualizador.activar("0.3.1", arrancar=True)
     assert time.monotonic() - t0 < 30
     texto = str(e.value)
-    assert "Python no ha podido abrir el programa del servidor (código 2), en 3 intentos" in texto
+    assert "Python no ha podido abrir el programa del servidor (código 2), en 2 intentos" in texto
     assert "Python dijo: «" in texto and "can't open file" in texto and "lanzador.pyw" in texto
     log = (Path(local.carpeta_registro()) / ("servidor-%s.log" % time.strftime("%Y-%m"))).read_text(encoding="utf-8")
-    assert "reintento en 2 s" in log and "reintento en 4 s" in log
+    assert "reintento en 2 s" in log and "reintento en 4 s" not in log
     for supuesto in ("AutoCAD", "ARCHMUSE-INFORME", "einicia"):
         assert supuesto not in texto, supuesto
 
@@ -451,6 +452,135 @@ def test_un_codigo_2_pasajero_se_supera_con_otro_intento(arbol, monkeypatch):
         assert "reintento en 2 s" in log and "ha arrancado al intento 2" in log
     finally:
         procesos[1].kill()
+
+
+def _mklink(union: Path, destino: Path) -> None:
+    subprocess.run(["cmd", "/c", "mklink", "/J", str(union), str(destino)], capture_output=True, check=True)
+
+
+def test_la_version_activa_es_un_fichero_y_se_migra_desde_la_union(arbol):
+    """Hasta el 2026-09-14 la versión activa era la unión `app\\actual`. Una
+    instalación así (la VM) se migra: se lee adónde apunta, se escribe
+    `actual.txt` y la unión se borra, sin tocar la versión."""
+    local, _, _, _ = arbol
+    _capa_falsa(local, "0.3.1")
+    _capa_falsa(local, "0.3.2")
+    _mklink(Path(local.union_antigua()), Path(local.carpeta_app()) / "0.3.1")
+    assert local.version_activa() == "0.3.1"
+    assert local.apuntar_actual("0.3.2") == "0.3.1"
+    assert not os.path.lexists(local.union_antigua())
+    assert Path(local.fichero_actual()).read_text(encoding="utf-8").strip() == "0.3.2"
+    assert local.version_anterior() == "0.3.1"
+    assert (Path(local.carpeta_app()) / "0.3.1" / "version.json").exists()
+
+
+def test_nada_depende_de_atravesar_una_union_con_redirection_guard(arbol, tmp_path):
+    """**La causa del Errno 22 de la VM, reproducida.** Inno Setup 6.7 activa
+    RedirectionGuard en el instalador y la heredan los procesos que lanza. Aquí
+    se activa la misma protección y, desde dentro, se hace lo que hace el
+    instalador sobre una instalación con la unión antigua: leer la versión
+    activa, apuntar a la nueva y arrancar el servidor, directo y por lanzar.pyw."""
+    local, _, _, _ = arbol
+    base = Path(local.base())
+    for version in ("0.3.1", "0.3.2"):
+        (_capa_falsa(local, version) / "lanzador.pyw").write_text(
+            "import os\nopen(os.path.join(%r, 'lanzado-' + %r), 'a').write('x')\n" % (str(tmp_path), version),
+            encoding="utf-8")
+    _mklink(Path(local.union_antigua()), base / "app" / "0.3.1")
+    shutil.copyfile(EMPAQUETADO / "lanzar.pyw", base / "lanzar.pyw")
+    marca = tmp_path / "lanzado-0.3.2"
+    codigo = (
+        "import ctypes, ctypes.wintypes as w, json, os, subprocess, sys\n"
+        "class P(ctypes.Structure):\n"
+        "    _fields_ = [('Flags', w.DWORD)]\n"
+        "if not ctypes.WinDLL('kernel32').SetProcessMitigationPolicy(16, ctypes.byref(P(1)), ctypes.sizeof(P)):\n"
+        "    print(json.dumps({'guardia': False})); sys.exit(0)\n"
+        "base, marca = %r, %r\n"
+        "try:\n"
+        "    open(os.path.join(base, 'app', 'actual', 'version.json')).read(); atraviesa = 0\n"
+        "except OSError as e:\n"
+        "    atraviesa = e.errno\n"
+        "sys.path.insert(0, %r)\n"
+        "import archmuse_local as l\n"
+        "r = {'guardia': True, 'atraviesa': atraviesa, 'activa': l.version_activa()}\n"
+        "r['previa'] = l.apuntar_actual('0.3.2')\n"
+        "r['union'] = os.path.lexists(os.path.join(base, 'app', 'actual'))\n"
+        "r['lanzar'] = subprocess.run([sys.executable, os.path.join(base, 'lanzar.pyw')]).returncode\n"
+        "r['por_lanzar'] = os.path.exists(marca)\n"
+        "os.path.exists(marca) and os.remove(marca)\n"
+        "r['arrancar'] = l.arrancar_lanzador().wait(60)\n"
+        "r['por_arrancar'] = os.path.exists(marca)\n"
+        "print(json.dumps(r))\n" % (str(base), str(marca), str(CAPA_B)))
+    salida = subprocess.run([sys.executable, "-c", codigo], capture_output=True, timeout=120)
+    assert salida.returncode == 0, salida.stderr
+    r = json.loads(salida.stdout.decode().strip().splitlines()[-1])
+    if not r["guardia"] or r["atraviesa"] != 22:
+        pytest.skip("este Windows no aplica RedirectionGuard")
+    assert r["activa"] == "0.3.1" and r["previa"] == "0.3.1" and r["union"] is False
+    assert r["lanzar"] == 0 and r["por_lanzar"], "lanzar.pyw no ha arrancado la versión activa"
+    assert r["arrancar"] == 0 and r["por_arrancar"], "arrancar_lanzador no ha arrancado la versión activa"
+
+
+def test_lanzar_pyw_ejecuta_la_version_activa_y_dice_por_que_no(arbol, tmp_path):
+    local, _, _, _ = arbol
+    base = Path(local.base())
+    base.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(EMPAQUETADO / "lanzar.pyw", base / "lanzar.pyw")
+    registro = Path(local.carpeta_registro()) / ("servidor-%s.log" % time.strftime("%Y-%m"))
+    assert subprocess.run([sys.executable, str(base / "lanzar.pyw")]).returncode == 1
+    assert "no hay versión activa" in registro.read_text(encoding="utf-8")
+
+    capa = _capa_falsa(local, "0.3.2")
+    marca = tmp_path / "argv.txt"
+    (capa / "actualizador.pyw").write_text(
+        "import sys\nopen(%r, 'w').write(' '.join(sys.argv[1:]))\n" % str(marca), encoding="utf-8")
+    local.apuntar_actual("0.3.2")
+    r = subprocess.run([sys.executable, str(base / "lanzar.pyw"), "actualizador", "--volver"])
+    assert r.returncode == 0 and marca.read_text() == "--volver"
+    assert subprocess.run([sys.executable, str(base / "lanzar.pyw"), "otra-cosa"]).returncode == 1
+
+
+def _proceso_del_runtime(local) -> subprocess.Popen:
+    """Un proceso cuyo ejecutable está en `runtime\\` del árbol de mentira."""
+    runtime = Path(local.base()) / "runtime"
+    runtime.mkdir(parents=True, exist_ok=True)
+    ping = runtime / "ping.exe"
+    shutil.copyfile(os.path.join(os.environ["SystemRoot"], "System32", "PING.EXE"), ping)
+    proceso = subprocess.Popen([str(ping), "-n", "60", "127.0.0.1"], stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, creationflags=0x08000000)
+    time.sleep(0.5)
+    return proceso
+
+
+def test_parar_servidor_para_lo_que_corre_desde_el_runtime_aunque_no_este_en_servidor_json(arbol, monkeypatch):
+    """VM limpia, 2026-09-14: el servidor vivo no estaba en servidor.json (o no
+    casaba) y no se paró; la copia del instalador chocó con su libcrypto-3.dll."""
+    local, _, _, _ = arbol
+    monkeypatch.setattr(local, "ESPERA_PARADA_S", 10.0)
+    proceso = _proceso_del_runtime(local)
+    try:
+        assert local.leer_estado() is None
+        assert [pid for pid, _ in local.procesos_del_runtime()] == [proceso.pid]
+        assert local.parar_servidor() is True
+        proceso.wait(10)
+        assert local.lo_que_sigue_en_marcha() == []
+    finally:
+        proceso.kill()
+
+
+def test_si_algo_del_runtime_no_se_deja_parar_se_dice_con_su_pid(arbol, monkeypatch, tmp_path):
+    local, actualizador, _, _ = arbol
+    monkeypatch.setattr(local, "ESPERA_PARADA_S", 1.0)
+    monkeypatch.setattr(local, "matar_arbol", lambda pid: False)
+    proceso = _proceso_del_runtime(local)
+    fichero = tmp_path / "resultado.txt"
+    try:
+        assert actualizador.main(["--parar", "--silencioso", "--resultado", str(fichero)]) == 1
+        lineas = _leer_resultado(fichero)
+        assert lineas[0] == "ERROR" and "no se deja parar" in lineas[1]
+        assert ("pid %d" % proceso.pid) in lineas[1]
+    finally:
+        proceso.kill()
 
 
 def test_el_lanzador_deja_rastro_antes_de_nada():
@@ -650,7 +780,7 @@ def test_el_lanzador_repone_la_confianza_despues_de_quedarse_con_el_mutex():
 def test_instalar_y_desinstalar_esperan_a_que_autocad_este_cerrado():
     codigo = _secciones_iss()["Code"]
     preparar = codigo[codigo.index("function PrepareToInstall"):]
-    assert preparar.index("EsperarAutoCADCerrado()") < preparar.index("--parar")
+    assert preparar.index("EsperarAutoCADCerrado()") < preparar.index("PararArchMuse(Mensaje)")
     assert re.search(r"function InitializeUninstall\(\): Boolean;\s*begin\s*"
                      r"Result := EsperarAutoCADCerrado\(\);", codigo)
     esperar = codigo[codigo.index("function EsperarAutoCADCerrado"):codigo.index("function InitializeUninstall")]
@@ -768,8 +898,40 @@ def test_el_instalador_espera_algo_mas_que_el_tope_del_actualizador(arbol):
     breve = int(re.search(r"LIMITE_BREVE_S = (\d+);", iss).group(1))
     assert activar >= actualizador.LIMITES_S["activar"] + 20
     assert breve >= max(actualizador.LIMITES_S["parar"], actualizador.LIMITES_S["desinstalar"]) + 20
-    assert "'--parar', LIMITE_BREVE_S" in iss and "'--desinstalar', LIMITE_BREVE_S" in iss
+    assert "'--desinstalar', LIMITE_BREVE_S" in iss
     assert "'--activar {#Version}', LIMITE_ACTIVAR_S" in iss
+
+
+def _codigo_iss_sin_comentarios() -> str:
+    iss = (EMPAQUETADO / "ArchMuse-Beta.iss").read_text(encoding="utf-8-sig")
+    return "\n".join(l for l in iss.splitlines() if not l.strip().startswith(("//", ";")))
+
+
+def test_el_instalador_no_pasa_por_ninguna_union():
+    """Inno Setup 6.7 activa RedirectionGuard: ni el instalador ni lo que lanza
+    pueden atravesar una unión creada sin administrador (VM, 2026-09-14,
+    «[Errno 22]»). Todo entra por `lanzar.pyw` y la protección se deja puesta."""
+    iss = _codigo_iss_sin_comentarios()
+    assert "app\\actual\\" not in iss and "app\\actual\"" not in iss
+    assert 'Source: "lanzar.pyw"; DestDir: "{app}"' in iss
+    assert 'Parameters: """{app}\\lanzar.pyw"""' in iss
+    assert '""{app}\\lanzar.pyw"" actualizador --volver' in iss
+    assert '""{app}\\lanzar.pyw"" actualizador --instalar ""%1""' in iss
+    assert not re.search(r"^RedirectionGuard\s*=\s*no", iss, re.M | re.I)
+
+
+def test_el_instalador_para_archmuse_por_la_ruta_del_runtime_antes_de_copiar():
+    """VM, 2026-09-14: la parada dependía de servidor.json y de encontrar el
+    actualizador a través de la unión; se saltó sin decir nada."""
+    codigo = _codigo_iss_sin_comentarios()
+    procesos = codigo[codigo.index("function ProcesosDelRuntime"):codigo.index("function PararArchMuse")]
+    assert "ExpandConstant('{app}\\runtime')" in procesos and "Proceso.Terminate()" in procesos
+    preparar = codigo[codigo.index("function PrepareToInstall"):]
+    assert "EjecutarActualizador" not in preparar
+    assert "if not PararArchMuse(Mensaje) then" in preparar and "No se ha instalado nada." in preparar
+    desinstalar = codigo[codigo.index("procedure CurUninstallStepChanged"):codigo.index("function InitializeSetup")]
+    assert "ActualizadorInstalado()" in desinstalar
+    assert desinstalar.index("EjecutarActualizador(") < desinstalar.index("PararArchMuse(Parada)")
 
 
 def test_el_instalador_avisa_de_la_ruta_de_confianza_antes_de_instalar():

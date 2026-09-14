@@ -943,3 +943,69 @@ instalador con los reintentos es `ArchMuse-Beta-0.3.2.exe`, y el paquete para
 ensayar la actualización en la VM pasa a `ArchMuse-0.3.3.archmuse`. Los
 artefactos 0.3.1 se retiraron de `_empaquetado\salida` para que no se pueda coger
 el que no es: se reconstruyen desde sus commits.
+
+### Tercera instalación · 0.3.2 encima de 0.3.1, y la causa del Errno 22
+
+**Falló la copia de ficheros:** `runtime\libcrypto-3.dll`, «DeleteFile falló;
+código 5. Acceso denegado». Un servidor 0.3.1 seguía vivo (PID 5308, arrancado
+a mano, sin administrador) y el instalador no lo paró.
+
+**La causa del código 2, por fin**, gracias a `lanzador-errores.txt`: «can't
+open file '…\app\actual\lanzador.pyw': [Errno 22] Invalid argument». 19
+reintentos en casi 3 minutos, siempre el mismo error: no era pasajero.
+
+**Documentado:** Inno Setup 6.7.0 (2026-01-06) activa por defecto la protección
+RedirectionGuard de Windows en el instalador y el desinstalador ([notas de
+versión](https://jrsoftware.org/files/is6-whatsnew.htm): directiva
+`RedirectionGuard`, parámetros `/NOREDIRECTIONGUARD` y `/REDIRECTIONGUARD`).
+Bloquea el paso por uniones y enlaces creados sin administrador. Compilamos con
+la 6.7.3.
+
+**Medido aquí**, con el Python embebido que se instala:
+- con la protección activada, abrir a través de una unión creada sin
+  administrador da `errno 22`; por la ruta real, abre;
+- **un hijo `pythonw` desacoplado la hereda**: código 2 y «[Errno 22] Invalid
+  argument», el mismo texto que en la VM;
+- leer adónde apunta la unión (`os.readlink`), listarla y **borrarla** sí
+  funcionan: la migración es posible dentro del instalador.
+
+**Lo que explica, deducido y no medido en la VM:** el código 2 de las tres
+instalaciones; que se saltara la parada (`PrepareToInstall` buscaba
+`app\actual\actualizador.pyw` con `FileExists`, que tampoco atraviesa la unión:
+«no existe», y seguía sin decir nada); y que la desinstalación sí funcionara
+(caía a la ruta real). La línea «servidor.json obsoleto» de las 19:59:23 la
+escribió `activar` desde la ruta real, con el 5308 ya muerto.
+
+**`parar_servidor`, un fallo aparte:** paraba sólo el servidor de
+`servidor.json`; si el PID o el puerto no casaban, borraba el fichero sin matar
+nada; `--parar` devolvía `OK` aunque no parase nada; y nadie miraba el resultado
+de `taskkill`.
+
+**Corregido en 0.3.3 (`.lsp` 3.6.2), sin esperar el visto bueno de Pablo, a
+petición suya:**
+1. **Sin uniones.** La versión activa es `app\actual.txt`. `{app}\lanzar.pyw` lee
+   ese fichero y ejecuta el lanzador o el actualizador de esa versión: lo usan el
+   acceso directo de Inicio, «volver a la versión anterior», el doble clic en un
+   `.archmuse` y la rama C del `.lsp`. Las instalaciones con la unión se migran
+   solas en su primera activación. **RedirectionGuard se deja activado.**
+2. **La parada, por lo que ocupa los ficheros.** El instalador, antes de copiar
+   y sin depender de Python, termina todo proceso cuyo ejecutable esté en
+   `{app}\runtime\` (es nuestro Python: no puede ser de nadie más) y comprueba que
+   ya no existe; si no puede, ofrece Reintentar o Cancelar y no instala nada. En
+   Python, `parar_servidor` hace lo mismo, comprueba `taskkill`, y `--parar`
+   falla si queda algo vivo, con su PID.
+3. **Un solo reintento con código 2**: la causa medida no era pasajera, y un
+   código 2 que quede tendrá otra causa.
+
+**Pruebas.** Un test reproduce la cadena con RedirectionGuard activado de verdad
+(se ejecuta, no se salta): migración desde la unión, apuntar a la versión
+nueva, y arrancar directamente y por `lanzar.pyw`. Otros prueban la parada de un
+proceso del runtime que no está en `servidor.json` y el fallo con su PID cuando
+no se deja parar. **8 fallos reintroducidos, 8 en rojo**; uno de ellos sólo
+después de corregir cómo se reintroducía, porque el primer intento no
+reproducía la regresión real.
+
+**Sin verificar:** nada de esto en la VM todavía; si AutoCAD activa
+RedirectionGuard (con `lanzar.pyw` la rama C ya no pasa por ninguna unión, así
+que no debería importar); y un proceso del runtime que corriera como
+administrador, que la parada no podría terminar (lo diría y no instalaría).

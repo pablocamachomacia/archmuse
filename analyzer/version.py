@@ -33,7 +33,7 @@ from typing import Optional
 #: distintos (commits 10a4c8b, c5dd444 y el de los reintentos); el día que haya
 #: que diagnosticar algo en el ordenador de un arquitecto, la versión tiene que
 #: identificar el build sin ambigüedad.
-VERSION_DEL_REPOSITORIO = "0.3.2"
+VERSION_DEL_REPOSITORIO = "0.3.3"
 
 _RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _FICHERO = os.path.join(_RAIZ, "version.json")

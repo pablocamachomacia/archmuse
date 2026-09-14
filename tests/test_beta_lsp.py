@@ -95,10 +95,13 @@ def test_todas_las_peticiones_usan_el_puerto_que_se_acaba_de_leer():
 def test_la_rama_c_lanza_lo_que_deja_el_instalador():
     cuerpo = _defun("am:servidor-instalado")
     assert "\\\\ArchMuse\\\\runtime\\\\pythonw.exe" in cuerpo
-    assert "\\\\ArchMuse\\\\app\\\\actual\\\\lanzador.pyw" in cuerpo
+    assert "\\\\ArchMuse\\\\lanzar.pyw" in cuerpo
+    codigo = "\n".join(l for l in cuerpo.splitlines() if not l.strip().startswith(";"))
+    assert "actual" not in codigo, "la rama C no puede pasar por la unión app\\actual (RedirectionGuard)"
     assert r"DefaultDirName={localappdata}\ArchMuse" in ISS
     assert r"{app}\runtime\pythonw.exe" in ISS
-    assert r"{app}\app\actual\lanzador.pyw" in ISS
+    assert r'Source: "lanzar.pyw"; DestDir: "{app}"' in ISS
+    assert r'"""{app}\lanzar.pyw"""' in ISS
 
 
 #: `import app` en la VM de Windows 11 limpia (medido el 2026-09-14): 15,6 s en

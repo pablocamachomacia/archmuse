@@ -74,6 +74,13 @@ LIMITES_S = {
     "desinstalar": 60,
 }
 
+#: Intentos de arrancar el servidor cuando Python no puede abrir el script
+#: (código 2). Hasta el 2026-09-14 se reintentaba mientras quedara plazo; la
+#: causa medida no era pasajera (una unión que RedirectionGuard no deja
+#: atravesar: 19 reintentos en 3 minutos, siempre el mismo error) y ya no existe.
+#: Queda uno, por si un código 2 viniera de otra cosa.
+INTENTOS_ARRANQUE = 2
+
 _paso_actual = "empezar"
 
 
@@ -106,10 +113,14 @@ def vigilar(segundos: float, resultado: Optional[str]) -> threading.Timer:
 
 
 def _parar_o_abortar() -> None:
+    """Para ArchMuse y **comprueba que no queda nada**: lo que corra desde
+    `runtime\\` tiene ocupados los ficheros que se van a sustituir."""
     local.parar_servidor()
-    if local.servidor_vivo() is not None:
-        raise RuntimeError("El ArchMuse que está en marcha no se deja parar. "
-                           "No se ha cambiado nada. Reinicia el ordenador y vuelve a probar.")
+    quedan = local.lo_que_sigue_en_marcha()
+    if quedan:
+        raise RuntimeError("Hay un ArchMuse en marcha que no se deja parar: %s. No se ha "
+                           "cambiado nada. Mándanos la carpeta %s."
+                           % ("; ".join(quedan), local.carpeta_registro()))
 
 
 def activar(version: str, arrancar: bool = True):
@@ -146,10 +157,8 @@ def activar(version: str, arrancar: bool = True):
 def _arrancar_con_reintentos(version: str) -> None:
     """Lanza el servidor y espera a que conteste, dentro de `PLAZO_ARRANQUE_S`.
 
-    **Si Python no puede abrir el script (código 2), espera y vuelve a
-    intentarlo** mientras quede plazo: 2, 4, 8 y luego 10 s entre intentos. En
-    la VM limpia, el 2026-09-14, pasó sólo durante la instalación y minutos
-    después el mismo arranque tardaba 0,8 s. **Cualquier otro código no se
+    **Si Python no puede abrir el script (código 2), espera 2 s y lo intenta
+    otra vez**, hasta `INTENTOS_ARRANQUE`. **Cualquier otro código no se
     reintenta**: es un fallo que se repetiría igual, y se dice en el acto."""
     limite = time.monotonic() + local.PLAZO_ARRANQUE_S
     intento = 0
@@ -166,7 +175,8 @@ def _arrancar_con_reintentos(version: str) -> None:
                 local.registrar("el servidor ha arrancado al intento %d" % intento)
             return
         espera = min(2 ** intento, 10)
-        if proceso.poll() == local.NO_PUEDE_ABRIR_EL_SCRIPT and time.monotonic() + espera < limite:
+        if (proceso.poll() == local.NO_PUEDE_ABRIR_EL_SCRIPT and intento < INTENTOS_ARRANQUE
+                and time.monotonic() + espera < limite):
             local.registrar("Python no ha podido abrir el programa del servidor (código 2, intento %d): "
                             "reintento en %d s" % (intento, espera))
             time.sleep(espera)
@@ -192,10 +202,8 @@ def instalar(ruta: str, arrancar: bool = True) -> str:
 
     destino = os.path.join(carpeta_app, version)
     if os.path.isdir(destino):
-        # La misma versión otra vez: se sustituye. Si es la activa, primero se
-        # quita la unión, que si no el borrado dejaría `actual` apuntando a nada.
-        if local.version_activa() == version:
-            os.rmdir(local.carpeta_actual())
+        # La misma versión otra vez: se sustituye. `actual.txt` sigue nombrándola
+        # y `activar` la vuelve a apuntar en cuanto está copiada.
         shutil.rmtree(destino)
     os.replace(temporal, destino)
     activar(version, arrancar)
@@ -221,9 +229,15 @@ def desinstalar() -> None:
         raise RuntimeError("ArchMuse no ha podido quitar su carpeta de las rutas de confianza "
                            "de AutoCAD: %s" % e)
     local.registrar("ruta de confianza quitada de %d perfil(es) de AutoCAD" % cambiados)
+    _paso("parar ArchMuse")
     local.parar_servidor()
-    if os.path.isjunction(local.carpeta_actual()):
-        os.rmdir(local.carpeta_actual())
+    local.quitar_union_antigua()
+    # Lo que quede lo termina el desinstalador desde fuera de Python antes de
+    # borrar ficheros: aquí sólo se apunta, porque la ruta de confianza sí está
+    # quitada y decir lo contrario sería falso.
+    quedan = local.lo_que_sigue_en_marcha()
+    if quedan:
+        local.registrar("desinstalar: sigue en marcha %s" % "; ".join(quedan))
 
 
 CERRAR_AUTOCAD = "Si tienes AutoCAD abierto, ciérralo y vuelve a abrirlo."
@@ -262,7 +276,7 @@ def main(argv=None) -> int:
                 mensaje = "ArchMuse %s está en marcha." % a.activar
             elif a.parar:
                 _paso("parar el servidor")
-                local.parar_servidor()
+                _parar_o_abortar()
             elif a.desinstalar:
                 _paso("quitar la ruta de confianza y parar el servidor")
                 desinstalar()

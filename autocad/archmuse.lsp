@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.6.1")
-(setq *am:version*  "3.6.1 (2026-09-14, la rama C espera al servidor hasta 90 s)")
+(setq *am:version-corta* "3.6.2")
+(setq *am:version*  "3.6.2 (2026-09-14, la rama C lanza lanzar.pyw, sin uniones)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -853,12 +853,14 @@
 (defun am:servidor-instalado ( / base pythonw lanzador)
   ;; (pythonw . lanzador) si la beta está instalada en este ordenador, o nil.
   ;; Las rutas son las que deja `empaquetado/ArchMuse-Beta.iss`; un test
-  ;; compara las dos.
+  ;; compara las dos. **`lanzar.pyw` y no `app\actual\lanzador.pyw`** (3.6.2):
+  ;; la versión activa ya no es una unión de directorios, porque un proceso con
+  ;; RedirectionGuard no puede atravesarla (VM limpia, 2026-09-14).
   (setq base (getenv "LOCALAPPDATA"))
   (if base
     (progn
       (setq pythonw  (strcat base "\\ArchMuse\\runtime\\pythonw.exe")
-            lanzador (strcat base "\\ArchMuse\\app\\actual\\lanzador.pyw"))
+            lanzador (strcat base "\\ArchMuse\\lanzar.pyw"))
       ;; `vl-file-size` y no `findfile`: devuelve nil si el fichero no está, y
       ;; ya está en la lista de primitivas verificadas del test.
       (if (and (vl-file-size pythonw) (vl-file-size lanzador))

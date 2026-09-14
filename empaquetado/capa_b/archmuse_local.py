@@ -43,8 +43,24 @@ def carpeta_app() -> str:
     return os.path.join(base(), "app")
 
 
-def carpeta_actual() -> str:
+def fichero_actual() -> str:
+    """`app\\actual.txt`: la versión activa, en texto. Sustituye a la unión de
+    directorios `app\\actual` (ver `apuntar_actual`)."""
+    return os.path.join(carpeta_app(), "actual.txt")
+
+
+def union_antigua() -> str:
+    """Donde las instalaciones de antes del 2026-09-14 tenían la unión `app\\actual`."""
     return os.path.join(carpeta_app(), "actual")
+
+
+def carpeta_actual() -> str:
+    """La carpeta REAL de la versión activa, `app\\<versión>`: nunca a través de
+    una unión. RuntimeError si no hay ninguna versión activa."""
+    version = version_activa()
+    if version is None:
+        raise RuntimeError("no hay ninguna versión de ArchMuse activa")
+    return os.path.join(carpeta_app(), version)
 
 
 def carpeta_registro() -> str:
@@ -189,34 +205,119 @@ def elegir_socket(candidatos: Optional[list[int]] = None) -> tuple[socket.socket
     raise RuntimeError("no hay ningún puerto libre entre %d y %d" % (candidatos[0], candidatos[-1]))
 
 
-def matar_arbol(pid: int) -> None:
-    subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True,
-                   creationflags=SIN_VENTANA)
+def matar_arbol(pid: int) -> bool:
+    """`taskkill /T /F`. **Devuelve si ha funcionado, y si no, lo apunta**: hasta
+    el 2026-09-14 nadie miraba el resultado."""
+    r = subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True,
+                       creationflags=SIN_VENTANA)
+    if r.returncode != 0:
+        registrar("taskkill no ha podido terminar el pid %d: %s"
+                  % (pid, (r.stdout + r.stderr).decode("cp850", errors="replace").strip()))
+    return r.returncode == 0
 
 
-def parar_servidor(espera: float = 15.0) -> bool:
-    """Para el servidor de `servidor.json`. True si había uno y se ha parado.
+def procesos_del_runtime() -> list[tuple[int, str]]:
+    """`(pid, ejecutable)` de cada proceso que corre desde `runtime\\` de esta
+    instalación, sin contar este. **Por la ruta de la imagen y no por el
+    nombre**: `pythonw.exe` puede haber muchos, pero en esta carpeta sólo el
+    nuestro, así que parar lo que aparece aquí no puede cerrarle otro programa."""
+    runtime = os.path.normcase(os.path.join(base(), "runtime")) + os.sep
+    psapi = ctypes.WinDLL("psapi")
+    k32 = ctypes.WinDLL("kernel32")
+    k32.OpenProcess.restype = ctypes.c_void_p
+    k32.OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+    k32.QueryFullProcessImageNameW.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_wchar_p,
+                                               ctypes.POINTER(ctypes.c_uint32)]
+    k32.CloseHandle.argtypes = [ctypes.c_void_p]
+    capacidad = 4096
+    while True:
+        pids = (ctypes.c_uint32 * capacidad)()
+        usados = ctypes.c_uint32()
+        if not psapi.EnumProcesses(pids, ctypes.sizeof(pids), ctypes.byref(usados)):
+            raise RuntimeError("no se pueden enumerar los procesos de Windows")
+        if usados.value < ctypes.sizeof(pids):
+            break
+        capacidad *= 2
+    encontrados = []
+    for pid in pids[: usados.value // ctypes.sizeof(ctypes.c_uint32)]:
+        if pid in (0, os.getpid()):
+            continue
+        manejador = k32.OpenProcess(0x1000, 0, pid)          # PROCESS_QUERY_LIMITED_INFORMATION
+        if not manejador:
+            continue
+        try:
+            ruta = ctypes.create_unicode_buffer(32768)
+            largo = ctypes.c_uint32(32768)
+            if (k32.QueryFullProcessImageNameW(manejador, 0, ruta, ctypes.byref(largo))
+                    and os.path.normcase(ruta.value).startswith(runtime)):
+                encontrados.append((pid, ruta.value))
+        finally:
+            k32.CloseHandle(manejador)
+    return encontrados
 
-    **Sólo se mata un PID si es el que escucha en el puerto declarado y ese
-    puerto contesta como ArchMuse.** Un `servidor.json` que sobrevive a un
-    apagón lleva un PID que Windows puede haber dado ya a cualquier otro
-    programa suyo; matarlo por fiarse del fichero sería cerrarle el AutoCAD.
-    """
-    datos = leer_estado()
+
+#: Cuánto se espera a que lo que se ha parado termine de verdad.
+ESPERA_PARADA_S = 15.0
+
+
+def lo_que_sigue_en_marcha(datos: Optional[dict] = None) -> list[str]:
+    """Lo de ArchMuse que sigue vivo, descrito para un mensaje: el servidor de
+    `servidor.json` si contesta con su PID, y cada proceso desde `runtime\\`.
+    Lista vacía si no queda nada."""
     if datos is None:
-        return False
-    if salud(datos["puerto"]) is None or pid_escuchando(datos["puerto"]) != datos["pid"]:
-        registrar("servidor.json obsoleto (pid %d, puerto %d): se borra sin matar nada"
-                  % (datos["pid"], datos["puerto"]))
-        borrar_estado_si_es_de(datos["pid"])
-        return False
-    matar_arbol(datos["pid"])
+        datos = leer_estado()
+    quedan = []
+    if (datos is not None and salud(datos["puerto"], 0.5) is not None
+            and pid_escuchando(datos["puerto"]) == datos["pid"]):
+        quedan.append("el servidor (pid %d, puerto %d)" % (datos["pid"], datos["puerto"]))
+    for pid, ejecutable in procesos_del_runtime():
+        if datos is None or pid != datos["pid"]:
+            quedan.append("pid %d (%s)" % (pid, os.path.basename(ejecutable)))
+    return quedan
+
+
+def parar_servidor(espera: Optional[float] = None) -> bool:
+    """Para ArchMuse. True si había algo que parar; **no afirma haberlo parado**:
+    quien necesite saberlo mira `lo_que_sigue_en_marcha()`.
+
+    Dos cosas, porque una sola falló (VM limpia, 2026-09-14: no se paró un
+    servidor vivo y la copia del instalador chocó con su `libcrypto-3.dll`):
+
+    1. El servidor de `servidor.json`, **sólo si** es el que escucha en el puerto
+       declarado y ese puerto contesta como ArchMuse. Un `servidor.json` que
+       sobrevive a un apagón lleva un PID que Windows puede haber dado a
+       cualquier otro programa suyo: matarlo por fiarse del fichero sería
+       cerrarle el AutoCAD.
+    2. **Todo proceso cuyo ejecutable esté en `runtime\\` de esta instalación**,
+       esté o no en `servidor.json` (`procesos_del_runtime`).
+    """
+    espera = ESPERA_PARADA_S if espera is None else espera
+    habia = False
+    datos = leer_estado()
+    if datos is not None:
+        if salud(datos["puerto"]) is not None and pid_escuchando(datos["puerto"]) == datos["pid"]:
+            habia = True
+            matar_arbol(datos["pid"])
+        else:
+            registrar("servidor.json obsoleto (pid %d, puerto %d): ese pid no se mata"
+                      % (datos["pid"], datos["puerto"]))
+    for pid, ejecutable in procesos_del_runtime():
+        if datos is not None and pid == datos["pid"]:
+            continue
+        habia = True
+        registrar("parando un proceso de ArchMuse (pid %d, %s)" % (pid, os.path.basename(ejecutable)))
+        matar_arbol(pid)
     limite = time.monotonic() + espera
-    while time.monotonic() < limite and salud(datos["puerto"], 0.5) is not None:
+    quedan = lo_que_sigue_en_marcha(datos)
+    while quedan and time.monotonic() < limite:
         time.sleep(0.2)
-    borrar_estado_si_es_de(datos["pid"])
-    registrar("servidor parado (pid %d)" % datos["pid"])
-    return True
+        quedan = lo_que_sigue_en_marcha(datos)
+    if datos is not None and not any(q.startswith("el servidor") for q in quedan):
+        borrar_estado_si_es_de(datos["pid"])
+    if habia:
+        registrar("parada: %s" % ("sigue en marcha " + "; ".join(quedan) if quedan
+                                  else "no queda nada de ArchMuse en marcha"))
+    return habia
 
 
 def nombre_de_mutex() -> str:
@@ -411,42 +512,55 @@ def versiones_instaladas() -> list[str]:
 
 
 def version_activa() -> Optional[str]:
+    """La versión activa, de `app\\actual.txt`.
+
+    Si no hay `actual.txt` pero sí la unión `app\\actual` de una instalación
+    anterior, se lee **adónde apunta, sin atravesarla**: con RedirectionGuard
+    activo `os.readlink` funciona y abrir un fichero a través de la unión no
+    (medido el 2026-09-14)."""
     try:
-        destino = os.readlink(carpeta_actual())
+        with open(fichero_actual(), encoding="utf-8") as f:
+            version = f.read().strip()
     except OSError:
-        return None
-    return os.path.basename(os.path.normpath(destino))
+        try:
+            version = os.path.basename(os.path.normpath(os.readlink(union_antigua())))
+        except OSError:
+            return None
+    return version if _VERSION.match(version) else None
 
 
-def _enlazar(enlace: str, destino: str) -> subprocess.CompletedProcess:
-    # Una unión de directorios (junction) y no un enlace simbólico: los
-    # simbólicos piden privilegio o modo desarrollador; las uniones no.
-    return subprocess.run(["cmd", "/c", "mklink", "/J", enlace, destino],
-                          capture_output=True, creationflags=SIN_VENTANA)
+def quitar_union_antigua() -> None:
+    """Borra la unión `app\\actual` de una instalación anterior. Borrarla no la
+    atraviesa: funciona también con RedirectionGuard (medido el 2026-09-14). Si
+    en su sitio hay algo que no es una unión, no se toca."""
+    antigua = union_antigua()
+    if os.path.lexists(antigua) and (os.path.isjunction(antigua) or os.path.islink(antigua)):
+        os.rmdir(antigua)
 
 
 def apuntar_actual(version: str) -> Optional[str]:
-    """Mueve `app\\actual` a `app\\<version>`. Devuelve la versión previa.
+    """Hace activa `app\\<version>`. Devuelve la versión previa.
+
+    **Un fichero, `app\\actual.txt`, y no una unión de directorios**, que es lo
+    que hubo hasta el 2026-09-14. Inno Setup 6.7 activa RedirectionGuard en el
+    instalador y lo heredan los procesos que lanza: ninguno puede atravesar una
+    unión creada sin administrador, y en la VM limpia el servidor no arrancaba
+    al instalar («can't open file …\\app\\actual\\lanzador.pyw: [Errno 22]»). Se
+    escribe de un golpe (temporal + `os.replace`) y la unión antigua, si la hay,
+    se borra.
 
     Deja escrita la previa en `app\\anterior.txt`, que es lo que lee «volver a
-    la anterior». Si el enlace nuevo no se puede crear, se restaura el viejo:
-    lo único peor que no actualizar es quedarse sin ninguna versión activa.
+    la anterior».
     """
     destino = os.path.join(carpeta_app(), version)
     if leer_version(destino) != version:
         raise ValueError("app\\%s no es una versión de ArchMuse instalada" % version)
-    enlace = carpeta_actual()
     previa = version_activa()
-    if os.path.lexists(enlace):
-        if not os.path.isjunction(enlace):
-            raise RuntimeError("%s existe y no es un enlace: no lo toco" % enlace)
-        os.rmdir(enlace)                 # quita la unión, no lo que contiene
-    r = _enlazar(enlace, destino)
-    if r.returncode != 0 or not os.path.isjunction(enlace):
-        if previa:
-            _enlazar(enlace, os.path.join(carpeta_app(), previa))
-        raise RuntimeError("no se ha podido apuntar app\\actual a %s: %s"
-                           % (version, r.stderr.decode("latin-1", errors="replace").strip()))
+    temporal = fichero_actual() + ".tmp"
+    with open(temporal, "w", encoding="utf-8") as f:
+        f.write(version + "\n")
+    os.replace(temporal, fichero_actual())
+    quitar_union_antigua()
     if previa and previa != version:
         with open(os.path.join(carpeta_app(), "anterior.txt"), "w", encoding="utf-8") as f:
             f.write(previa)
