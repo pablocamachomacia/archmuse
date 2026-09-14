@@ -1,7 +1,7 @@
 ; Instalador de la beta de ArchMuse (PRD 2026-09-11, T10).
 ;
 ; Lo compila empaquetado\construir.py, que antes deja listo empaquetado\salida\.
-; A mano:  ISCC.exe /DVersion=0.3.2 /DSalida=..\_empaquetado\salida empaquetado\ArchMuse-Beta.iss
+; A mano:  ISCC.exe /DVersion=0.3.5 /DSalida=..\_empaquetado\salida empaquetado\ArchMuse-Beta.iss
 ;
 ; Condiciones del PRD que este fichero cumple y conviene no romper:
 ;   - por usuario y SIN administrador (PrivilegesRequired=lowest, todo en HKCU
@@ -144,11 +144,31 @@ end;
 const
   LIMITE_PARADA_S = 20;
 
+// Una línea en registro\servidor-AAAA-MM.log, con el formato de las que escribe
+// Python («AAAA-MM-DD HH:MM:SS | texto») y en UTF-8 sin marca, como ellas. Nunca
+// interrumpe la instalación. Existe desde el 2026-09-14: la parada del
+// instalador no dejaba rastro, y cuando falle en el ordenador de un arquitecto
+// esta línea será lo único que haya.
+procedure RegistrarEnArchMuse(Texto: String);
+var
+  Carpeta: String;
+  Linea: TArrayOfString;
+begin
+  try
+    Carpeta := ExpandConstant('{app}\registro');
+    ForceDirectories(Carpeta);
+    SetArrayLength(Linea, 1);
+    Linea[0] := GetDateTimeString('yyyy/mm/dd hh:nn:ss', '-', ':') + ' | instalador: ' + Texto;
+    SaveStringsToUTF8FileWithoutBOM(Carpeta + '\servidor-' + GetDateTimeString('yyyy/mm', '-', ':') + '.log', Linea, True);
+  except
+  end;
+end;
+
 function ProcesosDelRuntime(Terminar: Boolean; var Descripcion: String): Integer;
 var
   Localizador, Servicio, Procesos, Proceso: Variant;
   Runtime, Ruta: String;
-  I: Integer;
+  I, Codigo: Integer;
 begin
   Result := 0;
   Descripcion := '';
@@ -168,7 +188,13 @@ begin
         Result := Result + 1;
         Descripcion := Descripcion + #13#10 + '  pid ' + IntToStr(Proceso.ProcessId) + ': ' + Ruta;
         if Terminar then
-          Proceso.Terminate();
+        begin
+          // Win32_Process.Terminate contesta 0 si lo ha terminado; 2, acceso
+          // denegado; 3, privilegios insuficientes; 8, error desconocido.
+          Codigo := Proceso.Terminate();
+          RegistrarEnArchMuse('terminado el pid ' + IntToStr(Proceso.ProcessId) + ' (' + Ruta +
+                              '): Windows contesta ' + IntToStr(Codigo));
+        end;
       end;
     end;
   end;
@@ -177,7 +203,7 @@ end;
 function PararArchMuse(var Mensaje: String): Boolean;
 var
   Inicio, Transcurridos: DWORD;
-  Descripcion: String;
+  Descripcion, EnUnaLinea: String;
 begin
   Mensaje := '';
   Result := False;
@@ -197,14 +223,20 @@ begin
       end;
       if ProcesosDelRuntime(False, Descripcion) = 0 then
       begin
+        RegistrarEnArchMuse('parada: no queda nada de ArchMuse en marcha');
         Result := True;
         Exit;
       end;
+      EnUnaLinea := Descripcion;
+      StringChangeEx(EnUnaLinea, #13#10, ';', True);
+      RegistrarEnArchMuse('parada: tras ' + IntToStr(LIMITE_PARADA_S) + ' s sigue en marcha' + EnUnaLinea);
     until SuppressibleMsgBox('ArchMuse está en marcha y no se deja parar:' + Descripcion + #13#10#13#10 +
                              'Pulsa Reintentar. Si sigue igual, cierra la sesión de Windows, vuelve a entrar y ' +
                              'ejecuta otra vez el instalador.', mbError, MB_RETRYCANCEL, IDCANCEL) = IDCANCEL;
+    RegistrarEnArchMuse('parada: cancelada con ArchMuse todavía en marcha');
     Mensaje := 'ArchMuse está en marcha y no se deja parar:' + Descripcion;
   except
+    RegistrarEnArchMuse('parada: no se han podido consultar los procesos: ' + GetExceptionMessage);
     Result := SuppressibleMsgBox('No he podido comprobar si ArchMuse está en marcha. Si lo está, ' +
                                  'la copia de ficheros puede fallar. ¿Seguir?',
                                  mbConfirmation, MB_YESNO, IDNO) = IDYES;

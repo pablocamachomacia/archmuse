@@ -33,7 +33,9 @@ from typing import Optional
 #: distintos (commits 10a4c8b, c5dd444 y el de los reintentos); el día que haya
 #: que diagnosticar algo en el ordenador de un arquitecto, la versión tiene que
 #: identificar el build sin ambigüedad.
-VERSION_DEL_REPOSITORIO = "0.3.3"
+#: 0.3.4 no existe como instalador: ese número lo usó el paquete de ensayo de la
+#: actualización en la VM, así que el build siguiente a 0.3.3 es 0.3.5.
+VERSION_DEL_REPOSITORIO = "0.3.5"
 
 _RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _FICHERO = os.path.join(_RAIZ, "version.json")

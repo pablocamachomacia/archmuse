@@ -934,6 +934,32 @@ def test_el_instalador_para_archmuse_por_la_ruta_del_runtime_antes_de_copiar():
     assert desinstalar.index("EjecutarActualizador(") < desinstalar.index("PararArchMuse(Parada)")
 
 
+def test_el_instalador_deja_escrito_en_el_registro_lo_que_para():
+    """VM, 2026-09-14: la parada del instalador funcionó y no dejó ni una línea;
+    que paró algo se dedujo de que la copia no falló. Cuando falle en el
+    ordenador de un arquitecto, esa línea será lo único que haya. Mismo fichero
+    y mismo formato que `registrar()` de Python, para que se lean juntas."""
+    codigo = _codigo_iss_sin_comentarios()
+    registrar = codigo[codigo.index("procedure RegistrarEnArchMuse"):codigo.index("function ProcesosDelRuntime")]
+    assert "ExpandConstant('{app}\\registro')" in registrar
+    assert "'\\servidor-' + GetDateTimeString('yyyy/mm', '-', ':') + '.log'" in registrar
+    assert "GetDateTimeString('yyyy/mm/dd hh:nn:ss', '-', ':') + ' | instalador: '" in registrar
+    assert "SaveStringsToUTF8FileWithoutBOM(" in registrar and "Linea, True)" in registrar
+    fuente = (CAPA_B / "archmuse_local.py").read_text(encoding="utf-8")
+    assert '"servidor-%s.log" % time.strftime("%Y-%m")' in fuente
+    assert '"%s | %s\\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), texto)' in fuente
+
+    procesos = codigo[codigo.index("function ProcesosDelRuntime"):codigo.index("function PararArchMuse")]
+    terminar = procesos[procesos.index("if Terminar then"):]
+    assert terminar.index("Codigo := Proceso.Terminate();") < terminar.index("RegistrarEnArchMuse(")
+    registro = terminar[terminar.index("RegistrarEnArchMuse("):]
+    assert "IntToStr(Proceso.ProcessId)" in registro and "Ruta" in registro and "IntToStr(Codigo)" in registro
+
+    parar = codigo[codigo.index("function PararArchMuse"):codigo.index("function ActualizadorInstalado")]
+    assert "RegistrarEnArchMuse('parada: no queda nada de ArchMuse en marcha')" in parar
+    assert "sigue en marcha" in parar and "cancelada" in parar and "GetExceptionMessage" in parar
+
+
 def test_el_instalador_avisa_de_la_ruta_de_confianza_antes_de_instalar():
     """**Condición 1 de Pablo:** antes de instalar y no en letra pequeña, que se
     añade la carpeta a las rutas de confianza, qué significa y que se deshace

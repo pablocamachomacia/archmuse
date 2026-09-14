@@ -1031,7 +1031,59 @@ siga activado.
 arranque dentro del instalador tardó 2,7 s: no es el arranque en frío que se
 temía (la instalación anterior ya había dejado los `.pyc` compilados).
 
-**Sin comprobar todavía en la VM, de la lista del 2026-09-14:** que arranque solo
-al iniciar sesión con `lanzar.pyw`; instalar encima de un servidor lanzado a mano
-(la parada nueva por el runtime); actualizar a 0.3.4 y volver a 0.3.3; y
-desinstalar 0.3.3.
+**La parada, en la VM (2026-09-14).** Reinstalar 0.3.3 con un servidor vivo
+llegó a «ArchMuse está instalado» sin ningún «acceso denegado», y el servidor
+nuevo tiene otro PID. El servidor que Pablo lanzó a mano para la prueba (pid 4808)
+no llegó a arrancar: ya había uno en marcha y se retiró («ya hay un servidor de
+ArchMuse en marcha: este lanzador se retira»). Así que lo que paró el instalador
+fue el servidor de la instalación anterior, que **sí estaba en `servidor.json`**.
+La instancia única queda comprobada de paso.
+
+**Sin probar en una instalación real, sólo en test:** parar un proceso del
+runtime **que no está en `servidor.json`**, que es justo lo que añade la parada
+nueva
+(`test_parar_servidor_para_lo_que_corre_desde_el_runtime_aunque_no_este_en_servidor_json`).
+
+**Lo que destapó la prueba: la parada del instalador no dejaba rastro.** Termina
+los procesos desde Pascal, que no escribía en `registro\`; que paró algo se
+dedujo de que la copia no falló, no de una línea que lo dijera. Cuando falle en
+el ordenador de un arquitecto, esa línea será lo único que haya. Desde el
+2026-09-14 el instalador escribe en `registro\servidor-AAAA-MM.log` cada proceso
+que termina, con su PID, su ruta y lo que contestó Windows, y cómo acabó la
+parada. **Entra en el próximo build (0.3.5); sin ejecutar todavía en ningún
+sitio.**
+
+**Actualizar y volver, en la VM (2026-09-14)** — criterios 8 y 9 del §8:
+- Doble clic en `ArchMuse-0.3.4.archmuse`: «ArchMuse 0.3.4 instalado. Si tienes
+  AutoCAD abierto, ciérralo y vuelve a abrirlo.», y `/api/salud` con 0.3.4.
+- Menú Inicio → «volver a la versión anterior»: «ArchMuse ha vuelto a la
+  versión 0.3.3 (estaba en la 0.3.4).», y `/api/salud` con 0.3.3.
+
+Las dos entran por `lanzar.pyw actualizador …`: queda probado en una
+instalación real el modo actualizador de `lanzar.pyw`, que hasta aquí sólo
+tenía el test local. No se midió el tiempo de la actualización (el criterio 8
+pide menos de 30 s).
+
+**Arranque al iniciar sesión, en la VM (2026-09-14).** Tras cerrar sesión y volver
+a entrar, sin abrir nada, `/api/salud` contesta 0.3.3 y `.lsp` 3.6.2: el acceso
+directo de Inicio arranca el servidor a través de `lanzar.pyw`. **Tardó algo más
+de un minuto** en contestar (la primera consulta falló y la segunda respondió).
+Sin separar cuánto de ese minuto es el retraso con que Windows lanza los
+programas de Inicio y cuánto el arranque del servidor: lo diría la línea «listo
+… s después de arrancar» del registro de esa sesión, que no se ha mirado.
+*Hipótesis sin medir:* si un arquitecto abre AutoCAD y teclea ARCHMUSE nada más
+iniciar sesión, los 90 s de la rama C quedan justos.
+
+**Desinstalar 0.3.3, en la VM (2026-09-14).** Limpia: ningún proceso en marcha
+desde `runtime\`; `app` y `runtime` borrados; `registro` conservado, que es lo
+previsto. Era la primera desinstalación con el código sin uniones y con la
+parada nueva (la anterior se verificó con 0.3.1).
+
+**La vuelta completa, probada en máquina limpia con 0.3.3:** instalar encima de
+una versión anterior, migrar desde la unión, parar el servidor viejo, arrancar
+dentro del instalador, actualizar a 0.3.4, volver a 0.3.3, arrancar al iniciar
+sesión y desinstalar.
+
+**Lo que 0.3.5 añade sin haber pasado por la VM:** el registro de lo que para el
+instalador (`RegistrarEnArchMuse`). Compila, y su test se pone en rojo con tres
+fallos reintroducidos; su efecto en una instalación real no se ha visto.

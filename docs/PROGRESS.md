@@ -5,7 +5,7 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
-## 2026-09-15 · 0.3.3 instalado en la VM encima de 0.3.2: funciona
+## 2026-09-14 · 0.3.3 instalado en la VM encima de 0.3.2: funciona
 
 **Medido por Pablo** (`.exe` de `f9a0df7`, hash verificado, sin desinstalar lo
 anterior): pantalla final «ArchMuse está instalado», `/api/salud` con 0.3.3 y
@@ -18,9 +18,39 @@ Confirma en el contexto real lo medido aquí: sin la unión, el servidor arranca
 la primera dentro del instalador con RedirectionGuard activado. **Es la primera
 instalación en máquina limpia que termina bien.**
 
-**Sin comprobar todavía en la VM:** arranque al iniciar sesión por `lanzar.pyw`,
-instalar encima de un servidor lanzado a mano (la parada nueva), actualizar a
-0.3.4 y volver, y desinstalar.
+**La parada, en la VM:** reinstalar 0.3.3 con un servidor vivo llegó a «ArchMuse
+está instalado» sin ningún «acceso denegado». El servidor lanzado a mano para la
+prueba se retiró porque ya había uno (la instancia única funciona), así que lo
+que paró el instalador fue el de la instalación anterior, que **sí estaba en
+`servidor.json`**. **El caso «servidor que no está en `servidor.json`» sigue sin
+probarse en una instalación real: sólo en test.**
+
+**La parada del instalador no dejaba rastro** (Pascal no escribía en
+`registro\`). Ahora escribe cada proceso que termina, con PID, ruta y lo que
+contestó Windows, y cómo acabó la parada. Entra en el próximo build, 0.3.5
+(0.3.4 ya lo usó el paquete de ensayo); sin ejecutar todavía.
+
+**Actualizar y volver, en la VM:** doble clic en `ArchMuse-0.3.4.archmuse` →
+«ArchMuse 0.3.4 instalado» y `/api/salud` con 0.3.4; «volver a la versión
+anterior» → «ha vuelto a la versión 0.3.3 (estaba en la 0.3.4)» y `/api/salud`
+con 0.3.3. Las dos pasan por `lanzar.pyw actualizador`: su modo actualizador
+queda probado en una instalación real. Sin medir el tiempo (criterio 8: < 30 s).
+
+**Arranque al iniciar sesión, en la VM:** sin abrir nada, `/api/salud` contesta
+0.3.3 por el acceso directo de Inicio y `lanzar.pyw`. **Tardó algo más de un
+minuto** (la primera consulta falló). Sin separar el retraso de Windows con los
+programas de Inicio del arranque del servidor: lo diría la línea «listo … s» de
+esa sesión, sin mirar. Hipótesis sin medir: nada más iniciar sesión, los 90 s de
+la rama C quedan justos.
+
+**Desinstalar 0.3.3, en la VM:** limpia. Ningún proceso desde `runtime\`, `app`
+y `runtime` borrados, `registro` conservado (previsto). Primera desinstalación
+sin uniones y con la parada nueva.
+
+**La vuelta completa, probada en máquina limpia con 0.3.3:** instalar encima,
+migrar desde la unión, parar el servidor viejo, arrancar dentro del instalador,
+actualizar a 0.3.4, volver, arrancar al iniciar sesión y desinstalar.
+**0.3.5 añade sin pasar por la VM** el registro de lo que para el instalador.
 
 ---
 
