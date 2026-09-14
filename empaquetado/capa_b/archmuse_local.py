@@ -344,22 +344,214 @@ def version_anterior() -> Optional[str]:
     return otras[-1] if otras else None
 
 
-def copiar_lsp_al_bundle(version: str) -> bool:
+def copiar_lsp_al_bundle(version: str) -> None:
     """Deja el `.lsp` de la versión activa dentro del paquete de AutoCAD.
 
+    **Si no puede, lanza `RuntimeError` con el motivo** (2026-09-14). Hasta
+    entonces devolvía `False` y nadie lo miraba: el instalador decía «Listo» y
+    AutoCAD contestaba «comando desconocido» sin que nada explicara por qué.
+
     **Por qué una copia y no un cargador que haga `load` de `app\\actual`**
-    (desviación declarada del §4.3 del PRD): AutoCAD confía en lo que carga
-    desde `ApplicationPlugins`, pero un `load` a una carpeta de
-    `%LOCALAPPDATA%` fuera de `TRUSTEDPATHS` enseña el aviso de `SECURELOAD`
-    en cada dibujo — la primera pantalla que vería él. La fuente sigue siendo
-    una sola (`app\\<version>\\archmuse.lsp`): esto la copia al activar.
+    (desviación declarada del §4.3 del PRD): un `load` a una carpeta de
+    `%LOCALAPPDATA%` fuera de `TRUSTEDPATHS` enseña el aviso de `SECURELOAD`.
+    La fuente sigue siendo una sola (`app\\<version>\\archmuse.lsp`): esto la
+    copia al activar.
+
+    **Lo que esta copia NO consigue, y aquí se dio por hecho (corregido el
+    2026-09-14):** se escribió que «AutoCAD confía en lo que carga desde
+    `ApplicationPlugins`». Es falso para la carpeta que usamos. Desde AutoCAD
+    2016 sólo `%PROGRAMFILES%\\Autodesk\\ApplicationPlugins` es de confianza
+    por defecto; `%APPDATA%\\Autodesk\\ApplicationPlugins` lo fue en 2014 y
+    2015 y dejó de serlo. Fuentes: Autodesk Developer Blog, «AutoCAD 2016:
+    Trusted paths and AutoLoader»
+    (https://blog.autodesk.io/autocad-2016-trusted-paths-and-autoloader/), y la
+    ayuda de AutoCAD 2027, «About Installing and Uninstalling Plug-In
+    Applications»: «All other ApplicationPlugins folders must be trusted as
+    part of the application's preferences and should be digitally signed».
+    **Medido el 2026-09-14 en AutoCAD 2027**: con el bundle en `%APPDATA%` sale
+    «Seguridad - Archivo ejecutable no firmado» y el `.lsp` no carga hasta que
+    él responde. La tabla completa está en el §4.3 del PRD de la beta.
     """
     bundle = carpeta_bundle()
     if not os.path.isdir(bundle):
-        return False
+        raise RuntimeError("no existe el paquete de AutoCAD (%s)" % bundle)
     contenido = os.path.join(bundle, "Contents")
-    os.makedirs(contenido, exist_ok=True)
     temporal = os.path.join(contenido, "archmuse.lsp.tmp")
-    shutil.copyfile(os.path.join(carpeta_app(), version, "archmuse.lsp"), temporal)
-    os.replace(temporal, os.path.join(contenido, "archmuse.lsp"))
-    return True
+    try:
+        os.makedirs(contenido, exist_ok=True)
+        shutil.copyfile(os.path.join(carpeta_app(), version, "archmuse.lsp"), temporal)
+        os.replace(temporal, os.path.join(contenido, "archmuse.lsp"))
+    except OSError as e:
+        raise RuntimeError("no se ha podido copiar el comando al paquete de AutoCAD: %s" % e)
+
+
+# ── la confianza de AutoCAD (enmienda del PRD, 2026-09-14) ──────────────────
+#
+# AutoCAD 2027 no confía en `%APPDATA%\Autodesk\ApplicationPlugins`: sin más,
+# enseña «Seguridad - Archivo ejecutable no firmado» (medido, §4.3 del PRD). La
+# vía B, decidida por Pablo: añadir la carpeta del `.lsp` a `TRUSTEDPATHS` de
+# cada perfil, y al desinstalar quitar **esa entrada y ninguna otra**.
+
+SERIE_MINIMA = (24, 0)          # el SeriesMin="R24.0" de PackageContents.xml
+
+
+def ruta_de_confianza() -> str:
+    """La carpeta donde está el `.lsp`, sin `\\...`: ni una subcarpeta más."""
+    return os.path.join(carpeta_bundle(), "Contents")
+
+
+def _misma_ruta(entrada: str, ruta: str) -> bool:
+    limpia = entrada.strip().strip('"').rstrip("\\/")
+    return bool(limpia) and os.path.normcase(limpia) == os.path.normcase(ruta.rstrip("\\/"))
+
+
+def con_nuestra_ruta(valor: str, ruta: str) -> str:
+    """`valor` con `ruta` añadida al final. Si ya estaba, `valor` tal cual."""
+    if any(_misma_ruta(e, ruta) for e in valor.split(";")):
+        return valor
+    if not valor.strip():
+        return ruta
+    return valor + ("" if valor.endswith(";") else ";") + ruta
+
+
+def sin_nuestra_ruta(valor: str, ruta: str) -> str:
+    """`valor` sin las entradas que son `ruta`. Lo demás, carácter a carácter:
+    ni se reordena, ni se limpia, ni se quita un `;;` que ya estuviera."""
+    entradas = valor.split(";")
+    quedan = [e for e in entradas if not _misma_ruta(e, ruta)]
+    return valor if len(quedan) == len(entradas) else ";".join(quedan)
+
+
+def raiz_autocad() -> str:
+    """Bajo `HKEY_CURRENT_USER`. `ARCHMUSE_RAIZ_AUTOCAD` la cambia (tests)."""
+    return os.environ.get("ARCHMUSE_RAIZ_AUTOCAD") or r"Software\Autodesk\AutoCAD"
+
+
+def _subclaves(clave) -> list[str]:
+    import winreg
+    nombres = []
+    while True:
+        try:
+            nombres.append(winreg.EnumKey(clave, len(nombres)))
+        except OSError:
+            return nombres
+
+
+def perfiles_de_autocad() -> list[str]:
+    """La clave `Variables` de cada perfil de cada AutoCAD desde R24.0.
+
+    `<raíz>\\R<nn.n>\\<producto>\\Profiles\\<perfil>\\Variables`. AutoCAD LT vive en
+    otra raíz y no se toca: no carga LISP. Un perfil sin `Variables` no se crea.
+    """
+    import winreg
+    hkcu, raiz = winreg.HKEY_CURRENT_USER, raiz_autocad()
+    try:
+        with winreg.OpenKey(hkcu, raiz) as k:
+            versiones = _subclaves(k)
+    except OSError:
+        return []
+    encontradas = []
+    for version in versiones:
+        m = re.fullmatch(r"R(\d+)\.(\d+)", version)
+        if not m or (int(m.group(1)), int(m.group(2))) < SERIE_MINIMA:
+            continue
+        try:
+            with winreg.OpenKey(hkcu, "%s\\%s" % (raiz, version)) as k:
+                productos = _subclaves(k)
+        except OSError:
+            continue
+        for producto in productos:
+            base = "%s\\%s\\%s\\Profiles" % (raiz, version, producto)
+            try:
+                with winreg.OpenKey(hkcu, base) as k:
+                    perfiles = _subclaves(k)
+            except OSError:
+                continue
+            for perfil in perfiles:
+                variables = "%s\\%s\\Variables" % (base, perfil)
+                try:
+                    winreg.OpenKey(hkcu, variables).Close()
+                except OSError:
+                    continue
+                encontradas.append(variables)
+    return sorted(encontradas)
+
+
+def _cambiar_trustedpaths(transformar, escribir: bool = True) -> list[tuple[str, bool]]:
+    """Aplica `transformar(valor, ruta)` en cada perfil y escribe sólo lo que
+    cambia (nada, si `escribir` es False). Devuelve `(clave, si cambia)`."""
+    import winreg
+    ruta = ruta_de_confianza()
+    hechos = []
+    for variables in perfiles_de_autocad():
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, variables, 0,
+                                winreg.KEY_QUERY_VALUE | winreg.KEY_SET_VALUE) as k:
+                try:
+                    valor, tipo = winreg.QueryValueEx(k, "TRUSTEDPATHS")
+                except FileNotFoundError:
+                    valor, tipo = "", winreg.REG_SZ
+                if tipo not in (winreg.REG_SZ, winreg.REG_EXPAND_SZ):
+                    raise RuntimeError("TRUSTEDPATHS de %s no es texto: no lo toco" % variables)
+                nuevo = transformar(valor, ruta)
+                if escribir and nuevo != valor:
+                    winreg.SetValueEx(k, "TRUSTEDPATHS", 0, tipo, nuevo)
+                hechos.append((variables, nuevo != valor))
+        except OSError as e:
+            raise RuntimeError("no se han podido cambiar las rutas de confianza de AutoCAD "
+                               "(%s): %s" % (variables, e))
+    return hechos
+
+
+def anadir_confianza(escribir: bool = True) -> list[tuple[str, bool]]:
+    return _cambiar_trustedpaths(con_nuestra_ruta, escribir)
+
+
+def quitar_confianza(escribir: bool = True) -> list[tuple[str, bool]]:
+    return _cambiar_trustedpaths(sin_nuestra_ruta, escribir)
+
+
+def autocad_abierto() -> bool:
+    """Si hay algún `acad.exe` en marcha.
+
+    **`TRUSTEDPATHS` no se escribe nunca con AutoCAD abierto.** El riesgo (Pablo,
+    2026-09-14): que AutoCAD reescriba sus variables al cerrarse y pise lo
+    escrito mientras estaba abierto. *No se ha podido medir* (M2 de la
+    enmienda: en esta máquina una ventana de `AdskLicensingAgent` bloquea
+    AutoCAD y no se deja cerrar con normalidad desde la automatización). Con
+    esta regla no hace falta saberlo."""
+    r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq acad.exe", "/FO", "CSV", "/NH"],
+                       capture_output=True, creationflags=SIN_VENTANA)
+    if r.returncode != 0:
+        raise RuntimeError("no he podido comprobar si AutoCAD está abierto")
+    return b'"acad.exe"' in r.stdout.lower()
+
+
+def cambiar_confianza_con_autocad_cerrado(quitar: bool = False) -> int:
+    """Añade (o quita) nuestra ruta en los perfiles que lo necesiten y devuelve
+    cuántos han cambiado. **Si alguno lo necesita y AutoCAD está abierto, no
+    escribe en ninguno y lanza `RuntimeError`.** Si no hay nada que cambiar, no
+    pregunta por AutoCAD: una actualización con AutoCAD abierto sigue siendo
+    posible cuando la ruta ya estaba puesta."""
+    cambiar = quitar_confianza if quitar else anadir_confianza
+    if not any(cambia for _, cambia in cambiar(escribir=False)):
+        return 0
+    if autocad_abierto():
+        raise RuntimeError("AutoCAD está abierto. Ciérralo y vuelve a intentarlo: ArchMuse "
+                           "no toca las rutas de confianza de AutoCAD con AutoCAD abierto")
+    return sum(1 for _, cambia in cambiar() if cambia)
+
+
+def reponer_confianza() -> None:
+    """Al iniciar sesión: nuestra ruta en los perfiles que no la tengan (uno
+    creado después de instalar, o un AutoCAD abierto por primera vez). Sólo con
+    AutoCAD cerrado. **Nunca lanza**: el lanzador tiene que arrancar igual, y lo
+    que no haya podido hacer queda en el registro. *[Decisión mía, enmienda del
+    PRD; dicha en la página previa del instalador.]*"""
+    try:
+        cambiados = cambiar_confianza_con_autocad_cerrado()
+    except RuntimeError as e:
+        registrar("rutas de confianza sin reponer: %s" % e)
+        return
+    if cambiados:
+        registrar("ruta de confianza repuesta en %d perfil(es) de AutoCAD" % cambiados)

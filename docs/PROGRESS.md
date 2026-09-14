@@ -5,6 +5,113 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-14 (tarde) · Vía B implementada: la carpeta del `.lsp` en `TRUSTEDPATHS`
+
+**Decisión de Pablo:** vía B, con cuatro condiciones (enmienda del PRD de la
+beta, al final del documento). Implementada el mismo día.
+
+### Hallazgo: la documentación de Autodesk se contradice, y ninguna de las dos páginas acierta
+
+**Se resolvió midiendo.** Sobre la misma carpeta, `%ProgramData%\Autodesk\ApplicationPlugins`
+(`%ALLUSERSPROFILE%`), dos páginas oficiales de AutoCAD 2027:
+
+- la de `TRUSTEDPATHS` dice que es **de confianza implícita** → medido: **no
+  lo es**; un `load` desde allí da «Seguridad - Archivo ejecutable no firmado»;
+- la de plug-ins la da como **una de las tres carpetas de plug-ins** → medido:
+  **AutoCAD no la explora**; dos ejecuciones, ni carga ni clave `Loaded`.
+
+Esta mañana se anotó que lo medido «cuadraba» con la de plug-ins. No cuadraba;
+corregido donde estaba (§4.3 del PRD). Regla que queda: **con Autodesk, una
+página de ayuda es una hipótesis**. Lo que la de plug-ins dice de
+`%PROGRAMFILES%` sigue sin medir (pide administrador).
+
+### Lo hecho
+
+- **Condición 1, la página previa del instalador.** Página propia, antes de
+  copiar nada, a 11 pt; su botón es «Instalar». **Dos capturas revelaron dos
+  fallos que el test no veía:** con la letra a 11 pt, el cuadro del texto no
+  crecía y el texto se cortaba con media página libre (`MsgLabel.Height`); y
+  la ruta en una sola línea se cortaba por la derecha. La tercera captura la
+  enseña entera. El test ahora exige la altura y un tope de 700 caracteres
+  (el texto que se vio entero tiene 677).
+- **Condición 2.** `sin_nuestra_ruta` quita sólo la entrada que es nuestra
+  ruta; lo demás, carácter a carácter. Guardián con rutas parecidas a la
+  nuestra (`…\Contents\...`, otro `.bundle`), `;;` y comillas. La
+  desinstalación va en `[Code]` y avisa si no ha podido quitarla.
+- **Condición 3a, AutoCAD abierto: resuelta con una regla.** `TRUSTEDPATHS` no
+  se escribe nunca con AutoCAD abierto: instalar y desinstalar esperan (en modo
+  silencioso cancelan), y `activar` lo comprueba antes de mover nada. **M2
+  —si AutoCAD pisa al cerrarse lo escrito— no se ha podido medir**: una
+  ventana `webview` de `AdskLicensingAgent`, con AutoCAD como dueña, deja la
+  ventana principal deshabilitada y AutoCAD no se cierra con normalidad desde
+  la automatización. Esto explica, medido, los atascos de `QUIT` y `DELAY` que
+  esta mañana quedaron «sin explicar».
+- **Condición 3b, varios perfiles: medida.** La confianza es por perfil (M3);
+  se escribe en todos los perfiles de cada AutoCAD desde R24.0. `/p` deja el
+  perfil activo para siempre (efecto medido, se restauró).
+- **Perfiles posteriores** *[decisión mía, dicha en la página previa y en el
+  folio]*: el lanzador repone la ruta al iniciar sesión, sólo con AutoCAD
+  cerrado. Lo que no cubre, declarado en el folio: hasta el siguiente inicio de
+  sesión, un perfil nuevo o el primer AutoCAD tras instalar enseñan el aviso.
+- **T18, el código real sobre el AutoCAD real:** con una ruta ajena ya puesta,
+  añadir → AutoCAD carga `archmuse.lsp` sin aviso (`c:archmuse` definido) →
+  quitar con AutoCAD cerrado → la ajena, idéntica.
+- **La ruta estrecha vale:** `…\ArchMuse.bundle\Contents`, sin `\...` (M1).
+
+**Método.** 12 fallos reintroducidos (5 en añadir/quitar/perfiles, 7 en la
+regla de AutoCAD abierto, el lanzador y el instalador): **12 de 12 en rojo**,
+ficheros restaurados byte a byte. Un riesgo cazado antes de que costara: con
+`activar` tocando la confianza, los tests existentes habrían escrito en el
+`TRUSTEDPATHS` real de quien los ejecuta; el fixture base apunta ahora a una
+raíz de registro que no existe, y se comprobó que el valor real sigue vacío.
+
+**Suite entera:** 1959 pasan, 39 saltados, 1 xfail (D-7), 0 fallos, en
+20 min 49 s. Los dos avisos de `ifcopenshell` de siempre.
+
+**En el AutoCAD de Pablo, todo deshecho:** cada batería comparó el registro de
+AutoCAD con una foto previa (0 líneas distintas), sin bundles, sin sondas, sin
+perfil de prueba, `TRUSTEDPATHS` vacío.
+
+**Sin verificar:** nada de esto en una máquina limpia (T12, la VM sigue sin
+montar); el `.exe` no se ha instalado aquí, sólo abierto hasta su primera página
+y cerrado; M2; y la reposición al iniciar sesión, que está probada con tests y
+no con un inicio de sesión real.
+
+---
+
+## 2026-09-14 · Autocarga del `.lsp`: el bundle en `%APPDATA%` avisa; fallo mudo del actualizador
+
+**Lo que se creía:** que copiar el `.lsp` dentro de
+`%APPDATA%\Autodesk\ApplicationPlugins\ArchMuse.bundle` evitaba el aviso de
+`SECURELOAD` (PRD de la beta, decisión 3). **Era falso**, y ya no era una
+hipótesis razonable: Autodesk dejó de confiar en esa carpeta en AutoCAD 2016.
+
+**Aclaración sobre «ayer se comprobó»:** el 13-sep no se probó el bundle. El
+instalador no se había ejecutado nunca en esta máquina (carpeta de plug-ins
+vacía, sin desinstalador registrado). Lo que salió fue el aviso de un `APPLOAD`
+desde el repositorio, que no es carpeta de confianza.
+
+**Medido hoy**, con una sonda (mismo manifiesto, `.lsp` que escribe un fichero
+al cargar), cada prueba deshecha al terminar. La tabla está en el §4.3 del PRD:
+`%APPDATA%` → aviso «Seguridad - Archivo ejecutable no firmado»;
+`%ProgramData%` → AutoCAD ni lo detecta; `%APPDATA%` + `TRUSTEDPATHS` escrito
+en el registro → carga sin aviso. **La decisión de la vía es de Pablo.**
+
+**Fallo mudo, arreglado.** `copiar_lsp_al_bundle` devolvía `False` si no podía y
+nadie lo miraba; la activación iba en `[Run]` de Inno Setup, que no mira el
+código de salida. Ahora la copia lanza `RuntimeError` con el motivo, `activar`
+lo convierte en «AutoCAD no va a encontrar el comando ARCHMUSE: …», y la
+activación va en `[Code]`: si falla, la última pantalla dice «ArchMuse no ha
+quedado listo». Tres tests; **5 de 5 fallos reintroducidos en rojo**, ficheros
+restaurados byte a byte. El `.iss` compila (ISCC, código 0, salida fuera del
+repositorio). `test_empaquetado.py` + `test_beta_lsp.py`: 31 pasan. **La suite
+entera no se ha pasado.**
+
+**Sin explicar:** en tres de las cuatro ejecuciones de AutoCAD el guion de
+prueba se paró en `_.DELAY` y hubo que cerrarlo a la fuerza.
+
+---
+
 ## 2026-09-13 (noche) · `C-12` firmado: la construida por su rótulo; `.lsp` 3.6.0
 
 **Visto bueno de Pablo** a la propuesta: identificar la polilínea por su rótulo,

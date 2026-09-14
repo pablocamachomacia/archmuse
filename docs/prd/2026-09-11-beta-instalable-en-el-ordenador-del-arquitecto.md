@@ -1,6 +1,7 @@
 # PRD — Beta instalable en el ordenador del arquitecto
 
 **Estado:** APROBADO · **Fecha:** 2026-09-11 · **Autor:** ArchMuse (CTO) · **Aprobado por:** Pablo, 2026-09-11
+**Enmienda 2026-09-14:** §4.3 por `TRUSTEDPATHS` (vía B), decidida por Pablo con cuatro condiciones — ver el final del documento. **Implementada el 2026-09-14** (T13-T19); sin probar en máquina limpia (T12).
 
 > **Qué es esto.** La deuda «NO SE IMPLEMENTA AHORA» del PRD del 2026-09-10
 > (*Un instalador único / Que el servidor arranque solo / Cómo se actualiza*)
@@ -229,6 +230,41 @@ oficial por usuario, no pide administrador, no colisiona con nada suyo, y
 Lo que hay que comprobar en su máquina y no en ésta: que su versión de AutoCAD
 trate `ApplicationPlugins` como ruta de confianza (`TRUSTEDPATHS`, `SECURELOAD`)
 sin preguntar nada. Va a §12.3.
+
+**Medido el 2026-09-14 en ESTA máquina: no la trata así.** AutoCAD 2027
+(R26.0, español, licencia de prueba), `SECURELOAD=1`, `TRUSTEDPATHS` vacío.
+Sonda: un bundle con **el mismo manifiesto** que el nuestro y un `.lsp` que
+escribe un fichero al cargarse. Cada prueba se deshizo al terminar.
+
+| Dónde está el bundle | ¿AutoCAD lo detecta? (clave `Loaded`) | ¿Carga? | ¿Aviso? |
+|---|---|---|---|
+| `%APPDATA%\Autodesk\ApplicationPlugins` (lo que hace hoy el instalador) | sí | **no, hasta que él responda** | **sí** |
+| `%ProgramData%\Autodesk\ApplicationPlugins` | **no** (dos ejecuciones) | no | no |
+| `%APPDATA%\…` + `TRUSTEDPATHS=<bundle>\...` escrito en `HKCU\…\Profiles\<perfil>\Variables` con AutoCAD cerrado | sí | **sí** | **no** |
+
+- El aviso, literal: **«Seguridad - Archivo ejecutable no firmado»** — «El editor
+  de este archivo ejecutable no se ha podido verificar y el archivo no se
+  encuentra en una carpeta de confianza. ¿Qué desea hacer?», con *Cargar
+  siempre* / *Cargar una vez* / *No cargar*.
+- **El manifiesto vale**: AutoCAD registra el bundle en `Loaded` desde
+  `%APPDATA%`. Lo que falla es la confianza, no el paquete.
+- **`%ProgramData%` no se explora**, aunque la página de `TRUSTEDPATHS` de 2027
+  la llame «Plugin folder» de confianza. *Corregido el mismo día:* aquí ponía
+  que lo medido «cuadra» con la página de plug-ins. No del todo: esa página
+  también la da como carpeta de plug-ins, y no lo es. **Ninguna de las dos
+  acierta**: ver el hallazgo de la enmienda del 2026-09-14.
+- **`TRUSTEDPATHS` escrito desde fuera se respeta**: la sonda leyó con `getvar`
+  el valor puesto en el registro.
+- **Sin medir:** `%PROGRAMFILES%` (pide administrador), la firma digital, y la
+  vía de `TRUSTEDPATHS` con varios perfiles, con AutoCAD abierto al instalar o
+  en otra versión.
+- **Sin explicar:** en tres de las cuatro ejecuciones el guion de la prueba se
+  quedó parado en `_.DELAY` y no llegó a `QUIT`; hubo que cerrar AutoCAD a la
+  fuerza. No toca lo medido (la sonda escribe al cargarse), pero no se sabe
+  por qué.
+
+**Decidido por Pablo el 2026-09-14: vía B** (`TRUSTEDPATHS`). Condiciones,
+diseño y medidas en la *Enmienda del 2026-09-14*, al final del documento.
 
 ### 4.4 · Cuando falla: el log y `ARCHMUSE-INFORME`
 
@@ -548,10 +584,21 @@ máquina, pero la VM no está montada.
    anotado como invisible para la parte mayor.
 3. **§4.3: el `.lsp` se copia dentro del bundle al activar una versión**, en vez
    de un cargador que haga `load` de `app\actual\archmuse.lsp`. Un `load` a
-   `%LOCALAPPDATA%` fuera de `TRUSTEDPATHS` enseña el aviso de `SECURELOAD`; lo
-   que está dentro de `ApplicationPlugins` no. La fuente sigue siendo una sola
-   (`app\<version>\archmuse.lsp`). **Hipótesis sin medir**: que su AutoCAD
-   confíe en `ApplicationPlugins` sin preguntar (§12.3.3 sigue abierto).
+   `%LOCALAPPDATA%` fuera de `TRUSTEDPATHS` enseña el aviso de `SECURELOAD`.
+   La fuente sigue siendo una sola (`app\<version>\archmuse.lsp`).
+   **Corregido el 2026-09-14: la razón que se dio era falsa.** Aquí ponía «lo
+   que está dentro de `ApplicationPlugins` no [enseña el aviso]». No es así
+   para la carpeta que usa el instalador: **desde AutoCAD 2016 sólo
+   `%PROGRAMFILES%\Autodesk\ApplicationPlugins` es de confianza por defecto**;
+   `%APPDATA%\Autodesk\ApplicationPlugins` lo fue en 2014 y 2015 y dejó de
+   serlo. Fuentes: [Autodesk Developer Blog, «AutoCAD 2016: Trusted paths and
+   AutoLoader»](https://blog.autodesk.io/autocad-2016-trusted-paths-and-autoloader/)
+   y la [ayuda de AutoCAD 2027, «About Installing and Uninstalling Plug-In
+   Applications»](https://help.autodesk.com/cloudhelp/2027/ENU/AutoCAD-Customization/files/GUID-5E50A846-C80B-4FFD-8DD3-C20B22098008.htm):
+   «All other ApplicationPlugins folders must be trusted as part of the
+   application's preferences and should be digitally signed». **Medido el
+   2026-09-14 en AutoCAD 2027** (tabla del §4.3): el aviso sale. Copiar el
+   `.lsp` al bundle no lo evita por sí solo.
 4. **`ArchMuse-Servidor.exe` es `runtime\pythonw.exe`.** Mismo subsistema sin
    consola; un ejecutable propio compilado sería un binario más, sin firmar,
    que el antivirus no conoce.
@@ -579,3 +626,179 @@ máquina, pero la VM no está montada.
   reciclado, instalar/reinstalar/volver sobre un árbol de mentira con uniones
   reales, y que un `.archmuse` con un plano dentro no se instala
   (`tests/test_empaquetado.py`, `tests/test_beta_lsp.py`).
+
+---
+
+## Enmienda · 2026-09-14 · La autocarga por `TRUSTEDPATHS` (vía B)
+
+**Estado:** vía B **decidida por Pablo el 2026-09-14**, con las cuatro
+condiciones de abajo. El diseño es mío; lo que no sale de sus condiciones va
+marcado *[decisión mía]* para que se pueda discutir por separado.
+
+### Por qué
+
+La tabla del §4.3: con el bundle en `%APPDATA%` AutoCAD 2027 enseña «Seguridad -
+Archivo ejecutable no firmado» y no carga el `.lsp` hasta que él responde; con
+la carpeta del bundle en `TRUSTEDPATHS`, carga sin preguntar. Es la única vía
+medida que cumple «abre AutoCAD, teclea ARCHMUSE y funciona» **sin
+administrador** (criterio de aceptación 1).
+
+### Las condiciones de Pablo
+
+1. **El instalador lo dice ANTES de instalar**: que añade la carpeta de ArchMuse
+   a las rutas de confianza de AutoCAD, qué significa y que se deshace al
+   desinstalar. **No en letra pequeña.**
+2. **El desinstalador lo quita, y sólo nuestra ruta.** Si el usuario tiene otras
+   en `TRUSTEDPATHS`, no se tocan. **Con un guardián que lo compruebe.**
+3. **Resolver antes de darlo por bueno** los dos casos sin medir: AutoCAD
+   abierto durante la instalación (reescribe el registro al cerrarse y puede
+   borrar lo nuestro) y varios perfiles de AutoCAD. **Lo que no se pueda
+   resolver, declarado en el folio.**
+4. **Suite entera** antes de darlo por terminado.
+
+### Diseño
+
+- **Qué ruta.** `%APPDATA%\Autodesk\ApplicationPlugins\ArchMuse.bundle\Contents`,
+  **sin `\...`**: sólo la carpeta donde está el `.lsp`, no sus subcarpetas.
+  *[decisión mía: la confianza más estrecha que funcione; la sonda del §4.3 se
+  midió con `\...` y hay que medir esta forma]*.
+- **Dónde.** En `TRUSTEDPATHS` de
+  `HKCU\Software\Autodesk\AutoCAD\R<nn.n>\<producto>\Profiles\<perfil>\Variables`,
+  **en cada perfil de cada versión desde R24.0** (el `SeriesMin` del
+  manifiesto). AutoCAD LT no, porque no carga LISP.
+- **Añadir.** Se lee el valor, se parte por `;`, y si nuestra ruta ya está
+  (sin distinguir mayúsculas ni barra final) no se escribe nada. Si no está,
+  se añade **al final**. Las rutas del usuario se quedan con su texto y su orden.
+- **Quitar** (condición 2). Se quita **sólo la entrada que es nuestra ruta**; el
+  resto se reescribe igual, carácter a carácter. Si no está, no se escribe nada.
+  Guardián: un test con rutas ajenas antes, después y parecidas a la nuestra
+  (misma carpeta con `\...`, otro `.bundle`) que exige que salgan idénticas.
+- **Quién lo hace.** Python, en `archmuse_local` (capa B), no Pascal: es
+  comprobable con tests y es el mismo código al instalar, al desinstalar y al
+  reponer.
+- **Condición 1.** Una **página propia del instalador**, antes de copiar nada,
+  con el texto en grande y sin casilla que marcar, y la misma información en el
+  folio.
+- **AutoCAD abierto (condición 3a): resuelto con una regla, no con una medida.**
+  `TRUSTEDPATHS` **no se escribe nunca con AutoCAD abierto**. El instalador y el
+  desinstalador esperan a que se cierre («Guarda tu trabajo, cierra AutoCAD y
+  pulsa Reintentar»; en modo silencioso, cancela en vez de dar vueltas).
+  `activar` lo comprueba antes de mover nada: si hay algo que escribir y AutoCAD
+  está abierto, para sin haber cambiado nada; si la ruta ya estaba, una
+  actualización con AutoCAD abierto sigue adelante. Con esta regla da igual lo
+  que AutoCAD haga al cerrarse, y **tiene que dar igual, porque M2 no se ha
+  podido medir** (resultados, abajo).
+- **Varios perfiles (condición 3b): resuelto y medido.** La confianza es **por
+  perfil** (M3), así que se escribe en **todos** los perfiles de cada AutoCAD
+  desde R24.0.
+- **Perfiles que nacen después** (uno nuevo, o el primer AutoCAD abierto tras
+  instalar) *[decisión mía]*: el lanzador, al iniciar sesión, repone la ruta en
+  los perfiles que no la tengan, **sólo con AutoCAD cerrado**, y nunca impide que
+  el servidor arranque. Consecuencia, dicha en la página previa: si la quita a
+  mano, vuelve; para quitarla del todo, hay que desinstalar. **Lo que no cubre,
+  en el folio:** hasta el siguiente inicio de sesión, un perfil nuevo o el
+  primer AutoCAD tras instalar enseñan el aviso.
+
+### Plan de medida (condición 3), en el AutoCAD de esta máquina
+
+Cada medida se deshace al terminar y se compara el registro con una foto previa.
+
+| | Qué | Qué decide |
+|---|---|---|
+| M1 | Ruta estrecha (`…\Contents`) puesta antes de abrir; cierre **normal**; ¿carga sin aviso y sigue la ruta después? | que la forma elegida vale y sobrevive a un cierre normal |
+| M2a | AutoCAD abierto; **se escribe** la ruta; cierre normal; ¿sigue? | si hay que exigir AutoCAD cerrado al instalar |
+| M2b | AutoCAD abierto con la ruta; **se quita**; cierre normal; ¿vuelve? | lo mismo al desinstalar |
+| M3 | Un segundo perfil con la ruta y el primero sin ella; abrir con `/p`; ¿carga? | si la confianza es por perfil |
+| M4 | Un `.lsp` en `%ProgramData%\Autodesk\ApplicationPlugins` cargado con `load`, sin `TRUSTEDPATHS`; ¿avisa? | qué hay de cierto en la página de `TRUSTEDPATHS` (§4.3) |
+
+**Resultados** (2026-09-14, AutoCAD 2027 de esta máquina, con la sonda; todo
+deshecho, y el registro de AutoCAD quedó idéntico a la foto previa: 0 líneas
+distintas):
+
+| | Resultado |
+|---|---|
+| M1 | **Carga sin aviso** con la ruta estrecha (`…\Contents`, sin `\...`). Que sobreviva a un cierre normal **no se pudo medir** (M2). |
+| M2a · M2b | **Sin medir.** AutoCAD no se cierra con normalidad desde la automatización: `QUIT` en un guion se queda parado, y `CloseMainWindow` devuelve `False`. Lo que sí se midió: la ventana principal está **deshabilitada** desde que se abre el dibujo, y su captura (`PrintWindow`) enseña AutoCAD normal, sin diálogo. **La causa, medida en T18:** una ventana visible del proceso **`AdskLicensingAgent`** (clase `webview`, sin título) tiene como dueña la ventana principal de AutoCAD. Es el agente de licencias de Autodesk, en una instalación de prueba («PRUEBA (NO COMERCIAL)»), y bloquea AutoCAD como un modal. No se ha medido qué enseña ni si pasa con una licencia de pago. Por esto la condición 3a se resuelve con una regla. |
+| M3 | **La confianza es por perfil.** Con la ruta sólo en un segundo perfil y AutoCAD abierto con `/p`, carga sin aviso y `CPROFILE` es ese perfil. **Efecto secundario medido:** `/p` deja ese perfil como activo en las sesiones siguientes (se restauró). |
+| M4 | **Aviso.** Un `load` desde `%ProgramData%\Autodesk\ApplicationPlugins` con `TRUSTEDPATHS` vacío da «Seguridad - Archivo ejecutable no firmado». |
+
+**Hallazgo: la documentación de Autodesk se contradice, y ninguna de las dos
+páginas acierta.** Se resolvió midiendo, no leyendo:
+
+- La [página de `TRUSTEDPATHS` de AutoCAD 2027](https://help.autodesk.com/view/ACD/2027/ENU/?caas=caas/documentation/ACD/2014/ENU/files/GUID-2FB4611D-F141-48D5-9B6E-460EB59351AF-htm.html)
+  dice que `%ProgramData%\Autodesk\ApplicationPlugins` es de confianza
+  implícita. **Medido: no lo es** (M4).
+- La [página de plug-ins de AutoCAD 2027](https://help.autodesk.com/cloudhelp/2027/ENU/AutoCAD-Customization/files/GUID-5E50A846-C80B-4FFD-8DD3-C20B22098008.htm)
+  da `%ALLUSERSPROFILE%\Autodesk\ApplicationPlugins` (la misma carpeta) como una
+  de las tres carpetas de plug-ins. **Medido: AutoCAD no la explora** (§4.3: dos
+  ejecuciones, ni carga ni clave `Loaded`).
+- Lo único que ambas sostienen y la medida confirma: `%APPDATA%\Autodesk\ApplicationPlugins`
+  se explora y **no** es de confianza. Lo que la de plug-ins dice de
+  `%PROGRAMFILES%` (de confianza y sin comprobar firma) **no se ha medido**:
+  escribir allí pide administrador.
+
+**T18, el código real sobre el AutoCAD real** (2026-09-14; todo deshecho, 0
+líneas distintas en el registro frente a la foto previa). Con una ruta ajena
+simulada ya puesta (`C:\RutaAjenaDePruebaArchMuse`):
+
+1. `copiar_lsp_al_bundle` + `cambiar_confianza_con_autocad_cerrado()` sobre el
+   bundle real (`%APPDATA%\…\ArchMuse.bundle`, manifiesto y `.lsp` del
+   repositorio): **1 perfil cambiado**, `TRUSTEDPATHS` =
+   `C:\RutaAjenaDePruebaArchMuse;…\ArchMuse.bundle\Contents`.
+2. AutoCAD: **ningún aviso**, y el guion de arranque ve `c:archmuse` definido.
+3. `cambiar_confianza_con_autocad_cerrado(quitar=True)` con AutoCAD cerrado:
+   **1 perfil cambiado**, y la ajena queda **idéntica** (`-ceq`).
+
+Consecuencia de método para este proyecto: con Autodesk, **una página de ayuda
+es una hipótesis**. Dos páginas oficiales de la misma versión dicen cosas
+incompatibles sobre la misma carpeta, y las dos fallan.
+
+### Tareas
+
+| | Tarea |
+|---|---|
+| T13 | `archmuse_local`: perfiles de AutoCAD, añadir y quitar nuestra ruta; tests y guardián de la condición 2 |
+| T14 | Actualizador: `--activar` añade, `--desinstalar` quita; los dos fallan en voz alta |
+| T15 | Instalador: página previa (condición 1); AutoCAD cerrado para instalar y desinstalar |
+| T16 | Lanzador: reponer la ruta al iniciar sesión *[decisión mía]* |
+| T17 | Folio: la ruta de confianza y lo que no se pueda resolver |
+| T18 | Prueba en AutoCAD **con el código real** (no con la sonda): añadir → carga sin aviso → quitar → nuestra ruta desaparece y una ajena se queda |
+| T19 | Suite entera |
+
+**Lo que NO incluye:** ejecutar el `.exe` en esta máquina. Instalaría el servidor,
+los accesos directos y la asociación de `.archmuse` en el equipo de trabajo de
+Pablo. T18 prueba el mismo código sin el instalador; el `.exe` entero sigue
+esperando a la VM (§12.3).
+
+### Motivo para no hacerlo, dicho igual que en §14
+
+**Cambiamos un ajuste de seguridad suyo, y la carpeta es escribible por su
+usuario.** Cualquier programa que corra con su cuenta puede dejar un `.lsp` en
+`ArchMuse.bundle\Contents` y AutoCAD lo cargará sin preguntar. Es el precio de
+no pedir administrador (la alternativa A, `%PROGRAMFILES%`, no es escribible
+sin elevar) y de no firmar. La ruta estrecha lo acota a una carpeta, no lo
+elimina. Por eso la condición 1 no es cortesía: es informarle de lo que acepta.
+
+### Cierre · 2026-09-14
+
+**Estado: implementada (T13-T19).** Cómo se cumple cada condición:
+
+1. **Página previa.** Propia, antes de copiar nada, a 11 pt, y su botón es
+   «Instalar». **Comprobada en pantalla**, no sólo en el test: dos capturas
+   enseñaron dos fallos que el test no veía (el cuadro del texto no crecía al
+   subir la letra, y la ruta en una línea se cortaba por la derecha); la
+   tercera la enseña entera. El test exige ahora la altura y un tope de 700
+   caracteres.
+2. **Sólo nuestra ruta.** Guardián `test_guardian_quitar_solo_se_lleva_nuestra_ruta`,
+   y T18 con una ruta ajena en el registro real: queda idéntica.
+3. **AutoCAD abierto:** resuelto con la regla de no escribir nunca con AutoCAD
+   abierto (M2 sin medir; causa del bloqueo medida: `AdskLicensingAgent`).
+   **Varios perfiles:** medido (M3) y resuelto escribiendo en todos. Lo que no se
+   resuelve está en el folio (`docs/beta/INSTRUCCIONES.md`, §4 y §7).
+4. **Suite entera:** 1959 pasan, 39 saltados, 1 xfail, 0 fallos (20 min 49 s).
+
+**Fallos reintroducidos:** 12 de 12 en rojo, restaurados byte a byte.
+
+**Sin verificar:** T12 (máquina limpia), la instalación real del `.exe` en esta
+máquina (sólo se abrió hasta su primera página y se cerró), M2, y la reposición
+al iniciar sesión en un inicio de sesión real (sí con tests).

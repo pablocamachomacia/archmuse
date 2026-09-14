@@ -72,12 +72,6 @@ Root: HKCU; Subkey: "Software\Classes\.archmuse"; ValueType: string; ValueName: 
 Root: HKCU; Subkey: "Software\Classes\ArchMuse.Actualizacion"; ValueType: string; ValueName: ""; ValueData: "Actualización de ArchMuse"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\ArchMuse.Actualizacion\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\runtime\pythonw.exe"" ""{app}\app\actual\actualizador.pyw"" --instalar ""%1"""
 
-[Run]
-Filename: "{app}\runtime\pythonw.exe"; Parameters: """{app}\app\{#Version}\actualizador.pyw"" --activar {#Version} --silencioso"; WorkingDir: "{app}"; StatusMsg: "Poniendo en marcha ArchMuse (unos segundos)..."; Flags: waituntilterminated
-
-[UninstallRun]
-Filename: "{app}\runtime\pythonw.exe"; Parameters: """{app}\app\actual\actualizador.pyw"" --desinstalar"; WorkingDir: "{app}"; Flags: waituntilterminated skipifdoesntexist; RunOnceId: "PararArchMuse"
-
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\app"
 Type: filesandordirs; Name: "{app}\runtime"
@@ -89,6 +83,144 @@ Type: filesandordirs; Name: "{userappdata}\Autodesk\ApplicationPlugins\ArchMuse.
 ; haber desinstalado.
 
 [Code]
+var
+  ActivacionFallida: Boolean;
+  ConfianzaPagina: TOutputMsgWizardPage;
+
+// TRUSTEDPATHS no se escribe nunca con AutoCAD abierto (enmienda del PRD): puede
+// reescribir sus variables al cerrarse. Instalar y desinstalar esperan a que se
+// cierre. SuppressibleMsgBox con Cancelar por defecto: en modo silencioso no se
+// queda dando vueltas, se cancela.
+function AutoCADAbierto(): Boolean;
+var
+  Localizador, Servicio, Procesos: Variant;
+begin
+  Localizador := CreateOleObject('WbemScripting.SWbemLocator');
+  Servicio := Localizador.ConnectServer('.', 'root\CIMV2');
+  Procesos := Servicio.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE Name = ''acad.exe''');
+  Result := Procesos.Count > 0;
+end;
+
+function EsperarAutoCADCerrado(): Boolean;
+begin
+  Result := True;
+  try
+    while AutoCADAbierto() do
+      if SuppressibleMsgBox('AutoCAD está abierto. Guarda tu trabajo, cierra AutoCAD y pulsa Reintentar.',
+                            mbError, MB_RETRYCANCEL, IDCANCEL) = IDCANCEL then
+      begin
+        Result := False;
+        Exit;
+      end;
+  except
+    // Sin WMI no se sabe si está abierto: se pregunta, no se supone.
+    Result := SuppressibleMsgBox('No he podido comprobar si AutoCAD está abierto. ' +
+                                 'Asegúrate de que está cerrado y pulsa Sí para seguir.',
+                                 mbConfirmation, MB_YESNO, IDNO) = IDYES;
+  end;
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  Result := EsperarAutoCADCerrado();
+end;
+
+// Condición 1 de Pablo (enmienda del PRD, 2026-09-14): ANTES de instalar, y no
+// en letra pequeña, que ArchMuse añade su carpeta a las rutas de confianza de
+// AutoCAD, qué significa y que se deshace al desinstalar. Página propia, y el
+// botón que la cierra es el que instala.
+procedure InitializeWizard();
+begin
+  // Medido el 2026-09-14 con capturas del asistente, dos fallos distintos: la
+  // ruta entera en una línea salía cortada por la derecha (por eso va partida),
+  // y con la letra a 11 pt el texto se cortaba por abajo (ver MsgLabel.Height,
+  // más abajo). Si este texto crece, hay que volver a mirarlo en pantalla.
+  ConfianzaPagina := CreateOutputMsgPage(wpWelcome,
+    'Antes de instalar: un cambio en tu AutoCAD',
+    'Léelo antes de seguir. Es un ajuste de seguridad de AutoCAD.',
+    'Para que ARCHMUSE funcione sin que AutoCAD pregunte cada vez, ArchMuse añade ' +
+    'su carpeta a las RUTAS DE CONFIANZA de AutoCAD.' + #13#10#13#10 +
+    'Qué significa: AutoCAD cargará sin preguntar lo que haya en esa carpeta, y sólo en esa:' + #13#10 +
+    ExpandConstant('{userappdata}\Autodesk\') + #13#10 +
+    'ApplicationPlugins\ArchMuse.bundle\Contents' + #13#10#13#10 +
+    'Tus otras rutas de confianza no se tocan. Se deshace al desinstalar ArchMuse.' + #13#10#13#10 +
+    'AutoCAD tiene que estar cerrado para instalar y para desinstalar.' + #13#10#13#10 +
+    'Si creas otro perfil de AutoCAD, ArchMuse le añade la carpeta al iniciar sesión. ' +
+    'Si la quitas a mano, volverá a ponerla: para quitarla, desinstala ArchMuse.');
+  ConfianzaPagina.MsgLabel.Font.Size := 11;
+  // Sin esto el texto se corta a media página: la altura de la etiqueta se
+  // calcula al crearla, con la letra por defecto, y no crece al subir la letra
+  // (medido con captura el 2026-09-14: cortado en seco con media página libre).
+  ConfianzaPagina.MsgLabel.Height := ConfianzaPagina.SurfaceHeight;
+end;
+
+// La activación (copiar el .lsp a AutoCAD, mover el puntero, arrancar el
+// servidor) va aquí y NO en [Run]: [Run] no mira el código de salida, y hasta
+// el 2026-09-14 una activación fallida acababa en «Listo» y, en AutoCAD, en
+// «comando desconocido». El motivo concreto lo enseña el propio actualizador.
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  Codigo: Integer;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    WizardForm.StatusLabel.Caption := 'Poniendo en marcha ArchMuse (unos segundos)...';
+    if not Exec(ExpandConstant('{app}\runtime\pythonw.exe'),
+                '"' + ExpandConstant('{app}\app\{#Version}\actualizador.pyw') + '" --activar {#Version} --silencioso',
+                ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Codigo) then
+    begin
+      ActivacionFallida := True;
+      MsgBox('ArchMuse no ha podido ponerse en marcha: ' + SysErrorMessage(Codigo),
+             mbError, MB_OK);
+    end
+    else if Codigo <> 0 then
+      ActivacionFallida := True;
+  end;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if CurPageID = ConfianzaPagina.ID then
+    WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
+  if (CurPageID = wpFinished) and ActivacionFallida then
+  begin
+    WizardForm.FinishedHeadingLabel.Caption := 'ArchMuse no ha quedado listo';
+    WizardForm.FinishedLabel.Caption :=
+      'Los ficheros están copiados, pero ArchMuse no ha terminado de ponerse en marcha. ' +
+      'En AutoCAD el comando ARCHMUSE no va a estar. Vuelve a ejecutar el instalador; ' +
+      'si sigue igual, avísanos.';
+  end;
+end;
+
+// Desinstalar: parar el servidor y quitar NUESTRA ruta de confianza de AutoCAD
+// (condición 2). Aquí y no en [UninstallRun], que tampoco mira el código de
+// salida: si no se ha podido quitar, él tiene que saberlo, porque su AutoCAD
+// seguiría confiando en una carpeta que ya no es de nadie.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  Codigo: Integer;
+  Pythonw, Actualizador: String;
+  Quitada: Boolean;
+begin
+  if CurUninstallStep = usUninstall then
+  begin
+    Quitada := False;
+    Pythonw := ExpandConstant('{app}\runtime\pythonw.exe');
+    Actualizador := ExpandConstant('{app}\app\actual\actualizador.pyw');
+    if not FileExists(Actualizador) then
+      Actualizador := ExpandConstant('{app}\app\{#Version}\actualizador.pyw');
+    if FileExists(Pythonw) and FileExists(Actualizador) then
+      if Exec(Pythonw, '"' + Actualizador + '" --desinstalar --silencioso',
+              ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Codigo) then
+        Quitada := (Codigo = 0);
+    if not Quitada then
+      MsgBox('ArchMuse se va a desinstalar, pero NO ha podido quitar su carpeta de las ' +
+             'rutas de confianza de AutoCAD. AutoCAD seguiría cargando sin preguntar lo que ' +
+             'haya en ' + ExpandConstant('{userappdata}\Autodesk\ApplicationPlugins\ArchMuse.bundle\Contents') +
+             '. Avísanos para quitarla.', mbError, MB_OK);
+  end;
+end;
+
 // §6: sin permisos en %LOCALAPPDATA% se dice ANTES de copiar nada.
 function InitializeSetup(): Boolean;
 var
@@ -115,6 +247,11 @@ var
   Pythonw, Actualizador: String;
 begin
   Result := '';
+  if not EsperarAutoCADCerrado() then
+  begin
+    Result := 'AutoCAD sigue abierto. No se ha instalado nada.';
+    Exit;
+  end;
   Pythonw := ExpandConstant('{app}\runtime\pythonw.exe');
   Actualizador := ExpandConstant('{app}\app\actual\actualizador.pyw');
   if FileExists(Pythonw) and FileExists(Actualizador) then

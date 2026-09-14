@@ -39,6 +39,10 @@ def main() -> int:
         local.registrar("ya hay un servidor de ArchMuse en marcha: este lanzador se retira")
         return 0
 
+    # Enmienda del PRD (2026-09-14): nuestra ruta de confianza en los perfiles de
+    # AutoCAD que no la tengan. Sólo con AutoCAD cerrado, y nunca impide arrancar.
+    local.reponer_confianza()
+
     try:
         sock, puerto = local.elegir_socket()
     except RuntimeError as e:

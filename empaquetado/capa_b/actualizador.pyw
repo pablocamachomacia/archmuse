@@ -66,9 +66,26 @@ def _parar_o_abortar() -> None:
 
 
 def activar(version: str, arrancar: bool = True):
+    # Lo primero, antes de parar o mover nada (enmienda del PRD, 2026-09-14):
+    # nuestra carpeta en las rutas de confianza de AutoCAD. Con AutoCAD abierto
+    # y algo que escribir, se para aquí sin haber cambiado nada.
+    try:
+        perfiles = local.cambiar_confianza_con_autocad_cerrado()
+    except RuntimeError as e:
+        raise RuntimeError("ArchMuse no ha podido añadir su carpeta a las rutas de confianza "
+                           "de AutoCAD: %s. No se ha cambiado nada." % e)
+    if perfiles:
+        local.registrar("ruta de confianza añadida en %d perfil(es) de AutoCAD" % perfiles)
     _parar_o_abortar()
     previa = local.apuntar_actual(version)
-    local.copiar_lsp_al_bundle(version)
+    try:
+        local.copiar_lsp_al_bundle(version)
+    except RuntimeError as e:
+        # Sin esto, lo siguiente que vería él es «comando desconocido» en AutoCAD.
+        raise RuntimeError(
+            "ArchMuse %s está instalado, pero AutoCAD no va a encontrar el comando "
+            "ARCHMUSE: %s. Vuelve a ejecutar el instalador; si sigue igual, avísanos."
+            % (version, e))
     if arrancar:
         local.arrancar_lanzador()
         if local.esperar_servidor(version) is None:
@@ -117,6 +134,15 @@ def volver(arrancar: bool = True) -> tuple:
 
 
 def desinstalar() -> None:
+    # Condición 2 de la enmienda del PRD (2026-09-14): nuestra ruta de confianza
+    # sale de cada perfil de AutoCAD, y las suyas se quedan como estaban. Con
+    # AutoCAD abierto no se toca (el desinstalador ya exige cerrarlo antes).
+    try:
+        cambiados = local.cambiar_confianza_con_autocad_cerrado(quitar=True)
+    except RuntimeError as e:
+        raise RuntimeError("ArchMuse no ha podido quitar su carpeta de las rutas de confianza "
+                           "de AutoCAD: %s" % e)
+    local.registrar("ruta de confianza quitada de %d perfil(es) de AutoCAD" % cambiados)
     local.parar_servidor()
     if os.path.isjunction(local.carpeta_actual()):
         os.rmdir(local.carpeta_actual())

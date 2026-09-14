@@ -69,6 +69,9 @@ def arbol(tmp_path, monkeypatch):
     monkeypatch.setenv("ARCHMUSE_BUNDLE", str(tmp_path / "bundle"))
     monkeypatch.setenv("ARCHMUSE_PUERTOS", "%d-%d" % (puertos[0], puertos[-1]))
     monkeypatch.setenv("ARCHMUSE_SIN_VENTANAS", "1")
+    # Que ningún test llegue al AutoCAD de verdad: sin esto, `activar` leería y
+    # escribiría TRUSTEDPATHS en el perfil real de quien ejecuta los tests.
+    monkeypatch.setenv("ARCHMUSE_RAIZ_AUTOCAD", r"Software\ArchMuse-tests\ninguno")
     sys.path.insert(0, str(CAPA_B))
     try:
         local = _cargar("archmuse_local", CAPA_B / "archmuse_local.py")
@@ -244,6 +247,225 @@ def test_un_zip_que_no_es_de_archmuse_no_se_instala(arbol):
         actualizador.validar_paquete(str(tmp / "fotos.archmuse"))
 
 
+def test_sin_paquete_de_autocad_activar_lo_dice_en_vez_de_callarse(arbol):
+    """Hasta el 2026-09-14 `copiar_lsp_al_bundle` devolvía `False` y nadie lo
+    miraba: el usuario se enteraba al teclear ARCHMUSE y leer «comando
+    desconocido». Un fallo que no se dice no es un fallo menor, es invisible."""
+    local, actualizador, _, tmp = arbol
+    _capa_falsa(local, "0.3.1")
+    (tmp / "bundle").rmdir()
+    with pytest.raises(RuntimeError, match="comando ARCHMUSE"):
+        actualizador.activar("0.3.1", arrancar=False)
+    assert actualizador.main(["--activar", "0.3.1", "--sin-arrancar", "--silencioso"]) == 1
+    log = Path(local.carpeta_registro()) / ("servidor-%s.log" % time.strftime("%Y-%m"))
+    assert "comando ARCHMUSE" in log.read_text(encoding="utf-8")
+
+
+def test_si_la_copia_del_lsp_falla_tambien_se_dice(arbol):
+    local, actualizador, _, _ = arbol
+    (_capa_falsa(local, "0.3.1") / "archmuse.lsp").unlink()
+    with pytest.raises(RuntimeError, match="no se ha podido copiar el comando"):
+        actualizador.activar("0.3.1", arrancar=False)
+
+
+# ── la confianza de AutoCAD (enmienda del 2026-09-14, vía B) ────────────────
+
+NUESTRA = r"C:\Users\x\AppData\Roaming\Autodesk\ApplicationPlugins\ArchMuse.bundle\Contents"
+
+#: Lo que un arquitecto puede tener ya en TRUSTEDPATHS. Las parecidas a la
+#: nuestra están a propósito: son las que un «quitar» descuidado se llevaría.
+AJENAS = [
+    r"C:\suyo",
+    "",                                                  # un `;;` que ya tenía
+    r"D:\rutinas\...",
+    NUESTRA + r"\...",                                   # la nuestra CON subcarpetas: no es la nuestra
+    NUESTRA.replace("ArchMuse.bundle", "Otro.bundle"),   # el paquete de al lado
+    r'"C:\con comillas"',
+]
+
+
+def test_anadir_nuestra_ruta_no_duplica_ni_reordena(arbol):
+    local, _, _, _ = arbol
+    assert local.con_nuestra_ruta("", NUESTRA) == NUESTRA
+    assert local.con_nuestra_ruta(r"C:\suyo", NUESTRA) == r"C:\suyo;" + NUESTRA
+    assert local.con_nuestra_ruta("C:\\suyo;", NUESTRA) == r"C:\suyo;" + NUESTRA
+    ya = r"C:\suyo;" + NUESTRA.upper() + "\\"
+    assert local.con_nuestra_ruta(ya, NUESTRA) == ya
+
+
+def test_guardian_quitar_solo_se_lleva_nuestra_ruta(arbol):
+    """**Condición 2 de Pablo.** El desinstalador quita nuestra ruta y ninguna
+    otra: las del arquitecto salen idénticas, carácter a carácter, esté la
+    nuestra delante, en medio o detrás, y aunque haya rutas que se le parecen."""
+    local, _, _, _ = arbol
+    ajenas = ";".join(AJENAS)
+    assert local.sin_nuestra_ruta(ajenas, NUESTRA) == ajenas
+    for i in range(len(AJENAS) + 1):
+        con_la_nuestra = ";".join(AJENAS[:i] + [NUESTRA] + AJENAS[i:])
+        assert local.sin_nuestra_ruta(con_la_nuestra, NUESTRA) == ajenas, i
+    assert local.sin_nuestra_ruta(local.con_nuestra_ruta(ajenas, NUESTRA), NUESTRA) == ajenas
+    assert local.sin_nuestra_ruta(NUESTRA, NUESTRA) == ""
+
+
+def _borrar_clave(raiz, clave: str) -> None:
+    import winreg
+    try:
+        with winreg.OpenKey(raiz, clave) as k:
+            hijas = []
+            while True:
+                try:
+                    hijas.append(winreg.EnumKey(k, len(hijas)))
+                except OSError:
+                    break
+    except FileNotFoundError:
+        return
+    for hija in hijas:
+        _borrar_clave(raiz, clave + "\\" + hija)
+    winreg.DeleteKey(raiz, clave)
+
+
+@pytest.fixture()
+def autocad_falso(arbol, monkeypatch):
+    """Un `HKCU\\Software\\Autodesk\\AutoCAD` de mentira: nunca el de verdad."""
+    import uuid
+    import winreg
+    contenedor = r"Software\ArchMuse-tests\%s" % uuid.uuid4().hex
+    raiz = contenedor + r"\AutoCAD"
+    monkeypatch.setenv("ARCHMUSE_RAIZ_AUTOCAD", raiz)
+    monkeypatch.setattr(arbol[0], "autocad_abierto", lambda: False)
+
+    def perfil(version, producto, nombre, valor):
+        clave = r"%s\%s\%s\Profiles\%s\Variables" % (raiz, version, producto, nombre)
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, clave) as k:
+            if valor is not None:
+                winreg.SetValueEx(k, "TRUSTEDPATHS", 0, winreg.REG_SZ, valor)
+        return clave
+
+    try:
+        yield arbol, perfil
+    finally:
+        _borrar_clave(winreg.HKEY_CURRENT_USER, contenedor)
+        try:
+            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, r"Software\ArchMuse-tests")
+        except OSError:
+            pass
+
+
+def _tp(clave: str):
+    import winreg
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, clave) as k:
+        return winreg.QueryValueEx(k, "TRUSTEDPATHS")[0]
+
+
+def test_anadir_y_quitar_en_cada_perfil_desde_r24_y_en_ninguno_mas(autocad_falso):
+    (local, _, _, _), perfil = autocad_falso
+    nuestra = local.ruta_de_confianza()
+    anterior = perfil("R23.1", "ACAD-3001:40A", "<<Perfil sin nombre>>", r"C:\suyo")
+    estudio = perfil("R24.0", "ACAD-4101:409", "Estudio", r"C:\suyo;D:\rutinas\...")
+    vacio = perfil("R26.0", "ACAD-A101:40A", "<<Perfil sin nombre>>", "")
+    sin_valor = perfil("R26.0", "ACAD-A101:40A", "Planos", None)
+    assert local.perfiles_de_autocad() == sorted([estudio, vacio, sin_valor])
+
+    local.anadir_confianza()
+    assert [escrito for _, escrito in local.anadir_confianza()] == [False, False, False]
+    assert _tp(estudio) == r"C:\suyo;D:\rutinas\...;" + nuestra
+    assert _tp(vacio) == nuestra and _tp(sin_valor) == nuestra
+    assert _tp(anterior) == r"C:\suyo", "AutoCAD 2020 no carga el bundle: no se toca"
+
+    local.quitar_confianza()
+    assert _tp(estudio) == r"C:\suyo;D:\rutinas\..."
+    assert _tp(vacio) == "" and _tp(sin_valor) == ""
+    assert _tp(anterior) == r"C:\suyo"
+
+
+def test_desinstalar_quita_nuestra_ruta_y_deja_las_suyas(autocad_falso):
+    (local, actualizador, _, _), perfil = autocad_falso
+    suyas = ";".join(AJENAS)
+    clave = perfil("R26.0", "ACAD-A101:40A", "<<Perfil sin nombre>>", suyas)
+    local.anadir_confianza()
+    assert _tp(clave) != suyas
+    assert actualizador.main(["--desinstalar", "--silencioso"]) == 0
+    assert _tp(clave) == suyas
+
+
+def test_activar_anade_nuestra_ruta_de_confianza(autocad_falso):
+    (local, actualizador, _, _), perfil = autocad_falso
+    clave = perfil("R26.0", "ACAD-A101:40A", "<<Perfil sin nombre>>", r"C:\suyo")
+    _capa_falsa(local, "0.3.1")
+    actualizador.activar("0.3.1", arrancar=False)
+    assert _tp(clave) == r"C:\suyo;" + local.ruta_de_confianza()
+
+
+def test_con_autocad_abierto_no_se_escribe_la_confianza_y_se_dice(autocad_falso, monkeypatch):
+    """Condición 3a: nunca se escribe TRUSTEDPATHS con AutoCAD abierto, porque
+    puede pisarlo al cerrarse. Ni al activar ni al desinstalar; y si no hay
+    nada que escribir, una actualización con AutoCAD abierto sí sigue."""
+    (local, actualizador, _, _), perfil = autocad_falso
+    clave = perfil("R26.0", "ACAD-A101:40A", "<<Perfil sin nombre>>", r"C:\suyo")
+    _capa_falsa(local, "0.3.1")
+    monkeypatch.setattr(local, "autocad_abierto", lambda: True)
+    with pytest.raises(RuntimeError, match="AutoCAD está abierto"):
+        actualizador.activar("0.3.1", arrancar=False)
+    assert _tp(clave) == r"C:\suyo"
+    assert local.version_activa() is None, "ha movido el puntero antes de fallar"
+
+    local.anadir_confianza()
+    actualizador.activar("0.3.1", arrancar=False)
+    assert local.version_activa() == "0.3.1"
+
+    with pytest.raises(RuntimeError, match="AutoCAD está abierto"):
+        actualizador.desinstalar()
+    assert _tp(clave) == r"C:\suyo;" + local.ruta_de_confianza()
+
+
+def test_reponer_al_iniciar_sesion_solo_con_autocad_cerrado_y_sin_lanzar(autocad_falso, monkeypatch):
+    (local, _, _, _), perfil = autocad_falso
+    nuevo = perfil("R26.0", "ACAD-A101:40A", "Perfil nuevo", "")
+    monkeypatch.setattr(local, "autocad_abierto", lambda: True)
+    local.reponer_confianza()
+    assert _tp(nuevo) == ""
+    monkeypatch.setattr(local, "autocad_abierto", lambda: False)
+    local.reponer_confianza()
+    assert _tp(nuevo) == local.ruta_de_confianza()
+    log = Path(local.carpeta_registro()) / ("servidor-%s.log" % time.strftime("%Y-%m"))
+    texto = log.read_text(encoding="utf-8")
+    assert "sin reponer: AutoCAD está abierto" in texto
+    assert "repuesta en 1 perfil" in texto
+
+
+def test_el_lanzador_repone_la_confianza_despues_de_quedarse_con_el_mutex():
+    fuente = (CAPA_B / "lanzador.pyw").read_text(encoding="utf-8")
+    assert fuente.index("local.mutex_unico(") < fuente.index("local.reponer_confianza()") \
+        < fuente.index("local.elegir_socket()")
+
+
+def test_instalar_y_desinstalar_esperan_a_que_autocad_este_cerrado():
+    codigo = _secciones_iss()["Code"]
+    preparar = codigo[codigo.index("function PrepareToInstall"):]
+    assert preparar.index("EsperarAutoCADCerrado()") < preparar.index("--parar")
+    assert re.search(r"function InitializeUninstall\(\): Boolean;\s*begin\s*"
+                     r"Result := EsperarAutoCADCerrado\(\);", codigo)
+    esperar = codigo[codigo.index("function EsperarAutoCADCerrado"):codigo.index("function InitializeUninstall")]
+    assert "IDCANCEL) = IDCANCEL" in esperar, "en silencioso tiene que cancelar, no dar vueltas"
+    assert "except" in esperar
+
+
+def test_el_desinstalador_se_entera_si_no_puede_quitar_la_ruta():
+    secciones = _secciones_iss()
+    assert "--desinstalar" not in secciones.get("UninstallRun", "")
+    codigo = secciones["Code"]
+    inicio = codigo.index("procedure CurUninstallStepChanged")
+    cuerpo = codigo[inicio:codigo.index("\nend;", inicio)]
+    assert "--desinstalar" in cuerpo and "Quitada := (Codigo = 0)" in cuerpo
+    assert "if not Quitada then" in cuerpo and "rutas de confianza" in cuerpo
+
+
+def test_sin_ningun_autocad_no_hay_perfiles_ni_error(autocad_falso):
+    (local, _, _, _), _ = autocad_falso
+    assert local.perfiles_de_autocad() == []
+    assert local.anadir_confianza() == []
+
+
 # ── lo que se construye ─────────────────────────────────────────────────────
 
 @pytest.fixture(scope="module")
@@ -288,6 +510,49 @@ def test_el_instalador_no_pide_administrador_ni_crea_tareas_programadas():
     # arranque al iniciar sesión es un acceso directo en Inicio.
     assert not re.search(r"^(Filename|Parameters):.*schtasks", iss, re.M | re.I)
     assert "{userstartup}" in iss
+
+
+def _secciones_iss() -> dict:
+    iss = (EMPAQUETADO / "ArchMuse-Beta.iss").read_text(encoding="utf-8-sig")
+    return dict(re.findall(r"^\[(\w+)\][ \t]*$(.*?)(?=^\[\w+\][ \t]*$|\Z)", iss, re.M | re.S))
+
+
+def test_el_instalador_se_entera_si_la_activacion_falla():
+    """`[Run]` de Inno Setup no mira el código de salida: con `--activar` allí,
+    una activación fallida terminaba en la pantalla de «Listo»."""
+    secciones = _secciones_iss()
+    assert "--activar" not in secciones.get("Run", "")
+    codigo = secciones["Code"]
+    assert "--activar" in codigo and "Codigo <> 0" in codigo
+    assert "wpFinished" in codigo and "no ha quedado listo" in codigo
+
+
+def test_el_instalador_avisa_de_la_ruta_de_confianza_antes_de_instalar():
+    """**Condición 1 de Pablo:** antes de instalar y no en letra pequeña, que se
+    añade la carpeta a las rutas de confianza, qué significa y que se deshace
+    al desinstalar. Una página propia delante de todo, y su botón es «Instalar»."""
+    codigo = _secciones_iss()["Code"]
+    inicio = codigo.index("CreateOutputMsgPage(wpWelcome")
+    pagina = codigo[inicio:codigo.index("end;", inicio)]
+    texto = re.sub(r"'\s*\+\s*'", "", pagina)             # une las cadenas partidas
+    assert "RUTAS DE CONFIANZA" in texto
+    assert "cargará sin preguntar" in texto                # qué significa
+    assert "ArchMuse.bundle\\Contents" in texto            # qué carpeta, exacta
+    assert "otras rutas de confianza no se tocan" in texto
+    assert "Se deshace al desinstalar" in texto
+    assert "AutoCAD tiene que estar cerrado" in texto
+    assert "volverá a ponerla" in texto                    # la reposición al iniciar sesión, dicha
+    assert "MsgLabel.Font.Size" in pagina
+    # Que se VEA, no sólo que esté escrito. El 2026-09-14 las capturas del
+    # asistente enseñaron dos fallos que este test no veía: la etiqueta no crece
+    # al subir la letra (texto cortado con media página libre) y, con ~1.000
+    # caracteres, la ruta cortada. El límite es el texto que la captura enseñó
+    # entero (677) con poco margen; para superarlo, hay que volver a mirarlo.
+    assert "MsgLabel.Height := ConfianzaPagina.SurfaceHeight" in pagina
+    visibles = sum(len(c) for c in re.findall(r"'([^']*)'", texto))
+    assert visibles <= 700, "%d caracteres: mira la página en pantalla antes de subir el límite" % visibles
+    assert re.search(r"ConfianzaPagina\.ID then\s+WizardForm\.NextButton\.Caption := "
+                     r"SetupMessage\(msgButtonInstall\)", codigo)
 
 
 # ── el lanzador de verdad, en un proceso aparte ─────────────────────────────

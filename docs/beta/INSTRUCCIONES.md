@@ -18,7 +18,14 @@
 2. Si sale **«Windows protegió su PC»**: pulsa **«Más información»** y después
    **«Ejecutar de todas formas»**. Sale porque el programa es nuevo y aún no
    está firmado.
-3. Cuando diga **«Listo»**, ya está. No hace falta reiniciar.
+3. **Cierra AutoCAD antes de instalar.** Si está abierto, el instalador te lo
+   pedirá y esperará.
+4. **Lee la primera página.** ArchMuse añade **su carpeta** a las **rutas de
+   confianza** de AutoCAD, para que el comando funcione sin que AutoCAD te
+   pregunte cada vez. Eso significa que AutoCAD cargará sin preguntar lo que
+   haya en esa carpeta. **Tus otras rutas de confianza no se tocan**, y al
+   desinstalar ArchMuse se quita la suya.
+5. Cuando diga **«Listo»**, ya está. No hace falta reiniciar.
 
 ## 2 · Usar
 
@@ -42,6 +49,12 @@ pregunta cuál. No es un fallo: es que no quiere adivinarlo.
 - Las estancias tienen que ser **polilíneas cerradas, todas en la misma capa**,
   y **cada una con su nombre escrito dentro**. Si los nombres están separados
   de las polilíneas, medirá bien pero no sabrá cómo se llama nada.
+- **Si es la primera vez que abres AutoCAD en este ordenador, o usas un perfil
+  de AutoCAD creado después de instalar**, puede salir «Seguridad - Archivo
+  ejecutable no firmado» para `archmuse.lsp`. Pulsa **«Cargar una vez»**: la
+  próxima vez que inicies sesión en Windows, ArchMuse lo deja arreglado.
+- Si quitas a mano la carpeta de ArchMuse de las rutas de confianza, volverá a
+  aparecer al iniciar sesión. Para quitarla del todo, desinstala ArchMuse.
 - [CONFIRMAR] Una vivienda por plano / varias.
 - [CONFIRMAR] Que el cuadro tenga que ser una tabla de AutoCAD y no líneas y textos sueltos.
 
@@ -62,3 +75,9 @@ Arrástralo a WhatsApp.
   te avisará y no escribirá nada hasta que lo hagas.
 - Si la versión nueva va peor: menú **Inicio → ArchMuse → «volver a la versión
   anterior»**.
+
+## 7 · Desinstalar
+
+Menú **Inicio → ArchMuse → «Desinstalar ArchMuse»**, con AutoCAD cerrado. Quita
+la carpeta de ArchMuse de las rutas de confianza de AutoCAD y deja las tuyas
+como estaban. Si no pudiera quitarla, te lo dirá.
