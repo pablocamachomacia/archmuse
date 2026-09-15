@@ -973,6 +973,34 @@ comando como se quiera probar, y foto después.
 
 ---
 
+## C-17 · Un clic mide la vivienda más cercana al punto; si hay duda, no mide
+
+**Estado: PROPUESTO, PENDIENTE DE FIRMA.** Lo pidió Pablo el 2026-09-15: «el
+usuario hace UN clic al lado del dibujo de una vivienda y ArchMuse mide SOLO esa
+vivienda […]. El clic elige la vivienda: la más cercana al punto. Si hay duda (dos
+a distancia parecida), no mide y lo dice». La redacción y **los tres números son
+de Claude** y no están firmados. PRD `docs/prd/2026-09-15-un-clic-una-tabla.md`.
+
+**Qué dice.**
+
+1. La distancia del punto a una vivienda es la distancia a la más cercana de sus
+   piezas (cero si el punto cae dentro de una).
+2. Se mide la vivienda más cercana, **salvo que haya duda**: la segunda más
+   cercana está a menos del **doble** de distancia que la primera, o a menos de
+   **1 m** más lejos. Entonces no se mide, y se dicen las dos distancias.
+3. Si la más cercana está a más de **30 m**, no se mide: un clic tan lejos no
+   dice de qué vivienda es la tabla.
+4. **`C-13` manda.** Si la elegida comparte rótulo con otra, no se mide, aunque el
+   clic la distinga por posición. Distinguirlas así es una pregunta abierta.
+
+**Por qué no se elige ante la duda.** Es la lógica de `C-5` y `C-15`: una tabla de
+la vivienda de al lado, dibujada donde él ha marcado, es una cifra falsa en el
+sitio correcto — la que menos se ve.
+
+**Cómo se guarda.** `tests/test_un_clic_una_tabla.py`, con planos sintéticos.
+
+---
+
 ## Lo que sigue sin firmar
 
 De los tres criterios que `D-7` enumera desde el 2026-08-19, **`C-1` y `C-2`
