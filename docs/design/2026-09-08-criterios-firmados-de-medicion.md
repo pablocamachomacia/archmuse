@@ -389,6 +389,19 @@ estructural —ninguna vivienda contiene recintos de dos rótulos— y un centin
 por valor sobre toda la respuesta; con un control de dos viviendas con rótulos
 distintos que sí se miden.
 
+> **ENMIENDA, firmada por Pablo el 2026-09-15, para el comando por clic.** «El
+> clic decide la vivienda aunque su rótulo se repita. Dos viviendas con el mismo
+> nombre se distinguen por su posición; nunca se fusionan ni se suman. Si hay
+> duda real de cuál está más cerca, sigue diciendo "No mido".» (En su mensaje
+> citó `C-15`; el texto es el de este criterio.)
+>
+> **Qué cambia.** Con un clic (`C-17`) la vivienda elegida se mide y se dibuja
+> aunque otra lleve su rótulo: es la del rótulo que el agrupador le ha asignado,
+> con sus piezas y sólo las suyas. **Qué no cambia.** Sin clic —la planta entera,
+> la web, el agente— no hay posición que las distinga y siguen sin publicarse. Y
+> dentro de una misma medición nunca se suman ni se funden: la tabla es la de una
+> vivienda, idéntica a medirla sola (`tests/test_un_clic_una_tabla.py`).
+
 ---
 
 ## C-14 · El total útil computa la exterior con tope
@@ -987,11 +1000,16 @@ de Claude** y no están firmados. PRD `docs/prd/2026-09-15-un-clic-una-tabla.md`
    piezas (cero si el punto cae dentro de una).
 2. Se mide la vivienda más cercana, **salvo que haya duda**: la segunda más
    cercana está a menos del **doble** de distancia que la primera, o a menos de
-   **1 m** más lejos. Entonces no se mide, y se dicen las dos distancias.
+   **1 m** más lejos. Entonces no se mide, y se dicen las dos distancias. **Un
+   punto dentro de una pieza de una sola vivienda no tiene duda** (añadido el
+   2026-09-15 tras medir el maestro: 7 de 52 clics dentro de la pieza mayor de su
+   vivienda caían en la regla del metro por el tabique de la de al lado).
 3. Si la más cercana está a más de **30 m**, no se mide: un clic tan lejos no
    dice de qué vivienda es la tabla.
-4. **`C-13` manda.** Si la elegida comparte rótulo con otra, no se mide, aunque el
-   clic la distinga por posición. Distinguirlas así es una pregunta abierta.
+4. **Rótulo repetido: el clic la distingue por su posición** (enmienda de `C-13`
+   firmada por Pablo el 2026-09-15). Se mide la elegida, sola; nunca se suma ni
+   se funde con la otra. Este punto sí está firmado; los tres números de arriba,
+   no.
 
 **Por qué no se elige ante la duda.** Es la lógica de `C-5` y `C-15`: una tabla de
 la vivienda de al lado, dibujada donde él ha marcado, es una cifra falsa en el

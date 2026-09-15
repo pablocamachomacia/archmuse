@@ -187,9 +187,10 @@ Tiempo por tabla en el maestro del primer usuario (objetivo < 10 s); número de
 - **La lista de viviendas desaparece de este flujo.** Quien quiera las 27 tablas
   de golpe hace 27 clics. Es lo que se ha pedido; si molesta, se recupera como
   opción, no como flujo por defecto.
-- **`C-13` deja fuera las viviendas repetidas, que en un bloque son muchas** (en
-  el maestro medido, 7 de 34). El clic las distinguiría por posición, pero `C-13`
-  está firmado y no se toca: **pregunta abierta para Pablo**.
+- ~~**`C-13` deja fuera las viviendas repetidas.**~~ **Resuelto por Pablo el
+  2026-09-15**, tras ver que 18 de 19 clics en el maestro decían «No mido»: «el
+  clic decide la vivienda aunque su rótulo se repita […]; nunca se fusionan ni se
+  suman». Enmienda firmada de `C-13`, sólo para el clic.
 
 ---
 
