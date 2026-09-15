@@ -329,6 +329,40 @@ class Unit:
         return sum(r.area_m2 for r in self.rooms)
 
 
+def _rotulo_mas_cercano(centroides: List[Point],
+                        unit_labels: List[Tuple[str, float, float]]) -> List[int]:
+    """Para cada centroide, el índice del rótulo más cercano: exactamente
+    `min(range(n), key=distancia)`, que en un empate se queda con el primero.
+
+    **Por qué no ese `min` (medido el 2026-09-15).** Con un plano de 677 recintos
+    y 96 viviendas, el cuadro llama al agrupador una vez por vivienda: 6,4
+    millones de `Point` de shapely y 71 s de los 106 del servidor. Aquí se
+    calculan todas las distancias de golpe con numpy, y sólo cuando dos rótulos
+    quedan a la misma distancia —donde el último decimal de numpy y el de GEOS
+    podrían no coincidir— se desempata con la distancia de shapely de siempre,
+    en el orden de la lista."""
+    import numpy as np
+
+    if not centroides:
+        return []
+    rx = np.array([float(e[1]) for e in unit_labels])
+    ry = np.array([float(e[2]) for e in unit_labels])
+    cx = np.array([c.x for c in centroides])[:, None]
+    cy = np.array([c.y for c in centroides])[:, None]
+    distancias = np.hypot(cx - rx, cy - ry)
+    minimos = distancias.min(axis=1)
+    salida: List[int] = []
+    for fila, centroide in enumerate(centroides):
+        empatados = np.flatnonzero(distancias[fila] <= minimos[fila] * (1 + 1e-9) + 1e-12)
+        if len(empatados) == 1:
+            salida.append(int(empatados[0]))
+        else:
+            salida.append(min((int(i) for i in empatados),
+                              key=lambda i: centroide.distance(
+                                  Point(unit_labels[i][1], unit_labels[i][2]))))
+    return salida
+
+
 def group_rooms_by_unit_label(
     rooms: List[Room], unit_labels: List[Tuple[str, float, float]]
 ) -> List[Unit]:
@@ -357,10 +391,8 @@ def group_rooms_by_unit_label(
         return group_rooms_by_proximity(rooms)
 
     groups: Dict[int, List[Room]] = {}
-    for room in rooms:
-        centroid = room.polygon.centroid
-        indice = min(range(len(unit_labels)),
-                     key=lambda i: centroid.distance(Point(unit_labels[i][1], unit_labels[i][2])))
+    cercanos = _rotulo_mas_cercano([room.polygon.centroid for room in rooms], unit_labels)
+    for room, indice in zip(rooms, cercanos, strict=True):
         groups.setdefault(indice, []).append(room)
 
     def unit_sort_key(name: str):
@@ -448,12 +480,9 @@ def agrupar_por_vivienda_mas_cercana(
     agrupadas: Dict[str, List[Polygon]] = {}
     if not geometrias or not unit_labels:
         return agrupadas
-    for geometria in geometrias:
-        centroide = geometria.centroid
-        nombre, _, _ = min(
-            unit_labels, key=lambda item: centroide.distance(Point(item[1], item[2]))
-        )
-        agrupadas.setdefault(nombre, []).append(geometria)
+    cercanos = _rotulo_mas_cercano([g.centroid for g in geometrias], unit_labels)
+    for geometria, indice in zip(geometrias, cercanos, strict=True):
+        agrupadas.setdefault(unit_labels[indice][0], []).append(geometria)
     return agrupadas
 
 

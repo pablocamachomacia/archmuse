@@ -883,6 +883,66 @@ def extract_labels(doc: Drawing, con_capa: bool = False,
 TOLERANCIA_ETIQUETA = 0.5
 
 
+class _IndiceDeRotulos:
+    """Los rótulos con su punto ya creado y un índice espacial (2026-09-15).
+
+    **Por qué existe.** Sobre un plano maestro real —677 recintos, 6.280 textos—
+    el servidor tardaba 413 s (medido con el envío real del `.lsp`): casar cada
+    recinto con cada rótulo creaba 28 millones de `Point` de shapely y probaba
+    `contains` y `distance` contra todos. Aquí los puntos se crean una vez y un
+    `STRtree` devuelve sólo los que pueden importar.
+
+    **No cambia ningún resultado**, y es a propósito: los índices se devuelven en
+    el orden de la lista —de ese orden sale la regla «un MTEXT gana a un TEXT»— y
+    los empates de distancia se resuelven por ese mismo orden, como antes.
+    """
+
+    def __init__(self, labels):
+        import numpy as np
+        import shapely
+
+        self.labels = labels
+        self.n = len(labels)
+        self.primero = labels[0] if labels else None
+        self.ultimo = labels[-1] if labels else None
+        self.capas = [etiqueta[3] if len(etiqueta) > 3 else None for etiqueta in labels]
+        self.solo_numero = [_es_solo_numero(etiqueta[0]) for etiqueta in labels]
+        self._np = np
+        self.puntos = shapely.points([(etiqueta[1], etiqueta[2]) for etiqueta in labels]) \
+            if labels else np.empty(0, dtype=object)
+        self.arbol = shapely.STRtree(self.puntos)
+
+    def sirve_para(self, labels) -> bool:
+        return (self.labels is labels and len(labels) == self.n
+                and (not labels or (labels[0] is self.primero and labels[-1] is self.ultimo)))
+
+    def dentro(self, polygon: Polygon):
+        """Índices, en orden, de los rótulos cuyo punto cae DENTRO del polígono."""
+        if not self.n:
+            return []
+        return self._np.sort(self.arbol.query(polygon, predicate="contains")).tolist()
+
+    def a_menos_de(self, polygon: Polygon, distancia: float):
+        """Índices, en orden, de los rótulos a `distancia` o menos del polígono."""
+        if not self.n:
+            return []
+        return self._np.sort(self.arbol.query(polygon, predicate="dwithin",
+                                              distance=distancia)).tolist()
+
+
+_ULTIMO_INDICE: List[Optional[_IndiceDeRotulos]] = [None]
+
+
+def _indice_de(labels) -> _IndiceDeRotulos:
+    """El índice de `labels`, reutilizado mientras sea la misma lista: un plano
+    llama a esto una vez por recinto con la misma lista de rótulos."""
+    indice = _ULTIMO_INDICE[0]
+    if indice is None or not indice.sirve_para(labels):
+        indice = _IndiceDeRotulos(labels)
+        _ULTIMO_INDICE[0] = indice
+    return indice
+
+
 def _capas_de_rotulo(polygons: List[Polygon], labels: List[Tuple[str, float, float, str]],
                      capa_recintos: str):
     """Capas de las que sí puede salir un nombre de estancia en ESTE plano:
@@ -900,10 +960,12 @@ def _capas_de_rotulo(polygons: List[Polygon], labels: List[Tuple[str, float, flo
     cota, fuera de cualquier estancia- así que nunca entra aquí.
     """
     capas = {capa_recintos}
+    if not polygons or not labels:
+        return capas
+    indice = _indice_de(labels)
     for polygon in polygons:
-        for _texto, x, y, capa in labels:
-            if capa not in capas and polygon.contains(Point(x, y)):
-                capas.add(capa)
+        for i in indice.dentro(polygon):
+            capas.add(indice.capas[i])
     return capas
 
 
@@ -986,15 +1048,15 @@ def elegir_capa_de_rotulos(
         return RepartoDeRotulos()
 
     por_capa: Dict[str, int] = {}
+    indice = _indice_de(labels)
     for polygon in polygons:
         vistas = set()
-        minx, miny, maxx, maxy = polygon.bounds
-        for _texto, x, y, capa in labels:
+        for i in indice.dentro(polygon):
+            capa = indice.capas[i]
             if capa in vistas or capa not in capas_validas:
                 continue
-            if minx <= x <= maxx and miny <= y <= maxy and polygon.contains(Point(x, y)):
-                vistas.add(capa)
-                por_capa[capa] = por_capa.get(capa, 0) + 1
+            vistas.add(capa)
+            por_capa[capa] = por_capa.get(capa, 0) + 1
     if not por_capa:
         return RepartoDeRotulos()
 
@@ -1130,12 +1192,16 @@ def match_label_to_room(
     reglas de otro tipo de estancia -un salón juzgado como dormitorio, o al
     revés- o, peor, hereda una cifra que no es la suya.
     """
-    candidatos = [
-        (texto, x, y) for texto, x, y, capa in labels
-        if (capas_validas is None or capa in capas_validas) and not _es_solo_numero(texto)
-    ]
+    # Con el índice de `_IndiceDeRotulos` (2026-09-15): mismos candidatos, mismo
+    # orden y mismos desempates que recorriendo la lista entera, sin probar cada
+    # rótulo contra cada recinto.
+    indice = _indice_de(labels)
 
-    inside = [texto for texto, x, y in candidatos if polygon.contains(Point(x, y))]
+    def es_candidato(i: int) -> bool:
+        return ((capas_validas is None or indice.capas[i] in capas_validas)
+                and not indice.solo_numero[i])
+
+    inside = [labels[i][0] for i in indice.dentro(polygon) if es_candidato(i)]
     if inside:
         # **Un nombre gana siempre a un título de campo**, esté donde esté en la
         # lista. Devolver `inside[0]` hacía que el rótulo dependiera del orden en
@@ -1151,18 +1217,28 @@ def match_label_to_room(
         # reparto del cuadro.
         return None
 
-    if not candidatos or polygon.is_empty or polygon.area <= 0:
+    if polygon.is_empty or polygon.area <= 0:
         return None
 
+    limite = TOLERANCIA_ETIQUETA * math.sqrt(polygon.area)
     # Distancia al BORDE, no al centroide: lo que interesa es cuánto se aleja
     # el rótulo de la habitación, no cuánto mide la habitación.
+    #
+    # **Sólo los que están a `limite × MARGEN` o menos**: más lejos, un rótulo ni
+    # gana (el primero tiene que estar a `limite` o menos) ni empata (el segundo
+    # empata si está a menos de `primero × MARGEN`, que no pasa de
+    # `limite × MARGEN`). El desempate por distancia igual sigue siendo el orden
+    # de la lista, como con `sorted` sobre todos.
     distancias = sorted(
-        ((polygon.distance(Point(x, y)), texto) for texto, x, y in candidatos),
-        key=lambda item: item[0],
+        ((polygon.distance(indice.puntos[i]), i)
+         for i in indice.a_menos_de(polygon, limite * MARGEN_DESAMBIGUACION_ETIQUETA)
+         if es_candidato(i)),
     )
-    distancia, texto = distancias[0]
+    if not distancias:
+        return None
+    distancia, primero = distancias[0]
+    texto = labels[primero][0]
 
-    limite = TOLERANCIA_ETIQUETA * math.sqrt(polygon.area)
     if distancia > limite:
         return None
 
