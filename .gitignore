@@ -78,3 +78,8 @@ tests/fixtures/**/*_ArchMuse_revision.pdf
 # DXF de origen: se regenera y ningún test la lee versionada.
 tests/fixtures/**/*_ArchMuse_relleno.dxf
 tests/fixtures/**/*_ArchMuse_relleno.pdf
+
+# --- Banco de compatibilidad externo ---
+# Lo que escribe `benchmark/ejecutar.py`: cifras, rótulos y la correspondencia
+# entre `plano-NN` y el fichero de un tercero. Nada de eso entra en git.
+benchmark/resultados/

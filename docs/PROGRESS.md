@@ -5,6 +5,63 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 (noche, 5) · Banco de compatibilidad externo (`benchmark/`), sin ejecutar sobre planos reales
+
+**Qué es.** `benchmark/ejecutar.py <carpeta fuera del repo>` lee cada DXF o DWG tal
+cual, con el motor de siempre y sin ajustes por plano, y anota viviendas, estancias,
+superficies, campos vacíos, errores, tiempo y un resultado con motivo. Si el plano
+trae su cuadro relleno, compara cada cifra con tolerancia 0,01 m². Instrucciones y
+criterios en `benchmark/README.md`. **No se ha ejecutado sobre ningún plano real:**
+espera a que Pablo dé la carpeta.
+
+**Dónde se conecta, sin código nuevo de producto:**
+- lectura: `parser.load_document` + `leer_plano` (capa y escala deducidas; si no se
+  resuelven, es el motivo);
+- medición: `medicion.medir_planta`, más `plantilla_cuadro.construir` por vivienda
+  para la cobertura;
+- referencia: `cuadro_superficies.detectar_cuadros_superficies` →
+  `reparto_cuadro.elegir_vivienda` → `calcular_reparto(cuadro.como_plantilla())`,
+  campo a campo contra `texto_actual`; la construida, de `C-12`. Si el reparto y la
+  tabla de ArchMuse no dicen lo mismo, el plano queda PENDIENTE DE REVISIÓN.
+
+**Decisiones.**
+- Las clases de un MISMATCH (redondeo, cuadro desactualizado, error de ArchMuse,
+  pendiente de determinar) **las pone una persona** en `clasificacion.csv`; el banco
+  no adivina ninguna. Sin clase, o con otra, PENDIENTE DE REVISIÓN: nunca PASS.
+- PASS/PARTIAL/FAIL/PENDIENTE son criterios del banco, no de medición. Lo que
+  ArchMuse deja vacío con motivo se cuenta como tal, sin reinterpretarlo.
+- Privacidad: ids `plano-NN` por huella del contenido, estables al añadir planos; el
+  nombre de fichero sólo en `resultados/correspondencia.json`. Salida en
+  `benchmark/resultados/` (ignorada por git). Se niega a leer planos de dentro del
+  repositorio y a escribir resultados en él fuera de esa carpeta.
+- DWG: ODA File Converter o, si no está, AutoCAD Core Console (`DXFOUT`) sobre una
+  copia en un temporal.
+- Límite (`C-7`): mide el motor sobre el fichero entero, no lo que el comando manda
+  desde AutoCAD con `ssget`.
+
+**Pruebas.** `tests/test_benchmark_compatibilidad.py`, 31 tests con planos
+sintéticos del generador del fixture: coincide todo, MISMATCH sin clase, cada clase,
+vacío con motivo, sin cuadro, fichero ilegible, DWG sin conversor, privacidad, ids
+estables, carpetas prohibidas, resumen y patrones repetidos. **Guardianes rotos a
+propósito**, los cinco en rojo: comparación que siempre coincide, clase inventada
+aceptada, protección de carpetas quitada, nombre de fichero como id, PASS forzado.
+
+**Medido al probarlo:**
+- Una fila «terraza» sin número no la reconoce el detector: la terraza medida queda
+  sin fila y `C-6` retira los dos totales. Es lo que hace ArchMuse; el caso «todo
+  coincide» del test se rehízo sin exteriores y no se tocó el banco.
+- El camino DWG funciona con un DWG sintético (Core Console, 2,1 s): llegan la
+  vivienda y sus 3 estancias. **Pero la tabla del fixture no sobrevive**: AutoCAD
+  reconstruye su bloque `*T1` de 35 entidades a 1 línea, porque la `ACAD_TABLE`
+  escrita a mano no tiene datos de celda. Por eso el DWG no se prueba con cuadro;
+  en un DWG real la tabla es de AutoCAD y no tiene ese problema (hipótesis: se
+  comprobará con el primer DWG del banco).
+- Un fallo del propio proceso: la primera mutación de carpetas, con la protección
+  quitada, dejó una carpeta de resultados vacía en `docs/` (sin datos, sin commit).
+  Borrada; la mutación se rehízo para leer del repositorio y escribir en un temporal.
+
+---
+
 ## 2026-09-15 (noche, 4) · `C-18`: una cifra de área no es un nombre; la tabla no pisa el plano (`.lsp` 3.9.2)
 
 ### 1. VT1/3 no rellenaba nada (Pablo, AutoCAD, 0.3.12)
