@@ -360,7 +360,19 @@ def test_la_cifra_del_PRD_sobre_plantasimple():
 
     assert emparejados == 22
     assert ceros == 0, ceros
-    assert escritas == 158, escritas
+    # **`C-18` (firmado por Pablo, 2026-09-15) la baja a 157, y a propósito.** Medido
+    # ese día comparando celda a celda con el código anterior: con los rótulos
+    # alineados, `plantasimple.dxf` tiene en VT6/2 un recinto de 11,55 m² con
+    # «Terraza» y «Tendedero» dentro. Se llamaba como el primero que llegara; dos
+    # nombres distintos ya no se eligen, la pieza queda sin fila y el total interior
+    # de VT6/2 (46,23) deja de escribirse. Es la única celda que cambia. No es lo que
+    # este test vigila: lo escrito por el arquitecto sigue sin suprimir el cálculo.
+    #
+    # **Y no puede subir.** Una primera versión de `C-18` dio 159: «aseo 73,07 m²» y
+    # «baño 52,11 m²», envolventes que heredaban el nombre de una pieza de dentro.
+    # Dos cifras falsas con aspecto de buenas. Si esto vuelve a pasar de 157, mirar
+    # qué celdas son nuevas antes de cambiar el número.
+    assert escritas == 157, escritas
 
 
 # --- 5. El plano sin cuadro (CU-A) -----------------------------------------

@@ -189,7 +189,13 @@ def test_los_planos_de_referencia_tienen_una_sola_capa_que_nombra(nombre, piezas
     plano = parser.leer_plano(parser.load_document(ruta), layer="00 areas")
 
     assert len(plano.rooms) == piezas
-    assert all(r.label for r in plano.rooms), "esta regla no puede dejar mudo un plano"
+    # Sin nombre sólo por `C-18` (firmado el 2026-09-15): dos nombres distintos
+    # dentro no se eligen. Medido ese día en `ejemplo.dxf`: un recinto de 11,55 m²
+    # con «Terraza» y «Tendedero» dentro, que hasta entonces se llamaba como el
+    # primero que llegara.
+    mudos = [r for r in plano.rooms if not r.label]
+    assert all(len(r.rotulos_en_conflicto) >= 2 for r in mudos), (
+        "esta regla no puede dejar mudo un plano: %s" % mudos)
     assert plano.reparto_de_rotulos.capa == capa
     assert plano.reparto_de_rotulos.ambiguo is False
     assert plano.reparto_de_rotulos.proporcion == 0.0

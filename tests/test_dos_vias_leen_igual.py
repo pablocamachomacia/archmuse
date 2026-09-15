@@ -138,7 +138,11 @@ TODOS = DEL_REPO + DEL_ARQUITECTO
 #: hace es medirlo y dejarlo a la vista mientras Pablo no lo firme. `strict=True`
 #: para que el día que se arregle este xfail se ponga rojo y haya que venir a
 #: borrarlo.
-ORDEN_DE_LOS_TEXTOS_NO_GARANTIZADO = {"plantasimple.dxf"}
+#:
+#: **Resuelto el 2026-09-15 con `C-18`**, firmado por Pablo: entre varios textos de
+#: un recinto gana el nombre reconocible sin depender del orden, una cifra de área
+#: nunca es un nombre y dos nombres distintos no se eligen. El xfail se ha quitado.
+ORDEN_DE_LOS_TEXTOS_NO_GARANTIZADO = set()
 
 _XFAIL_ORDEN = pytest.mark.xfail(
     strict=True,

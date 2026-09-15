@@ -93,7 +93,12 @@ def test_bloquear_las_cifras_no_borra_el_trabajo():
     vivienda = _medir(SOLAPES).viviendas[0]
     assert len(vivienda.piezas) == 9
     assert vivienda.suma_interior_m2 == 58.78
-    assert vivienda.suma_exterior_m2 == 16.17
+    # **`C-18` (2026-09-15).** Hasta ese día el contorno que agrupa terraza y
+    # tendedero se llamaba como el primer texto que llegara —«Tendedero»— y sumaba
+    # como exterior: 16,17. Sus dos nombres son de las piezas que contiene, así que
+    # ahora no se llama de ninguna forma y no suma a ningún lado; sigue midiéndose
+    # y la vivienda sigue bloqueada por los metros dibujados dos veces.
+    assert vivienda.suma_exterior_m2 == 7.54
     assert vivienda.impedimentos and "dos veces" in vivienda.impedimentos[0]
 
 

@@ -170,6 +170,9 @@ class Room:
     label: Optional[str]
     polygon: Polygon
     layer: str
+    #: Los nombres distintos que había dentro cuando no se ha elegido ninguno
+    #: (`C-18`): la pieza se queda sin rótulo, y la tabla dice cuáles eran.
+    rotulos_en_conflicto: Tuple[str, ...] = ()
 
     @property
     def area_m2(self) -> float:
@@ -765,15 +768,36 @@ def _discard_container_candidates(
     lo dicen las otras tres condiciones. Ver `tests/test_contorno_agrupador.py`.
     """
     kept: List[Polygon] = []
-    for i, (polygon, color, label) in enumerate(entries):
+    arbol = None
+    for i, entry in enumerate(entries):
+        polygon, color, label = entry[0], entry[1], entry[2]
         own_label = _normalize_room_label(label)
-        is_duplicate = color != BYLAYER_COLOR and own_label != "" and any(
-            j != i
-            and _normalize_room_label(other_label) == own_label
-            and polygon.area > other.area
-            and polygon.intersection(other).area >= threshold * other.area
-            for j, (other, other_color, other_label) in enumerate(entries)
-        )
+        if color == BYLAYER_COLOR:
+            kept.append(polygon)
+            continue
+
+        def contiene(otra) -> bool:
+            return (polygon.area > otra.area
+                    and polygon.intersection(otra).area >= threshold * otra.area)
+
+        is_duplicate = own_label != "" and any(
+            j != i and _normalize_room_label(otra[2]) == own_label and contiene(otra[0])
+            for j, otra in enumerate(entries))
+        if not is_duplicate:
+            # **Dos piezas o más dentro: es un contorno que las agrupa**, se llame
+            # como se llame (`C-18`, medido el 2026-09-15 en `plantasimple.dxf`).
+            # Hasta ese día sólo se reconocía por el nombre, y el nombre era el primer
+            # texto que llegara: la envolvente de una vivienda se descartaba porque
+            # ese texto solía ser el de una de sus piezas. Sin elegir por orden se
+            # quedaba sin nombre —o con el de un aseo sin rótulo, «aseo 73,07 m²»—.
+            # Una estancia de verdad no contiene enteras otras dos.
+            if arbol is None:
+                import shapely
+
+                arbol = shapely.STRtree([e[0] for e in entries])
+            dentro = sum(1 for j in arbol.query(polygon, predicate="intersects").tolist()
+                         if j != i and contiene(entries[j][0]))
+            is_duplicate = dentro >= 2
         if not is_duplicate:
             kept.append(polygon)
     return kept
@@ -949,7 +973,8 @@ class _IndiceDeRotulos:
         self.primero = labels[0] if labels else None
         self.ultimo = labels[-1] if labels else None
         self.capas = [etiqueta[3] if len(etiqueta) > 3 else None for etiqueta in labels]
-        self.solo_numero = [_es_solo_numero(etiqueta[0]) for etiqueta in labels]
+        # Cifras sueltas y cifras de área (`C-18`): nunca son el nombre de una pieza.
+        self.solo_numero = [_es_cifra_de_area(etiqueta[0]) for etiqueta in labels]
         self._np = np
         self.puntos = shapely.points([(etiqueta[1], etiqueta[2]) for etiqueta in labels]) \
             if labels else np.empty(0, dtype=object)
@@ -1147,6 +1172,54 @@ def _es_solo_numero(texto: str) -> bool:
     return bool(_PATRON_SOLO_NUMERO.match(texto.strip()))
 
 
+# **Una cifra de área nunca es el nombre de una pieza** (`C-18`, firmado por Pablo el
+# 2026-09-15). El maestro del estudio rotula cada recinto con su nombre y con un
+# campo de AutoCAD que escribe su área («23.24m²»). Desde un `ssget` el campo llegaba
+# antes que el nombre, el recinto se llamaba «23.24m²», ninguna pieza se reconocía y
+# ArchMuse preguntaba «¿Qué es «M»?» —lo que queda de «m²» sin cifras—.
+_PATRON_CIFRA_DE_AREA = re.compile(
+    r"^[+-]?\d+([.,]\d+)?\s*(m\s*(2|²|\^2))?\s*$", re.IGNORECASE)
+
+
+def _es_cifra_de_area(texto: str) -> bool:
+    """«23.24m²», «8,53 m2», «3.16» sí; «SALON 12.00 m2» no, porque nombra algo."""
+    return bool(_PATRON_CIFRA_DE_AREA.match(decodificar_escapes(texto or "").strip()))
+
+
+# Una palabra de tres letras o más: lo que separa un nombre («Aseo», «Hall») de un
+# código de mobiliario o de carpintería («F», «LD», «PE-01»).
+_PATRON_PALABRA = re.compile(r"[^\W\d_]{3,}")
+
+
+def es_nombre_con_sentido(texto: Optional[str]) -> bool:
+    return bool(_PATRON_PALABRA.search(decodificar_escapes(texto or "")))
+
+
+def _elegir_nombre(nombres: List[str]) -> Tuple[Optional[str], List[str]]:
+    """`(nombre, en_conflicto)` entre los textos de un recinto que no son cifras ni
+    títulos de campo. **Sin depender del orden** (`C-18`, `D-7`):
+
+    1. gana el que es un nombre reconocible (una familia de `medicion`);
+    2. si ninguno lo es, el que parece un nombre (una palabra de tres letras) sobre
+       un código («F», «PE-01»);
+    3. el mismo nombre repetido es un solo nombre;
+    4. **dos nombres distintos no se eligen**: `(None, [los dos])`."""
+    from .medicion import AMBITO_SIN_CLASIFICAR, clasificar
+
+    def clave(texto: str) -> str:
+        return " ".join(decodificar_escapes(texto).split()).lower()
+
+    reconocibles = [n for n in nombres if clasificar(n)[1] != AMBITO_SIN_CLASIFICAR]
+    con_sentido = [n for n in nombres if es_nombre_con_sentido(n)]
+    candidatos = reconocibles or con_sentido or list(nombres)
+    distintos = {}
+    for texto in candidatos:
+        distintos.setdefault(clave(texto), texto)
+    if len(distintos) == 1:
+        return min(candidatos), []
+    return None, sorted(distintos.values())
+
+
 # Un TÍTULO DE CAMPO: el texto que dice **qué magnitud** se mide, no **qué
 # estancia** es. Los planos de este estudio rotulan cada recinto con dos MTEXT
 # independientes, uno encima del otro:
@@ -1185,6 +1258,7 @@ def match_label_to_room(
     polygon: Polygon,
     labels: List[Tuple[str, float, float, str]],
     capas_validas=None,
+    conflicto: Optional[List[str]] = None,
 ) -> Optional[str]:
     """Asocia el rótulo más adecuado a un polígono, o `None` si no hay ninguno
     que pueda serlo **con fundamento**. `labels` son cuádruplas
@@ -1253,7 +1327,13 @@ def match_label_to_room(
         # distintos según por dónde entrara (`tests/test_rotulo_con_titulo_de_campo.py`).
         nombres = [texto for texto in inside if not _es_titulo_de_campo(texto)]
         if nombres:
-            return nombres[0]
+            # `C-18` (Pablo, 2026-09-15): entre varios, el nombre reconocible, sin
+            # depender del orden; dos nombres distintos no se eligen, y quien llama
+            # recibe cuáles eran en `conflicto` para decirlo.
+            elegido, en_conflicto = _elegir_nombre(nombres)
+            if elegido is None and conflicto is not None:
+                conflicto.extend(en_conflicto)
+            return elegido
         # Sólo títulos dentro: esta pieza **se queda sin nombre**. Es lo honesto
         # —el informe ya tiene sitio para un `recinto_sin_etiqueta`— y evita que
         # se mida una estancia llamada «superficie util», que es lo que rompía el
@@ -1559,8 +1639,11 @@ def build_rooms_from_document(
 
     rooms: List[Room] = []
     for polygon in polygons:
-        label = match_label_to_room(polygon, labels, capas_validas=capas_validas)
-        rooms.append(Room(label=label, polygon=polygon, layer=layer))
+        conflicto: List[str] = []
+        label = match_label_to_room(polygon, labels, capas_validas=capas_validas,
+                                    conflicto=conflicto)
+        rooms.append(Room(label=label, polygon=polygon, layer=layer,
+                          rotulos_en_conflicto=tuple(conflicto)))
 
     return rooms
 
@@ -1744,11 +1827,14 @@ def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optiona
             capas_validas, reparto = _capas_que_nombran(
                 poligonos_util_int, etiquetas, CAPA_UTIL_INTERIOR)
             reparto_visto["r"] = reparto
-            return [
-                Room(label=match_label_to_room(p, etiquetas, capas_validas=capas_validas),
-                     polygon=p, layer=CAPA_UTIL_INTERIOR)
-                for p in poligonos_util_int
-            ]
+            leidos = []
+            for p in poligonos_util_int:
+                conflicto: List[str] = []
+                leidos.append(Room(
+                    label=match_label_to_room(p, etiquetas, capas_validas=capas_validas,
+                                              conflicto=conflicto),
+                    polygon=p, layer=CAPA_UTIL_INTERIOR, rotulos_en_conflicto=tuple(conflicto)))
+            return leidos
         rooms_leidos = build_rooms_from_document(
             doc, nombre_capa, descartes=geometria_no_leida,
             reparaciones=geometria_reparada, desplazamiento=desplazamiento)
@@ -1813,6 +1899,7 @@ def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optiona
                 label=room.label,
                 polygon=escalar_geometria(room.polygon, xfact=factor, yfact=factor, origin=(0, 0)),
                 layer=room.layer,
+                rotulos_en_conflicto=room.rotulos_en_conflicto,
             )
             for room in rooms
         ]

@@ -477,15 +477,23 @@ def test_un_payload_antiguo_sin_tipo_sigue_midiendo_y_se_comporta_como_antes():
     """El cliente que no declare el tipo **no se queda fuera**: se le escribe todo
     en MTEXT, que es lo que se hacía antes de que el tipo viajara.
 
-    Y este test deja escrito **qué se pierde** cuando eso pasa, que es el motivo
-    de que el `.lsp` suba a 2.4.0: las cuatro estancias pasan a llamarse por su
-    cifra. Un comando antiguo contra un servidor nuevo mide, pero mide lo de
-    antes —y eso hay que poder verlo aquí, no descubrirlo en el plano de alguien.
+    Hasta el 2026-09-15 este test dejaba escrito **qué se perdía**: las cuatro
+    estancias pasaban a llamarse por su cifra («12.00 m2»). **Con `C-18` ya no se
+    pierde nada**: una cifra de área nunca es un nombre y el nombre reconocible gana
+    sin depender del tipo ni del orden, así que sin tipo se lee lo mismo que con él.
     """
+    esperado = _materializar(payload_desde_dxf(str(MEZCLA)))
     payload = payload_desde_dxf(str(MEZCLA))
     for texto in payload["textos"]:
         texto.pop("tipo")
-    assert _materializar(payload) == ["12.00 m2", "12.00 m2", "12.00 m2", "6.00 m2"]
+    assert _materializar(payload) == esperado
+    assert not any(parser_es_cifra(n) for n in esperado)
+
+
+def parser_es_cifra(nombre):
+    from analyzer.parser import _es_cifra_de_area
+
+    return _es_cifra_de_area(nombre or "")
 
 
 @pytest.mark.parametrize("bruto", [None, "", "LINE", 7, "mtext", "text"])

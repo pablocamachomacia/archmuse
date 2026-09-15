@@ -249,17 +249,24 @@ def test_ningun_recinto_sale_con_geometria_invalida(nombre):
 
 def test_plantasimple_pasa_de_no_medirse_a_medirse():
     """El plano por el que existe `C-10`. Antes: `GEOSException` y cero piezas.
-    Después: 206 piezas, 3.305,18 m², cero recintos inválidos, 10 reparaciones
-    declaradas — y la superficie total **idéntica** a la que ya salía cuando la
-    geometría entraba rota."""
+    Después: cero recintos inválidos y 10 reparaciones declaradas.
+
+    **Las piezas pasaron de 206 (3.305,18 m²) a 164 (1.533,31 m²) con `C-18`
+    (2026-09-15), y no por la reparación.** Sin alinear rótulos las etiquetas no
+    llegan, la regla del agrupador por nombre no descartaba nada y 42 envolventes
+    contaban como piezas. Ahora un contorno de color explícito con dos piezas o
+    más dentro es agrupador. Medido contra lo publicado: los 42 que salen
+    contienen entre 2 y 7 piezas cada uno, lo que deja de cubrirse son 344 m² de
+    muros entre piezas, y con los rótulos alineados el plano sigue en 157
+    recintos, los mismos."""
     ruta = _ruta("plantasimple.dxf")
     if ruta is None:
         pytest.skip("plantasimple.dxf no está en esta máquina")
 
     plano = parser.leer_plano(parser.load_document(ruta), layer="00 areas")
 
-    assert len(plano.rooms) == 206
-    assert sum(r.polygon.area for r in plano.rooms) == pytest.approx(3305.18, abs=0.01)
+    assert len(plano.rooms) == 164
+    assert sum(r.polygon.area for r in plano.rooms) == pytest.approx(1533.31, abs=0.01)
     assert [r for r in plano.rooms if not r.polygon.is_valid] == []
     assert len(plano.geometria_reparada) == 10
 

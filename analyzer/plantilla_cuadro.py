@@ -280,6 +280,14 @@ def clave_de_familia(rotulo: Optional[str]) -> str:
     return " ".join(re.sub(r"[\d\W_]+", " ", _normalizar(rotulo or "")).split())
 
 
+def _es_nombre(rotulo: Optional[str]) -> bool:
+    """¿Nombra algo, o es un código («M», «LD», «PE-01»)? `C-18`: por un código
+    nunca se pregunta si es interior o exterior."""
+    from .parser import es_nombre_con_sentido
+
+    return es_nombre_con_sentido(rotulo)
+
+
 def _numero(rotulo: str) -> int:
     encontrado = re.search(r"\d+", rotulo or "")
     return int(encontrado.group()) if encontrado else 0
@@ -553,7 +561,18 @@ def construir(doc, plano, nombre_vivienda: str,
             else:
                 etiqueta = "%s (%s)" % (pieza.nombre, _m2(pieza.area_m2))
                 sin_fila.append(pieza.nombre)
-                if not clave:
+                conflicto = tuple(getattr(room, "rotulos_en_conflicto", ()) or ())
+                if conflicto:
+                    # `C-18`: dos nombres distintos dentro, y no se elige ninguno.
+                    notas.add(etiqueta, "tiene dos nombres dentro (%s): no se elige ninguno. "
+                                        "Está medida y no tiene fila (C-18)."
+                              % " y ".join("«%s»" % n for n in conflicto))
+                elif clave and not _es_nombre(pieza.rotulo):
+                    # `C-18`: nunca se pregunta por un rótulo sin sentido («M», «LD»).
+                    notas.add(etiqueta, "su rótulo «%s» no es un nombre de estancia: no se sabe "
+                                        "qué es ni en qué lado va. Está medida y no tiene "
+                                        "fila (C-6)." % pieza.nombre)
+                elif not clave:
                     notas.add(etiqueta, "no tiene rótulo: no se sabe qué estancia es ni en "
                                         "qué lado del cuadro va. Está medida y no tiene fila (C-6).")
                 else:
@@ -652,6 +671,69 @@ def construir(doc, plano, nombre_vivienda: str,
     )
 
 
+#: Lo que se dibuja bajo la tabla (Pablo, 2026-09-15, tras verlo en el maestro:
+#: «demasiado texto y mal presentado»). Como mucho `MAX_NOTAS_EN_EL_DIBUJO` líneas;
+#: el detalle, a la línea de comandos y al registro.
+MAX_NOTAS_EN_EL_DIBUJO = 4
+
+#: `(patrón del motivo, singular, plural)` de las notas que hablan de piezas: se
+#: cuentan las piezas y se dicen en una línea.
+_NOTAS_DE_PIEZAS = (
+    (re.compile(r"no tiene rótulo|no es un nombre de estancia|no reconoce"),
+     "%d pieza sin nombre reconocible", "%d piezas sin nombre reconocible"),
+    (re.compile(r"dos nombres dentro"), "%d pieza con dos nombres", "%d piezas con dos nombres"),
+    (re.compile(r"se solapa"), "%d pieza dibujada dos veces", "%d piezas dibujadas dos veces"),
+    (re.compile(r"redondea a cero"), "%d pieza sin superficie", "%d piezas sin superficie"),
+)
+
+
+def notas_del_dibujo(plantilla: "Plantilla") -> Tuple[str, ...]:
+    """Las notas **del plano**: cortas, en lenguaje de arquitecto, agrupadas por
+    motivo y como mucho `MAX_NOTAS_EN_EL_DIBUJO` líneas. Ni un criterio (`C-…`),
+    ni un handle, ni un nombre de pieza: eso es el detalle, y va a la línea de
+    comandos y al registro con `plantilla.notas`."""
+    piezas = [0] * len(_NOTAS_DE_PIEZAS)
+    totales = construida = unidades = False
+    lados_vacios: List[str] = []
+    otros = 0
+    for etiquetas, motivo in plantilla.notas_por_motivo:
+        for i, (patron, _uno, _varios) in enumerate(_NOTAS_DE_PIEZAS):
+            if patron.search(motivo):
+                piezas[i] += len(etiquetas)
+                break
+        else:
+            for etiqueta in etiquetas:
+                if etiqueta in (TOTAL_INTERIOR, TOTAL_EXTERIOR) and "ningún espacio" in motivo:
+                    lados_vacios.append("exteriores" if etiqueta == TOTAL_EXTERIOR else "interiores")
+                elif etiqueta in (TOTAL_INTERIOR, TOTAL_EXTERIOR, TOTAL_UTIL):
+                    totales = True
+                elif etiqueta == CONSTRUIDA:
+                    construida = True
+                elif etiqueta == NUMERO_UDS.rstrip(":"):
+                    unidades = True
+                else:
+                    otros += 1
+    lineas: List[str] = []
+    for cuenta, (_patron, uno, varios) in zip(piezas, _NOTAS_DE_PIEZAS, strict=True):
+        if cuenta:
+            lineas.append((uno if cuenta == 1 else varios) % cuenta)
+    if totales:
+        lineas.append("Totales sin cifra")
+    if construida:
+        lineas.append("Construida sin cifra")
+    for lado in lados_vacios:
+        lineas.append("Sin espacios %s" % lado)
+    if unidades:
+        lineas.append("Nº de unidades: a mano")
+    if otros:
+        lineas.append("%d aviso%s más" % (otros, "" if otros == 1 else "s"))
+    if len(lineas) > MAX_NOTAS_EN_EL_DIBUJO:
+        resto = len(lineas) - (MAX_NOTAS_EN_EL_DIBUJO - 1)
+        lineas = lineas[:MAX_NOTAS_EN_EL_DIBUJO - 1] + [
+            "y %d aviso%s más en la línea de comandos" % (resto, "" if resto == 1 else "s")]
+    return tuple(lineas)
+
+
 def a_dict(plantilla: Plantilla) -> dict:
     """La plantilla en tipos simples, para el cliente CAD y la web."""
     return {
@@ -662,6 +744,8 @@ def a_dict(plantilla: Plantilla) -> dict:
         "filas_totales": plantilla.n_filas,
         "celdas": [{"fila": f, "columna": c, "texto": t} for f, c, t in plantilla.celdas()],
         "notas": [{"texto": n, "linea": n} for n in plantilla.notas],
+        # Lo que va en el plano; `notas`, el detalle para la línea de comandos.
+        "notas_del_dibujo": list(notas_del_dibujo(plantilla)),
         "preguntas_de_ambito": [
             {"familia": p.familia, "texto": p.texto, "piezas": list(p.piezas)}
             for p in plantilla.preguntas],

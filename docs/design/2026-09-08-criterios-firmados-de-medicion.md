@@ -1019,6 +1019,42 @@ sitio correcto — la que menos se ve.
 
 ---
 
+## C-18 · Una cifra de área nunca es el nombre de una pieza
+
+**Dictaminado por:** Pablo, 2026-09-15, tras ver en AutoCAD (0.3.12) el maestro del
+estudio sin una sola pieza reconocida: «Un texto que es solo una cifra de área
+(23.24m², 8,53 m2, 3.16...) nunca es el nombre de una pieza. Con varios textos en
+un recinto, gana el que es un nombre reconocible, sin depender del orden de ssget.
+Si hay dos nombres distintos, no se elige: se deja vacío con motivo.» Y: «Nunca
+preguntar por un rótulo sin sentido como «M»». **Cierra la parte de `D-7`** que
+decía qué texto nombra un recinto cuando hay varios.
+
+**Qué dice.**
+
+1. Un texto que es sólo una cifra, con o sin «m²/m2», no nombra una pieza.
+2. Entre varios textos dentro de un recinto gana el nombre reconocible (una
+   familia del vocabulario de medición); si ninguno lo es, el que tiene una
+   palabra de tres letras sobre un código («F», «PE-01»). El orden no cuenta.
+3. El mismo nombre repetido es un nombre. **Dos nombres distintos no se eligen**:
+   la pieza queda sin fila y la nota dice cuáles eran.
+4. **Nunca se pregunta** «¿interior o exterior?» por un rótulo sin una palabra de
+   tres letras: se anota que no es un nombre de estancia.
+
+**Por qué.** El maestro rotula cada recinto con su nombre (tres veces) y con un
+campo de AutoCAD que escribe su área. Leído en el orden del DXF salía bien; desde un
+`ssget` el campo llegaba primero, el recinto se llamaba «23.24m²», se bloqueaban
+los totales y la construida, y la pregunta era por «M» —lo que queda de «m²» sin
+cifras—.
+
+**Dónde se aplica.** `parser._es_cifra_de_area`, `parser._elegir_nombre`,
+`parser.match_label_to_room` (`conflicto`), `Room.rotulos_en_conflicto` y
+`plantilla_cuadro.construir`.
+
+**Cómo se guarda.** `tests/test_rotulo_con_cifra_de_area.py` (sintético) y el test
+de orden de `tests/test_dos_vias_leen_igual.py`, ya sin xfail.
+
+---
+
 ## Lo que sigue sin firmar
 
 De los tres criterios que `D-7` enumera desde el 2026-08-19, **`C-1` y `C-2`
