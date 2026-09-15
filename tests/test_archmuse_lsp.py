@@ -79,6 +79,10 @@ PRIMITIVAS = {
     # `vla-get-InsertionPoint` devuelve lo primero y `vla-GetBoundingBox`
     # escribe lo segundo, y pasar uno por el otro tumbó el comando.
     "type", "listp", "command",
+    # Esperar la respuesta de WinHttp a trozos (3.8.1, 2026-09-15): `eq`
+    # compara el `:vlax-true` que devuelve `WaitForResponse` (dos símbolos,
+    # identidad; `=` es para números y cadenas).
+    "eq",
     # Un solo grupo de deshacer para todo lo que se escribe en el plano
     # del arquitecto: un `UNDO` lo quita entero, y se puede retirar en
     # bloque si la marca de borrador no se llega a poner.

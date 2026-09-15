@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.8.0")
-(setq *am:version*  "3.8.0 (2026-09-15, avisa de las actualizaciones)")
+(setq *am:version-corta* "3.8.1")
+(setq *am:version*  "3.8.1 (2026-09-15, dice en qué está y nunca acaba en silencio)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -973,20 +973,37 @@
   (strcat (am:url-base) "/api/medicion-geometria?formato=lisp"))
 
 
-(defun am:peticion (metodo url cuerpo recibir-ms / http estado respuesta)
+(defun am:verdadero-p (v)
+  ;; Un booleano de COM: `vlax-invoke-method` puede devolverlo tal cual o
+  ;; envuelto en una variante.
+  (if (= (type v) 'VARIANT) (setq v (vlax-variant-value v)))
+  (eq v :vlax-true))
+
+
+(defun am:peticion (metodo url cuerpo recibir-ms / http estado respuesta listo
+                                                  espera aviso larga)
   ;; Una petición HTTP. Devuelve:
   ;;   (estado . texto)   si el servidor ha contestado, bien o mal;
   ;;   0                  si no se puede crear el objeto HTTP (AutoCAD LT);
   ;;   una cadena         con el error, si no ha contestado nadie.
   ;; COM es la única vía: AutoLISP no tiene HTTP.
+  ;;
+  ;; **Asíncrona, y se espera a trozos de un segundo** (3.8.1, 2026-09-15).
+  ;; Hasta la 3.8.0 `Send` bloqueaba AutoCAD hasta la respuesta: sobre un plano
+  ;; de 677 recintos, más de cinco minutos con la línea de comandos parada en
+  ;; «Midiendo…», y quien cree que se ha colgado pulsa Esc. Ahora, en una
+  ;; petición larga, cada cinco segundos se dice que sigue midiendo.
+  ;; **Sin ejecutar en AutoCAD todavía**: que la línea se repinte con el
+  ;; `_.DELAY` es lo que hay que ver allí.
   (setq http (vl-catch-all-apply 'vlax-create-object (list "WinHttp.WinHttpRequest.5.1")))
   (if (or (vl-catch-all-error-p http) (null http))
     0
     (progn
-      (setq respuesta
+      (setq larga (> recibir-ms 30000)
+            respuesta
         (vl-catch-all-apply
           '(lambda ()
-            (vlax-invoke-method http 'Open metodo url :vlax-false)
+            (vlax-invoke-method http 'Open metodo url :vlax-true)
             (if cuerpo
               (vlax-invoke-method http 'SetRequestHeader "Content-Type"
                                   "application/json; charset=utf-8"))
@@ -996,12 +1013,45 @@
             ;; dejaría un plano grande a medias con un error que parecería de red.
             (vlax-invoke-method http 'SetTimeouts 10000 10000 30000 recibir-ms)
             (vlax-invoke-method http 'Send (if cuerpo cuerpo ""))
-            (setq estado (vlax-get-property http 'Status))
-            (vlax-get-property http 'ResponseText))))
+            T)))
+      (if (not (vl-catch-all-error-p respuesta))
+        (progn
+          (setq espera 0 aviso 0
+                listo (vl-catch-all-apply 'vlax-invoke-method (list http 'WaitForResponse 1)))
+          ;; La espera va FUERA de `vl-catch-all-apply`: un Esc durante el
+          ;; `_.DELAY` tiene que llegar al *error* del comando, que dice
+          ;; «Cancelado», y no convertirse aquí en «el servidor no responde».
+          (while (and (not (vl-catch-all-error-p listo))
+                      (not (am:verdadero-p listo))
+                      (< espera (/ recibir-ms 1000)))
+            (setq espera (1+ espera) aviso (1+ aviso))
+            (if larga
+              (progn
+                (if (= aviso 5)
+                  (progn
+                    (princ (strcat "\n  Sigo midiendo… " (itoa espera) " s"))
+                    (setq aviso 0)))
+                ;; Devuelve el control a AutoCAD un instante: repinta la línea
+                ;; de comandos y atiende el Esc.
+                (command "_.DELAY" 1)))
+            (setq listo (vl-catch-all-apply 'vlax-invoke-method
+                                            (list http 'WaitForResponse 1))))
+          (setq respuesta
+            (cond
+              ((vl-catch-all-error-p listo) listo)
+              ((am:verdadero-p listo)
+                (vl-catch-all-apply
+                  '(lambda ()
+                    (setq estado (vlax-get-property http 'Status))
+                    (vlax-get-property http 'ResponseText))))
+              (T
+                (vl-catch-all-apply 'vlax-invoke-method (list http 'Abort))
+                (strcat "el servidor no ha contestado en " (itoa espera) " s"))))))
       (vl-catch-all-apply 'vlax-release-object (list http))
-      (if (vl-catch-all-error-p respuesta)
-        (vl-catch-all-error-message respuesta)
-        (cons estado respuesta)))))
+      (cond
+        ((vl-catch-all-error-p respuesta) (vl-catch-all-error-message respuesta))
+        ((= (type respuesta) 'STR) (if estado (cons estado respuesta) respuesta))
+        (T "sin respuesta")))))
 
 
 (defun am:salud-responde ( / r)
@@ -2270,11 +2320,26 @@
                       estilo-texto textos medidos)
 
   (defun *error* (msg)
-    ;; `(exit)` levanta *error* con «quit / exit abort». Una salida ordenada no
-    ;; puede imprimirse como fallo, asi que entra en la lista junto al ESC.
-    (if (and msg (not (wcmatch (strcase msg)
-                               "*BREAK*,*CANCEL*,*SALIDA*,*QUIT*,*EXIT*")))
-      (progn
+    ;; **ArchMuse nunca acaba en silencio** (Pablo, 2026-09-15). Tres casos:
+    (cond
+      ((null msg))
+      ;; `(exit)` levanta *error* con «quit / exit abort». Es la salida ordenada
+      ;; del propio comando, que ya ha dicho el motivo antes de llamarla: aquí
+      ;; no se repite, y no se imprime como un fallo.
+      ((wcmatch (strcase msg) "*SALIDA*,*QUIT*,*EXIT*"))
+      ;; Un Esc (`*CANCEL*`, `*BREAK*`). Hasta la 3.8.0 también se callaba, y así
+      ;; acabó el plano grande: tras cinco minutos esperando al servidor con la
+      ;; interfaz bloqueada, el Esc de quien creía que se había colgado se
+      ;; procesó al llegar la respuesta —justo después de «Servidor ArchMuse
+      ;; 0.3.9 · comando 3.8.0»— y el comando terminó sin dibujar ni decir nada.
+      ;; Hipótesis leída en el código, no reproducida en AutoCAD: es la única
+      ;; salida muda que había (`tests/test_archmuse_nunca_acaba_en_silencio.py`).
+      ((wcmatch (strcase msg) "*BREAK*,*CANCEL*")
+        (princ "\nCancelado con Esc.")
+        (if (not (and grupo-abierto *am:dibujo-empezado*))
+          (princ " No se ha dibujado nada."))
+        (am:log "cancelado con Esc"))
+      (T
         (princ (strcat "\nArchMuse se ha detenido: " msg))
         ;; **El único sitio del comando que registra una traza.** Un fallo que
         ;; sólo existe en la línea de comandos se pierde en cuanto él teclea
@@ -2379,6 +2444,8 @@
       (princ "\nCancelado. No se ha dibujado nada.")
       (setvar "CMDECHO" eco) (princ) (exit)))
 
+  ;; Medido el 2026-09-15 en un plano de 9.220 polilíneas y 6.280 textos: 6-8 s.
+  (princ "\nLeyendo el dibujo…")
   (setq geometria (am:recolectar capa cuadros))
   (if (null geometria)
     (progn (setvar "CMDECHO" eco) (princ) (exit)))
@@ -2386,7 +2453,7 @@
         cuerpo (am:con-dibujo geometria cuadros punto ambitos))
 
   (am:log (strcat "envio " (itoa *am:celdas-enviadas*) " celda(s) del cuadro"))
-  (princ "\nMidiendo… (una planta de seis viviendas tarda unos 12 segundos)")
+  (princ "\nMidiendo… (una planta de seis viviendas tarda unos segundos; si tarda más, te lo iré diciendo)")
   (setq respuesta (am:post cuerpo))
   (if (null respuesta)
     (progn
