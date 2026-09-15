@@ -113,6 +113,39 @@ print(json.dumps({"segundos": time.perf_counter() - t, "estado": r.status_code,
 """
 
 
+#: Un clic, una tabla (PRD 2026-09-15): menos de 10 s en total. El `.lsp` se
+#: lleva unos 2,2 s del maestro (1,7 leyendo recintos y textos, 0,4 filtrando las
+#: otras capas, medido en Core Console). A las dos peticiones del servidor les
+#: quedan 7.
+PLAZO_CLIC_S = 7.0
+
+_CLIC = r"""
+import json, os, sys, time
+sys.path.insert(0, sys.argv[1])
+sys.path.insert(0, os.path.join(sys.argv[1], "tests"))
+os.chdir(sys.argv[1])
+os.environ.pop("ANTHROPIC_API_KEY", None)
+from analyzer.geometria_recibida import payload_desde_dxf
+from analyzer import vivienda_en_punto as vp
+cuerpo = payload_desde_dxf(sys.argv[2], "00 areas")
+otras = cuerpo.pop("otras_polilineas")
+cuerpo["punto"] = [-1.0, 2.0]
+import app
+cliente = app.app.test_client()
+t = time.perf_counter()
+uno = cliente.post("/api/vivienda-en-punto", data=json.dumps(cuerpo), content_type="application/json").get_json()
+t1 = time.perf_counter() - t
+zonas = [uno.get("zonas", [])[i:i + 4] for i in range(0, len(uno.get("zonas", [])), 4)]
+dos = dict(cuerpo, otras_polilineas=[o for o in otras if vp.corta_alguna_zona(o["vertices"], zonas)],
+           vivienda=json.loads(uno["vivienda_json"]) if uno.get("ok") else None)
+t = time.perf_counter()
+r = cliente.post("/api/medicion-geometria?formato=lisp", data=json.dumps(dos), content_type="application/json")
+t2 = time.perf_counter() - t
+print(json.dumps({"primera": t1, "segunda": t2, "ok": uno.get("ok"), "aviso": uno.get("aviso") or uno.get("motivo"),
+                  "estado": r.status_code, "cuadros": r.data.count(b'"cuadro_a_dibujar"')}))
+"""
+
+
 @pytest.fixture(scope="module")
 def plano_grande(tmp_path_factory):
     ruta = tmp_path_factory.mktemp("plano_grande") / "plano_grande.dxf"
@@ -142,3 +175,22 @@ def test_el_servidor_mide_el_plano_grande_en_menos_de_20_segundos(plano_grande, 
     assert medida["segundos"] < PLAZO_SERVIDOR_S, (
         "el servidor tarda %.1f s con el plano grande (%d bytes de envío)"
         % (medida["segundos"], medida["bytes_envio"]))
+
+
+def test_un_clic_en_el_plano_grande_se_sirve_en_menos_de_7_segundos(plano_grande, tmp_path):
+    """Las dos peticiones de un clic junto a la primera vivienda del plano grande."""
+    ruta, _ = plano_grande
+    entorno = dict(os.environ, ARCHMUSE_DATA_DIR=str(tmp_path / "datos"))
+    try:
+        r = subprocess.run([sys.executable, "-c", _CLIC, str(RAIZ), str(ruta)],
+                           capture_output=True, text=True, env=entorno,
+                           timeout=PLAZO_CLIC_S * 10)
+    except subprocess.TimeoutExpired:
+        pytest.fail("el servidor no ha contestado a un clic en %.0f s" % (PLAZO_CLIC_S * 10))
+    assert r.returncode == 0, r.stderr[-2000:]
+    medida = json.loads(r.stdout.strip().splitlines()[-1])
+    assert medida["ok"] is True and medida["estado"] == 200 and medida["cuadros"] == 1, medida
+    total = medida["primera"] + medida["segunda"]
+    assert total < PLAZO_CLIC_S, (
+        "un clic tarda %.1f s de servidor (%.1f + %.1f) en el plano grande"
+        % (total, medida["primera"], medida["segunda"]))

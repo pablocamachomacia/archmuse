@@ -390,6 +390,18 @@ def group_rooms_by_unit_label(
     if not unit_labels:
         return group_rooms_by_proximity(rooms)
 
+    return [Unit(name=unit_labels[i][0], rooms=piezas)
+            for i, piezas in agrupar_por_rotulo(rooms, unit_labels)]
+
+
+def agrupar_por_rotulo(rooms: List[Room], unit_labels: List[Tuple[str, float, float]]
+                       ) -> List[Tuple[int, List[Room]]]:
+    """`group_rooms_by_unit_label` diciendo **qué rótulo** es cada vivienda: su
+    índice en `unit_labels`, en el mismo orden de salida.
+
+    Existe para el clic (`C-17`, propuesto, 2026-09-15): dos viviendas con el
+    mismo texto sólo se distinguen por la posición de su rótulo, y la primera
+    petición tiene que poder decirle a la segunda cuál ha elegido."""
     groups: Dict[int, List[Room]] = {}
     cercanos = _rotulo_mas_cercano([room.polygon.centroid for room in rooms], unit_labels)
     for room, indice in zip(rooms, cercanos, strict=True):
@@ -407,7 +419,7 @@ def group_rooms_by_unit_label(
     # es el desempate que antes daba `sorted` sobre el diccionario por nombre.
     llegada = {indice: n for n, indice in enumerate(groups)}
     orden = sorted(groups, key=lambda i: (unit_sort_key(unit_labels[i][0]), llegada[i]))
-    return [Unit(name=unit_labels[i][0], rooms=groups[i]) for i in orden]
+    return [(i, groups[i]) for i in orden]
 
 
 MAX_GAP_BETWEEN_ROOMS_M = 2.0

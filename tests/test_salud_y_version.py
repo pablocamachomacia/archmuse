@@ -64,7 +64,7 @@ def test_la_medicion_declara_su_version(cliente):
     cuerpo = respuesta.get_json()
     assert cuerpo["version"] == version_mod.version()
     # `capacidades` sigue viajando: la versión se añade, no sustituye.
-    assert cuerpo["capacidades"] == ["medicion", "reparto_de_cuadro"]
+    assert cuerpo["capacidades"] == ["medicion", "reparto_de_cuadro", "vivienda_en_punto"]
 
 
 def test_la_misma_version_la_dicen_las_dos_rutas(cliente):

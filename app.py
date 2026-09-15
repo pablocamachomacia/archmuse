@@ -3502,6 +3502,7 @@ def medicion_endpoint():
 CAPACIDADES_DEL_ENDPOINT_DE_GEOMETRIA = (
     "medicion",            # medir la planta y devolver superficies
     "reparto_de_cuadro",   # repartir esas superficies en el cuadro del cliente
+    "vivienda_en_punto",   # un clic, una tabla (C-17, propuesto): /api/vivienda-en-punto
 )
 
 
@@ -3549,8 +3550,8 @@ def _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear=False):
     ruta = os.path.join(carpeta, "geometria_recibida.dxf")
     try:
         SubidaMaterializada(geometria).save(ruta)
-        doc = parser.load_document(ruta)
-        plano = parser.leer_plano(doc, capa, factor_escala, alinear_rotulos=alinear)
+        # La misma lectura que acaba de hacer la medición (`parser.leer_fichero`).
+        doc, plano = parser.leer_fichero(ruta, capa, factor_escala, alinear_rotulos=alinear)
         altura_minima = mq.altura_minima(
             min(alturas_cuadro) if alturas_cuadro else None,
             mq.alturas_de_rotulos(doc, [r.label for r in plano.rooms if r.label]))
@@ -3567,7 +3568,31 @@ def _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear=False):
         medida = medicion.medir_planta(plano)
         resultado = []
         vistas = set()
+        # **Un clic, una tabla** (`C-17`, propuesto; PRD 2026-09-15). Si el comando
+        # manda la vivienda que eligió la primera petición, se vuelve a elegir con
+        # el mismo punto y sobre esta misma lectura, y sólo se prepara su tabla. Si
+        # no coinciden no se dibuja nada: una tabla de la vivienda de al lado en
+        # el punto que él ha marcado es la cifra falsa que menos se ve.
+        pedida = cuerpo.get("vivienda")
+        solo = None
+        if pedida is not None:
+            from analyzer import vivienda_en_punto as vp
+
+            if punto is None:
+                return [{"ok": False, "motivo": "se ha pedido una vivienda sin el punto del clic: "
+                                                "no se sabe cuál es (C-17)."}]
+            eleccion = vp.elegir(vp.viviendas_del_plano(plano), vp.punto_en_metros(punto, plano))
+            if eleccion.vivienda is None:
+                return [{"ok": False, "motivo": eleccion.motivo}]
+            if not vp.es_la_pedida(eleccion.vivienda, pedida):
+                return [{"ok": False, "motivo": "la vivienda elegida al principio (%s) no es la que "
+                                                "sale al medir (%s): no dibujo nada (C-17)."
+                                                % (pedida.get("nombre") if isinstance(pedida, dict)
+                                                   else pedida, eleccion.vivienda.nombre)}]
+            solo = eleccion.vivienda.nombre
         for vivienda in medida.viviendas:
+            if solo is not None and vivienda.nombre != solo:
+                continue
             if vivienda.nombre in vistas:
                 continue
             vistas.add(vivienda.nombre)
@@ -3683,6 +3708,80 @@ def _desplaza(valor: float) -> str:
     if abs(valor) < 2 * PASO_DEL_VOTO:
         return "0"
     return ("%.2f" % valor).rstrip("0").rstrip(".")
+
+
+@app.route("/api/vivienda-en-punto", methods=["POST"])
+def vivienda_en_punto_endpoint():
+    """**Un clic, una tabla** (PRD `docs/prd/2026-09-15-un-clic-una-tabla.md`,
+    `C-17` propuesto): de qué vivienda es el clic, y qué zonas de las demás capas
+    tiene que mandar el comando para medirla.
+
+    Es la primera de las dos peticiones del comando. Recibe los recintos, los
+    textos y el punto —lo barato de leer en AutoCAD— y **no mide nada**: lee el
+    plano con el lector de siempre, agrupa con el agrupador de siempre y elige
+    (`analyzer/vivienda_en_punto.py`). La medición la hace después
+    `/api/medicion-geometria` con `vivienda`, que vuelve a elegir y comprueba que
+    sale la misma.
+
+    Si el dibujo tiene capas de clasificación `AM_*`, antes de elegir las pide
+    enteras (`pide_capas_enteras`): cambian de dónde salen los recintos.
+    """
+    import shutil
+
+    from analyzer import parser as _parser
+    from analyzer import vivienda_en_punto as vp
+    from analyzer.geometria_recibida import (
+        PayloadInvalido, SubidaMaterializada, a_sexpresion, validar,
+    )
+
+    def responder(datos, estado=200):
+        datos = dict(datos, version=version_de_archmuse(), lsp=version_del_lsp())
+        if (request.args.get("formato") or "").lower() == "lisp":
+            return Response(a_sexpresion(datos), status=estado,
+                            mimetype="text/plain; charset=utf-8")
+        return jsonify(datos), estado
+
+    try:
+        cuerpo = request.get_json(silent=True)
+    except Exception:  # noqa: BLE001 - cuerpo de un cliente ajeno
+        cuerpo = None
+    if not isinstance(cuerpo, dict):
+        return responder({"ok": False, "motivo": "Manda un cuerpo JSON con «recintos», «textos» "
+                                                 "y «punto»."}, 400)
+    punto = _punto_de_payload(cuerpo.get("punto"))
+    if punto is None:
+        return responder({"ok": False, "motivo": "falta el punto del clic: sin él no se sabe qué "
+                                                 "vivienda medir."}, 400)
+    enteras = vp.capas_enteras(cuerpo.get("capas_del_dibujo") or [])
+    if enteras and cuerpo.get("capas_enteras_enviadas") is not True:
+        return responder({"ok": False, "pide_capas_enteras": enteras,
+                          "motivo": "este dibujo tiene capas de clasificación de ArchMuse (%s): "
+                                    "hacen falta enteras para saber de dónde salen los recintos."
+                                    % ", ".join(enteras)})
+    try:
+        geometria = validar(cuerpo)
+    except PayloadInvalido as exc:
+        return responder({"ok": False, "motivo": str(exc)}, 400)
+
+    capa = (cuerpo.get("capa_de_recintos") or "").strip() or None
+    factor_escala = factor_de_unidad(cuerpo.get("escala") or "")
+    carpeta = tempfile.mkdtemp(prefix="archmuse_clic_")
+    try:
+        ruta = os.path.join(carpeta, "geometria_recibida.dxf")
+        SubidaMaterializada(geometria).save(ruta)
+        doc = _parser.load_document(ruta)
+        try:
+            plano = _parser.leer_plano(doc, capa, factor_escala)
+        except ValueError as exc:
+            return responder({"ok": False, "motivo": "no he podido leer el plano: %s" % exc})
+        eleccion = vp.elegir(vp.viviendas_del_plano(plano), vp.punto_en_metros(punto, plano))
+        datos = vp.a_dict(eleccion)
+        if eleccion.vivienda is not None:
+            datos["zonas"] = [round(n, 6) for z in vp.zonas_de_otras_capas(doc, plano) for n in z]
+            datos["capas_enteras"] = enteras
+        return responder(datos)
+    finally:
+        shutil.rmtree(carpeta, ignore_errors=True)
 
 
 @app.route("/api/medicion-geometria", methods=["POST"])
