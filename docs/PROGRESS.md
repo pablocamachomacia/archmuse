@@ -5,6 +5,51 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 (noche, 3) · Por qué no avisaba la 0.3.12, y el aviso una vez al día (`.lsp` 3.9.1)
+
+**Lo que Pablo vio:** 0.3.9 instalada en canal «prueba», AutoCAD abierto, «ArchMuse
+cargado…» y ni una palabra de la 0.3.12.
+
+**Medido, en su instalación y en GitHub:**
+
+- La 0.3.12 está publicada como **prerelease**, con `ArchMuse-0.3.12.archmuse`, y su
+  firma verifica (descargada con `gh` y `firma.verificar_paquete`: «0.3.12»).
+- `canal.txt` = «prueba». La consulta a GitHub, hecha con el mismo código, elige
+  la 0.3.12 desde la 0.3.9.
+- **La causa:** el servidor 0.3.9 arrancó a las 18:49 y el registro dice a las
+  18:49:38 «la 0.3.9 es la más reciente del canal "prueba"» —cierto entonces—. **Sólo
+  comprobaba al arrancar**, y ese servidor seguía vivo (pid 42820) cuando se publicó
+  la 0.3.12: abrir AutoCAD no lo reinicia, así que nadie volvió a mirar y no se
+  escribió `actualizacion.json`.
+- Lanzada la misma comprobación a mano en su instalación (`actualizador --comprobar
+  --silencioso`): encontró la 0.3.12, la descargó, verificó la firma y dejó
+  `actualizacion.json`. **Sale a GitHub y responde bien.**
+- **Sin medir:** si el enganche a `S::STARTUP` de la 3.8.0 llega a ejecutarse con
+  el paquete cargado por el autoloader. Sin versión nueva no dejaba ni rastro.
+
+**Arreglo, con tests antes (7 en rojo):**
+
+- `actualizaciones.comprobar_al_arrancar` **repite la comprobación cada hora**
+  mientras el servidor esté en marcha (`INTERVALO_S`, se puede parar). Test: una
+  versión publicada con el servidor ya comprobado se encuentra sin reiniciarlo.
+- Cada comprobación deja `comprobacion.json` (al_dia / actualizacion / error), y
+  la misma versión ya verificada no se vuelve a descargar.
+- **Corrección de Pablo** al pedido de una línea en cada arranque: «el aviso sale
+  como mucho una vez al día. Si no hay versión nueva, no muestra nada en pantalla;
+  solo lo deja escrito en el log». `am:actualizaciones-al-cargar`, al cargar el
+  `.lsp` (ya no desde `S::STARTUP`): con versión nueva, «Hay una actualización de
+  ArchMuse (x). Teclea ARCHMUSE-ACTUALIZAR para instalarla.»; sin ella, sólo
+  `am:log`; y lo avisado se guarda con la fecha en
+  `aviso-de-actualizaciones.txt` para no repetirlo el mismo día. **Probado en Core
+  Console** sobre dos carpetas de prueba, dos veces cada una: al día → sólo el
+  registro, y la segunda vez nada; versión nueva → el aviso una vez, y la segunda
+  nada. **Sin probar en la interfaz de AutoCAD.**
+
+**Lo que la 0.3.9 de Pablo no tiene:** este arreglo va en la siguiente versión
+(no publicada). Su instalación ya tiene la 0.3.12 descargada y verificada.
+
+---
+
 ## 2026-09-15 (noche, 2) · El clic distingue las viviendas con el mismo rótulo
 
 **Decisión de Pablo, firmada:** «el clic decide la vivienda aunque su rótulo se

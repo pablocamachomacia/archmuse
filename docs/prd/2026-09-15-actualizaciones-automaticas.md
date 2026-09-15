@@ -2,6 +2,14 @@
 
 **Estado:** Aprobado para implementar · **Fecha:** 2026-09-15 · **Autor:** ArchMuse (CTO) · **Aprobado por:** Pablo, en el encargo del 2026-09-15 («Escribe el PRD y después impleméntalo»), con sus requisitos. Las decisiones que no venían en el encargo están marcadas **[decisión]**.
 
+> **Enmienda, 2026-09-15 (noche), tras medir por qué la 0.3.12 no avisaba.** (1) Un
+> servidor que sólo comprueba al arrancar no ve lo que se publica después: ahora
+> **vuelve a comprobar cada hora**. (2) **Pablo:** «el aviso sale como mucho una vez
+> al día. Si no hay versión nueva, no muestra nada en pantalla; solo lo deja
+> escrito en el log». El aviso se revisa al cargar el `.lsp` —ya no desde
+> `S::STARTUP`, que nunca se midió— y es una línea que manda a ARCHMUSE-ACTUALIZAR;
+> la ventana «¿Instalar?» queda para ese comando. Ver `docs/PROGRESS.md`.
+
 ---
 
 ## 1. Problema que resuelve
