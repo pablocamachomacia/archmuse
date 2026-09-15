@@ -1398,8 +1398,15 @@ def detectar_cuadros_superficies(doc) -> List[CuadroSuperficies]:
     salta. Un plano de 25 cuadros donde el tercero venga raro tiene que seguir
     dando 24, no cero.
     """
+    from .propio import es_de_archmuse
+
     cuadros: List[CuadroSuperficies] = []
     for tabla in doc.modelspace().query("ACAD_TABLE"):
+        # **La tabla que dibujó el comando lleva el mismo título** y, en un DXF
+        # guardado después, está aquí. No es un cuadro del arquitecto (2026-09-15,
+        # `analyzer/propio.py`).
+        if es_de_archmuse(tabla):
+            continue
         try:
             entidades = list(tabla.virtual_entities())
         except Exception:  # noqa: BLE001 - tabla de un cliente ajeno
@@ -1429,8 +1436,12 @@ def cajas_y_alturas_de_los_cuadros(doc):
     `detectar_cuadro_superficies`: qué tabla es un cuadro se decide en este
     módulo, en un solo sitio.
     """
+    from .propio import es_de_archmuse
+
     cajas, alturas = [], []
     for tabla in doc.modelspace().query("ACAD_TABLE"):
+        if es_de_archmuse(tabla):
+            continue
         try:
             entidades = list(tabla.virtual_entities())
         except Exception:  # noqa: BLE001 - tabla de un cliente ajeno

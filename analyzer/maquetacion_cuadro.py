@@ -158,9 +158,15 @@ def estilos_de_rotulos(doc, rotulos: Sequence[str]) -> List[str]:
     """
     from . import parser
 
+    from .propio import es_de_archmuse
+
     buscados = {(r or "").strip() for r in rotulos if r}
     estilos: List[str] = []
     for entidad in doc.modelspace().query("MTEXT TEXT"):
+        # Una casilla de la tabla de ArchMuse puede decir lo mismo que un rótulo:
+        # su estilo no es del plano (2026-09-15, `propio`).
+        if es_de_archmuse(entidad):
+            continue
         if (parser._texto_de(entidad) or "").strip() not in buscados:
             continue
         estilo = (entidad.dxf.style or "").strip()
@@ -466,9 +472,14 @@ def alturas_de_rotulos(doc, rotulos: Sequence[str]) -> List[float]:
     from . import parser
     from .geometria_recibida import altura_de_texto
 
+    from .propio import es_de_archmuse
+
     buscados = {(r or "").strip() for r in rotulos if r}
     alturas: List[float] = []
     for entidad in doc.modelspace().query("MTEXT TEXT"):
+        # Ni su altura (2026-09-15, `propio`).
+        if es_de_archmuse(entidad):
+            continue
         if (parser._texto_de(entidad) or "").strip() not in buscados:
             continue
         # Por `altura_de_texto`: medido el 2026-09-13, un payload sin alturas

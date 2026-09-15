@@ -829,12 +829,20 @@ def extract_labels(doc: Drawing, con_capa: bool = False,
     no se toca nunca**, ni el del disco ni el materializado; lo que cambia es la
     tupla que sale de esta función, que muere al acabar la medición.
     """
+    from .propio import es_capa_de_archmuse
+
     por_tipo = {"MTEXT": [], "TEXT": []}
     dx, dy = desplazamiento if desplazamiento else (0.0, 0.0)
 
     for entity, capa in _recorrer_plano(doc):
         tipo = entity.dxftype()
         if tipo not in por_tipo:
+            continue
+        # **Lo que dibujó ArchMuse no rotula nada** (2026-09-15). Su cuadro, sus
+        # notas y su marca van en sus capas. Leídos como rótulos, la casilla
+        # «VT1/3» de su tabla era una segunda vivienda con ese nombre y la segunda
+        # pasada no escribía ninguna cifra (`C-13`). Ver `analyzer/propio.py`.
+        if es_capa_de_archmuse(capa):
             continue
         text = _texto_de(entity)
         if not text:

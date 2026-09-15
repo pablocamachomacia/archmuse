@@ -321,9 +321,13 @@ def rotulos_de_construida(doc, factor: float) -> List[RotuloDeConstruida]:
     dos formas firmadas de `ROTULOS_DE_CONSTRUIDA`."""
     from . import parser
     from .geometria_recibida import altura_de_texto, handle_de_origen
+    from .propio import es_de_archmuse
 
     salida: List[RotuloDeConstruida] = []
     for entidad in doc.modelspace().query("TEXT MTEXT"):
+        # Lo que dibujó ArchMuse no rotula su construida (2026-09-15, `propio`).
+        if es_de_archmuse(entidad):
+            continue
         if _texto_comparable(parser._texto_de(entidad)) not in ROTULOS_DE_CONSTRUIDA:
             continue
         punto = parser._punto_de_texto(entidad)
