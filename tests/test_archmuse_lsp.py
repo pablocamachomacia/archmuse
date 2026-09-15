@@ -157,6 +157,14 @@ PRIMITIVAS = {
     #   `vla-get-Layer` -- la capa de un objeto, como cadena.
     #   `vla-get-StyleName` -- en una AcadTable, el nombre de su estilo de tabla.
     "vla-get-Layer", "vla-get-StyleName",
+    # Aviso de actualización (3.8.0, 2026-09-15). Contrastadas contra la
+    # referencia de AutoLISP, **sin ejecutar en AutoCAD**:
+    #   `defun-q` -- define una función como lista, que es lo que `S::STARTUP`
+    #       necesita para poder añadirle algo con `append` sin pisar lo de otros.
+    #   `append` -- une listas.
+    #   `vl-bb-ref` / `vl-bb-set` -- la pizarra común a todos los dibujos abiertos:
+    #       preguntar una sola vez por sesión, no una por dibujo.
+    "defun-q", "append", "vl-bb-ref", "vl-bb-set",
 }
 
 

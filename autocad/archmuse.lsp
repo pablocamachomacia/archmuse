@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.7.2")
-(setq *am:version*  "3.7.2 (2026-09-15, no lee sus propios cuadros como tuyos)")
+(setq *am:version-corta* "3.8.0")
+(setq *am:version*  "3.8.0 (2026-09-15, avisa de las actualizaciones)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -1039,6 +1039,85 @@
       (setq r (vl-catch-all-apply 'vlax-invoke-method (list shell 'Run orden 0 :vlax-false)))
       (vl-catch-all-apply 'vlax-release-object (list shell))
       (not (vl-catch-all-error-p r)))))
+
+
+;;; ---------------------------------------------------------------------------
+;;; Actualizaciones (PRD 2026-09-15)
+;;; ---------------------------------------------------------------------------
+;;;
+;;; El servidor comprueba el canal al arrancar la sesión, descarga la versión
+;;; nueva y verifica su firma (`empaquetado/capa_b/actualizaciones.py`). Si todo
+;;; cuadra, deja `%LOCALAPPDATA%\ArchMuse\actualizacion.json`. **Aquí sólo se lee
+;;; ese fichero: ni una conexión**, así que sin internet AutoCAD no espera nada.
+;;;
+;;; Va aquí, antes de los comandos, y no al final: un test mira las variables que
+;;; usa el comando desde su `defun` hasta el final del fichero.
+;;;
+;;; **Sin ejecutar en AutoCAD** (3.8.0): `S::STARTUP` con el paquete cargado por
+;;; el autoloader, `WScript.Shell.Popup` y el valor que devuelve, `vl-bb-ref` y
+;;; `vl-bb-set`. Hay que probarlo en la VM antes de publicar en «estable».
+
+(defun am:actualizacion-pendiente ( / base texto p ini fin version)
+  ;; La versión descargada y verificada que espera instalarse, o nil.
+  (setq base (getenv "LOCALAPPDATA"))
+  (if base
+    (setq texto (am:lee-fichero (strcat base "\\ArchMuse\\actualizacion.json"))))
+  (if texto
+    (progn
+      (setq p (vl-string-search "\"version\"" texto))
+      (if p (setq ini (vl-string-search "\"" texto (+ p 9))))
+      (if ini (setq fin (vl-string-search "\"" texto (1+ ini))))
+      (if fin (setq version (substr texto (+ ini 2) (- fin ini 1))))))
+  (if (and version (wcmatch version "#*.#*.#*")) version nil))
+
+(defun am:ofrecer-actualizacion (al-arrancar / version instalado shell r)
+  ;; «Hay una actualización (x.y.z). ¿Instalar?» y, con un Sí, lanza
+  ;; `actualizador --instalar-pendiente`, que vuelve a verificar la firma.
+  ;; `al-arrancar` T: una sola vez por sesión de AutoCAD y **nunca con un comando
+  ;; en marcha**. nil (ARCHMUSE-ACTUALIZAR): siempre, y dice si no hay nada.
+  (cond
+    ((and al-arrancar (/= 0 (getvar "CMDACTIVE"))) nil)
+    ((and al-arrancar (vl-bb-ref '*am:actualizacion-ofrecida*)) nil)
+    ((null (setq version (am:actualizacion-pendiente)))
+      (if (not al-arrancar)
+        (princ "\nNo hay ninguna actualización de ArchMuse descargada.")))
+    ((null (setq instalado (am:servidor-instalado)))
+      (if (not al-arrancar)
+        (princ "\nEste ArchMuse no está instalado con el instalador: no se actualiza solo.")))
+    (T
+      (vl-bb-set '*am:actualizacion-ofrecida* T)
+      (setq shell (vl-catch-all-apply 'vlax-create-object (list "WScript.Shell")))
+      (if (and shell (not (vl-catch-all-error-p shell)))
+        (progn
+          ;; 4 = botones Sí y No, 32 = interrogación. A los 60 s se cierra sola y
+          ;; devuelve -1, que cuenta como No.
+          (setq r (vl-catch-all-apply 'vlax-invoke-method
+                    (list shell 'Popup (strcat "Hay una actualización (" version "). ¿Instalar?")
+                          60 "ArchMuse" 36)))
+          (vl-catch-all-apply 'vlax-release-object (list shell))
+          (if (= (type r) 'VARIANT) (setq r (vlax-variant-value r)))
+          (if (= r 6)
+            (progn
+              (am:log (strcat "actualizacion " version ": se instala"))
+              (if (am:lanzar-sin-ventana
+                    (strcat "\"" (car instalado) "\" \"" (cdr instalado)
+                            "\" actualizador --instalar-pendiente"))
+                (princ (strcat "\nInstalando ArchMuse " version
+                               ". Cuando termine, cierra y vuelve a abrir AutoCAD."))
+                (princ "\nNo he podido lanzar la instalación. Teclea ARCHMUSE-ACTUALIZAR para intentarlo otra vez.")))
+            (am:log (strcat "actualizacion " version ": no se instala")))))))
+  (princ))
+
+;; `c:ARCHMUSE-ACTUALIZAR` está al final del fichero, detrás de `c:ARCHMUSE`: un
+;; test busca el primer «(defun c:ARCHMUSE» y mira desde ahí hasta el final.
+
+;; Al arrancar. `S::STARTUP` corre cuando el dibujo ya está listo y sin ningún
+;; comando en marcha. Se le añade lo nuestro con `append`, que no pisa el de otro
+;; programa. Si otro lo definió con `defun` —no es una lista—, `append` falla: no
+;; se engancha, queda ARCHMUSE-ACTUALIZAR y la carga de ArchMuse no se rompe.
+(defun-q am:al-arrancar () (am:ofrecer-actualizacion T))
+(if (not (vl-catch-all-error-p (vl-catch-all-apply 'append (list S::STARTUP am:al-arrancar))))
+  (setq S::STARTUP (append S::STARTUP am:al-arrancar)))
 
 
 (defun am:levantar-servidor ( / instalado i vivo punto)
@@ -2620,6 +2699,12 @@
   (am:log (strcat "OK: " (itoa (length celdas)) " casilla(s) escritas, "
                   (itoa (length notas)) " nota(s) al pie"))
   (setvar "CMDECHO" eco)
+  (princ))
+
+(defun c:ARCHMUSE-ACTUALIZAR ()
+  ;; La actualización descargada, a mano (PRD 2026-09-15). Ver
+  ;; `am:ofrecer-actualizacion`, en la sección de actualizaciones.
+  (am:ofrecer-actualizacion nil)
   (princ))
 
 (princ "\nArchMuse cargado. Teclea ARCHMUSE para medir el plano y dibujar tu cuadro.")
