@@ -5,6 +5,47 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 · Instalador 0.3.7 para el primer usuario de la beta
+
+**Qué lleva.** `.lsp` 3.7.0 (`C-15`, xrefs), el símbolo «B1 · Paredes
+desplazadas» en el `.exe`, el desinstalador y «Aplicaciones instaladas», el
+icono en los accesos directos del menú Inicio (antes el de Python) y en los
+`.archmuse` (antes una hoja en blanco), y los datos del editor sin datos
+personales. Imagen lateral `oscuro`, cabecera `placa`: lo que ya estaba
+aplicado. **Las variantes A y B del panel lateral quedan para después**; su
+herramienta de capturas (`herramientas/capturas_instalador/`) no entra en este
+commit.
+
+**Por qué 0.3.7 y no 0.3.5.** Regla de un número por build: 0.3.5 ya salió dos
+veces con contenido distinto (el del 14/09, sin `C-15`, y el de las capturas
+del 15/09, con el símbolo) y 0.3.6 lo usó el paquete de ensayo de la VM.
+
+**Medido:**
+
+- Suite entera antes de compilar: 2012 pasan, 39 saltados, 1 xfail, 0 fallos.
+  Los 104 de marca, empaquetado y `.lsp`, sin ningún saltado.
+- Prueba de humo con el runtime embebido: salud 200, medición 200, versión
+  0.3.7, ningún módulo de fuera de las dos capas.
+- `version.json` de la capa B: `0.3.7` / lsp `3.7.0`; el `.lsp` empaquetado es
+  idéntico byte a byte al de `autocad/`.
+- Propiedades del `.exe`: ArchMuse Beta · 0.3.7 · ArchMuse · © 2026 ArchMuse.
+- `ArchMuse-Beta-0.3.7.exe`, 37.132.733 bytes, SHA-256
+  `ac6be89dcf2bfbb97bdbba85afa89a88a7d3332600a01744986433e001d84714`.
+- `ArchMuse-0.3.7.archmuse`, SHA-256
+  `126b511f5d921c1fed94f3f4825b5be201f1006bde253953fbcb5f455edbfe76`.
+
+**Sin comprobar todavía:** este `.exe` no se ha ejecutado ni en la VM ni en
+ningún AutoCAD. Encima de la 0.3.5 instalada en el portátil de Pablo (con `.lsp`
+3.6.2) es la primera vez.
+
+> **ABIERTO, antes de entregar el folio.** `docs/beta/INSTRUCCIONES.md` §1.2
+> dice «Ejecutar de todas formas». Con Smart App Control encendido **ese botón no
+> existe** (medido en este portátil el 2026-09-15): el `.exe` sin firmar se
+> bloquea sin opción. Si el Windows del arquitecto lo tiene encendido, el folio
+> le deja sin salida.
+
+---
+
 ## 2026-09-15 (tarde) · `C-15` implementado: el comando dice dónde están los recintos y no ofrece otra capa (`.lsp` 3.7.0)
 
 **Firmado por Pablo**, sobre las mediciones de la entrada de abajo: que el comando

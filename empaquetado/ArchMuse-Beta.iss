@@ -1,7 +1,7 @@
 ; Instalador de la beta de ArchMuse (PRD 2026-09-11, T10).
 ;
 ; Lo compila empaquetado\construir.py, que antes deja listo empaquetado\salida\.
-; A mano:  ISCC.exe /DVersion=0.3.5 /DSalida=..\_empaquetado\salida empaquetado\ArchMuse-Beta.iss
+; A mano:  ISCC.exe /DVersion=0.3.7/DSalida=..\_empaquetado\salida empaquetado\ArchMuse-Beta.iss
 ;
 ; Condiciones del PRD que este fichero cumple y conviene no romper:
 ;   - por usuario y SIN administrador (PrivilegesRequired=lowest, todo en HKCU
@@ -22,6 +22,17 @@ AppId={{6F3B2C1A-8D4E-4B7A-9C21-5E0F7A3D9B64}
 AppName=ArchMuse Beta
 AppVersion={#Version}
 AppPublisher=ArchMuse
+; Datos del editor: salen en Propiedades del .exe y en «Aplicaciones instaladas».
+; Sin nombre personal ni email, porque el instalador se reparte (Pablo, 2026-09-15).
+AppPublisherURL=https://github.com/pablocamachomacia/archmuse
+AppSupportURL=https://github.com/pablocamachomacia/archmuse/issues
+AppCopyright=© 2026 ArchMuse
+VersionInfoVersion={#Version}
+VersionInfoProductVersion={#Version}
+VersionInfoCompany=ArchMuse
+VersionInfoProductName=ArchMuse Beta
+VersionInfoDescription=Instalador de ArchMuse Beta
+VersionInfoCopyright=© 2026 ArchMuse
 DefaultDirName={localappdata}\ArchMuse
 DisableDirPage=yes
 DisableProgramGroupPage=yes
@@ -37,6 +48,13 @@ ChangesAssociations=yes
 CloseApplications=no
 UninstallDisplayName=ArchMuse Beta
 WizardStyle=modern
+; El símbolo de ArchMuse (empaquetado\marca, lo genera generar_marca.py). El icono
+; lo llevan el .exe, el desinstalador y «Aplicaciones instaladas». Las imágenes van
+; en las siete escalas de Inno Setup (100 % a 250 %): elige la que mejor encaja.
+SetupIconFile=marca\archmuse.ico
+UninstallDisplayIcon={app}\archmuse.ico
+WizardSmallImageFile=marca\cabecera-58.png,marca\cabecera-77.png,marca\cabecera-97.png,marca\cabecera-116.png,marca\cabecera-124.png,marca\cabecera-143.png,marca\cabecera-159.png
+WizardImageFile=marca\lateral-202.png,marca\lateral-269.png,marca\lateral-336.png,marca\lateral-403.png,marca\lateral-430.png,marca\lateral-498.png,marca\lateral-534.png
 SetupLogging=yes
 ; RedirectionGuard se queda activado (Inno Setup lo activa por defecto desde la
 ; 6.7.0): prohíbe atravesar uniones creadas sin administrador, también a los
@@ -62,6 +80,9 @@ Source: "{#Salida}\bundle\PackageContents.xml"; DestDir: "{userappdata}\Autodesk
 ; El punto de entrada fijo: lee app\actual.txt y ejecuta la versión activa. Del
 ; repositorio y no de la capa B: tiene que valer con cualquier versión.
 Source: "lanzar.pyw"; DestDir: "{app}"; Flags: ignoreversion
+; El símbolo, para los accesos directos y los .archmuse. En {app} y no en la capa
+; B: tiene que seguir ahí aunque se cambie de versión.
+Source: "marca\archmuse.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; D-1: el servidor arranca al iniciar sesión. Con un acceso directo en la
@@ -69,14 +90,18 @@ Source: "lanzar.pyw"; DestDir: "{app}"; Flags: ignoreversion
 ; ONLOGON` sin elevar devuelve «Acceso denegado» (medido el 2026-09-13), y el
 ; PRD no admite pedir administrador. La semántica es la misma: por usuario, al
 ; iniciar sesión, sin privilegios.
-Name: "{userstartup}\ArchMuse (servidor)"; Filename: "{app}\runtime\pythonw.exe"; Parameters: """{app}\lanzar.pyw"""; WorkingDir: "{app}"
-Name: "{userprograms}\ArchMuse\ArchMuse - volver a la versión anterior"; Filename: "{app}\runtime\pythonw.exe"; Parameters: """{app}\lanzar.pyw"" actualizador --volver"; WorkingDir: "{app}"
+; IconFilename en los que apuntan a pythonw.exe: sin él salían con el icono de Python.
+Name: "{userstartup}\ArchMuse (servidor)"; Filename: "{app}\runtime\pythonw.exe"; Parameters: """{app}\lanzar.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\archmuse.ico"
+Name: "{userprograms}\ArchMuse\ArchMuse - volver a la versión anterior"; Filename: "{app}\runtime\pythonw.exe"; Parameters: """{app}\lanzar.pyw"" actualizador --volver"; WorkingDir: "{app}"; IconFilename: "{app}\archmuse.ico"
 Name: "{userprograms}\ArchMuse\Desinstalar ArchMuse"; Filename: "{uninstallexe}"
 
 [Registry]
 ; Doble clic en un .archmuse = instalar esa versión (D-2).
 Root: HKCU; Subkey: "Software\Classes\.archmuse"; ValueType: string; ValueName: ""; ValueData: "ArchMuse.Actualizacion"; Flags: uninsdeletevalue
 Root: HKCU; Subkey: "Software\Classes\ArchMuse.Actualizacion"; ValueType: string; ValueName: ""; ValueData: "Actualización de ArchMuse"; Flags: uninsdeletekey
+; Sin DefaultIcon, Windows enseñaba los .archmuse como una hoja en blanco. Se
+; borra con la clave de arriba (uninsdeletekey).
+Root: HKCU; Subkey: "Software\Classes\ArchMuse.Actualizacion\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\archmuse.ico,0"
 Root: HKCU; Subkey: "Software\Classes\ArchMuse.Actualizacion\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\runtime\pythonw.exe"" ""{app}\lanzar.pyw"" actualizador --instalar ""%1"""
 
 [UninstallDelete]

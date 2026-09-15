@@ -14,7 +14,7 @@
 
 ## 1 · Instalar
 
-1. Doble clic en **`ArchMuse-Beta-0.3.5.exe`**. No pide contraseña de administrador.
+1. Doble clic en **`ArchMuse-Beta-0.3.7.exe`**. No pide contraseña de administrador.
 2. Si sale **«Windows protegió su PC»**: pulsa **«Más información»** y después
    **«Ejecutar de todas formas»**. Sale porque el programa es nuevo y aún no
    está firmado.
@@ -70,7 +70,7 @@ Arrástralo a WhatsApp.
 
 ## 6 · Versiones nuevas
 
-- Te mandaré un fichero **`ArchMuse-0.3.6.archmuse`**. Doble clic, espera al
+- Te mandaré un fichero **`ArchMuse-0.3.8.archmuse`**. Doble clic, espera al
   mensaje, y **cierra y vuelve a abrir AutoCAD**. Si no lo cierras, ArchMuse
   te avisará y no escribirá nada hasta que lo hagas.
 - Si la versión nueva va peor: menú **Inicio → ArchMuse → «volver a la versión

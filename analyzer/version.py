@@ -35,7 +35,9 @@ from typing import Optional
 #: identificar el build sin ambigüedad.
 #: 0.3.4 no existe como instalador: ese número lo usó el paquete de ensayo de la
 #: actualización en la VM, así que el build siguiente a 0.3.3 es 0.3.5.
-VERSION_DEL_REPOSITORIO = "0.3.5"
+#: 0.3.5 salió dos veces distinto (el del 14/09 sin C-15 y el de las capturas
+#: del 15/09 con el símbolo) y 0.3.6 lo usó el paquete de ensayo: sigue 0.3.7.
+VERSION_DEL_REPOSITORIO = "0.3.7"
 
 _RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _FICHERO = os.path.join(_RAIZ, "version.json")
