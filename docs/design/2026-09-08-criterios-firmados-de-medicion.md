@@ -917,6 +917,62 @@ DWG reales (`docs/PROGRESS.md`, 2026-09-15).
 
 ---
 
+## C-16 · El comando ARCHMUSE deja AutoCAD exactamente como lo encontró, pase lo que pase
+
+**Estado: PROPUESTO, PENDIENTE DE FIRMA.** Lo pidió Pablo el 2026-09-15, al abrir
+una auditoría del comando: «ArchMuse deja AutoCAD exactamente como lo encontró,
+pase lo que pase». La redacción es de Claude y no está firmada.
+
+**Qué dice.** Las variables de sistema, los ajustes y el registro de AutoCAD
+quedan como estaban al terminar el **comando**: si acaba bien, si falla a medias y
+si el arquitecto pulsa Esc en cualquier pregunta. Lo que ArchMuse dibuja no entra
+aquí: va en un solo grupo de deshacer, y tras un Esc o un fallo se retira (`C-3`).
+
+**Se refiere al comando (`archmuse.lsp` dentro de AutoCAD), no al instalador.**
+El instalador y el actualizador sí escriben en el registro de AutoCAD —añaden la
+carpeta de ArchMuse a `TRUSTEDPATHS`—, lo hacen a propósito, lo dicen en la
+pantalla del instalador y lo quitan al desinstalar. Eso está bien y no incumple
+este criterio.
+
+**Por qué.** Es `C-7` otra vez: el servidor no ve el estado de AutoCAD, así que
+ningún test del servidor puede verlo. Y un ajuste que un comando deja cambiado lo
+encuentra el arquitecto horas después, en otro comando, sin nada que lo relacione
+con quien lo cambió.
+
+**Auditoría del 2026-09-15, leyendo el `.lsp`:**
+
+| Qué toca | Al terminar | Si falla o pulsa Esc |
+|---|---|---|
+| CMDECHO, la única variable que cambia | se devuelve | se devuelve en *error* |
+| Grupo de deshacer | se cierra | **no se cerraba**: arreglado en 3.7.1 |
+| FILEDIA, OSMODE, capa, color, estilo de tabla y de texto activos, SECURELOAD | no se tocan | no se tocan |
+| Órdenes de AutoCAD | sólo `_.DELAY` y `_.U` | lo mismo |
+
+**El hueco que encontró.** Un Esc o un error sin capturar mientras dibujaba
+dejaba el grupo de deshacer abierto y la tabla a medias sin marca de borrador. Desde
+el `.lsp` 3.7.1, *error* cierra el grupo y retira lo dibujado. **El Esc a mitad del
+dibujo no se ha ejecutado en AutoCAD todavía.**
+
+**Medido por Pablo con el guardián, 2026-09-15, 0.3.8:** hasta el final y Esc al
+pedir el punto, «AutoCAD está exactamente como estaba», sin «Registro cambiado».
+Esc en la capa y servidor parado: sin informe, así que sin medir.
+
+> **Nota sobre FILEDIA.** Apareció a 0 el 15-sep; ArchMuse descartado; causa
+> desconocida. El comando no lo toca, y Pablo comprobó que Abrir enseña el
+> explorador después de ARCHMUSE, al terminar y tras Esc.
+
+**Dónde se aplica.** `autocad/archmuse.lsp` 3.7.1: el *error* de `c:ARCHMUSE` y
+la bandera `grupo-abierto`.
+
+**Cómo se guarda.** Dos piezas, y ninguna basta sola:
+`tests/test_lsp_deja_autocad_como_estaba.py` en la suite, leyendo el código (una
+variable o una orden nueva, el grupo sin cerrar); y
+`herramientas/guardian_autocad/guardian.lsp`, que lo comprueba **ejecutando
+ARCHMUSE en un AutoCAD real**: foto de las variables y del registro antes, el
+comando como se quiera probar, y foto después.
+
+---
+
 ## Lo que sigue sin firmar
 
 De los tres criterios que `D-7` enumera desde el 2026-08-19, **`C-1` y `C-2`
