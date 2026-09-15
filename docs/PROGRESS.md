@@ -5,6 +5,71 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 (noche) · Un clic, una tabla (`.lsp` 3.9.0) y el 23,24 del salón
+
+PRD `docs/prd/2026-09-15-un-clic-una-tabla.md`, aprobado en el encargo. Criterio
+nuevo **`C-17`, PROPUESTO, PENDIENTE DE FIRMA**: el clic mide la vivienda más
+cercana; hay duda si la segunda está a menos del doble de distancia o a menos de
+1 m más; más de 30 m, no se mide; `C-13` manda. Los tres números son de Claude.
+
+**Cómo funciona.** El comando pide el punto, lee recintos y textos, y hace dos
+peticiones: `/api/vivienda-en-punto` elige la vivienda (o dice por qué no) y
+devuelve las **zonas** —el cuadrado del alcance de cada rótulo de construida—; el
+`.lsp` manda sólo las polilíneas de otras capas que cortan esas zonas, y
+`/api/medicion-geometria` con `vivienda` vuelve a elegir, comprueba que es la
+misma y prepara sólo su tabla. Los recintos y los textos viajan enteros **a
+propósito**: de ellos salen el agrupador, la capa de rótulos y `C-13`, y
+recortarlos cambiaría las cifras en los bordes entre viviendas.
+
+**Medido, en una copia del maestro del estudio (fuera del repositorio).**
+
+- `.lsp` en Core Console: recintos 0,23 s, textos 1,47 s, otras capas en JSON
+  4,94 s, otras capas mirando sólo su caja 0,44 s.
+- Servidor antes: 137 s con las 9.220 polilíneas de otras capas; 23 s sin ellas.
+- Servidor ahora: **2,2 s + 3,8 s**. Lo quitado, sin cambiar cifras: un `Point`
+  por pareja en `medicion._repartos_dudosos` (7,9 s); la misma geometría escrita
+  dos veces en DXF (`SubidaMaterializada` guarda los bytes) y leída tres veces
+  (`parser.leer_fichero` reutiliza la lectura del mismo contenido); la tabla de
+  las 52 viviendas cuando se pide una.
+- **Total estimado: unos 8 s. Suma de medidas, no medida de punta a punta.**
+
+**Probado.** `tests/test_un_clic_una_tabla.py` con planos sintéticos: elección,
+duda, lejos, `C-13`, capas `AM_*`, y **la tabla por clic idéntica a la de la
+planta entera y a la de la vivienda sola**, con un rótulo de construida dudoso
+cuya segunda polilínea está lejos (quitarla cambia la tabla: el test lo
+demuestra). `test_plano_grande`: un clic, servidor por debajo de 7 s. Y **en
+Core Console** contra el servidor del repositorio, con todas las funciones del
+`.lsp`: duda («3,50 m de VT1/1 y 3,50 m de VT2/1»), clic («a 1,00 m»), 5
+polilíneas enviadas, una tabla de VT1/1. **Sin probar en la interfaz**: el clic
+y el dibujo.
+
+**Hallazgo para Pablo: `C-13` deja fuera casi todo el maestro.** 18 de los 19
+primeros clics de la sonda dicen «No mido»: el maestro rotula `VT01` cinco veces,
+`VT13` tres… (una por planta). El clic las distinguiría por posición, pero `C-13`
+está firmado y no se ha tocado. Pregunta abierta.
+
+**El dato a revisar: tabla 23,24 y 58,97 contra ArchMuse 21,90 y 58,78.**
+**Medido: son dos dibujos distintos, y ArchMuse mide bien los dos.**
+
+- El 23,24 de la tabla del maestro es un **campo de AutoCAD** (`AcObjProp …
+  .Area`) que apunta a la polilínea `A61724` de «00 areas»: 23,24295 m². ArchMuse,
+  sobre esa misma polilínea, da 23,24.
+- El 21,90 sale del DXF de una vivienda con el que se firmó `C-14`, que es **otra
+  versión** de esa vivienda: está 49,85 m más arriba y cinco piezas miden
+  distinto (salón 21,900 / 23,243; dormitorio 1 12,725 / 12,469; dormitorio 2
+  8,483 / 8,882; aseo 3,136 / 2,682; baño 4,006 / 3,165). Tampoco coincide con la
+  copia de marzo del maestro.
+- **El 58,97 es `Sum(B3:B10)` de los campos sin redondear** (58,97469). Sobre
+  esas piezas ArchMuse escribiría **58,96**: suma las cifras ya redondeadas que
+  escribe en la tabla, para que se pueda rehacer a mano. Es una decisión de
+  ArchMuse ya declarada, no un criterio firmado, y no se ha tocado: **un céntimo
+  de diferencia con el cuadro del arquitecto que Pablo tiene que decidir**.
+- De paso: leyendo el maestro entero (no por el comando), el salón de esa
+  vivienda sale rotulado «F» y el tendedero «LD» —textos de mobiliario dentro del
+  recinto—, y la vivienda queda sin total. Sin investigar más.
+
+---
+
 ## 2026-09-15 · Plano grande: de más de 5 minutos a unos 25 s, y nunca en silencio (`.lsp` 3.8.1)
 
 **El caso (Pablo, AutoCAD).** Un plano de 677 polilíneas en «00 areas» (55 sin
