@@ -42,15 +42,16 @@ from .plano import (
 
 def _leer(ruta: str, capa: Optional[str], factor_escala: Optional[float],
           alinear_rotulos: bool = False):
-    """Abre el DXF y lo lleva a metros. Devuelve `(plano, None)` o `(None, fallo)`."""
-    import ezdxf
+    """Abre el DXF y lo lleva a metros. Devuelve `(plano, None)` o `(None, fallo)`.
 
+    Por `parser.leer_fichero`: la medición y su PDF leen el mismo fichero, y la
+    segunda lectura es la primera."""
     from analyzer import parser
 
     try:
-        doc = ezdxf.readfile(ruta)
-        return parser.leer_plano(doc, layer=capa, factor_escala=factor_escala,
-                                 alinear_rotulos=alinear_rotulos), None
+        _doc, plano = parser.leer_fichero(ruta, layer=capa, factor_escala=factor_escala,
+                                          alinear_rotulos=alinear_rotulos)
+        return plano, None
     except Exception as exc:                      # noqa: BLE001 - se traduce, no se traga
         return None, _fallo_de_lectura(exc)
 

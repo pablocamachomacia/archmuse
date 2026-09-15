@@ -502,7 +502,21 @@ class SubidaMaterializada:
         self.filename = "geometria_recibida.dxf"
 
     def save(self, ruta: str) -> None:
+        # **La misma geometría se escribe una vez** (medido el 2026-09-15: 2,4 s por
+        # escritura con 6.279 textos, y una petición la escribía dos veces, para la
+        # medición y para la tabla). Los mismos bytes, además, hacen que
+        # `parser.leer_fichero` reconozca la segunda lectura como la primera.
+        if _ULTIMA_ESCRITA[0] is self._geometria:
+            with open(ruta, "wb") as fichero:
+                fichero.write(_ULTIMA_ESCRITA[1])
+            return
         escribir_dxf(self._geometria, ruta)
+        with open(ruta, "rb") as fichero:
+            _ULTIMA_ESCRITA[:] = [self._geometria, fichero.read()]
+
+
+#: `[geometría, bytes del DXF]` de la última materialización.
+_ULTIMA_ESCRITA: list = [None, b""]
 
 
 def a_sexpresion(valor: Any) -> str:

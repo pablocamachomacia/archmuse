@@ -512,12 +512,23 @@ def _repartos_dudosos(rooms: Sequence, nombre: str,
     """
     if len(unit_labels) < 2:
         return ()
+    import numpy as np
+
+    # **Las mismas dos distancias, sin un `Point` por pareja** (medido el
+    # 2026-09-15: con 52 viviendas y 208 rótulos, 387.486 `Point` y 7,9 s de los
+    # 27 de una medición). numpy descarta los rótulos que no pueden ser de los
+    # dos más cercanos; los que quedan —con holgura para el último decimal— se
+    # ordenan con la distancia de shapely y el desempate por texto de siempre.
+    lx = np.array([float(x) for _e, x, _y in unit_labels])
+    ly = np.array([float(y) for _e, _x, y in unit_labels])
     dudosos: List[RepartoDudoso] = []
     for room in rooms:
         centro = room.polygon.centroid
+        aproximadas = np.hypot(lx - centro.x, ly - centro.y)
+        umbral = np.partition(aproximadas, 1)[1] * (1 + 1e-9) + 1e-9
         distancias = sorted(
-            (centro.distance(Point(x, y)), etiqueta)
-            for etiqueta, x, y in unit_labels
+            (centro.distance(Point(unit_labels[i][1], unit_labels[i][2])), unit_labels[i][0])
+            for i in np.flatnonzero(aproximadas <= umbral)
         )
         (d1, _primera), (d2, segunda) = distancias[0], distancias[1]
         # `d1 == 0` es el rótulo dibujado justo encima del recinto: la

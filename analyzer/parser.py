@@ -317,6 +317,49 @@ def load_document(dxf_path: str) -> Drawing:
         raise ValueError(f"El archivo DXF está dañado o no es válido: {dxf_path}") from exc
 
 
+#: Las últimas lecturas: `(sha256 del fichero, capa, factor, alinear) -> (doc, plano)`.
+_LECTURAS: "Dict[tuple, Tuple[Drawing, PlanoLeido]]" = {}
+_LECTURAS_MAXIMAS = 2
+
+
+def leer_fichero(ruta: str, layer: Optional[str] = None, factor_escala: Optional[float] = None,
+                 alinear_rotulos: bool = False) -> "Tuple[Drawing, PlanoLeido]":
+    """`ezdxf.readfile` + `leer_plano`, **reutilizando la lectura del mismo
+    contenido con los mismos parámetros**.
+
+    **Por qué (medido el 2026-09-15).** Una petición del comando lee el mismo DXF
+    tres veces: la medición, el PDF de la medición y la tabla. Con un plano de 674
+    recintos y 6.279 textos eran 5,2 s de `readfile` y 4,4 de `leer_plano`, para
+    obtener tres veces lo mismo. La clave es el contenido del fichero, no su ruta:
+    cada paso escribe el suyo en su propio temporal.
+
+    Nadie modifica lo que devuelve (buscado el 2026-09-15: ningún código de
+    producción asigna ni añade a `plano.rooms` o `plano.unit_labels`). Un error de
+    lectura no se guarda: cada llamada lo vuelve a lanzar."""
+    import hashlib
+
+    with open(ruta, "rb") as fichero:
+        huella = hashlib.sha256(fichero.read()).hexdigest()
+    clave = (huella, layer, factor_escala, bool(alinear_rotulos))
+    with _CERROJO_DE_LECTURAS:
+        if clave in _LECTURAS:
+            return _LECTURAS[clave]
+    doc = ezdxf.readfile(ruta)
+    resultado = (doc, leer_plano(doc, layer=layer, factor_escala=factor_escala,
+                                 alinear_rotulos=alinear_rotulos))
+    # El servidor atiende en hilos (`waitress`): el diccionario no se toca sin cerrojo.
+    with _CERROJO_DE_LECTURAS:
+        while len(_LECTURAS) >= _LECTURAS_MAXIMAS:
+            _LECTURAS.pop(next(iter(_LECTURAS)))
+        _LECTURAS[clave] = resultado
+    return resultado
+
+
+import threading as _threading  # noqa: E402
+
+_CERROJO_DE_LECTURAS = _threading.Lock()
+
+
 def _polyline_points(entity) -> List[Tuple[float, float]]:
     """Devuelve los vértices (x, y) de una LWPOLYLINE o POLYLINE clásica."""
     if entity.dxftype() == "LWPOLYLINE":
