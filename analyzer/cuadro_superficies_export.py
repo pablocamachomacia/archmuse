@@ -139,7 +139,7 @@ def _extension_del_dibujo(msp) -> Optional[Tuple[Tuple[float, float], Tuple[floa
 
 
 def _ventana_deducida(doc, plantilla, altura, cajas):
-    ancho, alto = mq.tamano_necesario(plantilla.celdas(), plantilla.notas, altura)
+    ancho, alto = mq.tamano_necesario(plantilla.celdas(), pc.notas_del_dibujo(plantilla), altura)
     referencia = None
     if cajas:
         referencia = ((min(c[0][0] for c in cajas), min(c[0][1] for c in cajas)),
@@ -217,7 +217,9 @@ def exportar_cuadro_relleno(ruta_origen: str, ruta_destino: str,
         raise ValueError("No sé con qué altura de texto dibujar la tabla: el plano no "
                          "tiene ni cuadro de superficies ni rótulos de estancia.")
     ventana = _ventana_deducida(doc, plantilla, altura, cajas)
-    maquetacion = mq.maquetar(plantilla.celdas(), plantilla.notas, ventana, altura, cajas)
+    # En el plano, las notas cortas (Pablo, 2026-09-15); el detalle, en el acta.
+    maquetacion = mq.maquetar(plantilla.celdas(), pc.notas_del_dibujo(plantilla), ventana,
+                              altura, cajas)
     if isinstance(maquetacion, mq.NoCabe):
         raise ValueError(maquetacion.motivo)
 

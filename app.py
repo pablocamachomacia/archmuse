@@ -3615,11 +3615,14 @@ def _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear=False):
             plantilla = pc.construir(doc, plano, vivienda.nombre, ambitos=ambitos, medida=medida,
                                      posicion=solo)
             dibujo = pc.a_dict(plantilla)
+            # En el plano, las notas cortas y agrupadas; el detalle viaja en `notas`
+            # para la línea de comandos (Pablo, 2026-09-15).
+            notas_dibujo = pc.notas_del_dibujo(plantilla)
             if punto is not None:
-                maquetacion = mq.maquetar_en_punto(plantilla.celdas(), plantilla.notas,
+                maquetacion = mq.maquetar_en_punto(plantilla.celdas(), notas_dibujo,
                                                    punto, altura_minima, cajas)
             elif ventana is not None:
-                maquetacion = mq.maquetar(plantilla.celdas(), plantilla.notas,
+                maquetacion = mq.maquetar(plantilla.celdas(), notas_dibujo,
                                           ventana, altura_minima, cajas)
             else:
                 maquetacion = None
@@ -3633,7 +3636,7 @@ def _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear=False):
             if estilo_texto is None:
                 dibujo["motivo_sin_estilo"] = mq.MOTIVO_SIN_ESTILO
             dibujo["altura_minima"] = altura_minima
-            dibujo["textos_a_medir"] = mq.textos_a_medir(plantilla.celdas(), plantilla.notas)
+            dibujo["textos_a_medir"] = mq.textos_a_medir(plantilla.celdas(), notas_dibujo)
             resultado.append({
                 "ok": True,
                 "vivienda": plantilla.vivienda,
@@ -3670,6 +3673,17 @@ def _punto_de_payload(bruto):
     if any(v != v or v in (float("inf"), float("-inf")) for v in punto):
         return None
     return punto
+
+
+def _rectangulo_de_payload(bruto):
+    """`[x0, y0, x1, y1]` -> `(xmin, ymin, xmax, ymax)`, o `None` si no lo es."""
+    try:
+        x0, y0, x1, y1 = (float(v) for v in bruto)
+    except (TypeError, ValueError):
+        return None
+    if any(v != v or v in (float("inf"), float("-inf")) for v in (x0, y0, x1, y1)):
+        return None
+    return (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
 
 
 def _caja_de_payload(bruto):
@@ -3784,6 +3798,9 @@ def vivienda_en_punto_endpoint():
         if eleccion.vivienda is not None:
             datos["zonas"] = [round(n, 6) for z in vp.zonas_de_otras_capas(doc, plano) for n in z]
             datos["capas_enteras"] = enteras
+            # Dónde mirar lo que hay dibujado para no poner la tabla encima (2026-09-15).
+            datos["zona_de_colocacion"] = [round(n, 6) for n in
+                                           vp.zona_de_colocacion(eleccion.vivienda, plano)]
         return responder(datos)
     finally:
         shutil.rmtree(carpeta, ignore_errors=True)
@@ -4034,11 +4051,16 @@ def maquetar_cuadro_endpoint():
         return responder({"cabe": False, "motivo": "Falta el punto donde colocar la tabla."}, 400)
     cajas = [c for c in (_caja_de_payload(b) for b in (cuerpo.get("cajas_de_cuadros") or []))
              if c is not None]
+    # **Lo que hay dibujado alrededor** (2026-09-15, Pablo: «el clic es orientativo»):
+    # cajas `[x0, y0, x1, y1]` que manda el comando, y la zona donde buscar hueco.
+    obstaculos = [o for o in (_rectangulo_de_payload(b) for b in (cuerpo.get("obstaculos") or []))
+                  if o is not None]
+    zona = _rectangulo_de_payload(cuerpo.get("zona_de_colocacion"))
 
     try:
         maquetacion = mq.maquetar_en_punto(celdas, notas, punto,
                                            _numero_positivo(cuerpo.get("altura_minima")),
-                                           cajas, medir=medir)
+                                           cajas, medir=medir, obstaculos=obstaculos, zona=zona)
     except mq.MedidaIncompleta as exc:
         return responder({"cabe": False, "motivo": "No se puede maquetar: %s" % exc}, 400)
 

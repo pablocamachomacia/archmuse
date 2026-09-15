@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.1")
-(setq *am:version*  "3.9.1 (2026-09-15, aviso de actualizaciones una vez al día)")
+(setq *am:version-corta* "3.9.2")
+(setq *am:version*  "3.9.2 (2026-09-15, la tabla no pisa el plano y sus notas se leen)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -781,6 +781,84 @@
       (if (and (<= x0 (nth 2 z)) (>= x1 (nth 0 z)) (<= y0 (nth 3 z)) (>= y1 (nth 1 z)))
         (setq res T))))
   res)
+
+(defun am:caja-de-datos (datos / tipo x0 y0 x1 y1 c r h largo)
+  ;; `(x0 y0 x1 y1)` aproximada de una entidad con sus códigos del DXF, o nil.
+  ;; Sólo para no dibujar la tabla encima (2026-09-15): no mide nada.
+  (setq tipo (cdr (assoc 0 datos)) x0 nil)
+  (cond
+    ((member tipo '("CIRCLE" "ARC"))
+      (setq c (cdr (assoc 10 datos)) r (cdr (assoc 40 datos)))
+      (if (and c r) (list (- (car c) r) (- (cadr c) r) (+ (car c) r) (+ (cadr c) r))))
+    ((member tipo '("TEXT" "MTEXT"))
+      (setq c (cdr (assoc 10 datos)) h (cdr (assoc 40 datos))
+            largo (if (= (type (cdr (assoc 1 datos))) 'STR) (strlen (cdr (assoc 1 datos))) 1))
+      (if (and c (numberp h))
+        (list (car c) (- (cadr c) h) (+ (car c) (* 0.8 h (max largo 1))) (+ (cadr c) h))))
+    (T
+      (foreach par datos
+        (if (and (member (car par) '(10 11 12 13 14)) (listp (cdr par)) (numberp (cadr par)))
+          (if x0
+            (progn
+              (if (< (cadr par) x0) (setq x0 (cadr par)))
+              (if (> (cadr par) x1) (setq x1 (cadr par)))
+              (if (< (caddr par) y0) (setq y0 (caddr par)))
+              (if (> (caddr par) y1) (setq y1 (caddr par))))
+            (setq x0 (cadr par) x1 (cadr par) y0 (caddr par) y1 (caddr par)))))
+      (if x0 (list x0 y0 x1 y1)))))
+
+(defun am:caja-de-insert (ename datos / obj caja)
+  ;; La extensión real de un bloque la sabe AutoCAD; si no la da, su punto.
+  (setq obj (vl-catch-all-apply 'vlax-ename->vla-object (list ename)))
+  (setq caja (if (vl-catch-all-error-p obj) nil (am:caja-de obj)))
+  (if caja
+    (list (car (car caja)) (cadr (car caja)) (car (cadr caja)) (cadr (cadr caja)))
+    (am:caja-de-datos (list (assoc 0 '((0 . "POINT"))) (assoc 10 datos)))))
+
+(defun am:mas-caja (json caja)
+  (strcat json (if (= json "") "" ",")
+          "[" (am:json-num (nth 0 caja)) "," (am:json-num (nth 1 caja)) ","
+          (am:json-num (nth 2 caja)) "," (am:json-num (nth 3 caja)) "]"))
+
+(defun am:obstaculos (zona / zonas ss i ename datos caja res n)
+  ;; **Lo que hay dibujado alrededor de la vivienda** (3.9.2; Pablo, 2026-09-15: «el
+  ;; clic es orientativo: si la tabla o sus notas iban a pisar geometría, ArchMuse
+  ;; la desplaza al hueco libre más cercano»). Cajas `[x0,y0,x1,y1]` en JSON de lo
+  ;; que corta `zona` —`(x0 y0 x1 y1)`, la que manda el servidor—. Dónde va la
+  ;; tabla lo decide él; aquí se leen coordenadas.
+  ;;
+  ;; Dos pasadas: todas las LWPOLYLINE mirando su caja (0,44 s en un maestro de
+  ;; 9.220), y el resto preseleccionado por su punto de inserción dentro de la
+  ;; zona. **Lo que no ve:** una línea larga que cruza la zona con los dos
+  ;; extremos fuera, y los sombreados. Sin ejecutar en la interfaz de AutoCAD.
+  (setq res "" n 0)
+  (if (and zona (= (length zona) 4))
+    (progn
+      (setq zonas (list zona)
+            ss    (ssget "_X" '((0 . "LWPOLYLINE") (410 . "Model")))
+            i     0)
+      (if ss
+        (while (< i (sslength ss))
+          (setq datos (entget (ssname ss i)))
+          (if (am:caja-corta-zona-p datos zonas)
+            (setq res (am:mas-caja res (am:caja-de-datos datos)) n (1+ n)))
+          (setq i (1+ i))))
+      (setq ss (ssget "_X" (list '(-4 . "<NOT") '(0 . "LWPOLYLINE,HATCH") '(-4 . "NOT>")
+                                 '(410 . "Model")
+                                 '(-4 . ">,>,*") (list 10 (nth 0 zona) (nth 1 zona) 0.0)
+                                 '(-4 . "<,<,*") (list 10 (nth 2 zona) (nth 3 zona) 0.0)))
+            i  0)
+      (if ss
+        (while (< i (sslength ss))
+          (setq ename (ssname ss i)
+                datos (entget ename)
+                caja  (if (= (cdr (assoc 0 datos)) "INSERT")
+                        (am:caja-de-insert ename datos)
+                        (am:caja-de-datos datos)))
+          (if caja (setq res (am:mas-caja res caja) n (1+ n)))
+          (setq i (1+ i))))))
+  (setq *am:obstaculos-enviados* n)
+  (strcat "[" res "]"))
 
 (defun am:otras-polilineas (capa zonas enteras / ss i ename datos flags cerrada json primero n)
   ;; `C-12` (firmado el 2026-09-13): la superficie construida cerrada es la
@@ -1928,7 +2006,8 @@
     (T (cdr r))))
 
 
-(defun am:maquetar (bloque textos anchos punto cuadros estilo / altura cajas caja)
+(defun am:maquetar (bloque textos anchos punto cuadros estilo obstaculos zona
+                    / altura cajas caja)
   ;; La tabla colocada con los anchos que ha medido AutoCAD. **Aquí no se decide
   ;; nada**: se le devuelve al servidor lo que él mismo mandó —celdas, notas,
   ;; altura mínima, estilo— con las medidas y el punto, y él maqueta.
@@ -1945,9 +2024,15 @@
             ",\"altura_minima\":" (if (or (null altura) (= altura "nil")) "null" altura)
             ",\"cajas_de_cuadros\":[" cajas "]"
             ",\"celdas\":" (am:json-celdas (am:celdas-del-cuadro bloque))
-            ",\"notas\":" (am:json-cadenas (am:textos-de-notas bloque))
+            ;; En el plano, las notas cortas que redacta el servidor (3.9.2); si es
+            ;; uno anterior que no las manda, las de siempre.
+            ",\"notas\":" (am:json-cadenas (if (am:pos "(\"notas_del_dibujo\"" bloque 0)
+                                              (am:cadenas-tras bloque "notas_del_dibujo" 0)
+                                              (am:textos-de-notas bloque)))
             ",\"textos_medidos\":" (am:json-cadenas textos)
             ",\"anchos_medidos\":" (am:json-numeros anchos)
+            ",\"obstaculos\":" (if obstaculos obstaculos "[]")
+            ",\"zona_de_colocacion\":" (if zona (am:json-numeros zona) "null")
             "}")))
 
 
@@ -2485,7 +2570,8 @@
                       trozos ini fin bloque dibujadas tabla
                       filas cols notas i n
                       punto geometria ambitos alineado nombres elegida m intentos
-                      estilo-texto textos medidos eleccion otras)
+                      estilo-texto textos medidos eleccion otras zona obstaculos
+                      colocacion detalle linea)
 
   (defun *error* (msg)
     ;; **ArchMuse nunca acaba en silencio** (Pablo, 2026-09-15). Tres casos:
@@ -2836,11 +2922,19 @@
   ;; 2g. **¿Se puede poner ahí?** Lo decide el servidor con esas medidas. La única
   ;;     negativa es que la tabla pisaría su cuadro: se pide otro punto, hasta
   ;;     tres veces, sin volver a medir el plano ni los textos.
-  (setq m (am:maquetar bloque textos medidos punto cuadros estilo-texto) intentos 0)
+  ;;     **Lo que hay alrededor** (3.9.2): el clic es orientativo, y si la tabla
+  ;;     pisaría algo el servidor la lleva al hueco libre más cercano.
+  (setq zona (am:numeros-tras eleccion "zona_de_colocacion" 0))
+  (if zona (princ "\nMiro qué hay dibujado alrededor, para no poner la tabla encima…"))
+  (setq obstaculos (if zona (am:obstaculos zona) nil))
+  (setq m (am:maquetar bloque textos medidos punto cuadros estilo-texto obstaculos zona)
+        intentos 0)
   (while (and m (am:pos "(\"cabe\" . nil)" m 0) (< intentos 3))
     (princ (strcat "\n\n" (am:valor-tras m "motivo" 0)))
     (setq punto (am:pedir-punto) intentos (1+ intentos))
-    (setq m (if punto (am:maquetar bloque textos medidos punto cuadros estilo-texto) nil)))
+    (setq m (if punto
+              (am:maquetar bloque textos medidos punto cuadros estilo-texto obstaculos zona)
+              nil)))
   (if (or (null m) (null (am:pos "(\"cabe\" . T)" m 0)))
     (progn
       (princ (if m
@@ -2857,12 +2951,30 @@
   ;;    de abajo: un solo UNDO lo quita todo. Lo que se dibuja se sigue diciendo.
   (princ (strcat "\n\nDibujo el cuadro de ArchMuse de " (nth elegida nombres)
                  ": " (itoa (length celdas)) " casilla(s) con texto."))
-  (princ "\n  Tu cuadro no se toca: la tabla va desde el punto que has marcado.")
-  (if notas
+  ;; **Dónde va y por qué** (3.9.2): si el servidor la ha movido, lo dice él.
+  (setq colocacion (am:valor-tras m "colocacion" 0))
+  (cond
+    ((and colocacion (/= colocacion "nil"))
+      (princ (strcat "\n  " colocacion)))
+    (zona
+      (princ (strcat "\n  La tabla va desde el punto que has marcado: no pisa nada de lo que "
+                     "hay dibujado alrededor.")))
+    (T (princ "\n  La tabla va desde el punto que has marcado.")))
+  (princ "\n  Tu cuadro no se toca.")
+  ;; **En el plano, las notas cortas; aquí, el detalle** (3.9.2; Pablo: «el detalle
+  ;; completo va a la línea de comandos y al log, no al plano»). Al registro van
+  ;; los recuentos y no el detalle: lleva nombres de piezas, y el registro viaja
+  ;; en ARCHMUSE-INFORME (§4.4).
+  (setq detalle (am:textos-de-notas bloque))
+  (if detalle
     (progn
-      (princ (strcat "\n\n" (itoa (length notas))
-                     " nota(s) al pie, con el motivo de cada celda vacía:"))
-      (foreach nota notas (princ (strcat "\n   " (caddr nota))))))
+      (princ (strcat "\n\nEn el plano, " (itoa (length notas))
+                     " línea(s) de nota. El detalle, celda a celda:"))
+      (foreach linea detalle (princ (strcat "\n   - " linea)))))
+  (am:log (strcat "notas: " (itoa (length notas)) " en el plano, " (itoa (length detalle))
+                  " de detalle; " (itoa (if *am:obstaculos-enviados* *am:obstaculos-enviados* 0))
+                  " obstaculo(s); "
+                  (if (and colocacion (/= colocacion "nil")) "tabla movida" "tabla en el punto")))
 
   ;; **Todo lo que se escribe va dentro de UN grupo de deshacer.** Así un solo
   ;; `UNDO` lo quita entero —tabla, notas y marca— en vez de dejar al arquitecto

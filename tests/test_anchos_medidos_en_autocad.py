@@ -107,8 +107,9 @@ def test_se_pide_medir_cada_casilla_cada_palabra_y_el_espacio(cliente):
     assert len(textos) == len(set(textos))
     for celda in cuadro["celdas"]:
         assert celda["texto"] in textos
-    for nota in cuadro["notas"]:
-        assert all(p in textos for p in nota["texto"].split())
+    # En el plano van las notas cortas (2026-09-15); son las que se miden.
+    for nota in cuadro["notas_del_dibujo"]:
+        assert all(p in textos for p in nota.split())
     assert all(t in textos for t in mq.TEXTOS_PARA_EL_ESPACIO)
 
 
@@ -133,7 +134,7 @@ def test_se_maqueta_con_lo_que_ha_medido_autocad_y_no_con_arial(cliente):
         "estilo_texto": cuadro["estilo_texto"], "punto": [40.0, 10.0],
         "altura_minima": cuadro["altura_minima"],
         "celdas": [[c["fila"], c["columna"], c["texto"]] for c in cuadro["celdas"]],
-        "notas": [n["texto"] for n in cuadro["notas"]],
+        "notas": cuadro["notas_del_dibujo"],
         "textos_medidos": textos, "anchos_medidos": anchos,
     }
     m = cliente.post("/api/maquetar-cuadro", json=cuerpo).get_json()
@@ -150,7 +151,7 @@ def test_el_servidor_se_niega_sin_estilo_o_con_medidas_incompletas(cliente):
         "estilo_texto": cuadro["estilo_texto"], "punto": [40.0, 10.0],
         "altura_minima": cuadro["altura_minima"],
         "celdas": [[c["fila"], c["columna"], c["texto"]] for c in cuadro["celdas"]],
-        "notas": [n["texto"] for n in cuadro["notas"]],
+        "notas": cuadro["notas_del_dibujo"],
         "textos_medidos": cuadro["textos_a_medir"],
         "anchos_medidos": _medidas_falsas(cuadro["textos_a_medir"]),
     }
@@ -209,7 +210,7 @@ def test_el_comando_sin_estilo_lo_dice_y_no_dibuja_ni_mide():
     sin_estilo = comando.index('"motivo_sin_estilo"')
     assert sin_estilo < comando.index("(am:medir-textos textos estilo-texto)")
     assert comando.index("(am:medir-textos textos estilo-texto)") < comando.index(
-        "(am:maquetar bloque textos medidos punto cuadros estilo-texto)")
+        "(am:maquetar bloque textos medidos punto cuadros estilo-texto obstaculos zona)")
     assert comando.index("(am:maquetar bloque") < comando.index("(am:dibujar-cuadro m celdas)")
     assert "*am:fallo-de-la-medida*" in comando
 
