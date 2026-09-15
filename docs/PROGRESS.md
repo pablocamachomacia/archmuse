@@ -5,6 +5,85 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 · Actualizaciones automáticas por canal, firmadas (0.3.9, `.lsp` 3.8.0)
+
+PRD `docs/prd/2026-09-15-actualizaciones-automaticas.md`, encargado por Pablo con
+sus requisitos y aprobado en el mismo encargo («escribe el PRD y después
+impleméntalo»). **No se ha publicado nada:** ni push ni release.
+
+### Qué hay
+
+- **Firma** (`empaquetado/capa_b/firma.py`). Ed25519 en Python puro, que es la
+  referencia de la RFC 8032. Da los vectores de la RFC y coincide 20 de 20 con
+  `cryptography`; verificar tarda 3 ms. El `.archmuse` lleva dentro
+  `MANIFIESTO.json` (versión + SHA-256 de cada fichero) y `MANIFIESTO.firma`. No
+  se instala nada sin firma válida, **tampoco con doble clic**.
+- **Clave.** La privada vive fuera del repositorio, en
+  `~/.archmuse/firma/archmuse-ed25519.semilla`. La pública va en `firma.py`.
+  `.gitignore` cubre `*.semilla` y `.archmuse/`. `construir.py` se niega si la
+  clave está dentro del repositorio o si no es la de ArchMuse.
+- **Número automático.** `construir.py` toma la siguiente a la mayor de
+  `empaquetado/versiones_usadas.txt`, la escribe en `version.py` y en el bundle, y
+  la anota. Sin la clave no construye, y no gasta el número.
+- **Publicar** (`empaquetado/publicar.py`, no se ha ejecutado):
+  - canal prueba: `publicar.py 0.3.9`, que es `gh release create --prerelease`
+    tras verificar la firma;
+  - a estable: `publicar.py --promover 0.3.9`;
+  - `--mostrar` enseña la orden sin ejecutarla.
+- **Comprobar** (`empaquetado/capa_b/actualizaciones.py`). Al arrancar el
+  servidor, en un hilo, con 5 s de plazo: la lista de GitHub, la versión más alta
+  del canal que sea más nueva que la activa, descarga, verificación y
+  `actualizacion.json`. Si falla la red, GitHub o la firma, se borra el pendiente
+  y se apunta el motivo: sin aviso.
+  - «estable» sólo ve releases; «prueba» ve también prereleases.
+  - El canal está en `canal.txt` y se cambia con `actualizador --canal`.
+- **Instalar** (`actualizador --instalar-pendiente`): vuelve a verificar la firma
+  y usa `instalar`, con vuelta atrás como siempre.
+- **`.lsp` 3.8.0.** Enganchado a `S::STARTUP`, lee `actualizacion.json` sin red y
+  pregunta «Hay una actualización (x.y.z). ¿Instalar?»:
+  - una vez por sesión (`vl-bb`) y nunca con `CMDACTIVE` ≠ 0;
+  - la ventana se cierra sola a los 60 s;
+  - `ARCHMUSE-ACTUALIZAR` hace lo mismo a mano.
+
+### Medido
+
+- `tests/test_actualizaciones.py`, contra un GitHub simulado: versión nueva, igual
+  y más vieja; canal equivocado; firma de otra clave; paquete manipulado de cuatro
+  formas; sin red; GitHub caído (503); GitHub lento (se rinde en el plazo); la
+  vuelta de punta a punta; publicar; construir; la clave; el `.lsp`.
+- **Roto a propósito**, con `verificar` devolviendo siempre verdadero: fallan los
+  tests de otra clave, firma mala y publicar. Los de manipulación siguen en verde
+  porque los caza el manifiesto, que es otra defensa.
+- **La 0.3.9 construida, de verdad:**
+  - humo con el runtime: salud 200, medición 200, 0.3.9, nada de fuera;
+  - firma verificada con la clave REAL;
+  - contra un GitHub simulado en un árbol de mentira: comprobar → pendiente →
+    instalar pendiente → activa 0.3.9 con `.lsp` 3.8.0 en el bundle → volver a
+    0.3.8.
+- `ArchMuse-0.3.9.archmuse`, SHA-256
+  `12911267c67523b25407d0730149b9f0c969bc0957e839bc97c3043692e0b939`.
+- Suite entera, con la 0.3.9 ya construida: 2064 pasan, 39 saltados, 1 xfail, 0 fallos.
+
+### Decisiones tomadas sin preguntar
+
+- **Firma dentro del paquete** (manifiesto firmado), no en un fichero aparte: un
+  solo `.archmuse` vale igual por GitHub que por WhatsApp.
+- **Ed25519 en Python puro** y no `cryptography`: el runtime no la trae, y
+  meterla obligaría a reinstalar con un `.exe`.
+- **«Prueba» ve también releases estables**, no sólo prereleases.
+- **Sin red, se borra el pendiente anterior**, aunque ya estuviera verificado:
+  literal del encargo («no aparece ningún aviso»).
+- **El aviso sale en `S::STARTUP`**, con una ventana de `WScript.Shell` que se
+  cierra a los 60 s, y no al empezar ARCHMUSE, para no mezclarlo con un comando.
+
+> **Sin ejecutar en AutoCAD:** `S::STARTUP` con el paquete cargado por el
+> autoloader, `WScript.Shell.Popup` y lo que devuelve, `vl-bb-ref` y `vl-bb-set`.
+> **Arranque:** la primera 0.3.9 no llega sola. Las instalaciones de hoy (0.3.7,
+> 0.3.8) no saben comprobar, así que se instala una vez con doble clic, y el
+> actualizador viejo no mira la firma.
+
+---
+
 ## 2026-09-15 · ArchMuse no se lee a sí mismo (`.lsp` 3.7.2)
 
 **El aviso de Pablo.** En una segunda ejecución sobre el plano de referencia del
