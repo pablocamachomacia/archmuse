@@ -40,8 +40,11 @@ CON_RESPUESTA = {"TRASTERO": "interior"}
 # --- Los tres casos del criterio, con sus cifras --------------------------------
 
 def test_c14_tope_no_activo_el_ejemplo_de_v1plantas():
-    """interior 58,78 · exterior 7,54 → 50 % = 3,77 < 10 % = 5,88 → 62,55."""
-    assert pc.superficie_util_total(58.78, 7.54) == Decimal("62.55")
+    """interior 58,78 · exterior 7,54 → 50 % = 3,77 < 10 % = 5,88 → **62,56**.
+
+    Con `C-19` (2026-09-16) sobre las áreas sin redondear: 58,7837 + 7,5450 / 2 =
+    62,5562. Al firmarse `C-14` se calculaba con 58,78 y 7,54 y daba 62,55."""
+    assert pc.superficie_util_total(58.7837, 7.5450) == Decimal("62.56")
 
 
 def test_c14_tope_activo_se_suma_el_10_por_ciento_no_la_mitad():

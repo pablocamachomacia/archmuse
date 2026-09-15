@@ -416,23 +416,24 @@ que dejaba esta fila vacía.**
                     a) el 50 % de la útil exterior
                     b) el 10 % de la útil interior
 
-**El ejemplo con el que se firmó**, medido ese día en `v1plantas.dxf`: interior
-58,78 · exterior 7,54 · 50 % del exterior 3,77 · 10 % del interior 5,88 · gana el
-menor → **62,55 m²**.
+**El ejemplo**, medido en `v1plantas.dxf`: interior 58,78 · exterior 7,54 · 50 % del
+exterior 3,77 · 10 % del interior 5,88 · gana el menor → **62,56 m²**. Desde `C-19`
+(2026-09-16) la cuenta va sin redondear: 58,7837 + 7,5450 / 2 = 62,5562 → 62,56.
+*El día que se firmó `C-14` se calculaba sobre las cifras redondeadas y daba 62,55.*
 
 **Si la interior o la exterior no se pueden afirmar, el total tampoco**: fila
 vacía con su motivo. No se calcula sobre una cifra bloqueada.
 
 **Cómo se aplica** (`plantilla_cuadro.superficie_util_total` y `_total_util`):
 
-- Sobre **las dos cifras que escribe la tabla** en su fila de totales, ya
-  redondeadas a céntimos, para que quien la lea la rehaga a mano y le salga lo
-  mismo. *Decisión de ArchMuse, declarada, no del criterio.*
+- Sobre **la útil interior y la exterior sin redondear** (`C-19`, firmado el
+  2026-09-16). *Hasta ese día se calculaba sobre las dos cifras ya redondeadas de
+  la fila de totales, para que quien la leyera la rehiciera a mano; `C-19` lo
+  deroga.*
 - Resultado redondeado a céntimos **hacia arriba en el medio** (`ROUND_HALF_UP`,
-  en `Decimal`): la mitad de una exterior como 7,55 deja 3,775, y
-  58,78 + 3,775 = 62,555 → **62,56**. *Decisión de ArchMuse, declarada, no del
-  criterio: `C-14` no dice nada del redondeo.* Pendiente de que lo confirme el
-  arquitecto.
+  en `Decimal`). *Decisión de ArchMuse, declarada, no del criterio: ni `C-14` ni
+  `C-19` dicen cómo se redondea un medio.* Con áreas sin redondear un medio
+  exacto prácticamente no se da.
 - **Un lado sin ningún espacio** está afirmado y aporta cero: es el caso «sin
   exterior: 100 → 100» del criterio. Su celda de total sigue vacía con la nota
   de `D-13` (un total vacío no se escribe como cero), pero no bloquea.
@@ -443,7 +444,7 @@ vacía con su motivo. No se calcula sobre una cifra bloqueada.
 - Sin ningún espacio interior no hay total: vacía con motivo.
 
 **Cómo se guarda.** `tests/test_c14_total_util.py`: los tres casos del criterio
-con sus cifras (62,55 · 110 · 100), los mismos por la plantilla del fixture
+con sus cifras (62,56 · 110 · 100), los mismos por la plantilla del fixture
 sintético, los bloqueos, y un guardián que rehace el total desde lo escrito en la
 tabla en cinco escenarios y exige que coincida, o que esté vacío si algún lado
 está bloqueado.
@@ -1052,6 +1053,41 @@ cifras—.
 
 **Cómo se guarda.** `tests/test_rotulo_con_cifra_de_area.py` (sintético) y el test
 de orden de `tests/test_dos_vias_leen_igual.py`, ya sin xfail.
+
+---
+
+## C-19 · Los totales se calculan con las áreas sin redondear
+
+**Dictaminado por:** Pablo, 2026-09-16, siguiendo al arquitecto. **Criterio
+firmado.**
+
+**Qué dice.** Los totales se calculan con las áreas **sin redondear**, y sólo se
+redondea el resultado final a dos decimales: total interior, total exterior, el
+50 %/10 % de `C-14` y el total útil. **Aunque a mano la tabla no cuadre por un
+céntimo, así lo hace el arquitecto.**
+
+**El caso que lo motiva.** Una vivienda de su plano maestro: la tabla del
+arquitecto suma los campos de área sin redondear, y ArchMuse sumaba las cifras
+publicadas y se quedaba un céntimo por debajo.
+
+**Qué no cambia.** Cada pieza se sigue publicando redondeada a dos decimales. El
+redondeo de un medio exacto sigue siendo hacia arriba (decisión de ArchMuse,
+declarada en `C-14`).
+
+**Dónde se aplica.**
+- `medicion.ViviendaMedida`: la útil interior y la exterior, y la suma de las
+  piezas, sobre `PiezaMedida.area_cruda_m2`; la planta, sobre la suma sin
+  redondear de sus viviendas.
+- `plantilla_cuadro.construir`: los dos totales y `C-14` sobre las sumas sin
+  redondear.
+- `cuadro_superficies._celda_total`: sobre el área sin redondear de cada celda
+  calculada. Una cifra ya escrita en el plano o declarada por el arquitecto se
+  suma tal como está.
+
+**Cómo se guarda.** `tests/test_c19_totales_sin_redondear.py`: un plano sintético
+en el que cada pieza redondea hacia abajo, de modo que las dos formas de sumar dan
+distinto (41,00 frente a 41,01; útil 44,75 frente a 44,77), por la medición, por la
+tabla de ArchMuse y por el reparto sobre el cuadro.
 
 ---
 

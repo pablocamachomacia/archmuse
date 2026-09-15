@@ -5,6 +5,48 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-16 (2) · `C-19`: los totales, con las áreas sin redondear
+
+**Firmado por Pablo, siguiendo al arquitecto:** los totales se calculan con las
+áreas sin redondear y sólo se redondea el resultado final a dos decimales (total
+interior, total exterior, 50 %/10 % y total útil), aunque a mano la tabla no cuadre
+por un céntimo. Registrado en los criterios firmados.
+
+**Dónde se sumaba redondeado, medido leyendo el código:**
+- en la medición, `ViviendaMedida._suma` sumaba `PiezaMedida.area_m2`, ya redondeada;
+- en la tabla de ArchMuse, `plantilla_cuadro.construir` sumaba las filas publicadas y
+  aplicaba `C-14` sobre los dos totales ya redondeados;
+- en el reparto sobre el cuadro, `_celda_total` sumaba los textos de las celdas.
+
+Los tres suman ahora el área sin redondear (`PiezaMedida.area_cruda_m2`,
+`CeldaRelleno.area_cruda_m2`), y el resultado va a céntimos con el medio hacia
+arriba. Una cifra ya escrita en el plano o declarada por el arquitecto se suma tal
+como está.
+
+**Test antes del arreglo** (`tests/test_c19_totales_sin_redondear.py`, 3 en rojo):
+un plano sintético con cada pieza redondeando hacia abajo. Suma redondeada 41,00 ·
+7,50 · útil 44,75; sin redondear 41,01 · 7,51 · 44,77. Pasa por la medición, por la
+tabla y por el reparto.
+
+**Plano maestro del arquitecto, en una copia local fuera del repositorio** (clic por
+vivienda, como el comando): las cuatro viviendas que dio Pablo salen con el total
+interior y el útil que él dio. Las cifras no se anotan aquí: son de un cliente.
+
+**Cifras de referencia que cambian:**
+- fixture anónimo de tres viviendas: exterior de VT1/3 7,54 → 7,55; interior de
+  VT2/2 50,97 → 50,98; interior de VT3/3 59,11 → 59,10. La planta sigue en 168,86 ·
+  22,46;
+- fixture de solapes: exterior 7,54 → 7,55;
+- el plano real del ejemplo de `C-14`, medido en local: interior 58,78 y exterior
+  7,54, sin cambio; el útil pasa de 62,55 a 62,56. El ejemplo de `C-14` (criterios
+  y su test) dice ahora 62,56, con la cuenta sin redondear.
+
+**Sin comprobar:** `test_la_planta_real_de_tres_viviendas_se_mide_entera` sigue con
+las cifras de antes, porque se salta sin `ARCHMUSE_DXF_PLANTA` y ese plano no está
+en este equipo. Si se ejecuta con él, puede cambiar un céntimo como el fixture.
+
+---
+
 ## 2026-09-16 · La 0.3.13 no llegó sola: reiniciar AutoCAD no reinicia el servidor (`.lsp` 3.9.3)
 
 **Pablo:** «Sigo en la 0.3.12 después de reiniciar AutoCAD.»

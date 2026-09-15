@@ -52,6 +52,7 @@ import re
 import unicodedata
 import dataclasses
 from dataclasses import dataclass
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List, Optional, Sequence
 
 # `texto_dxf` no importa nada del proyecto: traerlo aquí no acopla este módulo
@@ -315,6 +316,10 @@ class CeldaRelleno:
     # ("ya estaba en el DXF" vs. "lo acaba de declarar el usuario") que no
     # deben confundirse en ningún consumidor futuro.
     declarado_por_usuario: bool = False
+    #: El área **sin redondear** de la que sale `texto`, cuando la ha medido
+    #: ArchMuse. Los totales se suman con ella (`C-19`); una cifra ya escrita en
+    #: el plano o declarada por el arquitecto no la tiene y se suma como está.
+    area_cruda_m2: Optional[float] = None
 
     def __post_init__(self) -> None:
         if self.estado not in _ESTADOS_VALIDOS:
@@ -399,7 +404,8 @@ def _celda_familia_simple(
     if len(coincidencias) == 0:
         return _celda_no_dibujada(campo, celda, nombre_familia)
     if len(coincidencias) == 1:
-        return CeldaRelleno(campo, _formatear_area(coincidencias[0].area_m2), CALCULADO, None, celda)
+        return CeldaRelleno(campo, _formatear_area(coincidencias[0].area_m2), CALCULADO, None, celda,
+                            area_cruda_m2=float(coincidencias[0].area_m2))
     return CeldaRelleno(
         campo, "BLOQUEADO", BLOQUEADO,
         "El cuadro solo tiene un hueco para «%s», pero se han encontrado %d estancias "
@@ -417,7 +423,8 @@ def _celda_salon_cocina(celda: Optional[CeldaCuadro], rooms: Sequence) -> CeldaR
     if not coincidencias:
         return _celda_no_dibujada("salon_cocina", celda, "salón» ni «cocina")
     total = sum(r.area_m2 for r in coincidencias)
-    return CeldaRelleno("salon_cocina", _formatear_area(total), CALCULADO, None, celda)
+    return CeldaRelleno("salon_cocina", _formatear_area(total), CALCULADO, None, celda,
+                        area_cruda_m2=float(total))
 
 
 def _celdas_familia_multiple(
@@ -479,7 +486,8 @@ def _celdas_familia_multiple(
                 asignacion[campo] = emparejadas[0]
                 pendientes.remove(emparejadas[0])
         if len(asignacion) == n_huecos:
-            return [CeldaRelleno(c, _formatear_area(asignacion[c].area_m2), CALCULADO, None, celdas.get(c))
+            return [CeldaRelleno(c, _formatear_area(asignacion[c].area_m2), CALCULADO, None, celdas.get(c),
+                                 area_cruda_m2=float(asignacion[c].area_m2))
                     for c in campos]
 
     motivo = (
@@ -582,7 +590,10 @@ def _celda_total(
             "%s no se escribe: el plano no dibuja ninguna estancia de este lado, y un "
             "total de 0,00 m² no es una superficie (D-13)." % etiqueta_total,
             celda, escribir=False)
-    valores = [(c, _valor_numerico(c)) for c in presentes]
+    # `C-19`: con el área sin redondear cuando la ha medido ArchMuse; una cifra ya
+    # escrita en el plano o declarada por el arquitecto, como está.
+    valores = [(c, c.area_cruda_m2 if c.area_cruda_m2 is not None else _valor_numerico(c))
+               for c in presentes]
     no_sumables = [c for c, v in valores if v is None]
     if no_sumables:
         return CeldaRelleno(
@@ -596,7 +607,8 @@ def _celda_total(
             celda, escribir=False,
         )
     total = sum(v for _c, v in valores)
-    return CeldaRelleno(campo, _formatear_area(total), CALCULADO, None, celda)
+    redondeado = float(Decimal(repr(float(total))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    return CeldaRelleno(campo, _formatear_area(redondeado), CALCULADO, None, celda)
 
 
 def superficie_en_m2(texto: Optional[str]) -> Optional[float]:

@@ -40,17 +40,20 @@ def test_la_planta_real_se_mide_entera_con_las_dos_superficies():
     assert med.piezas == 22
     medidas = {v.nombre: (v.util_interior_m2, v.util_exterior_m2)
                for v in med.viviendas}
+    # **`C-19` (2026-09-16): los totales, con las áreas sin redondear.** Hasta ese
+    # día sumaban las cifras publicadas y daban 7,54 · 50,97 · 59,11.
     assert medidas == {
-        "VT1/3": (58.78, 7.54),
-        "VT2/2": (50.97, 7.47),
-        "VT3/3": (59.11, 7.45),
+        "VT1/3": (58.78, 7.55),
+        "VT2/2": (50.98, 7.47),
+        "VT3/3": (59.10, 7.45),
     }
 
 
 def test_la_planta_real_publica_sus_dos_superficies_y_ninguna_suma():
     med = _medir(PLANTA)
-    assert med.util_interior_m2 == 168.86     # 58,78 + 50,97 + 59,11
-    assert med.util_exterior_m2 == 22.46      # 7,54 + 7,47 + 7,45
+    # La suma sin redondear de las tres viviendas (`C-19`); coincide con la de antes.
+    assert med.util_interior_m2 == 168.86
+    assert med.util_exterior_m2 == 22.46
     assert med.impedimentos == ()
     # El campo retirado el 2026-09-08 no ha vuelto por ninguna puerta.
     assert not hasattr(med, "total_util_m2")
@@ -98,7 +101,8 @@ def test_bloquear_las_cifras_no_borra_el_trabajo():
     # como exterior: 16,17. Sus dos nombres son de las piezas que contiene, así que
     # ahora no se llama de ninguna forma y no suma a ningún lado; sigue midiéndose
     # y la vivienda sigue bloqueada por los metros dibujados dos veces.
-    assert vivienda.suma_exterior_m2 == 7.54
+    # `C-19` (2026-09-16): sin redondear las piezas, 7,55; sumando las publicadas era 7,54.
+    assert vivienda.suma_exterior_m2 == 7.55
     assert vivienda.impedimentos and "dos veces" in vivienda.impedimentos[0]
 
 

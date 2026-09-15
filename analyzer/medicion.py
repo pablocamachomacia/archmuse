@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from shapely.geometry import Point
@@ -142,6 +143,13 @@ def _redondear(valor: float) -> float:
     return round(float(valor), DECIMALES)
 
 
+def redondear_total(valor: float) -> float:
+    """`C-19` (Pablo, 2026-09-16, siguiendo al arquitecto): un total se calcula
+    con las áreas sin redondear y sólo el resultado va a céntimos, con el medio
+    hacia arriba (decisión declarada en `C-14`)."""
+    return float(Decimal(repr(float(valor))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
 def _m2(valor: float) -> str:
     """Una superficie escrita como se escribe en un cuadro: con coma decimal.
 
@@ -161,6 +169,13 @@ class PiezaMedida:
     ambito: str
     area_m2: float
     capa: str
+    #: El área **sin redondear**, de la que salen los totales (`C-19`). `area_m2`
+    #: es la cifra publicada de la pieza. `None` en una pieza construida a mano.
+    area_cruda_m2: Optional[float] = None
+
+    @property
+    def area_para_totales(self) -> float:
+        return self.area_cruda_m2 if self.area_cruda_m2 is not None else self.area_m2
 
     @property
     def nombre(self) -> str:
@@ -228,8 +243,12 @@ class ViviendaMedida:
 
     # -- Sumas por ámbito ---------------------------------------------------
 
+    def _suma_cruda(self, ambito: str) -> float:
+        return sum(p.area_para_totales for p in self.piezas if p.ambito == ambito)
+
     def _suma(self, ambito: str) -> float:
-        return _redondear(sum(p.area_m2 for p in self.piezas if p.ambito == ambito))
+        """`C-19`: sobre las áreas sin redondear; sólo el resultado va a céntimos."""
+        return redondear_total(self._suma_cruda(ambito))
 
     @property
     def suma_interior_m2(self) -> float:
@@ -248,13 +267,13 @@ class ViviendaMedida:
 
     @property
     def suma_de_piezas_m2(self) -> float:
-        """La suma de las cifras **publicadas**, para que la tabla cuadre.
+        """La suma de las piezas **sin redondear**, redondeada al final (`C-19`).
 
-        Un arquitecto suma la columna a mano, y una tabla cuyo total no es la
-        suma de sus filas se lee como un error de cálculo aunque sea el
-        redondeo. Para detectar solapes se usa `suma_cruda_m2`, que es otra cosa.
+        Hasta el 2026-09-16 sumaba las cifras publicadas para que la columna
+        cuadrara a mano; el arquitecto suma las áreas sin redondear, y Pablo lo
+        firmó así. Para detectar solapes se usa `suma_cruda_m2`, que es otra cosa.
         """
-        return _redondear(sum(p.area_m2 for p in self.piezas))
+        return redondear_total(sum(p.area_para_totales for p in self.piezas))
 
     @property
     def diferencia_con_la_union_m2(self) -> float:
@@ -431,13 +450,13 @@ class Medicion:
         """Superficie útil interior de la planta, o `None` **con motivo en
         `impedimentos`**.
 
-        Suma las cifras **publicadas** de cada vivienda, no las magnitudes
-        crudas: el arquitecto suma la columna a mano y una planta cuya cifra no
-        es la suma de sus viviendas se lee como un error de cálculo.
+        Suma las áreas **sin redondear** de cada vivienda y redondea el resultado
+        (`C-19`, 2026-09-16); hasta ese día sumaba las cifras publicadas.
         """
         if self.impedimentos:
             return None
-        return _redondear(sum(v.util_interior_m2 or 0.0 for v in self.viviendas))
+        return redondear_total(sum(v._suma_cruda(AMBITO_INTERIOR) for v in self.viviendas
+                                   if v.util_interior_m2 is not None))
 
     @property
     def util_exterior_m2(self) -> Optional[float]:
@@ -445,7 +464,8 @@ class Medicion:
         interior — **y nunca se suman entre sí**."""
         if self.impedimentos:
             return None
-        return _redondear(sum(v.util_exterior_m2 or 0.0 for v in self.viviendas))
+        return redondear_total(sum(v._suma_cruda(AMBITO_EXTERIOR) for v in self.viviendas
+                                   if v.util_exterior_m2 is not None))
 
 
 # ---------------------------------------------------------------------------
@@ -471,6 +491,7 @@ def _pieza(room) -> PiezaMedida:
         ambito=ambito,
         area_m2=_redondear(room.polygon.area),
         capa=room.layer,
+        area_cruda_m2=float(room.polygon.area),
     )
 
 

@@ -87,10 +87,11 @@ def test_las_cifras_conocidas_de_la_planta_real_llegan_por_esta_ruta(client):
     cuerpo = _por_geometria(client, PLANTA).get_json()
     medidas = {v["vivienda"]: (v["util_interior_m2"], v["util_exterior_m2"])
                for v in cuerpo["viviendas"]}
+    # Con `C-19` (2026-09-16), las mismas que `tests/test_fixtures_reales.py`.
     assert medidas == {
-        "VT1/3": (58.78, 7.54),
-        "VT2/2": (50.97, 7.47),
-        "VT3/3": (59.11, 7.45),
+        "VT1/3": (58.78, 7.55),
+        "VT2/2": (50.98, 7.47),
+        "VT3/3": (59.10, 7.45),
     }
     assert cuerpo["superficies_del_plano"]["util_interior_m2"] == 168.86
     assert cuerpo["superficies_del_plano"]["util_exterior_m2"] == 22.46

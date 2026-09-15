@@ -236,12 +236,12 @@ def superficie_util_total(interior_m2: float, exterior_m2: float) -> Decimal:
     """`C-14`: la interior más el menor entre la mitad de la exterior y el 10 %
     de la interior.
 
-    **Se calcula sobre las dos cifras que escribe la tabla**, ya redondeadas a
-    céntimos, no sobre la suma sin redondear: así quien la lea puede rehacerla a
-    mano con lo que tiene delante y le sale lo mismo. El resultado se redondea a
-    céntimos **hacia arriba en el medio** (`ROUND_HALF_UP`): la mitad de una
-    exterior impar deja un tercer decimal (7,55 → 3,775). *Las dos cosas son
-    decisión mía, declarada y sin firmar*; `C-14` no dice nada del redondeo.
+    **Se calcula sobre la interior y la exterior sin redondear** (`C-19`, firmado
+    el 2026-09-16, siguiendo al arquitecto): sólo el resultado se redondea, aunque
+    a mano no se pueda rehacer exacto con las cifras de la tabla. Hasta ese día se
+    calculaba sobre las cifras ya redondeadas. El redondeo es a céntimos **hacia
+    arriba en el medio** (`ROUND_HALF_UP`), *decisión declarada*: ni `C-14` ni
+    `C-19` dicen cómo se redondea un medio.
 
     Decimal y no `float`: `58,78 + 3,77` en coma flotante es `62.550000000000004`,
     y un redondeo en el medio no puede depender de eso."""
@@ -537,6 +537,8 @@ def construir(doc, plano, nombre_vivienda: str,
     notas = _Notas()
     filas: Dict[str, List[FilaDePieza]] = {INTERIOR: [], EXTERIOR: []}
     rooms: Dict[str, List] = {INTERIOR: [], EXTERIOR: []}
+    #: El área de cada fila **sin redondear**: de ahí salen los totales (`C-19`).
+    crudas: Dict[str, List[float]] = {INTERIOR: [], EXTERIOR: []}
     incompleto = {INTERIOR: False, EXTERIOR: False}
     preguntas: Dict[str, List[str]] = {}
     sin_fila: List[str] = []
@@ -584,6 +586,7 @@ def construir(doc, plano, nombre_vivienda: str,
                 continue
         reclasificadas.append(dataclasses.replace(pieza, familia=familia, ambito=ambito))
         rooms[ambito].append(room)
+        crudas[ambito].append(float(room.polygon.area))
         valor = _m2(pieza.area_m2)
         if es_superficie_cero(valor):
             valor = ""
@@ -620,12 +623,14 @@ def construir(doc, plano, nombre_vivienda: str,
             sumandos[ambito] = 0.0
         else:
             motivo = None
-            cifra = round(sum(f.area_m2 for f in filas[ambito]), 2)
-            total = _m2(cifra)
+            # `C-19`: la suma de las áreas sin redondear; sólo el resultado va a
+            # céntimos. A mano la columna puede no cuadrar por un céntimo.
+            cruda = sum(crudas[ambito])
+            total = _m2(Decimal(repr(cruda)).quantize(_CENTESIMA, rounding=ROUND_HALF_UP))
             if es_superficie_cero(total):
                 motivo, total = "sus cifras suman cero y eso no es una superficie (D-13).", ""
             else:
-                sumandos[ambito] = cifra
+                sumandos[ambito] = cruda
         if motivo:
             notas.add(etiqueta, motivo)
             valores_de_total[ambito] = ""
