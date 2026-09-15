@@ -5,6 +5,58 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 · Plano grande: de más de 5 minutos a unos 25 s, y nunca en silencio (`.lsp` 3.8.1)
+
+**El caso (Pablo, AutoCAD).** Un plano de 677 polilíneas en «00 areas» (55 sin
+flag de cerrada): ARCHMUSE colgado más de cinco minutos; al final dijo
+«Servidor 0.3.9 · comando 3.8.0», no dibujó nada y no dijo por qué.
+
+**Medido, no supuesto.**
+
+- **El `.lsp` no era.** Core Console sobre una copia del plano: `am:recolectar`
+  6-8 s (9.220 polilíneas de otras capas, 6.280 textos). La hipótesis de un
+  `strcat` cuadrático quedó descartada al medirla.
+- **El servidor tardaba 413 s** con el envío real (cProfile). Dos culpables:
+  `parser.match_label_to_room` y `_capas_de_rotulo` creaban un `Point` por cada
+  pareja recinto × texto (28 millones), y `evaluator.group_rooms_by_unit_label`
+  —que el cuadro llama una vez por vivienda— otros 6,4 millones.
+- **Arreglo, con el mismo resultado:** un `STRtree` de los rótulos en el parser
+  (`_IndiceDeRotulos`, mismos candidatos y en el mismo orden) y las distancias a
+  los rótulos de vivienda con numpy, desempatando con la distancia de shapely de
+  siempre cuando dos quedan iguales (`_rotulo_mas_cercano`). Los 260 tests de
+  agrupación, rótulos y golden, sin tocar.
+- **Ahora:** envío real 17 s de servidor (+6-8 s de lectura en AutoCAD ≈ 25 s);
+  plano sintético del mismo tamaño 11 s. `tests/test_plano_grande.py` lo genera
+  con ezdxf —nada del plano real entra en el repo— y exige menos de 20 s.
+- **Queda leer el plano tres veces por petición** (medición, PDF y cuadro).
+  No se ha tocado: con lo de arriba ya se cumple el objetivo, y cachearlo
+  cambia más código del que justifica.
+
+**Por qué acabó en silencio — hipótesis, no reproducida en AutoCAD.** El
+servidor sí tenía qué dibujar: 27 cuadros y 7 viviendas indistinguibles en la
+respuesta real. Todas las salidas del comando tras la versión imprimen algo,
+salvo una: el `*error*` se callaba ante un Esc. Con la interfaz bloqueada cinco
+minutos, el Esc de quien cree que se ha colgado se procesa al llegar la
+respuesta. Ahora un Esc dice «Cancelado con Esc.» y sólo se calla el `(exit)`
+propio, que ya ha dicho el motivo. Guardián:
+`tests/test_archmuse_nunca_acaba_en_silencio.py` (roto a propósito dos veces:
+con `*CANCEL*` otra vez en la lista muda y con un `(exit)` sin mensaje).
+
+**Dice en qué está.** «Leyendo el dibujo…» antes de leer, y la petición es
+asíncrona: se espera a trozos de un segundo y cada cinco dice «Sigo midiendo… N
+s». **Probado en Core Console** contra un servidor que tarda 12 s (avisos a los
+5 y 10 s, respuesta 200), con un plazo agotado («el servidor no ha contestado en
+4 s») y sin servidor (error de conexión). **Sin probar en la interfaz de
+AutoCAD:** que la línea de comandos se repinte con el `_.DELAY 1`, y que un Esc
+durante la espera llegue al `*error*`.
+
+**Carpetas temporales.** Los tests dejaban `archmuse_test_*` en `%TEMP%`: se
+borraron 6.009. Ahora las pide `tests/_carpetas_temporales.py`, que borra las
+suyas al terminar aunque un test falle; guardián
+`tests/test_no_deja_carpetas_temporales.py`.
+
+---
+
 ## 2026-09-15 · Actualizaciones automáticas por canal, firmadas (0.3.9, `.lsp` 3.8.0)
 
 PRD `docs/prd/2026-09-15-actualizaciones-automaticas.md`, encargado por Pablo con
