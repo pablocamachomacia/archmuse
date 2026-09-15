@@ -282,9 +282,14 @@ def test_c12_el_lsp_manda_las_otras_capas_sin_color_y_sin_decidir():
     assert "(0 . \\\"LWPOLYLINE\\\")" in seleccion.replace('"', '\\"')
     assert "(410 . \\\"Model\\\")" in seleccion.replace('"', '\\"')
     assert "(8 " not in seleccion, "no filtra por capa en el ssget: salta la de recintos en el bucle"
-    recolectar = _funcion_lsp("am:recolectar")
-    assert "(am:otras-polilineas capa)" in recolectar
-    assert '\\"otras_polilineas\\":[' in recolectar
+    # Desde la 3.9.0 (un clic, una tabla) no las recoge `am:recolectar`: el comando
+    # las pide después con las zonas del servidor, y `am:con-vivienda` las envía.
+    assert "construida" not in _funcion_lsp("am:caja-corta-zona-p").lower()
+    comando = _funcion_lsp("c:ARCHMUSE")
+    assert "(am:otras-polilineas capa (am:en-cuatros (am:numeros-tras eleccion \\\"zonas\\\" 0))" \
+        in comando.replace('"', '\\"')
+    assert '\\"otras_polilineas\\":[' in _funcion_lsp("am:con-vivienda")
+    assert "otras_polilineas" not in _funcion_lsp("am:recolectar")
 
 
 def test_c12_el_payload_de_otras_capas_no_trae_color():

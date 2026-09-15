@@ -34,6 +34,7 @@ DICEN_EL_MOTIVO = {
     "am:elegir-capa",        # «no hay ni una polilínea», «… no es ninguna de las de arriba»
     "am:recolectar",         # «no hay ninguna polilínea en la capa …»
     "am:recintos-en-xref-p", # «NO MIDO ESTE DIBUJO…»
+    "am:elegir-por-clic",    # la duda, la distancia o C-13 que redacta el servidor (3.9.0)
 }
 
 

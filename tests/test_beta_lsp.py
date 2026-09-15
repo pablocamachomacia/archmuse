@@ -123,7 +123,9 @@ def test_la_rama_c_espera_con_margen_sobre_lo_medido_en_una_maquina_lenta():
 
 
 def test_la_rama_c_se_intenta_una_sola_vez_y_solo_si_no_contesta_nadie():
-    cuerpo = _defun("am:post")
+    # Desde la 3.9.0 la vive `am:post-a`, que sirve a las dos peticiones del clic.
+    assert "(am:post-a (am:url) cuerpo)" in _defun("am:post")
+    cuerpo = _defun("am:post-a")
     assert cuerpo.count("(am:levantar-servidor)") == 1
     assert "(= (type r) 'STR)" in cuerpo.split("(am:levantar-servidor)")[0]
 

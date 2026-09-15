@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.8.1")
-(setq *am:version*  "3.8.1 (2026-09-15, dice en qué está y nunca acaba en silencio)")
+(setq *am:version-corta* "3.9.0")
+(setq *am:version*  "3.9.0 (2026-09-15, un clic, una tabla)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -748,13 +748,53 @@
   (setq *am:celdas-enviadas* n)
   (strcat res "]"))
 
-(defun am:otras-polilineas (capa / ss i ename datos flags cerrada json primero n)
+(defun am:en-cuatros (lista / res)
+  ;; `(x0 y0 x1 y1 x0 y0 …)` -> `((x0 y0 x1 y1) …)`.
+  (setq res nil)
+  (while (and lista (nth 3 lista))
+    (setq res   (cons (list (nth 0 lista) (nth 1 lista) (nth 2 lista) (nth 3 lista)) res)
+          lista (cdr (cdr (cdr (cdr lista))))))
+  (reverse res))
+
+(defun am:en-la-lista-p (texto lista / res)
+  ;; ¿Está `texto` en `lista`, sin mirar mayúsculas?
+  (setq res nil)
+  (foreach elemento lista
+    (if (= (strcase elemento) (strcase texto)) (setq res T)))
+  res)
+
+(defun am:caja-corta-zona-p (datos zonas / x0 x1 y0 y1 res)
+  ;; ¿La caja de los vértices (código 10) de `datos` corta alguna zona? La misma
+  ;; prueba que `vivienda_en_punto.corta_alguna_zona` en el servidor.
+  (setq x0 nil res nil)
+  (foreach par datos
+    (if (= 10 (car par))
+      (if x0
+        (progn
+          (if (< (cadr par) x0) (setq x0 (cadr par)))
+          (if (> (cadr par) x1) (setq x1 (cadr par)))
+          (if (< (caddr par) y0) (setq y0 (caddr par)))
+          (if (> (caddr par) y1) (setq y1 (caddr par))))
+        (setq x0 (cadr par) x1 (cadr par) y0 (caddr par) y1 (caddr par)))))
+  (if x0
+    (foreach z zonas
+      (if (and (<= x0 (nth 2 z)) (>= x1 (nth 0 z)) (<= y0 (nth 3 z)) (>= y1 (nth 1 z)))
+        (setq res T))))
+  res)
+
+(defun am:otras-polilineas (capa zonas enteras / ss i ename datos flags cerrada json primero n)
   ;; `C-12` (firmado el 2026-09-13): la superficie construida cerrada es la
   ;; polilínea que el arquitecto ROTULA, y puede estar en otra capa que la de
-  ;; recintos. Se mandan todas las LWPOLYLINE del espacio modelo que no son de
-  ;; esa capa, en crudo: capa, flag y vértices. **Sin color**: la construida no
-  ;; se reconoce por color, ni como respaldo. Cuál es la rotulada lo decide el
-  ;; servidor (`plantilla_cuadro.medir_construida`), no este script.
+  ;; recintos. Se mandan LWPOLYLINE del espacio modelo que no son de esa capa,
+  ;; en crudo: capa, flag y vértices. **Sin color**: la construida no se reconoce
+  ;; por color, ni como respaldo. Cuál es la rotulada lo decide el servidor
+  ;; (`plantilla_cuadro.medir_construida`), no este script.
+  ;;
+  ;; **Sólo las que pide el servidor** (3.9.0, un clic una tabla, `C-17`
+  ;; propuesto): las que cortan alguna de sus `zonas` —`((x0 y0 x1 y1) …)`, en
+  ;; unidades de dibujo— y todas las de las capas `enteras`. Qué zonas son lo
+  ;; decide el servidor; aquí se comparan números. Medido el 2026-09-15 en un
+  ;; maestro de 9.220 polilíneas: 4,9 s mandándolas todas, 0,44 s mirando su caja.
   ;; Devuelve (json . cuántas).
   (setq ss (ssget "_X" '((0 . "LWPOLYLINE") (410 . "Model")))
         json "" primero T i 0 n 0)
@@ -762,7 +802,9 @@
     (while (< i (sslength ss))
       (setq ename (ssname ss i)
             datos (entget ename))
-      (if (/= (strcase (cdr (assoc 8 datos))) (strcase capa))
+      (if (and (/= (strcase (cdr (assoc 8 datos))) (strcase capa))
+               (or (am:en-la-lista-p (cdr (assoc 8 datos)) enteras)
+                   (am:caja-corta-zona-p datos zonas)))
         (progn
           (setq flags (if (assoc 70 datos) (cdr (assoc 70 datos)) 0)
                 cerrada (if (= 1 (logand flags 1)) "true" "false"))
@@ -779,8 +821,10 @@
 
 (defun am:recolectar (capa cuadros / ss i ename recintos textos datos tipo txt pt
                                     primero json color cerrada flags enviadas
-                                    sin-flag celdas-cuadro n-celdas otras)
-  ;; Devuelve el cuerpo JSON completo, o nil si no hay nada que medir.
+                                    sin-flag celdas-cuadro n-celdas)
+  ;; Devuelve el cuerpo JSON, o nil si no hay nada que medir. **Sin las
+  ;; polilíneas de otras capas** (3.9.0): ésas se piden después, sólo las de las
+  ;; zonas que diga el servidor (`am:otras-polilineas`, `am:con-vivienda`).
   ;;
   ;; **Se mandan TODAS las polilíneas de la capa, cerradas o no, y decide el
   ;; servidor.** Antes se filtraba aquí con `(-4 . "&") (70 . 1)`, que es lo
@@ -832,9 +876,6 @@
         (princ (strcat ", " (itoa sin-flag) " de ellas con el flag de cerrada "
                        "SIN poner (las recupera el servidor si cierran)")))
       (princ ".")
-      (setq otras (am:otras-polilineas capa))
-      (princ (strcat "\nEnvío " (itoa (cdr otras)) " polilínea(s) de otras capas: "
-                     "la construida es la que tú rotulas, y puede estar en otra (C-12)."))
 
       ;; TODOS los textos del dibujo, sin filtrar por capa y sin emparejar. El
       ;; servidor decide de qué capas puede salir un rótulo (`_capas_de_rotulo`)
@@ -908,7 +949,6 @@
         (strcat "{\"insunits\":" (itoa (getvar "INSUNITS"))
                 ",\"capa_de_recintos\":" (am:json-cad capa)
                 ",\"recintos\":[" recintos "]"
-                ",\"otras_polilineas\":[" (car otras) "]"
                 ",\"textos\":[" textos "]"
                 ",\"cuadros\":" celdas-cuadro "}"))
       json)))
@@ -971,6 +1011,11 @@
 
 (defun am:url ()
   (strcat (am:url-base) "/api/medicion-geometria?formato=lisp"))
+
+
+(defun am:url-vivienda ()
+  ;; La primera petición de un clic (3.9.0): de qué vivienda es.
+  (strcat (am:url-base) "/api/vivienda-en-punto?formato=lisp"))
 
 
 (defun am:verdadero-p (v)
@@ -1202,11 +1247,17 @@
           nil)))))
 
 
-(defun am:post (cuerpo / r)
-  (setq r (am:peticion "POST" (am:url) cuerpo 300000))
+(defun am:post (cuerpo)
+  (am:post-a (am:url) cuerpo))
+
+
+(defun am:post-a (url cuerpo / r motivo)
+  ;; POST a `url`. Devuelve el texto de la respuesta, o nil **después de decir
+  ;; por qué**.
+  (setq r (am:peticion "POST" url cuerpo 300000))
   ;; Nadie ha contestado: la rama C, una vez, y se vuelve a intentar.
   (if (and (= (type r) 'STR) (am:levantar-servidor))
-    (setq r (am:peticion "POST" (am:url) cuerpo 300000)))
+    (setq r (am:peticion "POST" url cuerpo 300000)))
   (cond
     ((= r 0)
       ;; En AutoCAD LT `vlax-create-object` devuelve nil siempre: se dice, en
@@ -1224,9 +1275,16 @@
         (princ "\n  ¿Está levantado el servidor? En desarrollo: doble clic en «ArchMuse» del escritorio."))
       (princ (strcat "\n  Detalle: " r))
       nil)
+    ((= (car r) 404)
+      ;; Un servidor anterior al comando no tiene la ruta: se dice eso, y no un
+      ;; «error 404» con una página HTML detrás.
+      (princ "\nTu servidor ArchMuse no conoce esta petición: es una versión anterior a este comando.")
+      (princ "\n  Cierra AutoCAD y vuelve a abrirlo (o reinicia el servidor) y teclea ARCHMUSE otra vez.")
+      nil)
     ((/= (car r) 200)
+      (setq motivo (am:valor-tras (cdr r) "motivo" 0))
       (princ (strcat "\nArchMuse ha devuelto un error " (itoa (car r)) ":"))
-      (princ (strcat "\n  " (cdr r)))
+      (princ (strcat "\n  " (if (and motivo (/= motivo "nil")) motivo (cdr r))))
       nil)
     (T (cdr r))))
 
@@ -1516,12 +1574,73 @@
           (substr geometria 2)))
 
 
+(defun am:capas-del-dibujo ( / registro res)
+  ;; Los nombres de las capas del dibujo, en JSON. El servidor mira si alguna es
+  ;; de clasificación (`AM_*`) y la pide entera; aquí no se decide nada.
+  (setq res "" registro (tblnext "LAYER" T))
+  (while registro
+    (if (/= res "") (setq res (strcat res ",")))
+    (setq res      (strcat res (am:json-cad (cdr (assoc 2 registro))))
+          registro (tblnext "LAYER")))
+  (strcat "[" res "]"))
+
+
+(defun am:con-clic (geometria punto capas enviadas otras)
+  ;; El cuerpo de la primera petición: la geometría, el punto del clic y las
+  ;; capas del dibujo. `otras` son las polilíneas de las capas que el servidor
+  ;; haya pedido enteras, si las ha pedido.
+  (strcat "{\"punto\":[" (am:json-num (car punto)) "," (am:json-num (cadr punto)) "],"
+          "\"capas_del_dibujo\":" capas ","
+          "\"capas_enteras_enviadas\":" (if enviadas "true" "false") ","
+          "\"otras_polilineas\":[" otras "],"
+          (substr geometria 2)))
+
+
+(defun am:con-vivienda (geometria otras vivienda)
+  ;; La geometría de la segunda petición: con las polilíneas de las zonas y la
+  ;; vivienda que eligió la primera, tal como la redactó el servidor.
+  (strcat "{\"otras_polilineas\":[" otras "],\"vivienda\":" vivienda ","
+          (substr geometria 2)))
+
+
+(defun am:elegir-por-clic (capa geometria punto / capas r enteras motivo aviso)
+  ;; **Un clic, una tabla** (3.9.0; PRD 2026-09-15; `C-17`, PROPUESTO, PENDIENTE
+  ;; DE FIRMA). Pregunta al servidor de qué vivienda es el clic. Devuelve su
+  ;; respuesta si ha elegido una, o nil **después de decir por qué**: el
+  ;; servidor redacta la duda, la distancia o `C-13`; aquí sólo se enseña.
+  (setq capas (am:capas-del-dibujo))
+  (princ "\nBusco qué vivienda has marcado…")
+  (setq r (am:post-a (am:url-vivienda) (am:con-clic geometria punto capas nil "")))
+  ;; Las capas de clasificación cambian de dónde salen los recintos: si el
+  ;; servidor las pide, van enteras y se vuelve a preguntar, una vez.
+  (if (and r (setq enteras (am:cadenas-tras r "pide_capas_enteras" 0)))
+    (progn
+      (setq motivo (am:valor-tras r "motivo" 0))
+      (if motivo (princ (strcat "\n" motivo)))
+      (setq r (am:post-a (am:url-vivienda)
+                         (am:con-clic geometria punto capas T
+                                      (car (am:otras-polilineas capa nil enteras)))))))
+  (cond
+    ((null r) nil)
+    ((am:pos "(\"ok\" . T)" r 0)
+      (setq aviso (am:valor-tras r "aviso" 0))
+      (princ (strcat "\n" (if aviso aviso "El servidor ha elegido una vivienda.")))
+      r)
+    (T
+      (setq motivo (am:valor-tras r "motivo" 0))
+      (princ (strcat "\n\n" (if (and motivo (/= motivo "nil"))
+                              motivo
+                              "El servidor no ha elegido ninguna vivienda y no ha dicho por qué: avisa con esta línea.")))
+      (am:log "C-17: no se mide por el clic")
+      nil)))
+
+
 (defun am:pedir-punto ( / p)
-  ;; Un punto: la esquina de arriba a la izquierda del cuadro de ArchMuse. **El
+  ;; **Un clic, una tabla** (3.9.0): el punto elige la vivienda —la más cercana,
+  ;; `C-17` propuesto— y es la esquina de arriba a la izquierda de su tabla. **El
   ;; tamaño lo pone el servidor** (Pablo, 2026-09-13: «el arquitecto no debe
-  ;; adivinar cuánto mide la tabla»). Hasta la 3.3.0 se pedía una ventana de dos
-  ;; esquinas y, si era pequeña, había que marcar otra. nil si cancela.
-  (setq p (getpoint "\nMarca la esquina de arriba a la izquierda del cuadro de ArchMuse: "))
+  ;; adivinar cuánto mide la tabla»). nil si cancela.
+  (setq p (getpoint "\nHaz clic al lado de la vivienda que quieres medir (ahí irá la esquina de arriba a la izquierda de su tabla): "))
   (if p (list (car p) (cadr p)) nil))
 
 
@@ -2317,7 +2436,7 @@
                       trozos ini fin bloque dibujadas tabla
                       filas cols notas i n
                       punto geometria ambitos alineado nombres elegida m intentos
-                      estilo-texto textos medidos)
+                      estilo-texto textos medidos eleccion otras)
 
   (defun *error* (msg)
     ;; **ArchMuse nunca acaba en silencio** (Pablo, 2026-09-15). Tres casos:
@@ -2449,6 +2568,22 @@
   (setq geometria (am:recolectar capa cuadros))
   (if (null geometria)
     (progn (setvar "CMDECHO" eco) (princ) (exit)))
+
+  ;; 1b. **Un clic, una tabla** (3.9.0; PRD 2026-09-15; `C-17`, PROPUESTO,
+  ;;     PENDIENTE DE FIRMA). Primero, de qué vivienda es el clic; si hay duda, el
+  ;;     servidor lo dice y no se mide. Después, de las demás capas sólo viajan
+  ;;     las polilíneas de las zonas que él pide: las que pueden cambiar una cifra
+  ;;     de esa vivienda (`C-12`). Los recintos y los textos van enteros: de ellos
+  ;;     sale qué vivienda es cada recinto, y recortarlos cambiaría las cifras.
+  (setq eleccion (am:elegir-por-clic capa geometria punto))
+  (if (null eleccion)
+    (progn (setvar "CMDECHO" eco) (princ) (exit)))
+  (setq otras (am:otras-polilineas capa (am:en-cuatros (am:numeros-tras eleccion "zonas" 0))
+                                   (am:cadenas-tras eleccion "capas_enteras" 0))
+        geometria (am:con-vivienda geometria (car otras)
+                                   (am:valor-tras eleccion "vivienda_json" 0)))
+  (princ (strcat "\nEnvío " (itoa (cdr otras)) " polilínea(s) de otras capas: las que están "
+                 "al alcance de un rótulo de construida (C-12)."))
   (setq ambitos nil alineado nil
         cuerpo (am:con-dibujo geometria cuadros punto ambitos))
 
@@ -2573,10 +2708,15 @@
           (princ "\nanterior a esa función. Ha medido bien, pero no dibuja.")
           (princ "\n  Reinícialo y vuelve a teclear ARCHMUSE."))
         (T
-          (princ "\n\nEl servidor ha medido y no ha devuelto ningún cuadro que dibujar.")
-          (if (am:valor-tras respuesta "motivo" 0)
-            (princ (strcat "\n  " (am:valor-tras respuesta "motivo" 0))))
-          (princ "\n  Esto es un fallo suyo, no tuyo: avisa con esta línea.")))
+          ;; El motivo de la tabla, leído en `repartos` y no en toda la respuesta:
+          ;; allí hay cientos de «motivo» de otras cosas. Con el clic (3.9.0) puede
+          ;; ser que la vivienda no sea la elegida (`C-17`).
+          (setq r (am:valor-tras (am:zona-de-repartos respuesta) "motivo" 0))
+          (if (and r (/= r "nil"))
+            (princ (strcat "\n\nNo dibujo ningún cuadro: " r))
+            (progn
+              (princ "\n\nEl servidor ha medido y no ha devuelto ningún cuadro que dibujar.")
+              (princ "\n  Esto es un fallo suyo, no tuyo: avisa con esta línea.")))))
       (setvar "CMDECHO" eco) (princ) (exit)))
 
   ;; 2c. **Interior o exterior**, si el servidor lo pregunta (decisión 4 de
