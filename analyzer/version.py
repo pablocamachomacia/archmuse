@@ -25,8 +25,9 @@ import os
 import re
 from typing import Optional
 
-#: La versión cuando se ejecuta sobre el repositorio, sin paquete. Se sube a
-#: mano al preparar un `.archmuse`, igual que `*am:version*` en el `.lsp`.
+#: La versión cuando se ejecuta sobre el repositorio, sin paquete. **La pone
+#: `empaquetado/construir.py`** al construir (desde el 2026-09-15): la siguiente
+#: a la mayor de `empaquetado/versiones_usadas.txt`. A mano ya no.
 #:
 #: **Regla (Pablo, 2026-09-14): cada build que sale de esta máquina lleva un
 #: número que ningún otro build ha tenido.** Hasta ese día hubo tres 0.3.1
@@ -39,7 +40,7 @@ from typing import Optional
 #: del 15/09 con el símbolo) y 0.3.6 lo usó el paquete de ensayo: sigue 0.3.7.
 #: 0.3.7 es el instalador del primer usuario (cb1cf11, `.lsp` 3.7.0). Con el
 #: `.lsp` 3.7.1 ya no es ese build, así que el repositorio pasa a 0.3.8.
-VERSION_DEL_REPOSITORIO = "0.3.8"
+VERSION_DEL_REPOSITORIO = "0.3.9"
 
 _RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _FICHERO = os.path.join(_RAIZ, "version.json")
