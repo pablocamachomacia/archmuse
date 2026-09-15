@@ -38,6 +38,10 @@ CANALES = ("estable", "prueba")
 #: Para pedir la lista a GitHub. Corto: va en un hilo del servidor, pero tampoco
 #: tiene sentido tener un hilo esperando a una red que no está.
 PLAZO_S = 5.0
+#: Cada cuánto vuelve a mirar un servidor en marcha. **Medido el 2026-09-15 en la
+#: instalación de Pablo:** el servidor 0.3.9 comprobó al arrancar y no volvió a
+#: mirar; la 0.3.12 se publicó horas después y no la vio nadie.
+INTERVALO_S = 60 * 60.0
 #: Para descargar un paquete (~1 MB).
 PLAZO_DESCARGA_S = 60.0
 MAX_BYTES_LISTA = 2_000_000
@@ -60,6 +64,29 @@ def fichero_pendiente() -> str:
 
 def carpeta_descargas() -> str:
     return os.path.join(local.base(), "descargas")
+
+
+def fichero_comprobacion() -> str:
+    """`comprobacion.json`: el resultado de la última comprobación, sea el que sea.
+    Lo lee el `.lsp` al cargar para dejarlo en su registro (3.9.1)."""
+    return os.path.join(local.base(), "comprobacion.json")
+
+
+def _escribir_comprobacion(resultado: str, instalada: str, nombre_canal: str,
+                           version: Optional[str] = None) -> None:
+    """Un JSON plano y **sin nulos**: el `.lsp` lo lee buscando comillas, y un
+    `null` le haría leer la clave siguiente como valor."""
+    datos = {"resultado": resultado, "instalada": instalada, "canal": nombre_canal,
+             "comprobado": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    if version:
+        datos["version"] = version
+    try:
+        temporal = fichero_comprobacion() + ".tmp"
+        with open(temporal, "w", encoding="utf-8") as f:
+            json.dump(datos, f)
+        os.replace(temporal, fichero_comprobacion())
+    except OSError as e:
+        local.registrar("actualizaciones: no se ha podido escribir %s: %s" % (fichero_comprobacion(), e))
 
 
 # ── canal ───────────────────────────────────────────────────────────────────
@@ -170,16 +197,29 @@ def comprobar(plazo: float = PLAZO_S) -> Optional[dict]:
         eleccion = elegir(releases, nombre_canal, instalada)
     except Exception as e:  # noqa: BLE001 - la red y GitHub fallan de mil formas
         borrar_pendiente()
+        _escribir_comprobacion("error", instalada, nombre_canal)
         local.registrar("actualizaciones: no se ha podido comprobar el canal «%s» (%s: %s). "
                         "Sin aviso." % (nombre_canal, type(e).__name__, e))
         return None
     if eleccion is None:
         borrar_pendiente()
+        _escribir_comprobacion("al_dia", instalada, nombre_canal)
         local.registrar("actualizaciones: la %s es la más reciente del canal «%s»"
                         % (instalada, nombre_canal))
         return None
 
     version, url = eleccion
+    # **La misma versión ya descargada y verificada no se vuelve a bajar**: con una
+    # comprobación cada hora sería un mega por hora, y un fallo de la descarga
+    # borraría una actualización que ya estaba lista.
+    ya = leer_pendiente()
+    if ya and ya.get("version") == version:
+        try:
+            if firma.verificar_paquete(ya["fichero"]) == version:
+                _escribir_comprobacion("actualizacion", instalada, nombre_canal, version)
+                return ya
+        except Exception:  # noqa: BLE001 - si ya no verifica, se vuelve a descargar
+            pass
     os.makedirs(carpeta_descargas(), exist_ok=True)
     destino = os.path.join(carpeta_descargas(), "ArchMuse-%s.archmuse" % version)
     parte = destino + ".parte"
@@ -193,6 +233,7 @@ def comprobar(plazo: float = PLAZO_S) -> Optional[dict]:
         os.replace(parte, destino)
     except Exception as e:  # noqa: BLE001
         borrar_pendiente()
+        _escribir_comprobacion("error", instalada, nombre_canal)
         for resto in (parte,):
             try:
                 os.remove(resto)
@@ -205,6 +246,7 @@ def comprobar(plazo: float = PLAZO_S) -> Optional[dict]:
     pendiente = {"version": version, "fichero": destino, "canal": nombre_canal,
                  "instalada": instalada, "comprobado": time.strftime("%Y-%m-%dT%H:%M:%S")}
     _escribir_pendiente(pendiente)
+    _escribir_comprobacion("actualizacion", instalada, nombre_canal, version)
     _limpiar_descargas(destino)
     local.registrar("actualizaciones: la %s del canal «%s» está descargada y verificada; "
                     "AutoCAD preguntará" % (version, nombre_canal))
@@ -225,19 +267,24 @@ def _limpiar_descargas(conservar: str) -> None:
                 pass
 
 
-def comprobar_al_arrancar() -> Optional[threading.Thread]:
-    """Lanza `comprobar` en un hilo que no retiene el proceso.
+def comprobar_al_arrancar(parar: Optional[threading.Event] = None) -> Optional[threading.Thread]:
+    """Lanza `comprobar` en un hilo que no retiene el proceso, **y la repite cada
+    `INTERVALO_S`** mientras el servidor siga en marcha (2026-09-15: un servidor
+    que sólo mira al arrancar no ve lo que se publica después). `parar` la corta.
     `ARCHMUSE_SIN_ACTUALIZACIONES` lo desactiva (los tests que arrancan un
     servidor de verdad no deben salir a internet)."""
     if os.environ.get("ARCHMUSE_SIN_ACTUALIZACIONES"):
         local.registrar("actualizaciones: desactivadas (ARCHMUSE_SIN_ACTUALIZACIONES)")
         return None
+    parar = parar or threading.Event()
 
     def trabajo():
-        try:
-            comprobar()
-        except BaseException:  # noqa: BLE001 - un hilo que muere en silencio no se ve
-            local.registrar("actualizaciones: error inesperado:\n" + traceback.format_exc())
+        while not parar.is_set():
+            try:
+                comprobar()
+            except BaseException:  # noqa: BLE001 - un hilo que muere en silencio no se ve
+                local.registrar("actualizaciones: error inesperado:\n" + traceback.format_exc())
+            parar.wait(INTERVALO_S)
 
     hilo = threading.Thread(target=trabajo, name="archmuse-actualizaciones", daemon=True)
     hilo.start()

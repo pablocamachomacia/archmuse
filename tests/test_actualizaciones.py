@@ -411,6 +411,77 @@ def test_la_comprobacion_se_puede_desactivar(mundo):
     assert act.comprobar_al_arrancar() is None
 
 
+# ── 5b. Una versión publicada con el servidor ya en marcha (2026-09-15) ─────
+#
+# **Medido en la instalación de Pablo:** el servidor 0.3.9 arrancó a las 18:49,
+# comprobó («la 0.3.9 es la más reciente del canal "prueba"») y no volvió a mirar.
+# La 0.3.12 se publicó horas después; AutoCAD se abrió y cerró sin reiniciar el
+# servidor, así que nadie la vio. Lanzada a mano la misma comprobación, la
+# encontró, la descargó y verificó su firma.
+
+def test_una_version_publicada_con_el_servidor_en_marcha_se_encuentra_sin_reiniciarlo(
+        mundo, monkeypatch, tmp_path):
+    local, firma, act, _, _ = mundo
+    _instalada(local, "0.3.8")
+    monkeypatch.delenv("ARCHMUSE_SIN_ACTUALIZACIONES")
+    monkeypatch.setattr(act, "INTERVALO_S", 0.2)
+    parar = threading.Event()
+    with GitHubFalso() as github:
+        monkeypatch.setenv("ARCHMUSE_URL_ACTUALIZACIONES", github.api)
+        hilo = act.comprobar_al_arrancar(parar=parar)
+        try:
+            limite = time.monotonic() + 10
+            while "más reciente" not in _registro(local) and time.monotonic() < limite:
+                time.sleep(0.05)
+            assert act.leer_pendiente() is None
+            github.publicar("0.3.9", _paquete(firma, tmp_path / "p.archmuse", "0.3.9").read_bytes(),
+                            False)
+            limite = time.monotonic() + 10
+            while act.leer_pendiente() is None and time.monotonic() < limite:
+                time.sleep(0.05)
+            assert (act.leer_pendiente() or {}).get("version") == "0.3.9", _registro(local)
+        finally:
+            parar.set()
+            hilo.join(5)
+    assert not hilo.is_alive(), "la comprobación periódica no se puede parar"
+
+
+def _comprobacion(act) -> dict:
+    return json.loads(Path(act.fichero_comprobacion()).read_text(encoding="utf-8"))
+
+
+def test_cada_comprobacion_deja_escrito_su_resultado_para_autocad(mundo, monkeypatch, tmp_path):
+    local, firma, act, _, _ = mundo
+    _instalada(local, "0.3.8")
+    with GitHubFalso() as github:
+        monkeypatch.setenv("ARCHMUSE_URL_ACTUALIZACIONES", github.api)
+        act.comprobar()
+        assert {k: _comprobacion(act)[k] for k in ("resultado", "instalada", "canal")} == \
+            {"resultado": "al_dia", "instalada": "0.3.8", "canal": "estable"}
+        github.publicar("0.3.9", _paquete(firma, tmp_path / "p.archmuse", "0.3.9").read_bytes(), False)
+        act.comprobar()
+        assert (_comprobacion(act)["resultado"], _comprobacion(act)["version"]) == ("actualizacion", "0.3.9")
+        github.estado = 500
+        act.comprobar()
+        assert _comprobacion(act)["resultado"] == "error"
+
+
+def test_la_misma_version_pendiente_no_se_vuelve_a_descargar(mundo, monkeypatch, tmp_path):
+    """Con una comprobación cada hora, volver a bajar el paquete cada vez sería
+    un mega por hora para nada; y si GitHub falla en la descarga, se perdería
+    una actualización ya verificada."""
+    local, firma, act, _, _ = mundo
+    _instalada(local, "0.3.8")
+    with GitHubFalso() as github:
+        monkeypatch.setenv("ARCHMUSE_URL_ACTUALIZACIONES", github.api)
+        github.publicar("0.3.9", _paquete(firma, tmp_path / "p.archmuse", "0.3.9").read_bytes(), False)
+        primera = act.comprobar()
+        github.ficheros.clear()
+        segunda = act.comprobar()
+    assert primera and segunda and segunda["fichero"] == primera["fichero"]
+    assert act.leer_pendiente()["version"] == "0.3.9"
+
+
 # ── 6. Publicar y construir ─────────────────────────────────────────────────
 
 @pytest.fixture
@@ -529,11 +600,8 @@ def _defun(nombre: str) -> str:
     return LSP[ini:LSP.index("\n(defun", ini + 10)]
 
 
-def test_el_lsp_pregunta_al_arrancar_una_vez_y_nunca_con_un_comando_en_marcha():
+def test_archmuse_actualizar_pregunta_y_la_ventana_se_cierra_sola():
     ofrecer = _defun("am:ofrecer-actualizacion")
-    assert '(getvar "CMDACTIVE")' in ofrecer
-    assert "vl-bb-ref '*am:actualizacion-ofrecida*" in ofrecer
-    assert "vl-bb-set '*am:actualizacion-ofrecida*" in ofrecer
     assert '"Hay una actualización ("' in ofrecer and '"). ¿Instalar?"' in ofrecer
     assert "'Popup" in ofrecer and " 60 " in ofrecer, "la ventana tiene que cerrarse sola"
     assert "actualizador --instalar-pendiente" in ofrecer
@@ -541,14 +609,47 @@ def test_el_lsp_pregunta_al_arrancar_una_vez_y_nunca_con_un_comando_en_marcha():
 
 
 def test_el_lsp_no_sale_a_la_red_para_saber_si_hay_version_nueva():
-    pendiente = _defun("am:actualizacion-pendiente")
+    pendiente = _defun("am:actualizacion-pendiente-en")
     assert "actualizacion.json" in pendiente
-    for red in ("WinHttp", "http", "github", "am:peticion"):
-        assert red not in pendiente and red not in _defun("am:ofrecer-actualizacion"), red
+    for funcion in (pendiente, _defun("am:ofrecer-actualizacion"),
+                    _defun("am:actualizaciones-al-cargar")):
+        for red in ("WinHttp", "http", "github", "am:peticion"):
+            assert red not in funcion, red
 
 
-def test_el_enganche_al_arrancar_no_puede_romper_la_carga():
-    assert "(defun-q am:al-arrancar ()" in LSP
-    assert re.search(r"\(if \(not \(vl-catch-all-error-p \(vl-catch-all-apply 'append "
-                     r"\(list S::STARTUP am:al-arrancar\)\)\)\)\s*"
-                     r"\(setq S::STARTUP \(append S::STARTUP am:al-arrancar\)\)\)", LSP)
+# ── El aviso al cargar (corrección de Pablo, 2026-09-15) ─────────────────────
+#
+# «No quiero una línea en cada arranque. El aviso sale como mucho una vez al día.
+# Si no hay versión nueva, no muestra nada en pantalla; solo lo deja escrito en
+# el log.» Y ya no depende de `S::STARTUP`: que llegue a ejecutarse con el
+# paquete cargado por el autoloader nunca se midió, y sin versión nueva no dejaba
+# ni rastro. Se revisa al cargar, que es lo que imprime «ArchMuse cargado».
+
+def test_al_cargar_se_revisa_una_vez_y_sin_poder_romper_la_carga():
+    llamada = LSP.index('(am:actualizaciones-al-cargar (strcat (getenv "LOCALAPPDATA")')
+    assert "(vl-catch-all-apply" in LSP[llamada - 60:llamada], "un fallo aquí rompería la carga"
+    assert llamada < LSP.index('(princ "\\nArchMuse cargado.')
+    assert "S::STARTUP" not in _sin_comentarios_lsp(LSP), (
+        "el aviso ya no cuelga de S::STARTUP: nunca se midió que se ejecute")
+
+
+def test_sin_version_nueva_no_se_ensena_nada_y_queda_en_el_registro():
+    cuerpo = _defun("am:actualizaciones-al-cargar")
+    princs = re.findall(r'\(princ \(strcat "([^"]*)', cuerpo)
+    assert princs == ["\\nHay una actualización de ArchMuse ("], (
+        "al cargar sólo se enseña el aviso de versión nueva: %s" % princs)
+    assert '"al dia ("' in cuerpo and "(am:log" in cuerpo
+    assert "comprobacion.json" in cuerpo
+
+
+def test_el_aviso_sale_como_mucho_una_vez_al_dia():
+    cuerpo = _defun("am:actualizaciones-al-cargar")
+    assert "aviso-de-actualizaciones.txt" in cuerpo
+    assert "(am:hoy)" in cuerpo
+    # Se compara con lo que se avisó la última vez y, si ya se dijo hoy, no se repite.
+    assert "(/= ultimo clave)" in cuerpo
+    assert "(am:escribe-fichero fichero clave)" in cuerpo
+
+
+def _sin_comentarios_lsp(texto: str) -> str:
+    return "\n".join(l.split(";")[0] for l in texto.splitlines())

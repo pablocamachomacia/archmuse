@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.0")
-(setq *am:version*  "3.9.0 (2026-09-15, un clic, una tabla)")
+(setq *am:version-corta* "3.9.1")
+(setq *am:version*  "3.9.1 (2026-09-15, aviso de actualizaciones una vez al día)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -1152,35 +1152,87 @@
 ;;; el autoloader, `WScript.Shell.Popup` y el valor que devuelve, `vl-bb-ref` y
 ;;; `vl-bb-set`. Hay que probarlo en la VM antes de publicar en «estable».
 
-(defun am:actualizacion-pendiente ( / base texto p ini fin version)
-  ;; La versión descargada y verificada que espera instalarse, o nil.
-  (setq base (getenv "LOCALAPPDATA"))
-  (if base
-    (setq texto (am:lee-fichero (strcat base "\\ArchMuse\\actualizacion.json"))))
-  (if texto
+(defun am:hoy ()
+  (menucmd "M=$(edtime,$(getvar,date),YYYY-MO-DD)"))
+
+(defun am:valor-json (texto clave / p ini fin)
+  ;; El valor de cadena de `"clave": "…"` en un JSON plano del servidor, o nil.
+  ;; El servidor no escribe nulos en estos ficheros: un `null` haría leer aquí la
+  ;; clave siguiente como valor.
+  (setq p (vl-string-search (strcat "\"" clave "\"") texto))
+  (if p (setq ini (vl-string-search "\"" texto (+ p (strlen clave) 2))))
+  (if ini (setq fin (vl-string-search "\"" texto (1+ ini))))
+  (if fin (substr texto (+ ini 2) (- fin ini 1)) nil))
+
+(defun am:escribe-fichero (ruta texto / f)
+  ;; `texto` en `ruta`, sustituyendo lo que hubiera. Ni un error hacia fuera.
+  (setq f (vl-catch-all-apply 'open (list ruta "w")))
+  (if (and f (not (vl-catch-all-error-p f)))
     (progn
-      (setq p (vl-string-search "\"version\"" texto))
-      (if p (setq ini (vl-string-search "\"" texto (+ p 9))))
-      (if ini (setq fin (vl-string-search "\"" texto (1+ ini))))
-      (if fin (setq version (substr texto (+ ini 2) (- fin ini 1))))))
+      (vl-catch-all-apply 'write-line (list texto f))
+      (vl-catch-all-apply 'close (list f))))
+  (princ))
+
+(defun am:actualizacion-pendiente-en (base / texto version)
+  ;; La versión descargada y verificada que espera instalarse en `base`
+  ;; (`%LOCALAPPDATA%\ArchMuse`), o nil.
+  (if base (setq texto (am:lee-fichero (strcat base "\\actualizacion.json"))))
+  (if texto (setq version (am:valor-json texto "version")))
   (if (and version (wcmatch version "#*.#*.#*")) version nil))
 
-(defun am:ofrecer-actualizacion (al-arrancar / version instalado shell r)
-  ;; «Hay una actualización (x.y.z). ¿Instalar?» y, con un Sí, lanza
-  ;; `actualizador --instalar-pendiente`, que vuelve a verificar la firma.
-  ;; `al-arrancar` T: una sola vez por sesión de AutoCAD y **nunca con un comando
-  ;; en marcha**. nil (ARCHMUSE-ACTUALIZAR): siempre, y dice si no hay nada.
+(defun am:actualizacion-pendiente ( / base)
+  (setq base (getenv "LOCALAPPDATA"))
+  (am:actualizacion-pendiente-en (if base (strcat base "\\ArchMuse") nil)))
+
+(defun am:actualizaciones-al-cargar (base / pendiente texto resultado instalada clave
+                                             fichero ultimo)
+  ;; **Al cargar, como mucho un aviso al día** (3.9.1; corrección de Pablo,
+  ;; 2026-09-15: «el aviso sale como mucho una vez al día. Si no hay versión
+  ;; nueva, no muestra nada en pantalla; solo lo deja escrito en el log»).
+  ;;
+  ;; Lee lo que ha dejado el servidor —`actualizacion.json` si hay versión nueva,
+  ;; `comprobacion.json` con el resultado de la última comprobación— y lo compara
+  ;; con lo último avisado, que vive en `aviso-de-actualizaciones.txt` con la
+  ;; fecha delante. Si hoy ya se dijo lo mismo, nada. Sin red.
+  (setq pendiente (am:actualizacion-pendiente-en base)
+        texto     (am:lee-fichero (strcat base "\\comprobacion.json"))
+        resultado (if texto (am:valor-json texto "resultado"))
+        instalada (if texto (am:valor-json texto "instalada")))
+  (if (null resultado) (setq resultado "sin_comprobar"))
+  (if (null instalada) (setq instalada "?"))
+  (setq clave   (strcat (am:hoy) " "
+                        (if pendiente
+                          (strcat "actualizacion " pendiente)
+                          (strcat resultado " " instalada)))
+        fichero (strcat base "\\aviso-de-actualizaciones.txt")
+        ultimo  (am:lee-fichero fichero))
+  (if (/= ultimo clave)
+    (progn
+      (if pendiente
+        (progn
+          (princ (strcat "\nHay una actualización de ArchMuse (" pendiente
+                         "). Teclea ARCHMUSE-ACTUALIZAR para instalarla."))
+          (am:log (strcat "actualizaciones: hay una actualizacion (" pendiente "); aviso del dia")))
+        (am:log (strcat "actualizaciones: "
+                        (cond
+                          ((= resultado "al_dia") (strcat "al dia (" instalada ")"))
+                          ((= resultado "error")
+                            (strcat "no se ha podido comprobar el canal (" instalada
+                                    "); el motivo esta en el registro del servidor"))
+                          (T "todavia no se han comprobado")))))
+      (am:escribe-fichero fichero clave)))
+  (princ))
+
+(defun am:ofrecer-actualizacion ( / version instalado shell r)
+  ;; ARCHMUSE-ACTUALIZAR: «Hay una actualización (x.y.z). ¿Instalar?» y, con un
+  ;; Sí, lanza `actualizador --instalar-pendiente`, que vuelve a verificar la
+  ;; firma. Si no hay nada, lo dice.
   (cond
-    ((and al-arrancar (/= 0 (getvar "CMDACTIVE"))) nil)
-    ((and al-arrancar (vl-bb-ref '*am:actualizacion-ofrecida*)) nil)
     ((null (setq version (am:actualizacion-pendiente)))
-      (if (not al-arrancar)
-        (princ "\nNo hay ninguna actualización de ArchMuse descargada.")))
+      (princ "\nNo hay ninguna actualización de ArchMuse descargada."))
     ((null (setq instalado (am:servidor-instalado)))
-      (if (not al-arrancar)
-        (princ "\nEste ArchMuse no está instalado con el instalador: no se actualiza solo.")))
+      (princ "\nEste ArchMuse no está instalado con el instalador: no se actualiza solo."))
     (T
-      (vl-bb-set '*am:actualizacion-ofrecida* T)
       (setq shell (vl-catch-all-apply 'vlax-create-object (list "WScript.Shell")))
       (if (and shell (not (vl-catch-all-error-p shell)))
         (progn
@@ -1206,13 +1258,10 @@
 ;; `c:ARCHMUSE-ACTUALIZAR` está al final del fichero, detrás de `c:ARCHMUSE`: un
 ;; test busca el primer «(defun c:ARCHMUSE» y mira desde ahí hasta el final.
 
-;; Al arrancar. `S::STARTUP` corre cuando el dibujo ya está listo y sin ningún
-;; comando en marcha. Se le añade lo nuestro con `append`, que no pisa el de otro
-;; programa. Si otro lo definió con `defun` —no es una lista—, `append` falla: no
-;; se engancha, queda ARCHMUSE-ACTUALIZAR y la carga de ArchMuse no se rompe.
-(defun-q am:al-arrancar () (am:ofrecer-actualizacion T))
-(if (not (vl-catch-all-error-p (vl-catch-all-apply 'append (list S::STARTUP am:al-arrancar))))
-  (setq S::STARTUP (append S::STARTUP am:al-arrancar)))
+;; 3.9.1: el aviso ya no cuelga del arranque de AutoCAD. Que ese enganche llegara
+;; a ejecutarse con el paquete cargado por el autoloader nunca se midió, y sin
+;; versión nueva no dejaba ni rastro. Se revisa al final de este fichero, al
+;; cargar (`am:actualizaciones-al-cargar`).
 
 
 (defun am:levantar-servidor ( / instalado i vivo punto)
@@ -2911,8 +2960,14 @@
 (defun c:ARCHMUSE-ACTUALIZAR ()
   ;; La actualización descargada, a mano (PRD 2026-09-15). Ver
   ;; `am:ofrecer-actualizacion`, en la sección de actualizaciones.
-  (am:ofrecer-actualizacion nil)
+  (am:ofrecer-actualizacion)
   (princ))
+
+;; Actualizaciones: como mucho un aviso al día, sin red y sin poder romper la carga
+;; (3.9.1). Sólo en una instalación hecha con el instalador.
+(if (and (getenv "LOCALAPPDATA") (am:servidor-instalado))
+  (vl-catch-all-apply
+    '(lambda () (am:actualizaciones-al-cargar (strcat (getenv "LOCALAPPDATA") "\\ArchMuse")))))
 
 (princ "\nArchMuse cargado. Teclea ARCHMUSE para medir el plano y dibujar tu cuadro.")
 (princ)
