@@ -1,7 +1,7 @@
 ; Instalador de la beta de ArchMuse (PRD 2026-09-11, T10).
 ;
 ; Lo compila empaquetado\construir.py, que antes deja listo empaquetado\salida\.
-; A mano:  ISCC.exe /DVersion=0.3.7/DSalida=..\_empaquetado\salida empaquetado\ArchMuse-Beta.iss
+; A mano:  ISCC.exe /DVersion=0.3.8 /DSalida=..\_empaquetado\salida empaquetado\ArchMuse-Beta.iss
 ;
 ; Condiciones del PRD que este fichero cumple y conviene no romper:
 ;   - por usuario y SIN administrador (PrivilegesRequired=lowest, todo en HKCU
