@@ -5,6 +5,85 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 (noche, 4) · `C-18`: una cifra de área no es un nombre; la tabla no pisa el plano (`.lsp` 3.9.2)
+
+### 1. VT1/3 no rellenaba nada (Pablo, AutoCAD, 0.3.12)
+
+**Medido en una copia del maestro (fuera del repositorio):** cada recinto de VT1/3
+lleva tres textos con su nombre y un campo de área («23.24m²»). En el orden del DXF
+salía bien; con los textos invertidos —lo que hace `ssget`— el recinto se llamaba
+«23.24m²», ninguna pieza se reconocía y la pregunta era por «M»: lo que queda de
+`clave_de_familia("23.24m²")` al quitar cifras y signos (el «²» se normaliza a «2»).
+
+**`C-18`, firmado por Pablo:** una cifra de área nunca es un nombre; entre varios
+textos gana el nombre reconocible sin depender del orden; dos nombres distintos no
+se eligen (nota con los dos); nunca se pregunta por un rótulo sin sentido. Tests
+antes del arreglo con plano sintético; xfail de `D-7` quitado.
+
+**Regresión encontrada al medir, y arreglada con test:** la envolvente de 73,07 m² y
+el contorno de terraza+tendedero (8,63 m²) están en «00 areas» y llevan dentro los
+nombres de sus piezas. Antes se quedaban con el primero y eso los descartaba como
+agrupadores; con `C-18` se quedaban sin nombre y la vivienda salía con 66,52 m²
+dibujados dos veces.
+
+**La regla que quedó, tras tres versiones descartadas por medida:** un contorno con
+color explícito se descarta como agrupador si repite el nombre de una pieza que
+contiene (lo de antes) **o si contiene dos piezas o más**. No mira nombres para esto
+segundo, así que no depende de qué texto gane. Lo descartado, y por qué:
+1. *Los nombres en conflicto cuentan como propios:* rompía el test del contorno con
+   otra etiqueta.
+2. *Quitar al contorno los nombres de las piezas de dentro:* en `plantasimple.dxf`
+   escribía cifras falsas («Aseo 73,07 m²», «Baño 52,11 m²»).
+3. *Asignar cada texto a la pieza más pequeña que lo contiene:* los textos de
+   `VE-01` y de los rótulos de vivienda dejaban vivas las envolventes; 20 totales
+   perdidos y las cifras falsas seguían.
+Con la cuarta, frente a lo publicado, `plantasimple.dxf` cambia en una sola vivienda
+(VT6/2, el recinto de 11,55 m² de abajo) y ninguna cifra es falsa. Un salón con
+color explícito que rodea **un** dormitorio sigue siendo pieza
+(`test_contorno_agrupador`). Leído **sin alinear rótulos**, `plantasimple.dxf` pasa
+de 206 recintos a 164: las etiquetas no llegan, la regla por nombre no descartaba
+nada y 42 envolventes contaban como piezas. Cada una contiene de 2 a 7 piezas y lo
+que deja de cubrirse son 344 m² de muros. Con los rótulos alineados, 157 antes y
+después (`test_reparacion_geometria_c10`, cifras congeladas actualizadas).
+
+**Consecuencias medidas en los planos de referencia, y aceptadas por `C-18`:**
+`ejemplo.dxf` y `plantasimple.dxf` tienen un recinto de 11,55 m² con «Terraza» y
+«Tendedero» dentro y ninguna pieza contenida; se llamaba como el primero que llegara
+y ahora queda sin nombre y sin fila. En `plantasimple.dxf` las cifras escritas pasan
+de 158 a 157. En el fixture anónimo de solapes, el contorno de terraza+tendedero ya
+no suma como «Tendedero» (exterior 16,17 → 7,54; la vivienda sigue bloqueada). Y un
+cliente antiguo que no manda el tipo de texto ya no ve las estancias llamadas
+«12.00 m2».
+
+**VT1/3 después, con los textos en el orden del DXF y invertidos:** salón 23,24;
+dormitorios 12,47 · 8,88 · 8,53; baño 3,16; aseo 2,68; terraza 3,32; tendedero 4,22
+—cada una igual a su campo de área del plano— y **construida 73,07**. Total interior
+58,96 (el redondeo frente al 58,97 del cuadro no se ha tocado: lo decide el
+arquitecto).
+
+### 2. Presentación (Pablo: «la tabla y sus notas se dibujaron encima del plano»)
+
+- **Colocación.** El comando manda las cajas de lo que hay dibujado alrededor de la
+  vivienda (`am:obstaculos`: todas las polilíneas por su caja y el resto por su
+  punto de inserción dentro de la zona; en Core Console sobre la copia del maestro,
+  107 cajas en 0,56 s). Si la tabla, sus notas o la marca pisarían algo, el servidor
+  la lleva al hueco libre más cercano (rejilla con índice espacial) y lo dice: «He
+  movido la tabla 7,70 m hacia arriba: desde el punto que marcaste pisaba 9
+  elementos del plano». Sin hueco, no dibuja y lo dice. **Lo que no ve:** una línea
+  larga con los dos extremos fuera de la zona, y los sombreados.
+- **Notas.** En el plano, como mucho 4 líneas cortas y agrupadas («8 piezas sin
+  nombre reconocible», «Totales sin cifra», «Construida sin cifra», «y 3 avisos más
+  en la línea de comandos»), del ancho de la tabla y a su altura de texto; la marca
+  de borrador, siempre. El detalle, en la línea de comandos. **Al registro van sólo
+  recuentos**, no el detalle: lleva nombres de piezas y el registro viaja en
+  ARCHMUSE-INFORME (§4.4).
+- **Revisado renderizado a PNG** (ezdxf + matplotlib, fuera del repositorio) con un
+  plano sintético con muros, cotas y piscina: clic dentro de una vivienda → la tabla
+  sube 7,70 m y queda sobre su muro sin tapar nada; clic junto a otra → se mueve
+  0,71 m. **Sin probar en la interfaz de AutoCAD.**
+
+---
+
 ## 2026-09-15 (noche, 3) · Por qué no avisaba la 0.3.12, y el aviso una vez al día (`.lsp` 3.9.1)
 
 **Lo que Pablo vio:** 0.3.9 instalada en canal «prueba», AutoCAD abierto, «ArchMuse
