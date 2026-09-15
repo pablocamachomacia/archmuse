@@ -40,7 +40,7 @@ from typing import Optional
 #: del 15/09 con el símbolo) y 0.3.6 lo usó el paquete de ensayo: sigue 0.3.7.
 #: 0.3.7 es el instalador del primer usuario (cb1cf11, `.lsp` 3.7.0). Con el
 #: `.lsp` 3.7.1 ya no es ese build, así que el repositorio pasa a 0.3.8.
-VERSION_DEL_REPOSITORIO = "0.3.10"
+VERSION_DEL_REPOSITORIO = "0.3.11"
 
 _RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _FICHERO = os.path.join(_RAIZ, "version.json")

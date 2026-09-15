@@ -11,3 +11,4 @@
 0.3.8   .archmuse con el .lsp 3.7.1
 0.3.9   construida el 2026-09-15
 0.3.10  construida el 2026-09-15
+0.3.11  construida el 2026-09-15
