@@ -91,6 +91,15 @@ def main() -> int:
                     "después de arrancar)" % (version, puerto, os.getpid(),
                                                time.monotonic() - t_import, time.monotonic() - t0))
 
+    # **Actualizaciones** (PRD 2026-09-15): en un hilo aparte, con plazo corto, y
+    # nunca impiden servir. Lo que encuentre lo lee AutoCAD de un fichero local.
+    try:
+        import actualizaciones
+        actualizaciones.comprobar_al_arrancar()
+    except Exception:
+        local.registrar("actualizaciones: no se ha podido lanzar la comprobación:\n"
+                        + traceback.format_exc())
+
     from waitress import serve
     serve(aplicacion.app, sockets=[sock], threads=aplicacion.HILOS_WAITRESS)
     return 0

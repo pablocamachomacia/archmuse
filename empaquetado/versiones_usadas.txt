@@ -1,0 +1,12 @@
+# Versiones de ArchMuse que ya ha usado algún build. Regla de Pablo (2026-09-14):
+# cada build lleva un número que ningún otro ha tenido. `construir.py` toma el
+# siguiente al mayor de esta lista y lo añade aquí. No se borra ninguna línea.
+0.3.1   varios builds distintos, antes de la regla
+0.3.2
+0.3.3
+0.3.4   paquete de ensayo de la actualización en la VM
+0.3.5   dos builds distintos (14-sep, y el de las capturas del 15-sep)
+0.3.6   paquete de ensayo de la actualización en la VM
+0.3.7   instalador del primer usuario (commit cb1cf11)
+0.3.8   .archmuse con el .lsp 3.7.1
+0.3.9   construida el 2026-09-15

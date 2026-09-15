@@ -6,6 +6,12 @@
     actualizador.pyw --activar 0.3.1 [--silencioso]        (lo usa el instalador)
     actualizador.pyw --parar                               (instalador, antes de copiar)
     actualizador.pyw --desinstalar                         (desinstalador)
+    actualizador.pyw --instalar-pendiente                  («¿Instalar?» en AutoCAD, PRD 2026-09-15)
+    actualizador.pyw --comprobar                           (comprobar el canal ahora)
+    actualizador.pyw --canal prueba|estable                (el canal de esta instalación)
+
+**Nada sin la firma de ArchMuse se instala** (PRD 2026-09-15): ni con doble clic
+ni desde el aviso. Ver `firma.py`.
 
 Actualizar toca sólo la capa B: descomprime en `app\\<version>\\`, para el
 servidor, mueve `app\\actual`, copia el `.lsp` al paquete de AutoCAD y arranca.
@@ -27,6 +33,8 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 
 import archmuse_local as local  # noqa: E402
+import actualizaciones  # noqa: E402
+import firma  # noqa: E402
 
 REQUERIDOS = ("version.json", "app.py", "archmuse.lsp", "lanzador.pyw",
               "actualizador.pyw", "archmuse_local.py")
@@ -72,6 +80,9 @@ LIMITES_S = {
     "volver": local.PLAZO_ARRANQUE_S + 60,
     "parar": 60,
     "desinstalar": 60,
+    "instalar_pendiente": local.PLAZO_ARRANQUE_S + 120,
+    "comprobar": actualizaciones.PLAZO_S + actualizaciones.PLAZO_DESCARGA_S + 30,
+    "canal": 30,
 }
 
 #: Intentos de arrancar el servidor cuando Python no puede abrir el script
@@ -187,6 +198,13 @@ def _arrancar_con_reintentos(version: str) -> None:
 
 def instalar(ruta: str, arrancar: bool = True) -> str:
     version = validar_paquete(ruta)
+    # **La firma, antes de descomprimir nada** (PRD 2026-09-15). Después de
+    # `validar_paquete` a propósito: un paquete con un plano dentro o una ruta
+    # fuera se dice por su nombre, no como «firma mala».
+    firmada = firma.verificar_paquete(ruta)
+    if firmada != version:
+        raise ValueError("el paquete dice ser la %s y está firmado como la %s: no se instala"
+                         % (version, firmada))
     carpeta_app = local.carpeta_app()
     os.makedirs(carpeta_app, exist_ok=True)
     temporal = os.path.join(carpeta_app, ".%s.instalando" % version)
@@ -207,6 +225,19 @@ def instalar(ruta: str, arrancar: bool = True) -> str:
         shutil.rmtree(destino)
     os.replace(temporal, destino)
     activar(version, arrancar)
+    return version
+
+
+def instalar_pendiente(arrancar: bool = True) -> str:
+    """La actualización que dejó descargada y verificada `actualizaciones.comprobar`.
+    `instalar` vuelve a verificar la firma: entre la descarga y el clic pasa
+    tiempo, y el fichero está en una carpeta del usuario."""
+    pendiente = actualizaciones.leer_pendiente()
+    if pendiente is None:
+        raise ValueError("No hay ninguna actualización de ArchMuse descargada que instalar.")
+    _paso("instalar la actualización %s" % pendiente["version"])
+    version = instalar(pendiente["fichero"], arrancar)
+    actualizaciones.borrar_pendiente()
     return version
 
 
@@ -251,6 +282,9 @@ def main(argv=None) -> int:
     g.add_argument("--activar", metavar="VERSION")
     g.add_argument("--parar", action="store_true")
     g.add_argument("--desinstalar", action="store_true")
+    g.add_argument("--instalar-pendiente", action="store_true")
+    g.add_argument("--comprobar", action="store_true")
+    g.add_argument("--canal", metavar="CANAL")
     p.add_argument("--silencioso", action="store_true",
                    help="ninguna ventana: quien lo lanza es otro programa, que lee --resultado")
     p.add_argument("--resultado", metavar="FICHERO",
@@ -280,6 +314,18 @@ def main(argv=None) -> int:
             elif a.desinstalar:
                 _paso("quitar la ruta de confianza y parar el servidor")
                 desinstalar()
+            elif a.instalar_pendiente:
+                version = instalar_pendiente(arrancar)
+                mensaje = "ArchMuse %s instalado. %s" % (version, CERRAR_AUTOCAD)
+            elif a.comprobar:
+                _paso("comprobar el canal de actualizaciones")
+                pendiente = actualizaciones.comprobar()
+                mensaje = ("Hay una actualización descargada y verificada: ArchMuse %s."
+                           % pendiente["version"] if pendiente else
+                           "No hay ninguna actualización nueva en el canal «%s». El motivo "
+                           "está en el registro." % actualizaciones.canal())
+            elif a.canal:
+                mensaje = "Canal de actualizaciones: %s." % actualizaciones.fijar_canal(a.canal)
         except (ValueError, RuntimeError, OSError) as e:
             return _fallo(a, str(e))
         except Exception as e:

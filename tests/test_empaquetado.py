@@ -36,6 +36,12 @@ pytestmark = pytest.mark.skipif(
     sys.platform != "win32", reason="la beta es de Windows: uniones, mutex, netstat")
 
 
+#: Clave de firma SÓLO para los tests (PRD 2026-09-15): con ella se firman los
+#: paquetes de mentira, y el fixture `arbol` pone su pública en `firma`. La de
+#: ArchMuse vive fuera del repositorio.
+SEMILLA_DE_TEST = bytes(range(32))
+
+
 def _cargar(nombre: str, ruta: Path):
     cargador = importlib.machinery.SourceFileLoader(nombre, str(ruta))
     spec = importlib.util.spec_from_loader(nombre, cargador)
@@ -70,6 +76,8 @@ def arbol(tmp_path, monkeypatch):
     monkeypatch.setenv("ARCHMUSE_BUNDLE", str(tmp_path / "bundle"))
     monkeypatch.setenv("ARCHMUSE_PUERTOS", "%d-%d" % (puertos[0], puertos[-1]))
     monkeypatch.setenv("ARCHMUSE_SIN_VENTANAS", "1")
+    # Que ningún servidor de estos tests salga a internet a buscar actualizaciones.
+    monkeypatch.setenv("ARCHMUSE_SIN_ACTUALIZACIONES", "1")
     # Que ningún test llegue al AutoCAD de verdad: sin esto, `activar` leería y
     # escribiría TRUSTEDPATHS en el perfil real de quien ejecuta los tests.
     monkeypatch.setenv("ARCHMUSE_RAIZ_AUTOCAD", r"Software\ArchMuse-tests\ninguno")
@@ -77,11 +85,16 @@ def arbol(tmp_path, monkeypatch):
     try:
         local = _cargar("archmuse_local", CAPA_B / "archmuse_local.py")
         sys.modules["archmuse_local"] = local
+        firma = _cargar("firma", CAPA_B / "firma.py")
+        firma.CLAVE_PUBLICA_HEX = firma.clave_publica_de(SEMILLA_DE_TEST).hex()
+        sys.modules["firma"] = firma
+        sys.modules["actualizaciones"] = _cargar("actualizaciones", CAPA_B / "actualizaciones.py")
         actualizador = _cargar("actualizador_beta", CAPA_B / "actualizador.pyw")
         yield local, actualizador, puertos, tmp_path
     finally:
         sys.path.remove(str(CAPA_B))
-        sys.modules.pop("archmuse_local", None)
+        for nombre in ("archmuse_local", "firma", "actualizaciones"):
+            sys.modules.pop(nombre, None)
 
 
 def _capa_falsa(local, version: str) -> Path:
@@ -93,13 +106,24 @@ def _capa_falsa(local, version: str) -> Path:
 
 
 def _paquete_falso(ruta: Path, version: str, extra: dict | None = None) -> Path:
-    with zipfile.ZipFile(ruta, "w") as z:
-        z.writestr("version.json", json.dumps({"version": version}))
+    """Un `.archmuse` de mentira, **firmado con la clave de test** (PRD
+    2026-09-15). Lo de `extra` entra después de firmar: son las rutas y los planos
+    que `validar_paquete` tiene que rechazar antes de mirar la firma."""
+    import tempfile
+
+    firma = sys.modules["firma"]
+    with tempfile.TemporaryDirectory() as d:
+        carpeta = Path(d)
+        (carpeta / "version.json").write_bytes(json.dumps({"version": version}).encode("utf-8"))
         for nombre in ("app.py", "lanzador.pyw", "actualizador.pyw", "archmuse_local.py"):
-            z.writestr(nombre, "# %s\n" % nombre)
-        z.writestr("archmuse.lsp", ";; lsp de la %s\n" % version)
-        for nombre, contenido in (extra or {}).items():
-            z.writestr(nombre, contenido)
+            (carpeta / nombre).write_bytes(("# %s\n" % nombre).encode("utf-8"))
+        (carpeta / "archmuse.lsp").write_bytes((";; lsp de la %s\n" % version).encode("utf-8"))
+        firma.firmar_carpeta(str(carpeta), SEMILLA_DE_TEST)
+        with zipfile.ZipFile(ruta, "w") as z:
+            for fichero in sorted(carpeta.iterdir()):
+                z.write(fichero, fichero.name)
+            for nombre, contenido in (extra or {}).items():
+                z.writestr(nombre, contenido)
     return ruta
 
 

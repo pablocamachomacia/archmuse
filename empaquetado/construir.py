@@ -4,6 +4,14 @@
     venv\\Scripts\\python.exe empaquetado\\construir.py            todo
     venv\\Scripts\\python.exe empaquetado\\construir.py --capa-b   sólo capa B y .archmuse, sin red
 
+**El número lo pone solo** (PRD 2026-09-15): el siguiente al mayor de
+`versiones_usadas.txt`, que se escribe en `analyzer/version.py`, en el bundle y
+en esa lista. Cada build lleva un número que ningún otro ha tenido.
+
+**Y firma el `.archmuse`** con la clave privada de ArchMuse, que vive fuera del
+repositorio: `~/.archmuse/firma/archmuse-ed25519.semilla`, o donde diga
+`ARCHMUSE_CLAVE_FIRMA`. Sin la clave no se construye, y no se gasta el número.
+
 Qué sale, en `../_empaquetado/salida/` (fuera del repositorio):
 
 - `runtime/`                       CAPA A: Python embebido + el perfil ligero.
@@ -21,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -50,7 +59,11 @@ URL_PYTHON = "https://www.python.org/ftp/python/{0}/python-{0}-embed-amd64.zip".
 #: `import app` carga analyzer, ia, modelo y normativa; `agente` y `bim` los
 #: importa `app.py` dentro de funciones. Si falta algo, lo caza la prueba de humo.
 PAQUETES_CAPA_B = ("analyzer", "agente", "bim", "ia", "modelo", "normativa")
-FICHEROS_PROPIOS = ("lanzador.pyw", "actualizador.pyw", "archmuse_local.py")
+FICHEROS_PROPIOS = ("lanzador.pyw", "actualizador.pyw", "archmuse_local.py",
+                    "firma.py", "actualizaciones.py")
+VERSIONES_USADAS = AQUI / "versiones_usadas.txt"
+#: Fuera del repositorio, siempre. `leer_clave` se niega si está dentro.
+CLAVE_POR_DEFECTO = Path.home() / ".archmuse" / "firma" / "archmuse-ed25519.semilla"
 _IGNORAR = shutil.ignore_patterns("__pycache__", "*.pyc", "*.log", "*.sqlite", "estado",
                                   "*.dxf", "*.dwg", "*.tmp")
 
@@ -65,6 +78,70 @@ def version_del_lsp() -> str:
     return re.search(r'\(setq \*am:version-corta\* "([^"]+)"\)', texto).group(1)
 
 
+# ── el número y la firma ────────────────────────────────────────────────────
+
+def versiones_usadas(ruta: Path = VERSIONES_USADAS) -> list:
+    usadas = []
+    for linea in Path(ruta).read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^(\d+\.\d+\.\d+)(?:\s|$)", linea.strip())
+        if m:
+            usadas.append(m.group(1))
+    return usadas
+
+
+def siguiente_version(usadas, actual: str) -> str:
+    """La siguiente al mayor número usado, contando también el del repositorio."""
+    mayor = max(tuple(int(x) for x in v.split(".")) for v in list(usadas) + [actual])
+    return "%d.%d.%d" % (mayor[0], mayor[1], mayor[2] + 1)
+
+
+def fijar_version(version: str, raiz: Path = RAIZ, usadas: Path = VERSIONES_USADAS,
+                  nota: str = "") -> None:
+    """Escribe `version` en `analyzer/version.py` y en el bundle, y la anota como usada."""
+    ruta_version = Path(raiz) / "analyzer" / "version.py"
+    texto, n = re.subn(r'^VERSION_DEL_REPOSITORIO = "[^"]+"',
+                       'VERSION_DEL_REPOSITORIO = "%s"' % version,
+                       ruta_version.read_text(encoding="utf-8"), flags=re.M)
+    if n != 1:
+        raise SystemExit("No encuentro VERSION_DEL_REPOSITORIO en %s" % ruta_version)
+    ruta_version.write_text(texto, encoding="utf-8", newline="\n")
+    ruta_bundle = Path(raiz) / "empaquetado" / "bundle" / "PackageContents.xml"
+    ruta_bundle.write_text(re.sub(r'AppVersion="[^"]*"', 'AppVersion="%s"' % version,
+                                  ruta_bundle.read_text(encoding="utf-8"), count=1),
+                           encoding="utf-8", newline="\n")
+    if version not in versiones_usadas(usadas):
+        with open(usadas, "a", encoding="utf-8", newline="\n") as f:
+            f.write("%-7s %s\n" % (version, nota or "construida el %s" % time.strftime("%Y-%m-%d")))
+
+
+def _modulo_firma():
+    spec = importlib.util.spec_from_file_location("firma_construir", AQUI / "capa_b" / "firma.py")
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+def leer_clave(ruta=None) -> bytes:
+    """La clave privada de ArchMuse. Se niega si no está, si está dentro del
+    repositorio o si no es la que corresponde a la pública de `firma.py`."""
+    ruta = Path(os.environ.get("ARCHMUSE_CLAVE_FIRMA") or ruta or CLAVE_POR_DEFECTO)
+    if not ruta.is_file():
+        raise SystemExit("No encuentro la clave de firma en %s. Sin ella no se construye: un "
+                         ".archmuse sin firmar no lo instala ninguna versión de ArchMuse." % ruta)
+    if Path(RAIZ).resolve() in ruta.resolve().parents:
+        raise SystemExit("La clave de firma está DENTRO del repositorio (%s). Sácala de ahí antes "
+                         "de construir: el repositorio es público." % ruta)
+    try:
+        semilla = bytes.fromhex(ruta.read_text(encoding="ascii").strip())
+    except ValueError:
+        semilla = b""
+    firma = _modulo_firma()
+    if len(semilla) != 32 or firma.clave_publica_de(semilla) != firma.clave_publica():
+        raise SystemExit("La clave de %s no es la de ArchMuse: su pública no es la de "
+                         "empaquetado/capa_b/firma.py." % ruta)
+    return semilla
+
+
 def megas(ruta: Path) -> float:
     if ruta.is_file():
         return ruta.stat().st_size / 1e6
@@ -73,7 +150,7 @@ def megas(ruta: Path) -> float:
 
 # ── capa B ──────────────────────────────────────────────────────────────────
 
-def capa_b(destino: Path, version: str | None = None) -> Path:
+def capa_b(destino: Path, version: str | None = None, semilla: bytes | None = None) -> Path:
     """`destino/<version>/`. `version.json` declara también la del `.lsp` con la
     que se empaqueta: es lo que el servidor devuelve para el cotejo de D-2.
 
@@ -96,6 +173,9 @@ def capa_b(destino: Path, version: str | None = None) -> Path:
         "lsp": version_del_lsp(),
         "construido": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }, indent=2), encoding="utf-8")
+    # Lo último: el manifiesto firmado cubre todo lo que hay en la carpeta.
+    if semilla is not None:
+        _modulo_firma().firmar_carpeta(str(carpeta), semilla)
     return carpeta
 
 
@@ -223,25 +303,40 @@ def main(argv=None) -> int:
     p.add_argument("--paquete-de-prueba", metavar="VERSION",
                    help="sólo un .archmuse con otra versión, para ensayar la actualización "
                         "en la máquina limpia (va a salida/prueba/)")
+    p.add_argument("--misma-version", action="store_true",
+                   help="no sube el número: sólo para repetir un build que no ha salido de "
+                        "esta máquina")
     a = p.parse_args(argv)
+
+    # La clave, lo primero: sin ella no se construye y no se gasta ningún número.
+    semilla = leer_clave()
 
     if a.paquete_de_prueba:
         if not re.fullmatch(r"\d+\.\d+\.\d+", a.paquete_de_prueba):
             raise SystemExit("--paquete-de-prueba necesita una versión X.Y.Z")
-        carpeta = capa_b(SALIDA / "prueba" / "app", a.paquete_de_prueba)
+        if a.paquete_de_prueba not in versiones_usadas():
+            with open(VERSIONES_USADAS, "a", encoding="utf-8", newline="\n") as f:
+                f.write("%-7s paquete de prueba, %s\n" % (a.paquete_de_prueba, time.strftime("%Y-%m-%d")))
+        carpeta = capa_b(SALIDA / "prueba" / "app", a.paquete_de_prueba, semilla=semilla)
         paquete = paquete_archmuse(carpeta)
         print("· PAQUETE DE PRUEBA %s  %.1f MB  %s" % (a.paquete_de_prueba, megas(paquete), paquete))
         return 0
 
-    version = version_del_producto()
+    if a.misma_version:
+        version = version_del_producto()
+    else:
+        version = siguiente_version(versiones_usadas(), version_del_producto())
+        fijar_version(version)
     print("ArchMuse %s  (.lsp %s)" % (version, version_del_lsp()))
     SALIDA.mkdir(parents=True, exist_ok=True)
-    carpeta = capa_b(SALIDA / "app")
+    carpeta = capa_b(SALIDA / "app", semilla=semilla)
     paquete = paquete_archmuse(carpeta)
     bundle(SALIDA / "bundle")
     print("· capa B       %6.1f MB   %s" % (megas(carpeta), carpeta))
-    print("· .archmuse    %6.1f MB   %s" % (megas(paquete), paquete))
+    print("· .archmuse    %6.1f MB   %s   (firmado)" % (megas(paquete), paquete))
+    print("· sha256       %s" % hashlib.sha256(paquete.read_bytes()).hexdigest())
     if a.capa_b:
+        _como_publicar(version)
         return 0
 
     t0 = time.monotonic()
@@ -258,7 +353,16 @@ def main(argv=None) -> int:
 
     exe = instalador(version)
     print("· instalador   %6.1f MB   %s" % (megas(exe), exe))
+    _como_publicar(version)
     return 0
+
+
+def _como_publicar(version: str) -> None:
+    print("\nPara publicarla (NO se ha publicado nada):")
+    print("  1. commit de analyzer/version.py, empaquetado/bundle/PackageContents.xml y "
+          "empaquetado/versiones_usadas.txt, y git push")
+    print("  2. canal prueba:  venv\\Scripts\\python.exe empaquetado\\publicar.py %s" % version)
+    print("  3. a estable:     venv\\Scripts\\python.exe empaquetado\\publicar.py --promover %s" % version)
 
 
 if __name__ == "__main__":
