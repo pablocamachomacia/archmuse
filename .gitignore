@@ -6,6 +6,11 @@
 !.env.example
 *.pem
 *.key
+# La clave privada que firma los .archmuse (PRD 2026-09-15). Vive FUERA del
+# repositorio (~/.archmuse/firma/); estas líneas son la segunda defensa, por si
+# alguien la copia dentro. `tests/test_actualizaciones.py` comprueba las dos.
+*.semilla
+.archmuse/
 
 # --- Entornos virtuales de Python ---
 venv/
