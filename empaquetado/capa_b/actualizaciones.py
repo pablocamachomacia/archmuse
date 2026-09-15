@@ -267,6 +267,65 @@ def _limpiar_descargas(conservar: str) -> None:
                 pass
 
 
+#: Tras cuánto sin mirar una petición del comando lanza otra comprobación
+#: (2026-09-16). **Medido en la instalación de Pablo:** el servidor 0.3.12 comprobó
+#: a las 22:03, la 0.3.13 se publicó a las 23:50 y reiniciar AutoCAD no reinicia
+#: el servidor: nadie volvió a mirar. Con la comprobación cada hora el hueco era
+#: de hasta una hora; ahora, usar el comando basta.
+MINIMO_ENTRE_COMPROBACIONES_S = 10 * 60.0
+
+_cerrojo = threading.Lock()
+#: `time.monotonic()` de la última comprobación empezada (periódica o por petición),
+#: y si hay una en marcha.
+_ultima_comprobacion: Optional[float] = None
+_en_marcha = False
+
+
+def _comprobar_anotando() -> None:
+    """`comprobar`, marcando que se está mirando: la periódica y la de una
+    petición no se pisan ni se repiten."""
+    global _ultima_comprobacion, _en_marcha
+    with _cerrojo:
+        _ultima_comprobacion = time.monotonic()
+        _en_marcha = True
+    try:
+        comprobar()
+    except BaseException:  # noqa: BLE001 - un hilo que muere en silencio no se ve
+        local.registrar("actualizaciones: error inesperado:\n" + traceback.format_exc())
+    finally:
+        with _cerrojo:
+            _en_marcha = False
+
+
+def comprobar_si_hace_tiempo() -> Optional[threading.Thread]:
+    """Una comprobación en un hilo si hace más de `MINIMO_ENTRE_COMPROBACIONES_S`
+    que no se mira y no hay otra en marcha; si no, None. Nunca espera a la red."""
+    global _ultima_comprobacion, _en_marcha
+    if os.environ.get("ARCHMUSE_SIN_ACTUALIZACIONES"):
+        return None
+    with _cerrojo:
+        ahora = time.monotonic()
+        if _en_marcha or (_ultima_comprobacion is not None
+                          and ahora - _ultima_comprobacion < MINIMO_ENTRE_COMPROBACIONES_S):
+            return None
+        _ultima_comprobacion, _en_marcha = ahora, True
+    hilo = threading.Thread(target=_comprobar_anotando, name="archmuse-actualizaciones-peticion",
+                            daemon=True)
+    hilo.start()
+    return hilo
+
+
+def al_recibir_peticion() -> None:
+    """Para `app.before_request` (lo engancha el lanzador). **Nunca falla ni
+    espera**: una petición del comando no puede depender de GitHub."""
+    try:
+        comprobar_si_hace_tiempo()
+    except BaseException as e:  # noqa: BLE001
+        local.registrar("actualizaciones: no se ha podido lanzar la comprobación de una petición: %s"
+                        % e)
+    return None
+
+
 def comprobar_al_arrancar(parar: Optional[threading.Event] = None) -> Optional[threading.Thread]:
     """Lanza `comprobar` en un hilo que no retiene el proceso, **y la repite cada
     `INTERVALO_S`** mientras el servidor siga en marcha (2026-09-15: un servidor
@@ -280,10 +339,7 @@ def comprobar_al_arrancar(parar: Optional[threading.Event] = None) -> Optional[t
 
     def trabajo():
         while not parar.is_set():
-            try:
-                comprobar()
-            except BaseException:  # noqa: BLE001 - un hilo que muere en silencio no se ve
-                local.registrar("actualizaciones: error inesperado:\n" + traceback.format_exc())
+            _comprobar_anotando()
             parar.wait(INTERVALO_S)
 
     hilo = threading.Thread(target=trabajo, name="archmuse-actualizaciones", daemon=True)

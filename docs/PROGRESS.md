@@ -5,6 +5,39 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-16 · La 0.3.13 no llegó sola: reiniciar AutoCAD no reinicia el servidor (`.lsp` 3.9.3)
+
+**Pablo:** «Sigo en la 0.3.12 después de reiniciar AutoCAD.»
+
+**Medido en su instalación:**
+- El servidor 0.3.12 (pid 36796) arrancó a las 22:03:27 y comprobó una vez: «la
+  0.3.12 es la más reciente del canal "prueba"».
+- La 0.3.13 se publicó a las 23:50.
+- El servidor seguía vivo a las 00:1x, con AutoCAD reiniciado a las 00:11. No
+  hubo `actualizacion.json` ni `comprobacion.json`.
+- La `actualizaciones.py` instalada de la 0.3.12 no tiene la comprobación cada
+  hora: ese arreglo entró en la 0.3.13.
+
+**El hueco que seguía en la 0.3.13:** con la comprobación cada hora, una versión
+publicada podía tardar hasta una hora en verse, reiniciara Pablo lo que
+reiniciara.
+
+**Arreglo, con los tests antes (7 en rojo):**
+- Cada petición al servidor lanza una comprobación en un hilo si hace más de 10
+  minutos que no se mira y no hay otra en marcha
+  (`actualizaciones.comprobar_si_hace_tiempo`, `al_recibir_peticion`). Nunca
+  espera ni falla. La periódica cuenta como mirada.
+- El lanzador lo engancha a `before_request`.
+- El comando enseña el aviso del día al terminar, además de al cargar. Sigue
+  siendo como mucho uno al día y sin red.
+
+**Instalada la 0.3.13 en su equipo** por el mismo camino que ARCHMUSE-ACTUALIZAR
+(`lanzar.pyw actualizador --comprobar` y `--instalar-pendiente`): descargada,
+firma verificada, servidor 0.3.13 en marcha y `.lsp` 3.9.2 en el paquete de
+AutoCAD. El arreglo va en la siguiente versión, sin publicar.
+
+---
+
 ## 2026-09-15 (noche, 5) · Banco de compatibilidad externo (`benchmark/`), sin ejecutar sobre planos reales
 
 **Qué es.** `benchmark/ejecutar.py <carpeta fuera del repo>` lee cada DXF o DWG tal

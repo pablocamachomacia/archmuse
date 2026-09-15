@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.2")
-(setq *am:version*  "3.9.2 (2026-09-15, la tabla no pisa el plano y sus notas se leen)")
+(setq *am:version-corta* "3.9.3")
+(setq *am:version*  "3.9.3 (2026-09-16, el aviso de versión nueva también al terminar el comando)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -3067,6 +3067,12 @@
   (am:log (strcat "OK: " (itoa (length celdas)) " casilla(s) escritas, "
                   (itoa (length notas)) " nota(s) al pie"))
   (setvar "CMDECHO" eco)
+  ;; El aviso del día también aquí (2026-09-16): la primera petición del comando
+  ;; ha hecho que el servidor mire el canal, y reiniciar AutoCAD no reinicia el
+  ;; servidor. Sigue siendo como mucho un aviso al día, sin red.
+  (if (and (getenv "LOCALAPPDATA") (am:servidor-instalado))
+    (vl-catch-all-apply
+      '(lambda () (am:actualizaciones-al-cargar (strcat (getenv "LOCALAPPDATA") "\\ArchMuse")))))
   (princ))
 
 (defun c:ARCHMUSE-ACTUALIZAR ()

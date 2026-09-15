@@ -653,3 +653,93 @@ def test_el_aviso_sale_como_mucho_una_vez_al_dia():
 
 def _sin_comentarios_lsp(texto: str) -> str:
     return "\n".join(l.split(";")[0] for l in texto.splitlines())
+
+
+# ── Reiniciar AutoCAD no comprobaba (2026-09-16) ─────────────────────────────
+#
+# **Medido en la instalación de Pablo:** el servidor 0.3.12 arrancó a las 22:03,
+# comprobó una vez y siguió vivo; la 0.3.13 se publicó a las 23:50 y Pablo
+# reinició AutoCAD pasadas las 00:11. El servidor no se reinicia con AutoCAD, así
+# que nadie volvió a mirar. La 0.3.12 no tenía la comprobación cada hora, pero con
+# ella el hueco sigue: hasta una hora sin ver una versión publicada, reinicie lo
+# que reinicie. Ahora el uso del comando cuenta: una petición al servidor lanza
+# una comprobación si hace más de `MINIMO_ENTRE_COMPROBACIONES_S` que no se mira,
+# en un hilo, y el comando enseña el aviso del día al terminar.
+
+def test_una_peticion_del_comando_comprueba_si_hace_rato_que_no_se_mira(mundo, monkeypatch):
+    _, _, act, _, _ = mundo
+    monkeypatch.delenv("ARCHMUSE_SIN_ACTUALIZACIONES")
+    veces = []
+    hecho = threading.Event()
+    monkeypatch.setattr(act, "comprobar", lambda: (veces.append(1), hecho.set()))
+    hilo = act.comprobar_si_hace_tiempo()
+    assert hilo is not None and hilo.daemon
+    hilo.join(5)
+    assert hecho.is_set() and len(veces) == 1
+    assert act.comprobar_si_hace_tiempo() is None, "recién comprobado: no se vuelve a mirar"
+    monkeypatch.setattr(act, "MINIMO_ENTRE_COMPROBACIONES_S", 0.0)
+    otro = act.comprobar_si_hace_tiempo()
+    assert otro is not None
+    otro.join(5)
+    assert len(veces) == 2
+
+
+def test_la_comprobacion_periodica_cuenta_como_mirada_reciente(mundo, monkeypatch):
+    """Si el hilo de cada hora acaba de mirar, una petición no repite la consulta."""
+    _, _, act, _, _ = mundo
+    monkeypatch.delenv("ARCHMUSE_SIN_ACTUALIZACIONES")
+    monkeypatch.setattr(act, "comprobar", lambda: None)
+    parar = threading.Event()
+    hilo = act.comprobar_al_arrancar(parar=parar)
+    try:
+        limite = time.monotonic() + 5
+        while act.comprobar_si_hace_tiempo() is not None and time.monotonic() < limite:
+            time.sleep(0.05)
+        assert act.comprobar_si_hace_tiempo() is None
+    finally:
+        parar.set()
+        hilo.join(5)
+
+
+def test_la_peticion_no_espera_a_github(mundo, monkeypatch):
+    _, _, act, _, _ = mundo
+    monkeypatch.delenv("ARCHMUSE_SIN_ACTUALIZACIONES")
+    monkeypatch.setattr(act, "comprobar", lambda: time.sleep(2))
+    inicio = time.monotonic()
+    act.al_recibir_peticion()
+    assert time.monotonic() - inicio < 0.5
+
+
+def test_la_peticion_nunca_falla_por_las_actualizaciones(mundo, monkeypatch):
+    local, _, act, _, _ = mundo
+    monkeypatch.delenv("ARCHMUSE_SIN_ACTUALIZACIONES")
+
+    def revienta():
+        raise RuntimeError("roto a propósito")
+    monkeypatch.setattr(act, "comprobar_si_hace_tiempo", revienta)
+    assert act.al_recibir_peticion() is None
+    assert "roto a propósito" in _registro(local)
+
+
+def test_con_las_actualizaciones_desactivadas_una_peticion_no_comprueba(mundo, monkeypatch):
+    _, _, act, _, _ = mundo
+    monkeypatch.setattr(act, "comprobar", lambda: pytest.fail("no debía comprobar"))
+    assert act.comprobar_si_hace_tiempo() is None
+
+
+def test_el_lanzador_engancha_la_comprobacion_a_las_peticiones_sin_poder_impedir_servir():
+    fuente = (CAPA_B / "lanzador.pyw").read_text(encoding="utf-8")
+    enganche = fuente.index("before_request(actualizaciones.al_recibir_peticion)")
+    assert enganche < fuente.index("serve(aplicacion.app")
+    bloque = fuente[fuente.rindex("try:", 0, enganche):fuente.index("from waitress", enganche)]
+    assert "except Exception" in bloque
+
+
+def test_el_comando_ensena_el_aviso_del_dia_al_terminar():
+    """La comprobación que lanza su primera petición ya ha acabado cuando el
+    comando termina: si hay versión nueva, se dice ahí, sin esperar a reiniciar
+    AutoCAD. Sigue siendo como mucho un aviso al día (`am:actualizaciones-al-cargar`)."""
+    comando = LSP[LSP.index("(defun c:ARCHMUSE ("):LSP.index("(defun c:ARCHMUSE-ACTUALIZAR")]
+    final = comando[comando.rindex("(setvar \"CMDECHO\" eco)"):]
+    assert "am:actualizaciones-al-cargar" in final
+    assert "vl-catch-all-apply" in final, "un fallo aquí no puede estropear un comando que ha ido bien"

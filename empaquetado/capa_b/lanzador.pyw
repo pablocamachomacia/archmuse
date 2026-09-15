@@ -93,9 +93,12 @@ def main() -> int:
 
     # **Actualizaciones** (PRD 2026-09-15): en un hilo aparte, con plazo corto, y
     # nunca impiden servir. Lo que encuentre lo lee AutoCAD de un fichero local.
+    # Y cada petición del comando vuelve a mirar si hace rato que no se mira
+    # (2026-09-16): reiniciar AutoCAD no reinicia este servidor.
     try:
         import actualizaciones
         actualizaciones.comprobar_al_arrancar()
+        aplicacion.app.before_request(actualizaciones.al_recibir_peticion)
     except Exception:
         local.registrar("actualizaciones: no se ha podido lanzar la comprobación:\n"
                         + traceback.format_exc())
