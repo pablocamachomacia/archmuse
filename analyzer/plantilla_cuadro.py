@@ -472,7 +472,7 @@ class ViviendaIndistinguible(ValueError):
     no permite el cuadro» a una pregunta lo haga también con esto."""
 
 
-def _unidad(plano, nombre: str):
+def _unidad(plano, nombre: str, posicion: Optional[int] = None):
     from . import evaluator
 
     rooms = list(plano.rooms)
@@ -480,6 +480,10 @@ def _unidad(plano, nombre: str):
         unidades = evaluator.group_rooms_by_unit_label(rooms, list(plano.unit_labels))
     else:
         unidades = evaluator.group_rooms_by_proximity(rooms)
+    if posicion is not None:
+        if 0 <= posicion < len(unidades) and unidades[posicion].name == nombre:
+            return unidades[posicion]
+        return None
     return next((u for u in unidades if u.name == nombre), None)
 
 
@@ -488,7 +492,8 @@ def viviendas(plano) -> Tuple[str, ...]:
 
 
 def construir(doc, plano, nombre_vivienda: str,
-              ambitos: Optional[Mapping[str, str]] = None, medida=None) -> Plantilla:
+              ambitos: Optional[Mapping[str, str]] = None, medida=None,
+              posicion: Optional[int] = None) -> Plantilla:
     """La plantilla de una vivienda. `ambitos` son las respuestas del arquitecto
     a las preguntas de `PreguntaDeAmbito`: `{"TRASTERO": "interior"}`.
 
@@ -496,14 +501,26 @@ def construir(doc, plano, nombre_vivienda: str,
     viviendas, medirlo una vez por vivienda son 25 mediciones iguales."""
     respuestas = {clave_de_familia(k): str(v).strip().lower()
                   for k, v in (ambitos or {}).items()}
-    medida = medida if medida is not None else medicion.medir_planta(plano)
-    mismas = [v for v in medida.viviendas if v.nombre == nombre_vivienda]
-    if len(mismas) > 1:
-        # `C-13`. Coger la primera por nombre —lo que hacía este `next` hasta el
-        # 2026-09-13— dibujaría la tabla de una vivienda bajo el rótulo de otra.
-        raise ViviendaIndistinguible(medicion.motivo_c13(nombre_vivienda, len(mismas)))
-    vivienda = next((v for v in medida.viviendas if v.nombre == nombre_vivienda), None)
-    unidad = _unidad(plano, nombre_vivienda)
+    medida = medida if medida is not None else medicion.medir_planta(plano, distinguida=posicion)
+    if posicion is not None:
+        # **Un clic la ha distinguido por su posición** (enmienda de `C-13`, Pablo,
+        # 2026-09-15): se busca por su sitio en el agrupador, no por su nombre, y
+        # la medición tiene que haberla medido como distinguida.
+        vivienda = (medida.viviendas[posicion]
+                    if 0 <= posicion < len(medida.viviendas) else None)
+        if vivienda is not None and vivienda.nombre != nombre_vivienda:
+            vivienda = None
+        if vivienda is not None and vivienda.viviendas_con_el_mismo_rotulo > 1:
+            raise ValueError("la medición no distingue la vivienda del clic «%s»: hay que "
+                             "medir con `distinguida`" % nombre_vivienda)
+    else:
+        mismas = [v for v in medida.viviendas if v.nombre == nombre_vivienda]
+        if len(mismas) > 1:
+            # `C-13`. Coger la primera por nombre —lo que hacía este `next` hasta el
+            # 2026-09-13— dibujaría la tabla de una vivienda bajo el rótulo de otra.
+            raise ViviendaIndistinguible(medicion.motivo_c13(nombre_vivienda, len(mismas)))
+        vivienda = next((v for v in medida.viviendas if v.nombre == nombre_vivienda), None)
+    unidad = _unidad(plano, nombre_vivienda, posicion)
     if vivienda is None or unidad is None:
         raise ValueError("no hay ninguna vivienda «%s» en este plano (hay: %s)"
                          % (nombre_vivienda, ", ".join(v.nombre for v in medida.viviendas)))

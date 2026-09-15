@@ -545,11 +545,16 @@ def _repartos_dudosos(rooms: Sequence, nombre: str,
     return tuple(dudosos)
 
 
-def medir_planta(plano) -> Medicion:
+def medir_planta(plano, distinguida: Optional[int] = None) -> Medicion:
     """Mide todas las viviendas de un `PlanoLeido` ya en metros.
 
     El reparto en viviendas lo hace `evaluator`, que es donde vive y donde está
     probado. Aquí se mide, se audita ese reparto y se declara lo que no cuadra.
+
+    `distinguida` es la posición —en el orden de `viviendas`— de la vivienda que
+    un clic ha distinguido por su posición (**enmienda de `C-13` firmada por Pablo
+    el 2026-09-15**): se mide aunque otra lleve su rótulo. Las demás repetidas
+    siguen sin publicar cifra, y ninguna se suma con otra.
     """
     # Import perezoso y local: `evaluator` arrastra las 38 reglas de evaluación
     # y este módulo no usa ninguna — sólo el agrupador. Importarlo arriba
@@ -573,7 +578,7 @@ def medir_planta(plano) -> Medicion:
     mismo_rotulo = Counter(u.name for u in unidades)
 
     viviendas: List[ViviendaMedida] = []
-    for unidad in unidades:
+    for posicion, unidad in enumerate(unidades):
         piezas = tuple(_pieza(r) for r in unidad.rooms)
         union = unary_union([r.polygon for r in unidad.rooms]).area if unidad.rooms else 0.0
         viviendas.append(ViviendaMedida(
@@ -583,7 +588,8 @@ def medir_planta(plano) -> Medicion:
             repartos_dudosos=_repartos_dudosos(unidad.rooms, unidad.name, unit_labels),
             superficie_por_union_m2=union,
             suma_cruda_m2=sum(r.polygon.area for r in unidad.rooms),
-            viviendas_con_el_mismo_rotulo=mismo_rotulo[unidad.name],
+            viviendas_con_el_mismo_rotulo=(1 if posicion == distinguida
+                                           else mismo_rotulo[unidad.name]),
         ))
 
     con_piezas = {v.nombre for v in viviendas}

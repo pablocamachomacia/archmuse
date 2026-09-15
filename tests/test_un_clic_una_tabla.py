@@ -110,18 +110,59 @@ def test_un_clic_entre_dos_viviendas_no_mide_y_dice_las_dos_distancias(client, t
     assert "zonas" not in uno
 
 
+def test_dentro_de_una_pieza_no_hay_duda_aunque_la_de_al_lado_este_a_un_palmo(client, tmp_path):
+    """Medido el 2026-09-15 en el maestro: 7 de 52 clics dentro de la pieza mayor
+    de una vivienda decían «No mido», porque la de al lado quedaba a menos de 1 m.
+    Viviendas separadas 0,20 m: dentro de la terraza de VT1/1 se mide; en la junta
+    entre las dos, a 0,10 m de cada una, sigue sin medirse."""
+    ruta = planta.generar(tmp_path / "pegadas.dxf", n=2, separacion=-0.8)
+    cuerpo = payload_desde_dxf(str(ruta), "00 areas")
+    dentro = _fase1(client, cuerpo, [10.9, 1.5])
+    assert dentro["ok"] is True and dentro["vivienda"] == "VT1/1", dentro
+    junta = _fase1(client, cuerpo, [11.1, 1.5])
+    assert junta["ok"] is False and "No mido" in junta["motivo"], junta
+
+
 def test_un_clic_lejos_de_todo_no_mide(client, tmp_path):
     uno = _fase1(client, _payload(tmp_path, n=2), [-40.0, 2.0])
     assert uno["ok"] is False
     assert "40,00 m" in uno["motivo"] and "VT1/1" in uno["motivo"]
 
 
-def test_c13_manda_sobre_el_clic(client, tmp_path):
-    """`C-13` está firmado: la vivienda con el rótulo repetido no se mide, aunque
-    el clic la distinga por su posición."""
-    uno = _fase1(client, _payload(tmp_path, n=3, repetida=True), _junto_a(2))
-    assert uno["ok"] is False
-    assert "C-13" in uno["motivo"] and "VT1/1" in uno["motivo"]
+@pytest.mark.parametrize("i", [0, 2])
+def test_el_clic_distingue_por_su_posicion_dos_viviendas_con_el_mismo_rotulo(client, tmp_path, i):
+    """**Decisión de Pablo, 2026-09-15**: «el clic decide la vivienda aunque su
+    rótulo se repita. Dos viviendas con el mismo nombre se distinguen por su
+    posición; nunca se fusionan ni se suman». Enmienda de `C-13` para el clic.
+
+    VT1/1 está dos veces (viviendas 0 y 2) y la segunda tiene el dormitorio 2 más
+    ancho: cada clic tiene que dar la tabla de SU vivienda —la misma que midiéndola
+    sola— y ninguna puede ser la suma de las dos."""
+    punto = _junto_a(i)
+    cuerpo = _payload(tmp_path, n=3, repetida=True)
+    uno, _otras, clic = _por_clic(client, cuerpo, punto)
+    assert uno["vivienda"] == "VT1/1" and "por su posición" in uno["aviso"], uno["aviso"]
+    assert len(clic["repartos"]) == 1 and clic["repartos"][0]["ok"] is True, clic["repartos"]
+    assert "C-13" not in " ".join(clic["repartos"][0]["impedimentos"])
+
+    sola = _entera(client, _payload(tmp_path, "sola", n=3, repetida=True, solo=[i]), punto)
+    assert [x["cuadro_a_dibujar"]["celdas"] for x in clic["repartos"]] == \
+        [x["cuadro_a_dibujar"]["celdas"] for x in _reparto(sola, "VT1/1")]
+
+
+def test_las_dos_viviendas_repetidas_dan_cada_una_su_tabla(client, tmp_path):
+    cuerpo = _payload(tmp_path, n=3, repetida=True)
+    primera = _por_clic(client, cuerpo, _junto_a(0))[2]["repartos"][0]["cuadro_a_dibujar"]["celdas"]
+    tercera = _por_clic(client, cuerpo, _junto_a(2))[2]["repartos"][0]["cuadro_a_dibujar"]["celdas"]
+    assert primera != tercera, "las dos VT1/1 han dado la misma tabla: no se distinguen"
+
+
+def test_la_planta_entera_sigue_sin_publicar_las_viviendas_repetidas(client, tmp_path):
+    """Sin clic no hay posición que las distinga: `C-13` sigue igual en la
+    medición de la planta entera."""
+    entera = _entera(client, _payload(tmp_path, n=3, repetida=True), _junto_a(0))
+    repetidas = _reparto(entera, "VT1/1")
+    assert repetidas and all(x.get("indistinguible") for x in repetidas)
 
 
 def test_las_distancias_de_la_duda_son_las_de_c17():

@@ -3589,9 +3589,13 @@ def _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear=False):
                                                 "sale al medir (%s): no dibujo nada (C-17)."
                                                 % (pedida.get("nombre") if isinstance(pedida, dict)
                                                    else pedida, eleccion.vivienda.nombre)}]
-            solo = eleccion.vivienda.nombre
-        for vivienda in medida.viviendas:
-            if solo is not None and vivienda.nombre != solo:
+            # Por su sitio en el agrupador, no por su nombre: dos viviendas con el
+            # mismo rótulo se distinguen por la posición del clic (enmienda de
+            # `C-13`, Pablo, 2026-09-15). Medida como distinguida, y sólo ella.
+            solo = eleccion.vivienda.posicion
+            medida = medicion.medir_planta(plano, distinguida=solo)
+        for posicion, vivienda in enumerate(medida.viviendas):
+            if solo is not None and posicion != solo:
                 continue
             if vivienda.nombre in vistas:
                 continue
@@ -3608,7 +3612,8 @@ def _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear=False):
                                                   vivienda.viviendas_con_el_mismo_rotulo),
                 })
                 continue
-            plantilla = pc.construir(doc, plano, vivienda.nombre, ambitos=ambitos, medida=medida)
+            plantilla = pc.construir(doc, plano, vivienda.nombre, ambitos=ambitos, medida=medida,
+                                     posicion=solo)
             dibujo = pc.a_dict(plantilla)
             if punto is not None:
                 maquetacion = mq.maquetar_en_punto(plantilla.celdas(), plantilla.notas,

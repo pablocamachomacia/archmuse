@@ -44,7 +44,11 @@ def nombres(n: int, repetida: bool = False) -> List[str]:
 def generar(ruta: Path, n: int = 4, separacion: float = 6.0, dudoso: bool = False,
             repetida: bool = False, solo: Optional[Sequence[int]] = None) -> Path:
     """Escribe el DXF. `solo` deja únicamente esas viviendas (por índice), con
-    todo lo suyo y en el mismo sitio: es «medirla sola»."""
+    todo lo suyo y en el mismo sitio: es «medirla sola».
+
+    Con `repetida=True` la última vivienda se llama como la primera **y no mide
+    lo mismo**: su dormitorio 2 es 0,40 m más ancho. Así una tabla que las
+    confundiera, o que las sumara, no podría salir igual que la buena."""
     import ezdxf
 
     doc = ezdxf.new("R2018")
@@ -57,6 +61,8 @@ def generar(ruta: Path, n: int = 4, separacion: float = 6.0, dudoso: bool = Fals
         if solo is not None and i not in solo:
             continue
         for rotulo, x0, y0, x1, y1 in PIEZAS:
+            if repetida and i == n - 1 and rotulo == "Dormitorio 2":
+                x1 += 0.4
             msp.add_lwpolyline([(ox + x0, oy + y0), (ox + x1, oy + y0), (ox + x1, oy + y1),
                                 (ox + x0, oy + y1)], close=True, dxfattribs={"layer": "00 areas"})
             msp.add_mtext(rotulo, dxfattribs={"layer": "00 areas", "char_height": 0.15,

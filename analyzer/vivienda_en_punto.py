@@ -56,6 +56,10 @@ class ViviendaDelPlano:
     rotulo: Optional[Tuple[float, float]]
     rooms: tuple
     viviendas_con_el_mismo_rotulo: int
+    #: Su sitio en el orden del agrupador, el mismo que el de
+    #: `medicion.medir_planta(plano).viviendas`. Con él se distinguen dos
+    #: viviendas con el mismo rótulo (enmienda de `C-13`, Pablo, 2026-09-15).
+    posicion: int = 0
 
     def distancia_a(self, punto: Point) -> float:
         return min(r.polygon.distance(punto) for r in self.rooms)
@@ -78,8 +82,8 @@ def viviendas_del_plano(plano) -> List[ViviendaDelPlano]:
     else:
         grupos = [(u.name, None, u.rooms) for u in evaluator.group_rooms_by_proximity(rooms)]
     cuenta = Counter(nombre for nombre, _r, _p in grupos)
-    return [ViviendaDelPlano(nombre, rotulo, tuple(piezas), cuenta[nombre])
-            for nombre, rotulo, piezas in grupos if piezas]
+    return [ViviendaDelPlano(nombre, rotulo, tuple(piezas), cuenta[nombre], posicion)
+            for posicion, (nombre, rotulo, piezas) in enumerate(grupos)]
 
 
 def factor_a_metros(plano) -> float:
@@ -117,26 +121,27 @@ def elegir(viviendas: Sequence[ViviendaDelPlano], punto_m: Tuple[float, float]) 
     siguiente = None
     if len(orden) > 1:
         d2, _n2, siguiente = orden[1]
-        if d2 < FACTOR_DE_DUDA * d1 or d2 - d1 < MARGEN_DE_DUDA_M:
+        # **Dentro de una pieza no hay duda** (medido el 2026-09-15 en el maestro:
+        # 7 de 52 clics dentro de la pieza mayor de una vivienda decían «No mido»
+        # porque el tabique de la de al lado quedaba a menos de 1 m). Un punto que
+        # cae dentro de una sola vivienda no está «a distancia parecida» de dos.
+        dentro_de_una = d1 == 0 and d2 > 0
+        if not dentro_de_una and (d2 < FACTOR_DE_DUDA * d1 or d2 - d1 < MARGEN_DE_DUDA_M):
             return Eleccion(None, "No mido: el punto está a %s m de %s y a %s m de %s, y no sé de "
                                   "cuál de las dos quieres la tabla. Haz clic más cerca de una "
                                   "(C-17, propuesto)."
                             % (_metros(d1), primera.nombre, _metros(d2), siguiente.nombre), None, d1)
-    if primera.viviendas_con_el_mismo_rotulo > 1:
-        from . import medicion
-
-        return Eleccion(None, "No mido %s: %s. El clic la distingue por su posición, pero C-13 "
-                              "está firmado así; distinguirlas por el clic es una pregunta "
-                              "abierta (C-17, propuesto)."
-                        % (primera.nombre,
-                           medicion.motivo_c13(primera.nombre,
-                                               primera.viviendas_con_el_mismo_rotulo)), None, d1)
     donde = ("el punto cae dentro de su dibujo" if d1 == 0 else "a %s m del punto" % _metros(d1))
     if siguiente is not None:
         aviso = ("Mido %s: es la vivienda más cercana (%s; la siguiente, %s, está a %s m)."
                  % (primera.nombre, donde, siguiente.nombre, _metros(orden[1][0])))
     else:
         aviso = "Mido %s: es la única vivienda del plano (%s)." % (primera.nombre, donde)
+    if primera.viviendas_con_el_mismo_rotulo > 1:
+        # Enmienda de `C-13` firmada por Pablo el 2026-09-15: el clic la distingue.
+        aviso += (" Hay %d viviendas rotuladas «%s»: mido la de este clic, por su posición, "
+                  "y sus cifras no se suman con las de las otras (C-13)."
+                  % (primera.viviendas_con_el_mismo_rotulo, primera.nombre))
     return Eleccion(primera, None, aviso, d1)
 
 
