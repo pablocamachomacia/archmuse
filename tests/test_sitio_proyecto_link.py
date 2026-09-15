@@ -15,7 +15,8 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
 os.environ.pop("ANTHROPIC_API_KEY", None)
-os.environ.setdefault("ARCHMUSE_DATA_DIR", tempfile.mkdtemp(prefix="archmuse_test_sitio_link_"))
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+os.environ.setdefault("ARCHMUSE_DATA_DIR", carpeta_temporal_de_test("archmuse_test_sitio_link_"))
 
 from analyzer import storage  # noqa: E402
 import app as app_module  # noqa: E402

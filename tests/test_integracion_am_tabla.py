@@ -58,7 +58,8 @@ if RAIZ not in sys.path:
 # determinista y aislado ANTES de importar `analyzer/`/`app` -- sin API key
 # (sin red, sin coste) y con la base de datos en un directorio temporal.
 os.environ.pop("ANTHROPIC_API_KEY", None)
-os.environ.setdefault("ARCHMUSE_DATA_DIR", tempfile.mkdtemp(prefix="archmuse_test_am_tabla_"))
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+os.environ.setdefault("ARCHMUSE_DATA_DIR", carpeta_temporal_de_test("archmuse_test_am_tabla_"))
 
 import ezdxf  # noqa: E402
 

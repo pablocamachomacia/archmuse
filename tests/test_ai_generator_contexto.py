@@ -42,7 +42,8 @@ from unittest.mock import patch
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
-TMP = tempfile.mkdtemp(prefix="archmuse_test_faseF_")
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+TMP = carpeta_temporal_de_test("archmuse_test_faseF_")
 os.environ["ARCHMUSE_DATA_DIR"] = TMP
 
 from analyzer import storage  # noqa: E402

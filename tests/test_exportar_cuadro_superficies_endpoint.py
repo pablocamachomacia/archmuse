@@ -88,7 +88,8 @@ from io import BytesIO
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
-TMP_DATA = tempfile.mkdtemp(prefix="archmuse_test_fase4_")
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+TMP_DATA = carpeta_temporal_de_test("archmuse_test_fase4_")
 os.environ["ARCHMUSE_DATA_DIR"] = TMP_DATA
 
 from analyzer import storage  # noqa: E402

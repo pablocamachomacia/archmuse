@@ -270,7 +270,8 @@ else:
     with open(DXF_PATH, "rb") as f:
         hash_antes = hashlib.sha256(f.read()).hexdigest()
 
-    tmp_dir = tempfile.mkdtemp(prefix="archmuse_test_fase5_")
+    from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+    tmp_dir = carpeta_temporal_de_test("archmuse_test_fase5_")
     try:
         destino = os.path.join(tmp_dir, "v2s_completo.dxf")
         resultado_export = exportar_cuadro_relleno(DXF_PATH, destino, respuestas=respuestas)
@@ -317,7 +318,7 @@ else:
     # Y ese conflicto bloquea también la descarga completa (no solo la
     # celda en memoria): `exportar_cuadro_relleno` lo refleja en
     # `campos_sin_resolver`/`detalles_sin_resolver`.
-    tmp_dir2 = tempfile.mkdtemp(prefix="archmuse_test_fase5_conflicto_")
+    tmp_dir2 = carpeta_temporal_de_test("archmuse_test_fase5_conflicto_")
     try:
         destino2 = os.path.join(tmp_dir2, "v2s_conflicto.dxf")
         resultado_export_conflicto = exportar_cuadro_relleno(

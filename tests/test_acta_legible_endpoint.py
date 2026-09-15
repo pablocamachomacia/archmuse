@@ -34,7 +34,8 @@ if str(RAIZ) not in sys.path:
 # `ARCHMUSE_DATA_DIR` tiene que apuntar a un directorio temporal ANTES del
 # import -- mismo patrón que `tests/test_exportar_cuadro_superficies_endpoint.py`
 # y `tests/test_analizar_planta.py`, para no tocar la base de datos de desarrollo.
-_TMP_DATA = tempfile.mkdtemp(prefix="archmuse_test_acta_endpoint_")
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+_TMP_DATA = carpeta_temporal_de_test("archmuse_test_acta_endpoint_")
 os.environ.setdefault("ARCHMUSE_DATA_DIR", _TMP_DATA)
 
 from analyzer import storage  # noqa: E402

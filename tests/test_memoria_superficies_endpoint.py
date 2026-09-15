@@ -24,7 +24,8 @@ RAIZ = Path(__file__).resolve().parent.parent
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
-_TMP_DATA = tempfile.mkdtemp(prefix="archmuse_test_memoria_endpoint_")
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+_TMP_DATA = carpeta_temporal_de_test("archmuse_test_memoria_endpoint_")
 os.environ.setdefault("ARCHMUSE_DATA_DIR", _TMP_DATA)
 
 from analyzer import storage  # noqa: E402

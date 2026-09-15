@@ -41,7 +41,8 @@ if str(RAIZ) not in sys.path:
 # `app.py` llama a `init_db()` al importarse: `ARCHMUSE_DATA_DIR` tiene que
 # apuntar a un temporal ANTES del import (mismo patrón que
 # `tests/test_acta_legible_endpoint.py`).
-_TMP_DATA = tempfile.mkdtemp(prefix="archmuse_test_medicion_endpoint_")
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+_TMP_DATA = carpeta_temporal_de_test("archmuse_test_medicion_endpoint_")
 os.environ.setdefault("ARCHMUSE_DATA_DIR", _TMP_DATA)
 
 from analyzer import storage  # noqa: E402

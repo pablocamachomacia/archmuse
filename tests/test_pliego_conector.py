@@ -20,7 +20,8 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
 os.environ.pop("ANTHROPIC_API_KEY", None)  # este test no debe poder llamar a la IA aunque quisiera
-os.environ.setdefault("ARCHMUSE_DATA_DIR", tempfile.mkdtemp(prefix="archmuse_test_pliego_conector_"))
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+os.environ.setdefault("ARCHMUSE_DATA_DIR", carpeta_temporal_de_test("archmuse_test_pliego_conector_"))
 
 from analyzer.pliego_conector import pliego_a_params  # noqa: E402
 from analyzer import storage  # noqa: E402

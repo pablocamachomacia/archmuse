@@ -29,7 +29,8 @@ import tempfile
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
-TMP = tempfile.mkdtemp(prefix="archmuse_test_e2_")
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+TMP = carpeta_temporal_de_test("archmuse_test_e2_")
 os.environ["ARCHMUSE_DATA_DIR"] = TMP
 
 from analyzer import parser, storage  # noqa: E402
@@ -136,7 +137,7 @@ print("=" * 70)
 print("3. COMPATIBILIDAD HACIA ATRAS: fila de antes de E2")
 print("=" * 70)
 
-TMP_VIEJO = tempfile.mkdtemp(prefix="archmuse_test_e2_viejo_")
+TMP_VIEJO = carpeta_temporal_de_test("archmuse_test_e2_viejo_")
 os.environ["ARCHMUSE_DATA_DIR"] = TMP_VIEJO
 con = sqlite3.connect(storage.db_path())
 con.execute(

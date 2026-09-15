@@ -120,6 +120,20 @@ collect_ignore = [str(ruta) for ruta in SCRIPTS_LEGACY]
 ROJOS_CONOCIDOS = {}
 
 
+def pytest_sessionfinish(session, exitstatus):
+    """Borra las carpetas `archmuse_test_*` que ha creado esta sesión, pase lo que
+    pase con los tests (`tests/_carpetas_temporales.py`). Hasta el 2026-09-15 no
+    se borraba ninguna: había 6.009 en `%TEMP%`."""
+    if str(DIR_TESTS) not in sys.path:
+        sys.path.insert(0, str(DIR_TESTS))
+    import _carpetas_temporales
+
+    quedan = _carpetas_temporales.borrar_carpetas_de_test()
+    if quedan:
+        print("\nAVISO: %d carpeta(s) archmuse_test_* no se han dejado borrar: %s"
+              % (len(quedan), ", ".join(quedan[:5])))
+
+
 def pytest_generate_tests(metafunc):
     """Da a `test_script_legacy` un caso por script, con el nombre del fichero
     como id — para que el informe de pytest se lea como una lista de ficheros y

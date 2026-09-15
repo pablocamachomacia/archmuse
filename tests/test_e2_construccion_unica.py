@@ -35,7 +35,8 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
 os.environ.pop("ANTHROPIC_API_KEY", None)
-os.environ["ARCHMUSE_DATA_DIR"] = tempfile.mkdtemp(prefix="archmuse_test_e2_construccion_")
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+os.environ["ARCHMUSE_DATA_DIR"] = carpeta_temporal_de_test("archmuse_test_e2_construccion_")
 
 from analyzer import circulation, evaluator, parser  # noqa: E402
 from modelo import compat as modelo_compat  # noqa: E402

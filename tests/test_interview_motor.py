@@ -534,7 +534,8 @@ print("=" * 70)
 
 from analyzer import storage  # noqa: E402
 
-TMP = tempfile.mkdtemp(prefix="archmuse_test_interview_motor_")
+from _carpetas_temporales import carpeta_temporal_de_test  # noqa: E402
+TMP = carpeta_temporal_de_test("archmuse_test_interview_motor_")
 os.environ["ARCHMUSE_DATA_DIR"] = TMP
 storage.init_db()
 
