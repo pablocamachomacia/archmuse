@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.7.0")
-(setq *am:version*  "3.7.0 (2026-09-15, C-15: recintos en una referencia externa)")
+(setq *am:version-corta* "3.7.2")
+(setq *am:version*  "3.7.2 (2026-09-15, no lee sus propios cuadros como tuyos)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -1140,6 +1140,16 @@
 
 (setq *am:titulo-del-cuadro* "CUADRO DE SUPERFICIES POR TIPO DE VIVIENDA")
 
+;; **Lo que marca una tabla como DE ArchMuse** (2026-09-15). La que dibuja lleva
+;; el mismo título que la del arquitecto, y en una segunda pasada contaba como
+;; «cuadro tuyo»: su caja, sus alturas y su estilo entraban como del plano. Se
+;; reconoce por dos marcas independientes que ya lleva desde la 3.3.0 —la capa y
+;; el estilo de tabla, que pone el servidor (`maquetacion_cuadro.CAPA` y
+;; `ESTILO_DE_TABLA`; un test las compara)— sin escribir nada nuevo en el dibujo.
+(setq *am:capa-del-cuadro* "ARCHMUSE - CUADRO")
+(setq *am:estilo-de-tabla-propio* "ARCHMUSE")
+(setq *am:tablas-propias* 0)
+
 (defun am:mayusculas-sin-tildes (s / i ch res)
   ;; Comparación tosca a propósito: sólo se usa para reconocer el título del
   ;; cuadro, y el criterio fino de qué es cada fila es del servidor. Convierte
@@ -1184,19 +1194,38 @@
   (setq ss (ssget "_X" '((0 . "ACAD_TABLE"))))
   (if ss (sslength ss) 0))
 
+(defun am:tabla-de-archmuse-p (tabla / capa estilo)
+  ;; T si la tabla la dibujó ArchMuse: su capa o su estilo de tabla son los de
+  ;; ArchMuse. Basta una de las dos: el arquitecto puede haberle cambiado la otra.
+  ;; **Sin ejecutar en AutoCAD** (3.7.2): `vla-get-Layer` y `vla-get-StyleName`
+  ;; contrastadas contra la referencia de ActiveX.
+  (setq capa   (vl-catch-all-apply 'vla-get-Layer (list tabla))
+        estilo (vl-catch-all-apply 'vla-get-StyleName (list tabla)))
+  (or (and (= (type capa) 'STR)
+           (= (strcase capa) (strcase *am:capa-del-cuadro*)))
+      (and (= (type estilo) 'STR)
+           (= (strcase estilo) (strcase *am:estilo-de-tabla-propio*)))))
+
 (defun am:buscar-cuadros ( / ss i ename obj res)
-  ;; TODAS las tablas que son un cuadro de superficies, en orden de dibujo.
+  ;; TODAS las tablas que son un cuadro de superficies DEL ARQUITECTO, en orden
+  ;; de dibujo.
   ;;
   ;; **Un plano real tiene varios.** `plantasimple.dxf` tiene 25, uno por
   ;; vivienda, y es el unico proyecto completo del lote; `ejemplo.dxf` tiene 6.
   ;; Hasta el 2026-09-12 este comando cogia el primero y los demas no existian.
+  ;;
+  ;; **Las que dibujó ArchMuse no** (2026-09-15): llevan el mismo título. Se
+  ;; cuentan en `*am:tablas-propias*` para decirlo, y no se leen.
   (setq ss (ssget "_X" '((0 . "ACAD_TABLE"))))
-  (setq i 0 res nil)
+  (setq i 0 res nil *am:tablas-propias* 0)
   (if ss
     (while (< i (sslength ss))
       (setq ename (ssname ss i)
             obj   (vlax-ename->vla-object ename))
-      (if (am:es-el-cuadro obj) (setq res (cons obj res)))
+      (if (am:es-el-cuadro obj)
+        (if (am:tabla-de-archmuse-p obj)
+          (setq *am:tablas-propias* (1+ *am:tablas-propias*))
+          (setq res (cons obj res))))
       (setq i (1+ i))))
   (reverse res))
 
@@ -2155,7 +2184,7 @@
 
 
 (defun c:ARCHMUSE ( / *error* capa cuadros cuerpo respuesta celdas motivos consejo
-                      sueltas descartes doc marcado tablas eco r
+                      sueltas descartes doc marcado tablas eco r grupo-abierto
                       trozos ini fin bloque dibujadas tabla
                       filas cols notas i n
                       punto geometria ambitos alineado nombres elegida m intentos
@@ -2173,6 +2202,22 @@
         ;; otra cosa, y es justo el que hay que poder leer tres semanas después.
         ;; `msg` es el mensaje de AutoLISP: no lleva geometría dentro.
         (am:log (strcat "ERROR: " msg))))
+    ;; **ArchMuse deja AutoCAD como lo encontró, pase lo que pase** (`C-16`,
+    ;; 2026-09-15). Un Esc o un error sin capturar mientras dibujaba llegaba
+    ;; aquí con el grupo de deshacer ABIERTO —el siguiente UNDO del arquitecto
+    ;; se comportaba raro— y con la tabla a medias y sin marca de borrador, que
+    ;; es lo que `C-3` prohíbe. Se cierra el grupo y, si llegó a dibujarse algo,
+    ;; se retira. `command-s` y no `command`: dentro de *error* AutoCAD no admite
+    ;; `command`. **Sin ejecutar en AutoCAD todavía**: lo comprueba el guardián
+    ;; (`herramientas/guardian_autocad/`), no la suite.
+    (if grupo-abierto
+      (progn
+        (setq grupo-abierto nil)
+        (vl-catch-all-apply 'vla-EndUndoMark (list doc))
+        (if *am:dibujo-empezado*
+          (if (vl-catch-all-error-p (vl-catch-all-apply 'command-s (list "_.U")))
+            (princ "\nY NO he podido deshacer lo que llegué a dibujar: pulsa UNDO tú.")
+            (princ "\nHe deshecho lo que llegué a dibujar: tu plano está como antes.")))))
     (setvar "CMDECHO" (if eco eco 1))
     (princ))
 
@@ -2207,6 +2252,10 @@
   ;;    filas para que la comparacion sea directa; si no, se dibuja con el
   ;;    formato de ArchMuse y **se le dice que es el de ArchMuse**.
   (setq cuadros (am:buscar-cuadros))
+  ;; Las tablas de pasadas anteriores se dicen y no se leen (2026-09-15).
+  (if (> *am:tablas-propias* 0)
+    (princ (strcat "\nHay " (itoa *am:tablas-propias*)
+                   " cuadro(s) de ArchMuse de pasadas anteriores: no los leo como tuyos.")))
   (if (null cuadros)
     (progn
       ;; **Dos casos distintos, y hasta el 2026-09-11 se decían igual.** El
@@ -2214,7 +2263,7 @@
       ;; líneas sueltas; en `V5.dxf` eso no era verdad —ese plano no tiene cuadro
       ;; de ninguna clase, ni tabla ni líneas— y mandaba a buscar algo que no
       ;; existe. Ahora se dice lo que se sabe y sólo lo que se sabe.
-      (setq tablas (am:cuantas-tablas))
+      (setq tablas (- (am:cuantas-tablas) *am:tablas-propias*))
       (if (= tablas 0)
         (progn
           (princ "\nEste plano no tiene ningun cuadro de superficies.")
@@ -2466,9 +2515,12 @@
       (setvar "CMDECHO" eco) (princ) (exit)))
   (setq notas (am:notas-colocadas m))
 
-  ;; 3. **Enseñar antes de dibujar.** Ve lo que va a aparecer en su plano y
-  ;;    puede irse sin que se haya tocado nada.
-  (princ (strcat "\n\nVoy a dibujar el cuadro de ArchMuse de " (nth elegida nombres)
+  ;; 3. **Sin volver a preguntar** (3.7.1, Pablo, 2026-09-15). Hasta la 3.7.0
+  ;;    aquí se preguntaba «¿Te dibujo el cuadro de ArchMuse? [Si/No] <No>».
+  ;;    Marcar el punto ya es decir que sí, y un Enter sin leer se quedaba en el
+  ;;    <No>: no dibujaba nada y parecía un fallo. La red es el grupo de deshacer
+  ;;    de abajo: un solo UNDO lo quita todo. Lo que se dibuja se sigue diciendo.
+  (princ (strcat "\n\nDibujo el cuadro de ArchMuse de " (nth elegida nombres)
                  ": " (itoa (length celdas)) " casilla(s) con texto."))
   (princ "\n  Tu cuadro no se toca: la tabla va desde el punto que has marcado.")
   (if notas
@@ -2477,24 +2529,21 @@
                      " nota(s) al pie, con el motivo de cada celda vacía:"))
       (foreach nota notas (princ (strcat "\n   " (caddr nota))))))
 
-  (initget "Si No")
-  (setq r (getkword "\n\n¿Te dibujo el cuadro de ArchMuse? [Si/No] <No>: "))
-  (if (/= r "Si")
-    (progn
-      (princ "\nCancelado. No se ha dibujado nada.")
-      (am:log (strcat "cancelado por el usuario con " (itoa (length celdas))
-                      " casilla(s) listas"))
-      (setvar "CMDECHO" eco) (princ) (exit)))
-
   ;; **Todo lo que se escribe va dentro de UN grupo de deshacer.** Así un solo
   ;; `UNDO` lo quita entero —tabla, notas y marca— en vez de dejar al arquitecto
   ;; pulsando diez veces, y así se puede retirar en bloque si algo sale mal.
   (setq doc (vla-get-ActiveDocument (vlax-get-acad-object)))
+  ;; `grupo-abierto` es lo que le dice a *error* que hay un grupo que cerrar
+  ;; (`C-16`). `*am:dibujo-empezado*` se pone a nil AQUÍ y no sólo dentro de
+  ;; `am:dibujar-cuadro`: un Esc antes de entrar encontraría el T de la pasada
+  ;; anterior, y el UNDO de *error* desharía algo que hizo él.
+  (setq *am:dibujo-empezado* nil grupo-abierto T)
   (vl-catch-all-apply 'vla-StartUndoMark (list doc))
 
   (setq tabla (am:dibujar-cuadro m celdas))
   (if (null tabla)
     (progn
+      (setq grupo-abierto nil)
       (vl-catch-all-apply 'vla-EndUndoMark (list doc))
       ;; **La causa, siempre** (3.4.1). La 3.4.0 decía sólo «No he podido dibujar
       ;; la tabla. No se ha quedado nada a medias.»: ni en qué paso ni por qué —el
@@ -2540,6 +2589,7 @@
   ;; que lleva cifras que hay que calificar de borrador, y la suya no se toca.
   ;; Misma capa y mismo texto que la via web, que es lo que exige `C-9`.
   (setq marcado (am:marcar-borrador tabla m))
+  (setq grupo-abierto nil)
   (vl-catch-all-apply 'vla-EndUndoMark (list doc))
 
   (if (null marcado)

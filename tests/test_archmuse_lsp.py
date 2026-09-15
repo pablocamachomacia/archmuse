@@ -147,6 +147,16 @@ PRIMITIVAS = {
     #   `vl-filename-base` / `vl-filename-extension` -- el nombre sin carpeta ni
     #       extensión, y la extensión con su punto (nil si no tiene).
     "tblnext", "tblobjname", "entnext", "vl-filename-base", "vl-filename-extension",
+    # `C-16`, dejar AutoCAD como estaba (3.7.1, 2026-09-15). Contrastada contra la
+    # referencia de AutoLISP, **sin ejecutar en AutoCAD**:
+    #   `command-s` -- como `command`, pero admitida dentro de *error* (desde
+    #       AutoCAD 2015 `command` ahí da error). Deshace lo dibujado tras un Esc.
+    "command-s",
+    # Reconocer la tabla que dibujó ArchMuse (3.7.2, 2026-09-15). Contrastadas
+    # contra la referencia de ActiveX, **sin ejecutar en AutoCAD**:
+    #   `vla-get-Layer` -- la capa de un objeto, como cadena.
+    #   `vla-get-StyleName` -- en una AcadTable, el nombre de su estilo de tabla.
+    "vla-get-Layer", "vla-get-StyleName",
 }
 
 
@@ -502,16 +512,23 @@ def test_no_se_escribe_nunca_en_el_cuadro_del_arquitecto(fuente):
         "una tabla que ArchMuse no ha creado" % fuera)
 
 
-def test_se_pide_confirmacion_antes_de_escribir_en_el_plano(fuente):
-    """Se dibuja en el plano abierto del arquitecto, no en una copia. La red es
-    que vea antes lo que va a pasar y pueda decir que no.
+def test_marcar_el_punto_es_decir_que_si_y_lo_dibujado_se_deshace_de_una_vez(fuente):
+    """Se dibuja en el plano abierto del arquitecto, no en una copia.
 
-    Sigue haciendo falta aunque ya no se toque su cuadro: aparecerán 22 tablas
-    nuevas en su dibujo, y eso también es escribir en su plano."""
+    Hasta la 3.7.0 la red era preguntar «¿Te dibujo el cuadro de ArchMuse?
+    [Si/No] <No>» justo antes de dibujar. Pablo la quitó el 2026-09-15: marcar
+    el punto ya es decir que sí, y un Enter sin leer se quedaba en el <No>, no
+    dibujaba nada y parecía un fallo. La red son ahora dos cosas: el punto se
+    pide antes de dibujar (Esc ahí no dibuja nada) y todo lo que se escribe va en
+    un grupo de deshacer. Este test impide que vuelva la pregunta sin decidirlo."""
     codigo = _sin_comentarios_ni_cadenas(fuente)
-    assert "getkword" in codigo, "no se pide confirmación antes de escribir"
-    assert codigo.index("getkword") < codigo.index("(am:dibujar-cuadro"), (
-        "se escribe antes de preguntar")
+    comando = codigo[codigo.index("(defun c:ARCHMUSE ("):]
+    dibujar = comando.index("(am:dibujar-cuadro")
+    punto = comando.rindex("(am:pedir-punto)", 0, dibujar)
+    assert "getkword" not in comando[punto:dibujar], (
+        "ha vuelto una pregunta entre marcar el punto y dibujar")
+    assert "vla-StartUndoMark" in comando[punto:dibujar], (
+        "se dibuja fuera de un grupo de deshacer")
 
 
 def test_el_ssget_de_recintos_no_lleva_mas_filtro_que_la_capa(fuente):
@@ -650,6 +667,20 @@ def test_nunca_se_dejan_numeros_sin_marca_de_borrador(fuente):
         "cifras sin advertencia, que es lo que `C-3` prohíbe")
 
 
+def _fin_de_forma(codigo: str, ini: int) -> int:
+    """Dónde acaba la expresión que empieza en `ini`. Sobre código sin cadenas,
+    así que contar paréntesis basta."""
+    profundidad = 0
+    for i in range(ini, len(codigo)):
+        if codigo[i] == "(":
+            profundidad += 1
+        elif codigo[i] == ")":
+            profundidad -= 1
+            if profundidad == 0:
+                return i + 1
+    raise AssertionError("paréntesis sin cerrar desde %d" % ini)
+
+
 def test_lo_escrito_va_en_un_solo_grupo_de_deshacer(fuente):
     """Un `UNDO` tiene que quitarlo todo —celdas y marca—, no una celda cada vez.
 
@@ -657,7 +688,12 @@ def test_lo_escrito_va_en_un_solo_grupo_de_deshacer(fuente):
     posible retirar el trabajo en bloque cuando la marca no se puede poner.
     """
     codigo = _sin_comentarios_ni_cadenas(fuente)
-    comando = codigo[codigo.index("(defun c:ARCHMUSE"):]
+    comando = codigo[codigo.index("(defun c:ARCHMUSE ("):]
+    # **Sin `*error*`.** Desde `C-16` también cierra el grupo, y como se define
+    # al principio del comando su cierre aparece en el texto antes de abrirlo.
+    # Aquí se mira el flujo; *error* lo mira `test_lsp_deja_autocad_como_estaba`.
+    ini_error = comando.index("(defun *error*")
+    comando = comando[:ini_error] + comando[_fin_de_forma(comando, ini_error):]
 
     inicio = comando.index("vla-StartUndoMark")
     # **El último cierre, no el primero.** Desde el 2026-09-12 hay dos:
