@@ -5,6 +5,174 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 · ArchMuse no se lee a sí mismo (`.lsp` 3.7.2)
+
+**El aviso de Pablo.** En una segunda ejecución sobre el plano de referencia del
+estudio, el comando dijo «He encontrado 2 cuadro(s)»: contó como cuadro del
+arquitecto la tabla que él mismo había dibujado, porque lleva el mismo título.
+Es un arreglo, no una capacidad nueva: sin PRD.
+
+### Medido antes de arreglar, fuera del repositorio y sobre ese plano
+
+- **Vía del comando** (simulada contra el servidor con lo que el `.lsp` leería de
+  la tabla anterior). Las celdas del cuadro no entran en el cálculo desde la
+  plantilla fija, y **tres pasadas dan las mismas cifras** (útil 62,55 m²,
+  construida 73,07 m²). Pero la tabla propia contaba como «tu cuadro»: su caja
+  (el mismo punto se rechazaba por pisarla), sus alturas y su estilo.
+- **Vía web: la segunda exportación dejaba de escribir las cifras.** El cuadro
+  exportado son `LINE` y `MTEXT` sueltos, y su casilla «VT1/3» se leía como un
+  segundo rótulo de vivienda. Quedaba «Aseo está a 9,95 m de VT1/3 y a 17,30 m de
+  VT1/3» y el reparto se bloqueaba (`C-2`, `C-14`).
+- **ezdxf lee capa «0» en todos los `ACAD_TABLE`**, también en uno real guardado
+  por AutoCAD: los guarda como `DXFTagStorage`. La capa verdadera es el grupo 8 de
+  sus `xtags`.
+
+### El arreglo
+
+- **`analyzer/propio.py`:** lo dibujado por ArchMuse se reconoce por su capa
+  (`ARCHMUSE - CUADRO`, `ARCHMUSE - BORRADOR` y la antigua
+  `00 ARCHMUSE BORRADOR`); la de los `ACAD_TABLE` se lee de `xtags`. Se ignora en
+  cuatro sitios, que valen para las dos vías:
+  - los rótulos (`parser.extract_labels`, y con ellos los de vivienda);
+  - el rótulo de la construida;
+  - las alturas y estilos de rótulos;
+  - los cuadros de la vía web y sus cajas.
+- **`.lsp` 3.7.2:** `am:tabla-de-archmuse-p` reconoce la tabla propia por la capa
+  **o** por el estilo de tabla «ARCHMUSE». `am:buscar-cuadros` no la lee, y el
+  comando dice «Hay N cuadro(s) de ArchMuse de pasadas anteriores: no los leo como
+  tuyos». `vla-get-Layer` y `vla-get-StyleName` **sin ejecutar en AutoCAD**.
+
+### Tests
+
+`tests/test_archmuse_no_se_lee_a_si_mismo.py`, escrito antes del arreglo. Fallaban:
+- el del comando, con `C-13`: «hay 2 viviendas rotuladas VT1/3»;
+- el del `ACAD_TABLE` en la capa de ArchMuse: 2 cuadros en vez de 1;
+- el del `.lsp`.
+
+**El de la exportación web pasaba con el fallo dentro**, por tres motivos, uno
+detrás de otro:
+1. el trastero ya bloqueaba las cifras de la primera pasada;
+2. la tabla quedaba lejos del plano;
+3. la marca de borrador del fixture en 1e+20 hacía infinita la caja.
+
+Corregidos los tres, falla. **Roto a propósito** (`propio` sin reconocer ninguna
+capa), fallan los tres de cifras y cuadros.
+
+**Tras el arreglo, sobre el plano de referencia:** el comando da las mismas cifras
+en tres pasadas, y la segunda exportación web escribe las mismas 33 casillas.
+
+### Decisiones tomadas sin preguntar
+
+- **Marca por capa y estilo, no XDATA.** Las dos ya las lleva todo lo dibujado
+  desde la 3.3.0, y XDATA obligaba a escribir algo nuevo en AutoCAD sin poder
+  ejecutarlo antes.
+- **Lo propio tampoco cuenta como caja que evitar.** Una tabla nueva puede caer
+  encima de la anterior: en la web, exactamente encima, idéntica.
+
+> **Hallazgo abierto, sin arreglar.** En el fixture sintético la marca de borrador
+> de la exportación web sale en (1e+20, 1e+20): fuera de la vista. Hipótesis sin
+> medir: `estampar_dxf` usa `$EXTMIN`, que ezdxf deja en 1e+20 cuando el DXF no
+> trae la extensión. Afecta a `C-3` en DXF sin extensión.
+
+---
+
+## 2026-09-15 · `C-16` (propuesto): el comando deja AutoCAD como lo encontró
+
+**Por qué se abrió.** Pablo pidió una auditoría acotada del comando, un criterio
+(`C-16`, **propuesto, pendiente de firma**) y un guardián que lo compruebe de
+verdad.
+
+> **Nota sobre FILEDIA — no es un bug abierto.** Apareció a 0 el 15-sep;
+> ArchMuse descartado; causa desconocida. El comando no lo toca, y Pablo comprobó
+> que Abrir enseña el explorador después de ARCHMUSE, al terminar y tras Esc. De
+> paso quedó medido que FILEDIA vive en `FixedProfile\General
+> Configuration\FileDialog` y que AutoCAD Core Console arranca siempre con
+> FILEDIA en 0 sin guardarlo en el perfil.
+
+### Auditoría del `.lsp`: un hueco, arreglado
+
+CMDECHO es la única variable que cambia, y se devuelve en las 17 salidas y en
+*error*. No se tocan capa, color, estilos activos ni SECURELOAD, y las únicas
+órdenes son `_.DELAY` y `_.U`. **El hueco:** un Esc o un error sin capturar
+mientras dibujaba dejaba el grupo de deshacer abierto y la tabla a medias sin
+marca de borrador (`C-3`). Arreglado en el `.lsp` 3.7.1: la bandera
+`grupo-abierto`, y *error* cierra el grupo y retira lo dibujado con
+`command-s "_.U"`. **Sin ejecutar en AutoCAD.**
+
+### El guardián
+
+`herramientas/guardian_autocad/guardian.lsp`: `ARCHMUSE-GUARDIAN` hace la foto de
+antes; después se usa ARCHMUSE como se quiera probar; y `ARCHMUSE-GUARDIAN` otra
+vez hace la foto de después y compara. Mira las 880 variables de AutoCAD 2027 y el
+registro del perfil. Van en dos pasos porque un Esc aborta toda la evaluación de
+AutoLISP. **Comprobado en Core Console**
+(`probar_en_core_console.ps1`): caza FILEDIA 0 -> 1 y no da falsos avisos sin
+cambios. **Todavía no se ha pasado con ARCHMUSE en un AutoCAD con ventanas.**
+
+**El automático, descartado de momento.** Se intentó manejar un AutoCAD aparte
+por COM. Lo medido:
+- mientras un `getpoint` espera, AutoCAD rechaza toda llamada COM;
+- `SendCommand` se bloquea a sí mismo;
+- la instancia oculta dejó de quedar libre al abrir el dibujo desde que se cerró
+  el otro AutoCAD, sin ningún diálogo;
+- `SetVariable("TRUSTEDPATHS")` escribe en el registro compartido al momento.
+  Se restauró cada vez.
+
+El DXF sintético, además, deja la instancia ocupada más de 30 s; un DWG, no.
+
+**Guardado en la suite:** `tests/test_lsp_deja_autocad_como_estaba.py` (6 tests,
+leyendo el código). `test_lo_escrito_va_en_un_solo_grupo_de_deshacer` mira ahora
+el flujo sin *error*, y `command-s` entra en la lista de funciones permitidas.
+Suite entera: 2018 pasan, 39 saltados, 1 xfail, 0 fallos.
+
+**Paquete para probarlo:** `ArchMuse-0.3.8.archmuse` (`.lsp` 3.7.1), construido
+con `--capa-b` y probado con el runtime de la 0.3.7, que es el mismo (salud 200,
+medición 200, versión 0.3.8, ningún módulo de fuera). SHA-256
+`ce1ca85de12017cbb9bf39168babec4c3acecc8ef424e2e4b9d02ac1bf2b10b0`. Número
+gastado: el siguiente build es 0.3.9.
+
+**Pasado por Pablo en su AutoCAD con la 0.3.8.** Hasta el final y Esc al pedir el
+punto: «exactamente como estaba», sin «Registro cambiado», así que no hay nada que
+añadir a los ignorados. **Esc en la capa y servidor parado: no dejaron informe**
+en `%TEMP%` ni en ningún otro sitio buscado.
+
+- Hipótesis, sin medir: el guardián ponía `*amg:foto*` a nil al cargarse, y
+  volver a cargarlo o cambiar de dibujo entre los dos pasos convierte el segundo
+  `ARCHMUSE-GUARDIAN` en otra «foto de antes» que no compara.
+- Arreglado: ya no se pierde al recargar.
+- Esas dos pasadas hay que repetirlas.
+
+El Esc a mitad del dibujo, que es el arreglo, sigue sin ejecutarse en AutoCAD.
+
+---
+
+## 2026-09-15 · Una parada menos: se dibuja al marcar el punto (`.lsp` 3.7.1)
+
+**Decisión de Pablo.** En una pasada normal el comando paraba tres veces: capa,
+punto y «¿Te dibujo el cuadro de ArchMuse? [Si/No] <No>». La tercera sobra:
+marcar el punto ya es decir que sí. Además su valor por defecto era <No>, así
+que un Enter sin leer no dibujaba nada y parecía un fallo. Se quita.
+
+- **Se mantienen** la de capa y la de interior/exterior: ahí preguntar es mejor
+  que adivinar. Tampoco cambian la elección de vivienda, cuando hay varias, ni
+  «¿Los alineo SÓLO para esta medición? <No>», cuyo «por defecto NO» está firmado.
+- **La red ahora:** Esc al pedir el punto sale sin dibujar nada, y todo lo que se
+  escribe va en un grupo de deshacer (`vla-StartUndoMark`/`EndUndoMark`).
+  **Sin probar en AutoCAD** que un Ctrl+Z lo quite de una vez.
+- El resumen («Dibujo el cuadro de…: N casillas, notas al pie») se sigue
+  enseñando; ahora sale mientras dibuja y no antes de una pregunta.
+- El test `test_se_pide_confirmacion_antes_de_escribir_en_el_plano` protegía la
+  pregunta. Se sustituye por uno que exige lo contrario: nada de `getkword`
+  entre el último punto pedido y el dibujo, y el dibujo dentro del grupo de
+  deshacer.
+- El repositorio pasa a **0.3.8**: el 0.3.7 ya existe como instalador y lleva el
+  `.lsp` 3.7.0, que todavía pregunta.
+
+> **El folio del 0.3.7 sigue diciendo «contesta Sí»**, y es correcto para ese
+> instalador. Si se entrega un build con el 3.7.1, hay que quitarlo.
+
+---
+
 ## 2026-09-15 · Instalador 0.3.7 para el primer usuario de la beta
 
 **Qué lleva.** `.lsp` 3.7.0 (`C-15`, xrefs), el símbolo «B1 · Paredes
@@ -38,11 +206,13 @@ del 15/09, con el símbolo) y 0.3.6 lo usó el paquete de ensayo de la VM.
 ningún AutoCAD. Encima de la 0.3.5 instalada en el portátil de Pablo (con `.lsp`
 3.6.2) es la primera vez.
 
-> **ABIERTO, antes de entregar el folio.** `docs/beta/INSTRUCCIONES.md` §1.2
-> dice «Ejecutar de todas formas». Con Smart App Control encendido **ese botón no
-> existe** (medido en este portátil el 2026-09-15): el `.exe` sin firmar se
-> bloquea sin opción. Si el Windows del arquitecto lo tiene encendido, el folio
-> le deja sin salida.
+> **Corregido en el folio el mismo día (Pablo).** `docs/beta/INSTRUCCIONES.md`
+> §1.2 decía sólo «Ejecutar de todas formas», y con Smart App Control encendido
+> **ese botón no existe** (medido en este portátil el 2026-09-15). Ahora dice
+> que se apaga en Seguridad de Windows → Control de aplicaciones y navegador y
+> que se puede volver a encender después. **Sin medir:** el título exacto del
+> aviso que cita el folio; el que se anotó en este portátil fue «Una directiva
+> de Control de aplicaciones bloqueó este archivo».
 
 ---
 
