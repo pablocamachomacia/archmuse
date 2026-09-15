@@ -5,6 +5,43 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-15 (noche, 2) · El clic distingue las viviendas con el mismo rótulo
+
+**Decisión de Pablo, firmada:** «el clic decide la vivienda aunque su rótulo se
+repita. Dos viviendas con el mismo nombre se distinguen por su posición; nunca se
+fusionan ni se suman. Si hay duda real de cuál está más cerca, sigue diciendo "No
+mido".» Registrada como **enmienda de `C-13` para el clic** (él citó `C-15`; el
+texto es el de `C-13`). Sin clic —planta entera, web, agente— `C-13` sigue igual.
+
+**Cómo.** `medicion.medir_planta(plano, distinguida=posición)` mide esa vivienda
+sin el impedimento de `C-13`; `plantilla_cuadro.construir(…, posicion=)` la busca
+por su sitio en el agrupador y no por su nombre; el endpoint usa la posición que
+sale de volver a elegir. Tests antes del arreglo (fallaban): cada una de dos VT1/1
+con distinta geometría da SU tabla, idéntica a medirla sola, y distinta de la
+otra; la planta entera sigue sin publicarlas.
+
+**Ajuste de `C-17` (propuesto), medido:** un punto dentro de una pieza de una sola
+vivienda no tiene duda. En el maestro, 7 de 52 clics dentro de la pieza mayor de
+su vivienda caían en la regla del metro por el tabique de la de al lado. En la
+junta entre dos viviendas sigue diciendo «No mido».
+
+**Medido en una copia del maestro (fuera del repositorio), 52 viviendas, 25 con
+rótulo repetido:**
+
+| Clic | Antes | Después |
+|---|---|---|
+| Dentro de su pieza mayor | 25 miden · 20 `C-13` · 7 duda | **46 miden** · 6 duda |
+| A 1 m a su izquierda | 20 miden · 18 `C-13` · 11 duda · 3 otra | **35 miden** · 11 duda · 6 otra |
+
+«Otra» es que la vivienda de al lado está más cerca de ese punto: es la que se
+mide, y el aviso lo dice. Cinco `VT01` repetidas por las dos peticiones: tabla en
+5,6-6,6 s de servidor, **con notas**: ese plano tiene piezas sin rótulo, repartos
+no firmes y solapes que ArchMuse declara. Sin investigar más.
+
+**El redondeo 58,96 / 58,97 no se ha tocado**: lo decide el arquitecto.
+
+---
+
 ## 2026-09-15 (noche) · Un clic, una tabla (`.lsp` 3.9.0) y el 23,24 del salón
 
 PRD `docs/prd/2026-09-15-un-clic-una-tabla.md`, aprobado en el encargo. Criterio
