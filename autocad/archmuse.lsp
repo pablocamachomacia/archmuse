@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.5")
-(setq *am:version*  "3.9.5 (2026-09-16, ARCHMUSE-ACTUALIZAR busca en ese momento)")
+(setq *am:version-corta* "3.9.6")
+(setq *am:version*  "3.9.6 (2026-09-16, el cuadro sigue al cursor con la orden MOVER)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -820,11 +820,12 @@
           "[" (am:json-num (nth 0 caja)) "," (am:json-num (nth 1 caja)) ","
           (am:json-num (nth 2 caja)) "," (am:json-num (nth 3 caja)) "]"))
 
-(defun am:obstaculos (zona / zonas ss i ename datos caja res n)
+(defun am:obstaculos (zona propios / zonas ss i ename datos caja res n)
   ;; **Lo que hay dibujado bajo la tabla** (3.9.4). Cajas `[x0,y0,x1,y1]` en JSON de
   ;; lo que corta `zona` —`(x0 y0 x1 y1)`, la huella de la tabla donde se ha hecho
   ;; el segundo clic—. Sólo sirve para avisar de lo que tapa: la tabla no se mueve
-  ;; (dos clics, Pablo, 2026-09-16). Aquí se leen coordenadas.
+  ;; (dos clics, Pablo, 2026-09-16). Aquí se leen coordenadas. `propios` es lo que
+  ;; acaba de dibujar el comando (3.9.6): la tabla no se tapa a sí misma.
   ;;
   ;; Dos pasadas: todas las LWPOLYLINE mirando su caja (0,44 s en un maestro de
   ;; 9.220), y el resto preseleccionado por su punto de inserción dentro de la
@@ -838,8 +839,10 @@
             i     0)
       (if ss
         (while (< i (sslength ss))
-          (setq datos (entget (ssname ss i)))
-          (if (am:caja-corta-zona-p datos zonas)
+          (setq ename (ssname ss i)
+                datos (entget ename))
+          (if (and (not (and propios (ssmemb ename propios)))
+                   (am:caja-corta-zona-p datos zonas))
             (setq res (am:mas-caja res (am:caja-de-datos datos)) n (1+ n)))
           (setq i (1+ i))))
       (setq ss (ssget "_X" (list '(-4 . "<NOT") '(0 . "LWPOLYLINE,HATCH") '(-4 . "NOT>")
@@ -851,9 +854,11 @@
         (while (< i (sslength ss))
           (setq ename (ssname ss i)
                 datos (entget ename)
-                caja  (if (= (cdr (assoc 0 datos)) "INSERT")
-                        (am:caja-de-insert ename datos)
-                        (am:caja-de-datos datos)))
+                caja  (if (and propios (ssmemb ename propios))
+                        nil
+                        (if (= (cdr (assoc 0 datos)) "INSERT")
+                          (am:caja-de-insert ename datos)
+                          (am:caja-de-datos datos))))
           (if caja (setq res (am:mas-caja res caja) n (1+ n)))
           (setq i (1+ i))))))
   (setq *am:obstaculos-enviados* n)
@@ -1787,7 +1792,7 @@
 (defun am:pedir-punto ( / p)
   ;; **El primer clic elige la vivienda** (3.9.4; dos clics, Pablo, 2026-09-16): la
   ;; que contiene el punto o la más cercana (`C-17` propuesto). Ya no decide dónde
-  ;; va la tabla: eso es el segundo clic (`am:colocar-cuadro`). nil si cancela.
+  ;; va la tabla: eso es el segundo clic (`am:arrastrar-cuadro`). nil si cancela.
   (setq p (getpoint "\nHaz clic dentro de la vivienda que quieres medir: "))
   (if p (list (car p) (cadr p)) nil))
 
@@ -1800,71 +1805,44 @@
   (list (car punto) (- (cadr punto) alto) (+ (car punto) ancho) (cadr punto)))
 
 
-(defun am:contorno-del-cuadro (m / an at al atit af anchos filas v x y i)
-  ;; Los vectores de la vista previa, con la esquina de arriba a la izquierda en
-  ;; (0,0): el borde de la tabla, sus filas y columnas, y en gris lo que ocupan las
-  ;; notas y la marca. Con las medidas del servidor, las mismas con que se dibuja.
-  (setq an     (atof (am:valor-tras m "ancho_total" 0))
-        at     (atof (am:valor-tras m "alto_tabla" 0))
-        al     (atof (am:valor-tras m "alto_total" 0))
-        atit   (atof (am:valor-tras m "alto_fila_titulo" 0))
-        af     (atof (am:valor-tras m "alto_fila" 0))
-        anchos (am:numeros-tras m "anchos" 0)
-        filas  (atoi (am:valor-tras m "n_filas" 0)))
-  (setq v (list 7 (list 0.0 0.0) (list an 0.0)
-                7 (list an 0.0) (list an (- at))
-                7 (list an (- at)) (list 0.0 (- at))
-                7 (list 0.0 (- at)) (list 0.0 0.0)))
-  (setq y (- atit) i 1)
-  (while (< i filas)
-    (setq v (append v (list 7 (list 0.0 y) (list an y)))
-          y (- y af)
-          i (1+ i)))
-  (setq x 0.0)
-  (foreach a (reverse (cdr (reverse anchos)))
-    (setq x (+ x a)
-          v (append v (list 7 (list x (- atit)) (list x (- at))))))
-  (if (> al at)
-    (setq v (append v (list 8 (list 0.0 (- at)) (list 0.0 (- al))
-                            8 (list 0.0 (- al)) (list an (- al))
-                            8 (list an (- al)) (list an (- at))))))
-  v)
+(defun am:entidades-desde (marca / ss e)
+  ;; Las entidades creadas después de `marca` (lo que devolvió `entlast` antes de
+  ;; dibujar; nil en un dibujo vacío), en un conjunto de selección. Es exactamente lo
+  ;; que ha dibujado el comando: tabla, notas y marca de borrador.
+  (setq ss (ssadd)
+        e  (if marca (entnext marca) (entnext)))
+  (while e
+    (ssadd e ss)
+    (setq e (entnext e)))
+  ss)
 
 
-(defun am:colocar-cuadro (m nombre / vectores r fin punto)
-  ;; **El segundo clic** (3.9.4; Pablo, 2026-09-16): el contorno de la tabla sigue al
-  ;; cursor, como al insertar un bloque, y la tabla va EXACTAMENTE donde se hace
-  ;; clic. Devuelve ese punto.
+(defun am:arrastrar-cuadro (tabla propios nombre / base despues)
+  ;; **El segundo clic, arrastrando la tabla de verdad** (3.9.6; Pablo, 2026-09-16).
   ;;
-  ;; **No dibuja nada en el plano**: la vista previa son vectores temporales
-  ;; (`grvecs`) que `redraw` borra. Sin entidades, sin grupo de deshacer y sin
-  ;; variables: un Esc aquí no deja nada que retirar (`C-16`). El Esc llega como
-  ;; cancelación al *error* del comando, que borra la vista previa y lo dice; si
-  ;; AutoCAD lo devuelve como tecla (27), se dice aquí lo mismo.
+  ;; La 3.9.4 enseñaba un contorno con `grread` + `grvecs` y **no se veía** en AutoCAD
+  ;; (probado por Pablo con la 0.3.17: nada hasta hacer clic). Hipótesis sin medir: el
+  ;; `redraw` de cada movimiento repintaba después y lo borraba. En vez de depender de
+  ;; cómo pinta AutoCAD los vectores temporales, la tabla se dibuja y se arrastra con la
+  ;; orden MOVER, que enseña los objetos siguiendo al cursor con su propia vista previa.
   ;;
-  ;; `grread` con 13 = coordenadas al mover (1) + tipo de cursor (4) + sin el aviso
-  ;; «Interrupción de consola» (8). **Sin probar en la interfaz de AutoCAD.**
-  (setq vectores (am:contorno-del-cuadro m) fin nil punto nil)
+  ;; El punto base es la esquina de arriba a la izquierda de la tabla (su punto de
+  ;; inserción). `_non` sólo en el punto base: el segundo punto se marca como en
+  ;; cualquier orden de AutoCAD. Todo va dentro del grupo de deshacer del comando: un
+  ;; Esc aquí llega a *error*, que cierra el grupo y deshace lo dibujado (`C-16`).
+  ;;
+  ;; Devuelve la esquina donde ha quedado, leída de la propia tabla, o nil si se ha
+  ;; pulsado Enter sin marcar sitio: MOVER toma entonces el punto base como
+  ;; desplazamiento y la tabla acabaría en el doble de sus coordenadas.
+  (setq base (am:punto->lista (vla-get-InsertionPoint tabla)))
   (princ (strcat "\nVivienda " nombre " seleccionada. Mueve el cursor y haz clic donde quieres el cuadro de superficies."))
-  (while (not fin)
-    (setq r (grread T 13 0))
-    (cond
-      ((= (car r) 5)
-        (redraw)
-        (grvecs vectores
-                (list (list 1.0 0.0 0.0 (car (cadr r)))
-                      (list 0.0 1.0 0.0 (cadr (cadr r)))
-                      (list 0.0 0.0 1.0 0.0)
-                      (list 0.0 0.0 0.0 1.0))))
-      ((= (car r) 3)
-        (setq punto (list (car (cadr r)) (cadr (cadr r))) fin T))
-      ((and (= (car r) 2) (= (cadr r) 27))
-        (redraw)
-        (princ "\nCancelado con Esc. No se ha dibujado nada.")
-        (am:log "cancelado con Esc al colocar el cuadro")
-        (exit))))
-  (redraw)
-  punto)
+  (command "_.MOVE" propios "" "_non" base pause)
+  (setq despues (am:punto->lista (vla-get-InsertionPoint tabla)))
+  (if (and (not (equal (list (car base) (cadr base)) (list 0.0 0.0) 1e-9))
+           (equal (car despues) (* 2.0 (car base)) 1e-6)
+           (equal (cadr despues) (* 2.0 (cadr base)) 1e-6))
+    nil
+    (list (car despues) (cadr despues))))
 
 
 (defun am:ultima-pos (patron s / p ultima)
@@ -2666,12 +2644,9 @@
                       filas cols notas i n
                       punto geometria ambitos alineado nombres elegida m intentos
                       estilo-texto textos medidos eleccion otras obstaculos
-                      colocado tapa detalle linea)
+                      colocado tapa detalle linea antes-de-dibujar propios)
 
   (defun *error* (msg)
-    ;; La vista previa del segundo clic son vectores temporales: un Esc mientras
-    ;; sigue al cursor no puede dejarlos pintados (3.9.4). `redraw` no toca nada más.
-    (redraw)
     ;; **ArchMuse nunca acaba en silencio** (Pablo, 2026-09-15). Tres casos:
     (cond
       ((null msg))
@@ -3029,33 +3004,15 @@
       (am:log "la tabla no se ha podido maquetar; no se ha dibujado nada")
       (setvar "CMDECHO" eco) (princ) (exit)))
 
-  ;; 2h. **Segundo clic: dónde va** (3.9.4; Pablo, 2026-09-16). El contorno sigue al
-  ;;     cursor y la tabla va exactamente donde se hace clic. Si tapa algo, se
-  ;;     coloca igualmente y sólo se avisa: se mira qué hay bajo esa huella y el
-  ;;     servidor maqueta en ese punto, sin moverla.
-  (setq colocado (am:colocar-cuadro m (nth elegida nombres)))
-  (setq obstaculos (am:obstaculos (am:huella-del-cuadro m colocado)))
-  (setq m (am:maquetar bloque textos medidos colocado cuadros estilo-texto obstaculos))
-  (if (or (null m) (null (am:pos "(\"cabe\" . T)" m 0)))
-    (progn
-      (princ "\n\nNo dibujo la tabla: el servidor no la ha podido colocar en ese punto.")
-      (am:log "la tabla no se ha podido colocar en el segundo clic; no se ha dibujado nada")
-      (setvar "CMDECHO" eco) (princ) (exit)))
   (setq notas (am:notas-colocadas m))
 
   ;; 3. **Sin volver a preguntar** (3.7.1, Pablo, 2026-09-15). Hasta la 3.7.0
   ;;    aquí se preguntaba «¿Te dibujo el cuadro de ArchMuse? [Si/No] <No>».
   ;;    Marcar el punto ya es decir que sí, y un Enter sin leer se quedaba en el
   ;;    <No>: no dibujaba nada y parecía un fallo. La red es el grupo de deshacer
-  ;;    de abajo: un solo UNDO lo quita todo. Lo que se dibuja se sigue diciendo.
+  ;;    de abajo: Ctrl+Z una vez lo quita todo. Lo que se dibuja se sigue diciendo.
   (princ (strcat "\n\nDibujo el cuadro de ArchMuse de " (nth elegida nombres)
                  ": " (itoa (length celdas)) " casilla(s) con texto."))
-  ;; **Dónde va** (3.9.4): donde se ha hecho clic, siempre. Si tapa algo, lo dice el
-  ;; servidor con lo que tapa; si no, sólo eso.
-  (setq tapa (am:valor-tras m "tapa" 0))
-  (if (and tapa (/= tapa "nil"))
-    (princ (strcat "\n  " tapa))
-    (princ "\n  El cuadro va donde has hecho clic."))
   (princ "\n  Tu cuadro no se toca.")
   ;; **En el plano, las notas cortas; aquí, el detalle** (3.9.2; Pablo: «el detalle
   ;; completo va a la línea de comandos y al log, no al plano»). Al registro van
@@ -3068,9 +3025,7 @@
                      " línea(s) de nota. El detalle, celda a celda:"))
       (foreach linea detalle (princ (strcat "\n   - " linea)))))
   (am:log (strcat "notas: " (itoa (length notas)) " en el plano, " (itoa (length detalle))
-                  " de detalle; " (itoa (if *am:obstaculos-enviados* *am:obstaculos-enviados* 0))
-                  " obstaculo(s) bajo la tabla; "
-                  (if (and tapa (/= tapa "nil")) "tapa parte del dibujo" "no tapa nada")))
+                  " de detalle"))
 
   ;; **Todo lo que se escribe va dentro de UN grupo de deshacer.** Así un solo
   ;; `UNDO` lo quita entero —tabla, notas y marca— en vez de dejar al arquitecto
@@ -3082,6 +3037,8 @@
   ;; anterior, y el UNDO de *error* desharía algo que hizo él.
   (setq *am:dibujo-empezado* nil grupo-abierto T)
   (vl-catch-all-apply 'vla-StartUndoMark (list doc))
+  ;; Lo que se dibuje a partir de aquí es lo que se arrastra en el segundo clic (3.9.6).
+  (setq antes-de-dibujar (entlast))
 
   (setq tabla (am:dibujar-cuadro m celdas))
   (if (null tabla)
@@ -3132,11 +3089,11 @@
   ;; que lleva cifras que hay que calificar de borrador, y la suya no se toca.
   ;; Misma capa y mismo texto que la via web, que es lo que exige `C-9`.
   (setq marcado (am:marcar-borrador tabla m))
-  (setq grupo-abierto nil)
-  (vl-catch-all-apply 'vla-EndUndoMark (list doc))
 
   (if (null marcado)
     (progn
+      (setq grupo-abierto nil)
+      (vl-catch-all-apply 'vla-EndUndoMark (list doc))
       (am:log "la marca de borrador no se ha podido poner; se retira lo escrito")
       (princ "\n\n*** ATENCIÓN — NO he podido poner la marca de borrador. ***")
       (princ "\nUn cuadro con cifras y sin esa advertencia parece definitivo, y no lo")
@@ -3150,6 +3107,35 @@
       (setvar "CMDECHO" eco)
       (princ)
       (exit)))
+
+  ;; 4. **Segundo clic: dónde va** (3.9.6; dos clics, Pablo, 2026-09-16). La tabla, sus
+  ;;    notas y la marca siguen al cursor con la orden MOVER, dentro del mismo grupo de
+  ;;    deshacer: Ctrl+Z una vez quita todo, movimiento incluido, y un Esc llega a
+  ;;    *error* con el grupo abierto y lo deshace.
+  (setq propios (am:entidades-desde antes-de-dibujar))
+  (setq colocado (am:arrastrar-cuadro tabla propios (nth elegida nombres)))
+  (if (null colocado)
+    (progn
+      (setq grupo-abierto nil)
+      (vl-catch-all-apply 'vla-EndUndoMark (list doc))
+      (if (vl-catch-all-error-p (vl-catch-all-apply 'command (list "_.U")))
+        (princ "\nNo has elegido dónde poner el cuadro, y NO he podido quitarlo: pulsa Ctrl+Z tú.")
+        (princ "\nNo has elegido dónde poner el cuadro: no dejo nada dibujado."))
+      (am:log "enter sin elegir sitio al colocar el cuadro; se retira lo dibujado")
+      (setvar "CMDECHO" eco) (princ) (exit)))
+  ;;    Si tapa algo, se queda donde está y sólo se avisa: se mira qué hay bajo esa
+  ;;    huella, sin contar lo que acaba de dibujar, y el servidor lo redacta.
+  (setq obstaculos (am:obstaculos (am:huella-del-cuadro m colocado) propios))
+  (setq m (am:maquetar bloque textos medidos colocado cuadros estilo-texto obstaculos))
+  (setq grupo-abierto nil)
+  (vl-catch-all-apply 'vla-EndUndoMark (list doc))
+  (setq tapa (if m (am:valor-tras m "tapa" 0)))
+  (if (and tapa (/= tapa "nil"))
+    (princ (strcat "\n  " tapa))
+    (princ "\n  El cuadro va donde has hecho clic."))
+  (am:log (strcat (itoa (if *am:obstaculos-enviados* *am:obstaculos-enviados* 0))
+                  " obstaculo(s) bajo la tabla; "
+                  (if (and tapa (/= tapa "nil")) "tapa parte del dibujo" "no tapa nada")))
 
   (princ "\nEs un BORRADOR para revisión de un colegiado. La marca está en la capa")
   ;; El nombre de la capa sale de la variable y no escrito a mano:

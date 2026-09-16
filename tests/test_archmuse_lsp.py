@@ -118,6 +118,12 @@ PRIMITIVAS = {
     # (vl-file-delete fichero) → T si lo borra, nil si no existe o no puede (2026-09-16:
     # ARCHMUSE-ACTUALIZAR borra el resultado de una búsqueda anterior antes de buscar).
     "vl-file-delete",
+    # El arrastre del segundo clic (3.9.6): (entlast) → la última entidad principal o nil;
+    # (ssadd [ename [ss]]) → un conjunto nuevo, o el conjunto con ename añadido;
+    # (ssmemb ename ss) → ename si está en el conjunto, nil si no.
+    "entlast", "ssadd", "ssmemb",
+    # (equal a b [margen]) → T si son iguales, con margen numérico opcional.
+    "equal",
     # Beta, T4 (2026-09-13): leer `servidor.json` para saber el puerto.
     #   `read-line` -- (read-line [descriptor]) devuelve la siguiente línea del
     #       fichero abierto con `open ... "r"`, sin el salto, o nil al final. Es
@@ -542,16 +548,18 @@ def test_marcar_el_punto_es_decir_que_si_y_lo_dibujado_se_deshace_de_una_vez(fue
     pide antes de dibujar (Esc ahí no dibuja nada) y todo lo que se escribe va en
     un grupo de deshacer. Este test impide que vuelva la pregunta sin decidirlo.
 
-    **Con dos clics (2026-09-16)** marcar el punto es el segundo clic, el que coloca
-    el cuadro: entre él y el dibujo tampoco hay pregunta."""
+    **Con dos clics (2026-09-16)** la tabla se dibuja tras medir y se coloca
+    arrastrándola en el segundo clic (3.9.6): entre abrir el grupo de deshacer y
+    cerrarlo, pasando por el arrastre, no hay ninguna pregunta."""
     codigo = _sin_comentarios_ni_cadenas(fuente)
     comando = codigo[codigo.index("(defun c:ARCHMUSE ("):]
     dibujar = comando.index("(am:dibujar-cuadro")
-    punto = comando.rindex("(am:colocar-cuadro", 0, dibujar)
-    assert "getkword" not in comando[punto:dibujar], (
-        "ha vuelto una pregunta entre marcar el punto y dibujar")
-    assert "vla-StartUndoMark" in comando[punto:dibujar], (
-        "se dibuja fuera de un grupo de deshacer")
+    abrir = comando.rindex("vla-StartUndoMark", 0, dibujar)
+    arrastrar = comando.index("(am:arrastrar-cuadro", dibujar)
+    cerrar = comando.index("vla-EndUndoMark", comando.index("(am:maquetar", arrastrar))
+    assert "getkword" not in comando[abrir:cerrar], (
+        "ha vuelto una pregunta entre dibujar la tabla y colocarla")
+    assert abrir < dibujar < arrastrar < cerrar, "se dibuja o se arrastra fuera del grupo de deshacer"
 
 
 def test_el_ssget_de_recintos_no_lleva_mas_filtro_que_la_capa(fuente):

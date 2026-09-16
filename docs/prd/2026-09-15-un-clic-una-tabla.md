@@ -18,8 +18,10 @@
 > como estaba (`C-16`); ningún mensaje dice algo que el programa no haga; Ctrl+Z
 > una vez borra la tabla entera («U» y «UNDO» no sirven en AutoCAD en español); y
 > lo que ve el arquitecto no lleva códigos internos, que se quedan en el registro.
-> Implementado en el `.lsp` 3.9.4; `tests/test_dos_clics.py`. **Sin probar en la
-> interfaz de AutoCAD:** la vista previa con `grread`/`grvecs` y el Esc en el paso 2.
+> Implementado en el `.lsp` 3.9.4; `tests/test_dos_clics.py`. **Corregido en la 3.9.6:**
+> Pablo probó la 0.3.17 y el contorno con `grread`/`grvecs` no se veía siguiendo al
+> cursor. Ahora la tabla real se dibuja tras medir y se arrastra con la orden MOVER,
+> dentro del mismo grupo de deshacer.
 
 ---
 

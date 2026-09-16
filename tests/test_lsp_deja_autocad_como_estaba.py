@@ -31,8 +31,10 @@ GUARDIAN = RAIZ / "herramientas" / "guardian_autocad" / "guardian.lsp"
 #: lo haya comprobado en AutoCAD.
 VARIABLES_QUE_CAMBIA = {"CMDECHO"}
 #: Las órdenes de AutoCAD que lanza. `_.DELAY` espera al servidor; `_.U` retira
-#: lo dibujado cuando no se puede terminar.
-ORDENES_QUE_LANZA = {"_.DELAY", "_.U"}
+#: lo dibujado cuando no se puede terminar; `_.MOVE` (3.9.6, 2026-09-16) arrastra lo
+#: que acaba de dibujar en el segundo clic: sólo mueve esas entidades y cambia
+#: LASTPOINT, que el guardián ya cuenta entre los cambios de haber dibujado.
+ORDENES_QUE_LANZA = {"_.DELAY", "_.U", "_.MOVE"}
 
 
 def _sin_comentarios(texto: str) -> str:

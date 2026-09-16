@@ -139,46 +139,83 @@ def test_primer_clic_dentro_de_la_vivienda():
     assert '"\\nHaz clic dentro de la vivienda que quieres medir: "' in _defun("am:pedir-punto")
 
 
-def test_segundo_clic_con_la_vista_previa_siguiendo_al_cursor():
-    colocar = _defun("am:colocar-cuadro")
+# -- El segundo clic: arrastre nativo de AutoCAD (3.9.6, 2026-09-16) -----------------
+#
+# **Probado por Pablo en AutoCAD con la 0.3.17:** dos clics, Ctrl+Z, Esc y colocación
+# funcionan, pero el contorno con `grread` + `grvecs` NO se veía siguiendo al cursor.
+# Hipótesis sin medir (no se puede ver la interfaz desde aquí): el `(redraw)` de cada
+# movimiento repinta después de `grvecs` y lo borra. En vez de depender de eso, la
+# tabla real se dibuja y se arrastra con la orden MOVER de AutoCAD, que enseña los
+# objetos siguiendo al cursor con su propia vista previa.
+
+def test_segundo_clic_arrastra_la_tabla_con_la_orden_de_autocad():
+    arrastrar = _defun("am:arrastrar-cuadro")
     assert '"\\nVivienda " nombre " seleccionada. Mueve el cursor y haz clic donde quieres el cuadro de superficies."' \
-        in " ".join(colocar.split())
-    assert re.search(r"\(grread T \d+ 0\)", colocar), "el cursor no se sigue con grread"
-    assert "grvecs" in colocar and "(redraw)" in colocar
-    # Se coloca donde se hace clic: el punto del clic (código 3), sin forzarlo a nada.
-    assert "(= (car r) 3)" in colocar
+        in " ".join(arrastrar.split())
+    assert '(command "_.MOVE" propios "" "_non" base pause)' in " ".join(arrastrar.split())
+    # Dónde ha quedado, leído de la propia tabla: su esquina de arriba a la izquierda.
+    assert "vla-get-InsertionPoint" in arrastrar
+    codigo = _sin_comentarios(LSP)
+    assert "grread" not in codigo and "grvecs" not in codigo, "la vista previa que no se veía sigue ahí"
 
 
-def test_la_vista_previa_no_dibuja_nada_en_el_plano():
-    colocar = _defun("am:colocar-cuadro") + _defun("am:contorno-del-cuadro")
-    for via in ("entmake", "vla-Add", "(command", "command-s", "vl-cmdf", "(setvar",
-                "vla-StartUndoMark"):
-        assert via not in colocar, via
+def test_lo_arrastrado_es_exactamente_lo_que_acaba_de_dibujar():
+    comando = _defun("c:ARCHMUSE")
+    assert "(setq antes-de-dibujar (entlast))" in comando
+    assert comando.index("(setq antes-de-dibujar (entlast))") < comando.index("(am:dibujar-cuadro m celdas)")
+    desde = _defun("am:entidades-desde")
+    assert "entnext" in desde and "ssadd" in desde
 
 
-def test_se_mide_antes_de_la_vista_previa_y_se_dibuja_despues_del_clic():
+def test_se_mide_antes_y_se_arrastra_dentro_del_grupo_de_deshacer():
     comando = _defun("c:ARCHMUSE")
     orden = [comando.index(t) for t in (
         "(am:pedir-punto)",
         "(am:post cuerpo)",
         "(am:medir-textos textos estilo-texto)",
         "(am:maquetar bloque textos medidos punto nil estilo-texto nil)",
-        "(am:colocar-cuadro m (nth elegida nombres))",
-        "(am:obstaculos (am:huella-del-cuadro m colocado))",
-        "(am:maquetar bloque textos medidos colocado cuadros estilo-texto obstaculos)",
         "vla-StartUndoMark",
-        "(am:dibujar-cuadro m celdas)")]
+        "(am:dibujar-cuadro m celdas)",
+        "(am:marcar-borrador tabla m)",
+        "(am:arrastrar-cuadro tabla propios (nth elegida nombres))",
+        "(am:obstaculos (am:huella-del-cuadro m colocado) propios)",
+        "(am:maquetar bloque textos medidos colocado cuadros estilo-texto obstaculos)")]
     assert orden == sorted(orden), orden
+    # El grupo se cierra DESPUÉS de arrastrar: Ctrl+Z una vez quita tabla, notas, marca y
+    # el movimiento; y un Esc en el arrastre llega a *error* con el grupo abierto.
+    arrastre = comando.index("(am:arrastrar-cuadro tabla propios")
+    tramo = comando[comando.index("(am:marcar-borrador tabla m)"):arrastre]
+    # Entre marcar y arrastrar el grupo sólo se cierra en la salida de «no he podido poner la
+    # marca», que retira lo dibujado y termina: en el camino normal sigue abierto.
+    assert tramo.count("(setq grupo-abierto nil)") == 1
+    assert tramo.index("(if (null marcado)") < tramo.index("(setq grupo-abierto nil)")
+    assert "(exit)" in tramo[tramo.index("(if (null marcado)"):]
+    assert comando.index("vla-EndUndoMark", arrastre) > arrastre
 
 
-def test_esc_en_el_segundo_clic_limpia_la_vista_previa_y_lo_dice():
+def test_esc_en_el_arrastre_deshace_lo_dibujado_y_lo_dice():
     comando = _defun("c:ARCHMUSE")
     error = comando[comando.index("(defun *error*"):comando.index('(setq eco (getvar "CMDECHO"))')]
-    assert "(redraw)" in error, "un Esc dejaría el contorno pintado en pantalla"
-    assert '"\\nCancelado con Esc."' in error and '" No se ha dibujado nada."' in error
-    colocar = _defun("am:colocar-cuadro")
-    # Si AutoCAD devuelve el Esc como tecla, se dice lo mismo y no se dibuja.
-    assert "27" in colocar and "Cancelado con Esc. No se ha dibujado nada." in colocar
+    assert '"\\nCancelado con Esc."' in error
+    assert "(if *am:dibujo-empezado*" in error and "'command-s (list \"_.U\")" in error
+    assert '"\\nHe deshecho lo que llegué a dibujar: tu plano está como antes."' in error
+
+
+def test_enter_sin_elegir_sitio_no_deja_la_tabla_lejos():
+    """En MOVER, Enter en el segundo punto usa el punto base como desplazamiento y
+    manda la tabla lejos. Se detecta y se deshace, diciéndolo."""
+    comando = _defun("c:ARCHMUSE")
+    assert "(null colocado)" in comando
+    rama = comando[comando.index("(null colocado)"):]
+    rama = rama[:rama.index("(exit)")]
+    assert "No has elegido dónde poner el cuadro" in rama and "_.U" in rama
+    assert "vla-EndUndoMark" in rama
+
+
+def test_lo_que_tapa_no_cuenta_la_propia_tabla():
+    obstaculos = _defun("am:obstaculos")
+    assert "(defun am:obstaculos (zona propios" in obstaculos
+    assert "(ssmemb" in obstaculos
 
 
 def test_si_tapa_lo_dice_y_si_no_dice_solo_lo_que_hace():
@@ -222,9 +259,10 @@ def test_esc_en_cualquier_paso_llega_al_mismo_aviso():
     assert '"*BREAK*,*CANCEL*"' in error and '(setvar "CMDECHO"' in error
     cuerpo = comando[comando.index('(setq eco (getvar "CMDECHO"))'):]
     primer_dibujo = cuerpo.index("vla-StartUndoMark")
-    for pregunta in ("(am:elegir-capa)", "(am:pedir-punto)", "getkword", "(am:preguntar-ambitos",
-                     "(am:colocar-cuadro"):
+    for pregunta in ("(am:elegir-capa)", "(am:pedir-punto)", "getkword", "(am:preguntar-ambitos"):
         assert cuerpo.index(pregunta) < primer_dibujo, pregunta
+    # El segundo clic va con la tabla ya dibujada, dentro del grupo: un Esc ahí lo deshace
+    # (`test_esc_en_el_arrastre_deshace_lo_dibujado_y_lo_dice`).
 
 
 # -- Sin códigos internos en lo que ve el arquitecto (Pablo, 2026-09-16) --------

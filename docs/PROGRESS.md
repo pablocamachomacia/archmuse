@@ -5,6 +5,44 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-16 (6) · El cuadro sigue al cursor de verdad: la orden MOVER (`.lsp` 3.9.6)
+
+**Pablo, en AutoCAD con la 0.3.17:** dos clics, Ctrl+Z, Esc y colocación funcionan,
+**pero el contorno no se ve siguiendo al cursor**: no aparece nada hasta el clic.
+
+**Por qué no se veía: sin medir.** Desde aquí no se ve la interfaz de AutoCAD, y en
+Core Console `grvecs` no pinta nada. Hipótesis: el bucle llamaba a `(redraw)` en cada
+movimiento y pintaba con `grvecs` justo después; si el sistema gráfico procesa el
+repintado después, borra los vectores al momento. Encaja con lo que vio Pablo (nada al
+moverse, y todo bien al hacer clic), pero no está comprobado.
+
+**Arreglo: no depender de eso.** La tabla real, con sus notas y la marca, se dibuja tras
+medir, en el punto del primer clic y dentro del grupo de deshacer. Después
+`(command "_.MOVE" <lo dibujado> "" "_non" <esquina> pause)` la arrastra con la vista
+previa de AutoCAD. Lo dibujado es exactamente lo creado después de `(entlast)`. Con el
+clic:
+- se lee la esquina de la propia tabla;
+- se mira qué tapa, sin contar lo que acaba de dibujar;
+- se cierra el grupo.
+
+Además:
+- **Esc en el arrastre:** llega a *error* con el grupo abierto, que cierra el grupo y
+  deshace lo dibujado.
+- **Enter sin clic:** MOVER usa el punto base como desplazamiento y la tabla acabaría en
+  el doble de sus coordenadas. Se detecta, se deshace y se dice.
+- **Ctrl+Z una vez** quita tabla, notas, marca y el movimiento.
+- Fuera `grread`, `grvecs` y el contorno.
+
+**Medido en Core Console** (por la puerta aislada): `am:entidades-desde` recoge sólo lo
+nuevo; MOVER con clic en 100,200 lleva la esquina exactamente ahí y no toca lo anterior;
+con Enter, la base 100,200 acaba en 200,400. **No se puede medir ahí** el arrastre
+interactivo: en un guion, `pause` no lee la línea siguiente. Lo tiene que ver Pablo.
+
+**C-16:** `_.MOVE` entra en las órdenes auditadas. Sólo mueve lo que acaba de dibujar el
+comando y cambia LASTPOINT, que el guardián ya cuenta entre los cambios de haber dibujado.
+
+---
+
 ## 2026-09-16 (5) · ARCHMUSE-ACTUALIZAR busca en ese momento (`.lsp` 3.9.5)
 
 **Pablo:** «Mi ArchMuse sigue en comando 3.9.3. ARCHMUSE-ACTUALIZAR dice "No hay
