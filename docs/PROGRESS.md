@@ -50,7 +50,10 @@ terminar). Tests que recogían la decisión retirada, cambiados y dicho en su do
 los del hueco libre (`test_presentacion_de_la_tabla`), negarse sobre su cuadro
 (`test_d14_maquetacion_cuadro`, `test_anchos_medidos_en_autocad`), y «ninguna pregunta
 entre marcar el punto y dibujar», que ahora cuenta desde el segundo clic.
-`grread`, `grvecs` y `redraw` añadidas a las primitivas verificadas con su firma.
+`grread`, `grvecs` y `redraw` añadidas a las primitivas verificadas con su firma. La
+suite entera dio 2 fallos más, los dos por exigir códigos en lo que lee el comando
+(«(C-8)» en una nota y «C-13» en un motivo): cambiados para exigir el texto sin la
+cita; 2230 en verde.
 
 **Comprobado en Core Console** (por la puerta aislada, registro sin cambios): cargadas
 las 122 funciones del `.lsp`, `am:contorno-del-cuadro` sobre una respuesta real da 19
