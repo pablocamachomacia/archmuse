@@ -14,7 +14,7 @@
                     ProductType="Application"
                     Name="ArchMuse"
                     Description="Mide las superficies útiles de tu planta y dibuja su cuadro."
-                    AppVersion="0.3.15"
+                    AppVersion="0.3.16"
                     Author="ArchMuse"
                     ProductCode="{A1C4E8B2-3F5D-4E6A-8B90-2D7C1E4F6A35}"
                     UpgradeCode="{D2B7F9A4-6C1E-4A83-B5D0-9E3F8C2A7B16}">
