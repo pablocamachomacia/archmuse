@@ -5,6 +5,34 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-17 (2) · Avisos cortos de lo reparado y lo no medido (`.lsp` 3.9.8)
+
+**Pablo:** «He reparado 10 contornos…» y «la polilínea llega con 2 vértices…», en la
+línea de comandos, tienen que ser una frase corta que entienda un arquitecto; el
+detalle, al registro. Y que ningún mensaje prometa lo que el programa no hace.
+
+- **Lo reparado:** una frase del servidor: «N contorno(s) se cruzan consigo mismos;
+  los he medido igual porque su superficie no cambia, y tu dibujo sigue como
+  estaba.» (antes 244 caracteres, con un «NO» en mayúsculas).
+- **Lo no medido:** el comando enseñaba un motivo por polilínea. Ahora el servidor
+  manda `geometria_descartada_aviso` («N polilínea(s) de la capa de recintos no se
+  han medido: tienen menos de 3 vértices y no encierran ninguna superficie.») y el
+  comando enseña sólo eso. Se quita «El servidor no ha descartado nada de lo que
+  envié», que no decía nada al arquitecto. El registro guarda que ha pasado, sin
+  handles. La lista con el detalle sigue viajando entera para la web y el PDF.
+- **Un mensaje que prometía lo que no se hace:** «Si el tuyo se titula de otra
+  forma, dilo: copiar tus filas es mejor que inventarlas.» La tabla de ArchMuse no
+  copia filas del cuadro del arquitecto desde la plantilla fija (2026-09-13). Fuera.
+- **Revisados** todos los textos que enseña el comando (script fuera del
+  repositorio). El resto dice lo que hace. Uno queda anotado para la tarea de
+  AutoCAD LT: «Si esto es AutoCAD LT, no hay solución: LT no permite crear objetos
+  COM» afirma algo que no se ha medido en LT 2024+.
+
+Tests antes (`tests/test_mensajes_cortos.py`): largo máximo, una frase, sin códigos
+ni handles, sin mayúsculas de grito, y el comando sin la lista de motivos.
+
+---
+
 ## 2026-09-17 · Arrastre libre aunque haya Orto, y «tapa» sólo lo que se ve (`.lsp` 3.9.7)
 
 **Pablo, con la 0.3.19:** con Orto (F8) la tabla sólo se movía en horizontal o

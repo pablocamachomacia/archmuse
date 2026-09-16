@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.7")
-(setq *am:version*  "3.9.7 (2026-09-17, arrastre libre aunque haya Orto)")
+(setq *am:version-corta* "3.9.8")
+(setq *am:version*  "3.9.8 (2026-09-17, avisos cortos de lo reparado y lo no medido)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -1642,19 +1642,8 @@
 ;;; Lectura del reparto que devuelve el servidor
 ;;; ---------------------------------------------------------------------------
 
-(defun am:lista-de-motivos (s clave desde / p fin res motivo)
-  ;; Los motivos de una de las listas de «lo que no se ha escrito». Se enseñan
-  ;; tal cual: están redactados para que los lea un arquitecto.
-  (setq res nil p (am:pos (strcat "(\"" clave "\"") s desde))
-  (if p
-    (progn
-      (setq fin (am:pos "(\"piezas_descuadradas\"" s p))
-      (while (and (setq p (am:pos "(\"motivo\" . " s p))
-                  (or (null fin) (< p fin)))
-        (setq motivo (am:valor-tras s "motivo" p))
-        (if motivo (setq res (cons motivo res)))
-        (setq p (1+ p)))))
-  (reverse res))
+;;; `am:lista-de-motivos` se retiró en la 3.9.8: lo que no se ha medido llega ya en
+;;; una frase del servidor (`geometria_descartada_aviso`).
 
 ;;; ---------------------------------------------------------------------------
 ;;; El cuadro propio de ArchMuse
@@ -2823,8 +2812,9 @@
           (princ "\nninguna parece tu cuadro de superficies.")
           (princ (strcat "\n  Busco una cuya primera celda diga «"
                          *am:titulo-del-cuadro* "»."))
-          (princ "\n  Te dibujare el cuadro de ArchMuse con mi formato. Si el tuyo se")
-          (princ "\n  titula de otra forma, dilo: copiar tus filas es mejor que inventarlas."))))
+          ;; Hasta la 3.9.7 seguía «Si el tuyo se titula de otra forma, dilo: copiar tus
+          ;; filas es mejor que inventarlas.»: la tabla ya no copia filas de su cuadro.
+          (princ "\n  Te dibujare el cuadro de ArchMuse con mi formato."))))
     (princ (strcat "\nHe encontrado " (itoa (length cuadros))
                    " cuadro(s) de superficies. No voy a tocar ninguno.")))
 
@@ -2966,13 +2956,14 @@
             (am:log "el usuario NO alinea los rotulos")))
         (princ "\n  No te ofrezco alinearlos: el desplazamiento no es el mismo en todo el plano."))))
 
-  (setq descartes (am:lista-de-motivos respuesta "geometria_descartada" 0))
-  (if descartes
+  ;;     Lo que no se ha medido, en una frase del servidor (3.9.8; Pablo, 2026-09-17):
+  ;;     antes salía un motivo por polilínea, con detalle de programa. Al registro, sólo
+  ;;     que ha pasado.
+  (setq r (am:valor-tras respuesta "geometria_descartada_aviso" 0))
+  (if r
     (progn
-      (princ (strcat "\n\nEl servidor ha descartado " (itoa (length descartes))
-                     " de lo que envié:"))
-      (foreach r descartes (princ (strcat "\n   " r))))
-    (princ "\nEl servidor no ha descartado nada de lo que envié."))
+      (princ (strcat "\n\nAVISO — " r))
+      (am:log "el servidor ha dejado polilineas sin medir")))
 
   ;; 2b. **La tabla de ArchMuse** (PRD 2026-09-13). Plantilla fija: las filas
   ;;     las pone el plano, el formato ArchMuse y el tamaño el servidor. Si no

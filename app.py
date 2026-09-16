@@ -3919,13 +3919,18 @@ def medicion_geometria_endpoint():
             % (_desplaza(-desfase["dx"]), _desplaza(-desfase["dy"]))
         )
 
+    # **Una frase corta para la línea de comandos** (Pablo, 2026-09-17). El detalle
+    # —qué contorno y por qué— sigue en las listas `geometria_reparada` y
+    # `geometria_descartada`, que usan la web y el PDF.
     reparada = respuesta.get("geometria_reparada") or []
     if reparada:
         respuesta["geometria_reparada_aviso"] = (
-            "He reparado %d contorno(s) de tu plano para poder medirlos: estaban "
-            "mal construidos (se cruzaban consigo mismos). Su superficie NO ha "
-            "cambiado — si hubiera cambiado, no los habría reparado, los habría "
-            "descartado. Siguen estando mal en tu dibujo." % len(reparada))
+            "%d contorno(s) se cruzan consigo mismos; los he medido igual porque su "
+            "superficie no cambia, y tu dibujo sigue como estaba." % len(reparada))
+    if respuesta["geometria_descartada"]:
+        respuesta["geometria_descartada_aviso"] = (
+            "%d polilínea(s) de la capa de recintos no se han medido: tienen menos de "
+            "3 vértices y no encierran ninguna superficie." % len(respuesta["geometria_descartada"]))
 
     # **Qué sabe hacer este servidor.** Viaja SIEMPRE, y existe por un fallo
     # concreto (2026-09-10): el cliente mandó un cuadro a un servidor arrancado
