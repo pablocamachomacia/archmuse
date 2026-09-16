@@ -32,7 +32,7 @@ o, si el documento ya tenía su propio pie o cabecero:
 """
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 from reportlab.lib import colors
 from reportlab.lib.units import cm
@@ -203,7 +203,7 @@ def estampar(previo: Optional[Callable[[Any, Any], None]] = None) -> Callable[[A
 # La misma marca, en un DXF
 # ---------------------------------------------------------------------------
 
-def estampar_dxf(doc: Any) -> None:
+def estampar_dxf(doc: Any, punto: Optional[Tuple[float, float]] = None) -> None:
     """Añade la leyenda al modelspace de un DXF, en su propia capa.
 
     Se llama **antes de guardar la copia**, nunca sobre el fichero del
@@ -216,20 +216,33 @@ def estampar_dxf(doc: Any) -> None:
     marca en la capa del cuadro habría cambiado en silencio lo que ven esas
     consultas, que es cómo se rompe un test que sí importaba.
 
-    **Dónde se coloca.** Justo debajo de la esquina inferior izquierda de lo
-    dibujado (`$EXTMIN`), para no taparlo. Si el fichero no declara extensión
-    —posible en un DXF recién creado— va al origen: preferimos una marca en un
-    sitio raro a un documento sin marca.
+    **Dónde se coloca.** En `punto` si se da —la exportación web pasa el sitio que
+    la maqueta reserva a la marca, debajo de las notas, como hace el comando—. Si
+    no, justo debajo de la esquina inferior izquierda de lo dibujado, para no
+    taparlo; y en un dibujo vacío, en el origen: preferimos una marca en un sitio
+    raro a un documento sin marca.
+
+    **Corregido el 2026-09-17:** se leía `$EXTMIN`, que existe siempre en la
+    cabecera y vale 1e+20 cuando el fichero no trae la extensión. La marca acababa
+    en (1e20, 1e20): estaba en el fichero y nadie podía verla. Ahora la extensión
+    se mide sobre lo dibujado (`ezdxf.bbox`).
     """
-    try:
-        extmin = doc.header.get("$EXTMIN", (0.0, 0.0, 0.0))
-        x, y = float(extmin[0]), float(extmin[1])
-    except Exception:                            # noqa: BLE001 - cabecera de terceros
+    if punto is not None:
+        x, y = float(punto[0]), float(punto[1])
+    else:
         x, y = 0.0, 0.0
+        try:
+            from ezdxf import bbox
+
+            caja = bbox.extents(doc.modelspace(), fast=True)
+            if caja.has_data:
+                x, y = float(caja.extmin.x), float(caja.extmin.y) - ALTURA_DXF * 4
+        except Exception:                        # noqa: BLE001 - dibujo de terceros
+            pass
     if not doc.layers.has_entry(CAPA_DXF):
         doc.layers.add(CAPA_DXF)
     doc.modelspace().add_mtext(LEYENDA, dxfattribs={
         "layer": CAPA_DXF,
         "char_height": ALTURA_DXF,
-        "insert": (x, y - ALTURA_DXF * 4, 0.0),
+        "insert": (x, y, 0.0),
     })

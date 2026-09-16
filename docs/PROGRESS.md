@@ -5,6 +5,38 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-17 (3) · Pendientes antiguos: marca, referencias en la web, terraza, folio, LT
+
+1. **La marca de borrador de la exportación web caía en 1e+20 (`C-3`). Arreglado.**
+   Medido con `ezdxf`: `$EXTMIN` existe siempre en la cabecera y vale 1e+20 si el
+   fichero no trae la extensión, así que el «va al origen» del docstring no ocurría
+   nunca. Ahora la exportación la pone donde la maqueta la reserva (debajo de las
+   notas, como el comando) y, sin maqueta, la extensión se mide sobre lo dibujado.
+   El test que existía (`test_un_dxf_sin_extension_declarada_igual_lleva_marca`)
+   pasaba con la marca en 1e+20: comprobaba que había marca, no dónde.
+2. **`C-9`: la web y las referencias externas. Arreglado.** Medido antes con un
+   plano sintético: la web no se paraba y medía los rectángulos del marco de la
+   hoja. Ahora, si una referencia tiene la capa de recintos y el dibujo ninguna
+   polilínea en ella, se para, dice el fichero y no ofrece capas, como el comando.
+   Límite: con polilíneas en los dos, el DXF no deja saber si la referencia tiene
+   recintos. Detalle en `C-9`, punto 5.
+3. **«Terraza» sin número: medido, no se toca.** En el producto (comando y web usan
+   la plantilla fija, que no lee las filas del cuadro del arquitecto) no bloquea
+   nada. Sólo el banco de compatibilidad, que sí empareja con su cuadro, no reconoce
+   una fila «terraza» sin número y retira los dos totales (`C-6`): ahí **bloquea de
+   más**. En los cuadros del plano maestro las filas llevan número. Propuesta, sin
+   aplicar: que una fila «terraza» sin número cuente como «terraza 1» si el cuadro no
+   tiene otra. No se aplica sin planos del banco con los que medirlo.
+4. **El folio ya dice que ArchMuse consulta GitHub**, cuándo y que no envía nada de
+   los planos, contrastado con `actualizaciones.py`. Y «Usar» pasa a los dos clics
+   (decía «haz clic y contesta Sí», que ya no existe).
+5. **AutoCAD LT 2024+: informe** en `docs/audits/2026-09-17-autocad-lt.md`. No
+   funcionaría tal cual: el HTTP al servidor y el arranque de procesos usan
+   `vlax-create-object`, que LT no admite según la documentación pública. Sin medir
+   en un LT.
+
+---
+
 ## 2026-09-17 (2) · Avisos cortos de lo reparado y lo no medido (`.lsp` 3.9.8)
 
 **Pablo:** «He reparado 10 contornos…» y «la polilínea llega con 2 vértices…», en la

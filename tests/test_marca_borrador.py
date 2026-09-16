@@ -221,6 +221,45 @@ def test_un_dxf_sin_extension_declarada_igual_lleva_marca():
     assert len(doc.modelspace().query('MTEXT[layer=="%s"]' % CAPA_DXF)) == 1
 
 
+def _punto_de_la_marca(doc):
+    marca = doc.modelspace().query('MTEXT[layer=="%s"]' % CAPA_DXF)[0]
+    return marca.dxf.insert.x, marca.dxf.insert.y
+
+
+def test_sin_extension_declarada_la_marca_no_se_va_a_1e20():
+    """**Pendiente C-3, medido el 2026-09-17:** `$EXTMIN` existe siempre en la
+    cabecera, y en un DXF que no trae la extensión vale 1e+20. La marca acababa en
+    (1e20, 1e20): «está» en el fichero y nadie la ve. Si hay dibujo, va debajo de lo
+    dibujado; si no, al origen."""
+    import ezdxf
+
+    vacio = ezdxf.new("R2010")
+    assert vacio.header["$EXTMIN"][0] >= 1e19, "el caso: la cabecera trae 1e+20"
+    estampar_dxf(vacio)
+    assert _punto_de_la_marca(vacio)[0] == 0.0
+
+    doc = ezdxf.new("R2010")
+    doc.modelspace().add_lwpolyline([(100, 200), (105, 200), (105, 204), (100, 204)], close=True)
+    estampar_dxf(doc)
+    x, y = _punto_de_la_marca(doc)
+    assert x == pytest.approx(100.0) and 190.0 < y < 200.0
+
+
+def test_con_un_punto_la_marca_va_ahi():
+    """La exportación web la pone donde la maqueta la tabla —debajo de las notas—,
+    como el comando (`C-9`)."""
+    import ezdxf
+
+    doc = ezdxf.new("R2010")
+    estampar_dxf(doc, punto=(12.5, -3.0))
+    assert _punto_de_la_marca(doc) == (12.5, -3.0)
+
+
+def test_la_exportacion_web_pasa_la_posicion_de_la_maqueta():
+    fuente = (RAIZ / "analyzer" / "cuadro_superficies_export.py").read_text(encoding="utf-8")
+    assert "estampar_dxf(doc, punto=maquetacion.marca[:2])" in fuente
+
+
 def test_ningun_modulo_guarda_un_dxf_sin_pasar_por_la_marca():
     """La misma política que para los PDF, para el otro formato que se entrega.
 

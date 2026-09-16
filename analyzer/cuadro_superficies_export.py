@@ -226,7 +226,8 @@ def exportar_cuadro_relleno(ruta_origen: str, ruta_destino: str,
     escritas = _dibujar(doc, plantilla, maquetacion)
 
     # C3: todo entregable sale marcado como borrador, en su propia capa.
-    estampar_dxf(doc)
+    # Donde la maqueta la ha reservado, debajo de las notas, como el comando (`C-9`).
+    estampar_dxf(doc, punto=maquetacion.marca[:2])
     doc.saveas(ruta_destino)
 
     verificacion = ezdxf.readfile(ruta_destino)

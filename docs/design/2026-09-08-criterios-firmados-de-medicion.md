@@ -596,6 +596,15 @@ verde, la otra rota, y nadie mirando el hueco entre ellas:
    xrefs. Declarado por Pablo como incumplimiento de este criterio el
    2026-09-15.
 
+   **Arreglado el 2026-09-17.** Medido antes con un plano sintético: la web no se
+   paraba y medía los rectángulos de marco de la hoja. Ahora `parser.leer_plano`,
+   antes de buscar capa, mira las capas `referencia|capa de recintos`: si una
+   referencia la tiene y el dibujo no tiene ninguna polilínea en esa capa, lanza
+   `RecintosEnReferenciaExterna` con el fichero y **sin ofrecer capas**, como el
+   comando. **Límite que queda:** con polilíneas en los dos, el DXF no dice si la
+   referencia tiene recintos (el comando sí lo ve) y la web mide los del dibujo.
+   Test: `tests/test_c9_referencias_externas_web.py`.
+
 Los cuatro primeros tenían tests, y los cuatro tenían **todos sus tests en verde**: cada
 vía se probaba por separado y ninguno cruzaba. El hueco entre dos caminos
 correctos no lo vigila nadie salvo que se vigile a propósito — y el tercero

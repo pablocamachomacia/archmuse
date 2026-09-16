@@ -223,6 +223,51 @@ class CapaIndeterminada(ValueError):
         super().__init__(_mensaje_de_capa(candidatas, pedida))
 
 
+class RecintosEnReferenciaExterna(CapaIndeterminada):
+    """`C-9` punto 5 y `C-15` (2026-09-17): los recintos están en una referencia
+    externa, y la web no los mide ni ofrece otra capa —igual que el comando—.
+
+    Es una `CapaIndeterminada` sin candidatas a propósito: quien ya pregunta por la
+    capa enseña este mensaje y no ofrece ninguna, que es lo que pide `C-15`."""
+
+    def __init__(self, referencias: List[Tuple[str, str]], capa: str):
+        self.referencias = referencias
+        ValueError.__init__(self, (
+            "Este dibujo referencia %s, y los recintos de «%s» están ahí: en este dibujo no "
+            "hay ninguna polilínea en esa capa. Abre ese fichero y mídelo allí; no te ofrezco "
+            "otra capa, porque daría una cifra falsa."
+            % (" y ".join("«%s»" % (ruta or nombre) for nombre, ruta in referencias), capa)))
+        self.candidatas = []
+        self.pedida = capa
+
+
+def referencias_con_la_capa(doc: Drawing, capa: str) -> List[Tuple[str, str]]:
+    """`(nombre, fichero)` de las referencias externas que traen la capa `capa`.
+
+    Un DXF no trae el contenido de la referencia, pero sí sus capas, con el prefijo
+    `referencia|capa`: se sabe que la tiene, no cuántas polilíneas hay dentro."""
+    capas = {c.dxf.name.lower() for c in doc.layers}
+    salida: List[Tuple[str, str]] = []
+    for bloque in doc.blocks:
+        try:
+            cabecera = bloque.block
+            if not (int(cabecera.dxf.get("flags", 0)) & 4):
+                continue
+            nombre = bloque.name
+            ruta = str(cabecera.dxf.get("xref_path", "") or "")
+        except Exception:  # noqa: BLE001 - DXF ajeno
+            continue
+        if ("%s|%s" % (nombre, capa)).lower() in capas:
+            salida.append((nombre, ruta))
+    return salida
+
+
+def _polilineas_en_capa(doc: Drawing, capa: str) -> bool:
+    capa = capa.lower()
+    return any(entity.dxftype() in ("LWPOLYLINE", "POLYLINE") and nombre.lower() == capa
+               for entity, nombre in _recorrer_plano(doc))
+
+
 def _describir_capa(candidata) -> str:
     partes = ["%d polilíneas cerradas" % candidata.n_poligonos]
     if candidata.proporcion_rotulada:
@@ -1974,6 +2019,15 @@ def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optiona
         nombre_capa = CAPA_UTIL_INTERIOR
         capa_por_heuristico = False
     else:
+        # **`C-9`/`C-15`: antes de buscar capa por parecido** (2026-09-17). Si el
+        # dibujo no tiene ninguna polilínea en la capa de recintos y una referencia
+        # externa sí tiene esa capa, los recintos están ahí: elegir otra capa del
+        # dibujo mediría otra cosa. Medido con un plano sintético: medía los
+        # rectángulos del marco.
+        capa_buscada = layer or AREA_LAYER
+        referencias = referencias_con_la_capa(doc, capa_buscada)
+        if referencias and not _polilineas_en_capa(doc, capa_buscada):
+            raise RecintosEnReferenciaExterna(referencias, capa_buscada)
         capa, capa_por_heuristico = _resolver_capa(doc, layer)
         nombre_capa = capa.nombre
 

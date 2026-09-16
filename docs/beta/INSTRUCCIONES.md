@@ -10,13 +10,22 @@
   Sin medir: el título exacto del aviso de Control Inteligente de Aplicaciones.
   Fuera a propósito, para que quepa en una hoja: actualizar, volver a la versión
   anterior, desinstalar y el aviso «Cargar una vez» de un perfil nuevo.
+  2026-09-17 (Pablo): el folio dice que ArchMuse consulta GitHub. Contrastado con
+  `empaquetado/capa_b/actualizaciones.py`: al arrancar el servidor (al iniciar
+  sesión), después cada hora y, con el comando en uso, si han pasado más de 10
+  minutos; pide la lista de versiones publicadas y, si hay una nueva, la descarga
+  y comprueba su firma. No manda nada del plano. Y «Usar» pasa a los dos clics
+  (`.lsp` 3.9.4 y siguientes).
 -->
 
 # ArchMuse · beta
 
 **Qué hace.** Mide las superficies útiles de las estancias de tu plano y dibuja
 el cuadro de superficies al lado del tuyo, sin tocar nada de lo que tienes.
-Todo ocurre en tu ordenador.
+Tus planos no salen de tu ordenador. **Lo único que se conecta a internet:** al
+iniciar sesión y de vez en cuando mientras está en marcha, ArchMuse consulta
+GitHub para ver si hay una versión nueva y, si la hay, la descarga. No envía
+nada de tus planos.
 
 ## 1 · Instalar
 
@@ -42,7 +51,8 @@ Hay **dos avisos distintos**, y se resuelven distinto:
 ## 3 · Usar
 
 1. Abre tu plano en AutoCAD y escribe **`ARCHMUSE`**.
-2. **Haz clic** donde quieras el cuadro y contesta **Sí**.
+2. **Haz clic dentro de la vivienda** que quieres medir.
+3. **Mueve el cursor** —el cuadro va pegado a él— y **haz clic** donde lo quieras.
 
 Si antes te pregunta algo (qué capa, qué vivienda), contesta: prefiere
 preguntar a adivinar. El cuadro sale marcado como **borrador**; puedes apagar
