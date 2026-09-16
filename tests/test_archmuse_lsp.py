@@ -124,6 +124,12 @@ PRIMITIVAS = {
     "entlast", "ssadd", "ssmemb",
     # (equal a b [margen]) → T si son iguales, con margen numérico opcional.
     "equal",
+    # Lo que tapa y el arrastre libre (3.9.7, 2026-09-17), contra la referencia de AutoLISP:
+    #   (inters p1 p2 p3 p4 T) → el punto donde se cortan los SEGMENTOS p1-p2 y p3-p4, o nil;
+    #   (tblsearch "LAYER" nombre) → la entrada de la capa (62 color, negativo si apagada;
+    #       70 banderas, bit 1 inutilizada), o nil;
+    #   (minusp n) → T si n < 0;  (logior a b) → «o» bit a bit.
+    "inters", "tblsearch", "minusp", "logior",
     # Beta, T4 (2026-09-13): leer `servidor.json` para saber el puerto.
     #   `read-line` -- (read-line [descriptor]) devuelve la siguiente línea del
     #       fichero abierto con `open ... "r"`, sin el salto, o nil al final. Es
@@ -437,6 +443,13 @@ def test_no_reimplementa_el_criterio_de_rotulo(fuente):
     un texto y un polígono sería ese criterio, reescrito aquí.
     """
     codigo = _sin_comentarios_ni_cadenas(fuente)
+    # **Única excepción, acotada** (3.9.7, 2026-09-17): `am:polilinea-cruza-zona-p` usa
+    # `inters` para saber si una línea del dibujo pasa bajo la huella de la tabla, y eso
+    # no toca rótulos. Se quita esa función, y sólo esa, antes de buscar.
+    excepcion = codigo.lower().find("(defun am:polilinea-cruza-zona-p ")
+    assert excepcion >= 0
+    fin = codigo.lower().find("\n(defun ", excepcion + 1)
+    codigo = codigo[:excepcion] + codigo[fin:]
     for prohibido in ("distance", "vlax-curve-getclosestpointto", "inters",
                       "vlax-curve-getdistatpoint"):
         assert prohibido not in codigo.lower(), (

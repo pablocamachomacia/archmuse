@@ -5,6 +5,46 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-17 · Arrastre libre aunque haya Orto, y «tapa» sólo lo que se ve (`.lsp` 3.9.7)
+
+**Pablo, con la 0.3.19:** con Orto (F8) la tabla sólo se movía en horizontal o
+vertical; tenía que ir pegada al cursor por su esquina de arriba a la izquierda, no
+desplazarse desde el primer clic. Y revisar «El cuadro tapa 1 elemento».
+
+**Orto.** La base del MOVER ya era la esquina de la tabla, colgada del primer clic.
+Con Orto, AutoCAD proyecta el desplazamiento sobre un eje: la esquina se queda en la
+línea horizontal o vertical del primer clic en vez de seguir al cursor. Eso explica
+las dos cosas que vio Pablo (razonado sobre cómo funciona MOVER; la interfaz no se
+ve desde aquí). **Arreglo:** durante el arrastre se quitan Orto (ORTHOMODE),
+forzcursor (SNAPMODE), las referencias a objetos (bit 16384 de OSMODE, que las
+suspende sin perder cuáles son) y el rastreo polar y de referencias (bits 8 y 16 de
+AUTOSNAP). Se devuelven justo después, y en *error* si hay un Esc (`C-16`).
+*Decisión sin preguntar:* también referencias y rastreo, porque hacen saltar el
+cursor y Pablo pidió «lo que haga falta para que el arrastre sea libre».
+
+**«Tapa 1 elemento».** Medido en la copia del plano maestro: hay un rectángulo en la
+capa 0 que enmarca todas las plantas. La 3.9.6 contaba una polilínea si su **caja**
+cortaba la huella de la tabla, así que con la tabla en un hueco dentro del marco
+el marco «quedaba tapado» sin que ninguna de sus líneas pasara por debajo. *Cuál
+fue el elemento en su prueba no se puede saber sin su clic*: el marco es el único
+elemento del plano con una caja así de grande; los contornos de edificio repetidos
+darían varios a la vez. **Arreglo:** una polilínea cuenta si un vértice cae dentro de
+la huella o un tramo corta uno de sus lados; nunca lo que está en una capa apagada
+o inutilizada.
+
+**Medido en Core Console** (por la puerta aislada): con Orto, forzcursor, OSMODE 35 y
+AUTOSNAP 63, durante el arrastre quedan a 0, 0, 16419 y 39, y después vuelven a 1, 1,
+35 y 63. El marco alrededor de la huella no cuenta; una línea que la cruza, un
+triángulo que la corta y un tramo dentro, sí. Capa apagada o inutilizada: no se ve.
+**No se puede medir ahí** el arrastre con el ratón.
+
+**Guardianes:** los cuatro ajustes entran en `VARIABLES_QUE_CAMBIA`; quitar la
+devolución de OSMODE en *error* pone rojos dos tests (probado). `inters` estaba
+prohibido para que el `.lsp` no emparejara rótulos: excepción explícita sólo para
+`am:polilinea-cruza-zona-p`.
+
+---
+
 ## 2026-09-16 (8) · Todas las viviendas del plano maestro contra el cuadro del arquitecto
 
 Encargo de Pablo: comparar celda a celda cada vivienda con su cuadro y arreglar lo

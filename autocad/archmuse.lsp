@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.6")
-(setq *am:version*  "3.9.6 (2026-09-16, el cuadro sigue al cursor con la orden MOVER)")
+(setq *am:version-corta* "3.9.7")
+(setq *am:version*  "3.9.7 (2026-09-17, arrastre libre aunque haya Orto)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -820,6 +820,45 @@
           "[" (am:json-num (nth 0 caja)) "," (am:json-num (nth 1 caja)) ","
           (am:json-num (nth 2 caja)) "," (am:json-num (nth 3 caja)) "]"))
 
+(defun am:capa-visible-p (capa / fila)
+  ;; ¿Se ve lo que hay en `capa`? No, si está apagada (color negativo) o inutilizada
+  ;; (bit 1 de 70). Una capa que no está en la tabla se da por visible.
+  (setq fila (if capa (tblsearch "LAYER" capa)))
+  (or (null fila)
+      (not (or (minusp (cdr (assoc 62 fila)))
+               (= 1 (logand 1 (cdr (assoc 70 fila))))))))
+
+(defun am:dentro-de-zona-p (p zona)
+  (and (>= (car p) (nth 0 zona)) (<= (car p) (nth 2 zona))
+       (>= (cadr p) (nth 1 zona)) (<= (cadr p) (nth 3 zona))))
+
+(defun am:polilinea-cruza-zona-p (datos zona / puntos a b esquinas res i)
+  ;; ¿Pasa alguna línea de la polilínea por debajo de `zona`? Un vértice dentro, o un
+  ;; tramo que corta uno de sus cuatro lados (3.9.7). Hasta la 3.9.6 bastaba con que la
+  ;; CAJA de la polilínea cortara la zona: el marco que rodea todas las plantas «quedaba
+  ;; tapado» con la tabla en un hueco de dentro. Los tramos con arco se miran por su
+  ;; cuerda: un arco que entra sin que su cuerda entre no se cuenta.
+  (setq puntos nil)
+  (foreach par datos
+    (if (= 10 (car par)) (setq puntos (cons (list (cadr par) (caddr par)) puntos))))
+  (setq puntos (reverse puntos))
+  (if (and puntos (= 1 (logand 1 (cdr (assoc 70 datos)))))
+    (setq puntos (append puntos (list (car puntos)))))
+  (setq esquinas (list (list (nth 0 zona) (nth 1 zona)) (list (nth 2 zona) (nth 1 zona))
+                       (list (nth 2 zona) (nth 3 zona)) (list (nth 0 zona) (nth 3 zona))
+                       (list (nth 0 zona) (nth 1 zona)))
+        res nil)
+  (foreach p puntos
+    (if (am:dentro-de-zona-p p zona) (setq res T)))
+  (setq a (car puntos) puntos (cdr puntos))
+  (while (and (not res) puntos)
+    (setq b (car puntos) i 0)
+    (while (and (not res) (< i 4))
+      (if (inters a b (nth i esquinas) (nth (1+ i) esquinas) T) (setq res T))
+      (setq i (1+ i)))
+    (setq a b puntos (cdr puntos)))
+  res)
+
 (defun am:obstaculos (zona propios / zonas ss i ename datos caja res n)
   ;; **Lo que hay dibujado bajo la tabla** (3.9.4). Cajas `[x0,y0,x1,y1]` en JSON de
   ;; lo que corta `zona` —`(x0 y0 x1 y1)`, la huella de la tabla donde se ha hecho
@@ -842,7 +881,9 @@
           (setq ename (ssname ss i)
                 datos (entget ename))
           (if (and (not (and propios (ssmemb ename propios)))
-                   (am:caja-corta-zona-p datos zonas))
+                   (am:caja-corta-zona-p datos zonas)
+                   (am:capa-visible-p (cdr (assoc 8 datos)))
+                   (am:polilinea-cruza-zona-p datos zona))
             (setq res (am:mas-caja res (am:caja-de-datos datos)) n (1+ n)))
           (setq i (1+ i))))
       (setq ss (ssget "_X" (list '(-4 . "<NOT") '(0 . "LWPOLYLINE,HATCH") '(-4 . "NOT>")
@@ -854,7 +895,8 @@
         (while (< i (sslength ss))
           (setq ename (ssname ss i)
                 datos (entget ename)
-                caja  (if (and propios (ssmemb ename propios))
+                caja  (if (or (and propios (ssmemb ename propios))
+                              (not (am:capa-visible-p (cdr (assoc 8 datos)))))
                         nil
                         (if (= (cdr (assoc 0 datos)) "INSERT")
                           (am:caja-de-insert ename datos)
@@ -1817,6 +1859,34 @@
   ss)
 
 
+(defun am:arrastre-libre ( / antes)
+  ;; **El arrastre del segundo clic, sin ataduras** (3.9.7; Pablo con la 0.3.19, 2026-09-17):
+  ;; con Orto (F8) la tabla sólo se movía en horizontal o vertical desde el primer clic, en
+  ;; vez de ir pegada al cursor por su esquina. Se quitan también forzcursor (F9), las
+  ;; referencias a objetos (F3, bit 16384 de OSMODE: las suspende sin perder cuáles son) y
+  ;; el rastreo polar y de referencias (F10/F11, bits 8 y 16 de AUTOSNAP), que hacen saltar
+  ;; el cursor. Devuelve cómo estaban, para `am:devolver-arrastre` y para *error* (`C-16`).
+  (setq antes (list (cons "ORTHOMODE" (getvar "ORTHOMODE"))
+                    (cons "SNAPMODE" (getvar "SNAPMODE"))
+                    (cons "OSMODE" (getvar "OSMODE"))
+                    (cons "AUTOSNAP" (getvar "AUTOSNAP"))))
+  (setvar "ORTHOMODE" 0)
+  (setvar "SNAPMODE" 0)
+  (setvar "OSMODE" (logior (getvar "OSMODE") 16384))
+  (setvar "AUTOSNAP" (logand (getvar "AUTOSNAP") (~ 24)))
+  antes)
+
+
+(defun am:devolver-arrastre (antes)
+  ;; Los cuatro ajustes, como estaban antes del arrastre (`C-16`).
+  (if antes
+    (progn
+      (setvar "ORTHOMODE" (cdr (assoc "ORTHOMODE" antes)))
+      (setvar "SNAPMODE" (cdr (assoc "SNAPMODE" antes)))
+      (setvar "OSMODE" (cdr (assoc "OSMODE" antes)))
+      (setvar "AUTOSNAP" (cdr (assoc "AUTOSNAP" antes))))))
+
+
 (defun am:arrastrar-cuadro (tabla propios nombre / base despues)
   ;; **El segundo clic, arrastrando la tabla de verdad** (3.9.6; Pablo, 2026-09-16).
   ;;
@@ -2644,7 +2714,7 @@
                       filas cols notas i n
                       punto geometria ambitos alineado nombres elegida m intentos
                       estilo-texto textos medidos eleccion otras obstaculos
-                      colocado tapa detalle linea antes-de-dibujar propios)
+                      colocado tapa detalle linea antes-de-dibujar propios arrastre-libre)
 
   (defun *error* (msg)
     ;; **ArchMuse nunca acaba en silencio** (Pablo, 2026-09-15). Tres casos:
@@ -2689,6 +2759,14 @@
           (if (vl-catch-all-error-p (vl-catch-all-apply 'command-s (list "_.U")))
             (princ "\nY NO he podido deshacer lo que llegué a dibujar: pulsa Ctrl+Z tú.")
             (princ "\nHe deshecho lo que llegué a dibujar: tu plano está como antes.")))))
+    ;; Orto, forzcursor, referencias y rastreo, si el Esc llegó en pleno arrastre (3.9.7).
+    (if arrastre-libre
+      (progn
+        (setvar "ORTHOMODE" (cdr (assoc "ORTHOMODE" arrastre-libre)))
+        (setvar "SNAPMODE" (cdr (assoc "SNAPMODE" arrastre-libre)))
+        (setvar "OSMODE" (cdr (assoc "OSMODE" arrastre-libre)))
+        (setvar "AUTOSNAP" (cdr (assoc "AUTOSNAP" arrastre-libre)))
+        (setq arrastre-libre nil)))
     (setvar "CMDECHO" (if eco eco 1))
     (princ))
 
@@ -3113,7 +3191,12 @@
   ;;    deshacer: Ctrl+Z una vez quita todo, movimiento incluido, y un Esc llega a
   ;;    *error* con el grupo abierto y lo deshace.
   (setq propios (am:entidades-desde antes-de-dibujar))
+  ;;    Sin Orto, forzcursor ni referencias mientras se arrastra (3.9.7), y devueltos justo
+  ;;    después: con Orto la tabla no iba pegada al cursor. Un Esc aquí los devuelve en *error*.
+  (setq arrastre-libre (am:arrastre-libre))
   (setq colocado (am:arrastrar-cuadro tabla propios (nth elegida nombres)))
+  (am:devolver-arrastre arrastre-libre)
+  (setq arrastre-libre nil)
   (if (null colocado)
     (progn
       (setq grupo-abierto nil)

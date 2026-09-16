@@ -29,7 +29,10 @@ GUARDIAN = RAIZ / "herramientas" / "guardian_autocad" / "guardian.lsp"
 #: Lo que ARCHMUSE cambia de AutoCAD a propósito, medido en la auditoría del
 #: 2026-09-15. Añadir una aquí exige que *error* la devuelva y que el guardián
 #: lo haya comprobado en AutoCAD.
-VARIABLES_QUE_CAMBIA = {"CMDECHO"}
+#: ORTHOMODE, SNAPMODE, OSMODE y AUTOSNAP (3.9.7, 2026-09-17): sólo durante el
+#: arrastre del segundo clic, para que la tabla vaya pegada al cursor aunque haya
+#: Orto; se devuelven al terminar y en *error*.
+VARIABLES_QUE_CAMBIA = {"CMDECHO", "ORTHOMODE", "SNAPMODE", "OSMODE", "AUTOSNAP"}
 #: Las órdenes de AutoCAD que lanza. `_.DELAY` espera al servidor; `_.U` retira
 #: lo dibujado cuando no se puede terminar; `_.MOVE` (3.9.6, 2026-09-16) arrastra lo
 #: que acaba de dibujar en el segundo clic: sólo mueve esas entidades y cambia

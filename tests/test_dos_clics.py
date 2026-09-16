@@ -212,10 +212,74 @@ def test_enter_sin_elegir_sitio_no_deja_la_tabla_lejos():
     assert "vla-EndUndoMark" in rama
 
 
+#: Lo que ata el cursor en un arrastre: Orto (F8), forzcursor (F9), referencias a
+#: objetos (F3) y rastreo polar y de referencias (F10/F11, bits 8 y 16 de AUTOSNAP).
+AJUSTES_DEL_ARRASTRE = ("ORTHOMODE", "SNAPMODE", "OSMODE", "AUTOSNAP")
+
+
+def test_el_arrastre_es_libre_aunque_tenga_orto_y_lo_devuelve_al_terminar():
+    """Pablo, con la 0.3.19: con Orto activado la tabla sólo se mueve en horizontal o
+    vertical desde el primer clic, en vez de ir pegada al cursor por su esquina."""
+    libre = " ".join(_defun("am:arrastre-libre").split())
+    assert '(setvar "ORTHOMODE" 0)' in libre
+    assert '(setvar "SNAPMODE" 0)' in libre
+    assert '(setvar "OSMODE" (logior (getvar "OSMODE") 16384))' in libre
+    assert '(setvar "AUTOSNAP" (logand (getvar "AUTOSNAP") (~ 24)))' in libre
+    for ajuste in AJUSTES_DEL_ARRASTRE:
+        # Se guarda antes de cambiarlo.
+        assert libre.index('"%s"' % ajuste) < libre.index('(setvar "%s"' % ajuste)
+    devolver = " ".join(_defun("am:devolver-arrastre").split())
+    for ajuste in AJUSTES_DEL_ARRASTRE:
+        assert '(setvar "%s" (cdr (assoc "%s" antes)))' % (ajuste, ajuste) in devolver
+
+    comando = " ".join(_defun("c:ARCHMUSE").split())
+    libera = comando.index("(setq arrastre-libre (am:arrastre-libre))")
+    arrastra = comando.index("(am:arrastrar-cuadro tabla propios")
+    devuelve = comando.index("(am:devolver-arrastre arrastre-libre)")
+    assert libera < arrastra < devuelve < comando.index("(null colocado)")
+    assert "(setq arrastre-libre nil)" in comando[devuelve:devuelve + 80]
+
+
+def test_esc_en_el_arrastre_devuelve_orto_y_las_referencias():
+    """`C-16`: un Esc en el arrastre llega a *error*, que tiene que devolverlos."""
+    comando = _defun("c:ARCHMUSE")
+    locales = comando[:comando.index(")")]
+    assert "arrastre-libre" in locales.split()
+    error = " ".join(comando[comando.index("(defun *error*"):
+                             comando.index('(setq eco (getvar "CMDECHO"))')].split())
+    assert "(if arrastre-libre" in error
+    for ajuste in AJUSTES_DEL_ARRASTRE:
+        assert '(setvar "%s" (cdr (assoc "%s" arrastre-libre)))' % (ajuste, ajuste) in error
+
+
+def test_la_tabla_se_arrastra_por_su_esquina():
+    """La base del MOVER es la esquina de arriba a la izquierda de la tabla, y la tabla
+    provisional está colgada del primer clic por esa misma esquina."""
+    arrastrar = " ".join(_defun("am:arrastrar-cuadro").split())
+    assert "(setq base (am:punto->lista (vla-get-InsertionPoint tabla)))" in arrastrar
+    assert '"_non" base pause' in arrastrar
+
+
 def test_lo_que_tapa_no_cuenta_la_propia_tabla():
     obstaculos = _defun("am:obstaculos")
     assert "(defun am:obstaculos (zona propios" in obstaculos
     assert "(ssmemb" in obstaculos
+
+
+def test_lo_que_tapa_solo_cuenta_lineas_que_pasan_bajo_la_tabla_y_se_ven():
+    """«El cuadro tapa 1 elemento» sin nada visible debajo. Medido en la copia del plano
+    maestro (fuera del repositorio): un rectángulo en la capa 0 enmarca todas las
+    plantas, y la 3.9.6 contaba una polilínea si su CAJA cortaba la huella. Con la
+    tabla en un hueco dentro del marco, el marco «quedaba tapado» sin que ninguna de
+    sus líneas pasara por debajo. Ahora cuenta si algún tramo cruza la huella, y
+    nunca lo de una capa apagada o inutilizada."""
+    obstaculos = " ".join(_defun("am:obstaculos").split())
+    assert "(am:polilinea-cruza-zona-p datos zona)" in obstaculos
+    assert obstaculos.count("(am:capa-visible-p") >= 2
+    cruza = " ".join(_defun("am:polilinea-cruza-zona-p").split())
+    assert "(inters" in cruza and "(= 1 (logand 1" in cruza
+    visible = " ".join(_defun("am:capa-visible-p").split())
+    assert '(tblsearch "LAYER"' in visible and "(minusp" in visible and "(logand 1" in visible
 
 
 def test_si_tapa_lo_dice_y_si_no_dice_solo_lo_que_hace():

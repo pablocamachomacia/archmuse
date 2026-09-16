@@ -197,7 +197,16 @@ def test_solo_el_comando_cambia_variables():
     """CMDECHO se devuelve en el *error* del comando (`C-16`). Fuera de él no hay
     *error* que la devuelva, así que fuera de él no se toca ninguna."""
     comando = _defun(CODIGO, "c:ARCHMUSE")
-    assert CODIGO.count("(setvar") == comando.count("(setvar")
+    # **El arrastre libre** (3.9.7, 2026-09-17): quitar y devolver Orto y compañía vive
+    # en dos funciones aparte, que sólo se llaman desde el comando —cuyo *error*
+    # devuelve los cuatro ajustes—. Se cuentan con él, y nadie más puede llamarlas.
+    ayudantes = [_defun(CODIGO, n) for n in ("am:arrastre-libre", "am:devolver-arrastre")]
+    for nombre in ("am:arrastre-libre", "am:devolver-arrastre"):
+        llamada = re.compile(r"\(%s[\s)]" % re.escape(nombre))
+        assert len(llamada.findall(comando)) >= 1
+        assert len(llamada.findall(CODIGO)) == len(llamada.findall(comando)), (
+            "%s se llama fuera del comando, donde ningún *error* devuelve lo que cambia" % nombre)
+    assert CODIGO.count("(setvar") == comando.count("(setvar") + sum(a.count("(setvar") for a in ayudantes)
 
 
 # -- El guardián de AutoCAD compara también después de cerrar y abrir ----------
