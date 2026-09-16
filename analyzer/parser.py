@@ -173,6 +173,10 @@ class Room:
     #: Los nombres distintos que había dentro cuando no se ha elegido ninguno
     #: (`C-18`): la pieza se queda sin rótulo, y la tabla dice cuáles eran.
     rotulos_en_conflicto: Tuple[str, ...] = ()
+    #: Por qué su contorno no puede ser su superficie útil, si un rótulo de
+    #: construida lo señala o lo deja en duda (`construida_rotulada`, regla de
+    #: Pablo del 2026-09-16). `None` es lo normal. La pieza se enseña sin cifra.
+    no_es_util: Optional[str] = None
 
     @property
     def area_m2(self) -> float:
@@ -412,9 +416,102 @@ def _extremos_coinciden(points: List[Tuple[float, float]]) -> bool:
     return gap <= TOLERANCIA_CIERRE * diagonal
 
 
+#: Lo más larga que puede ser la cola de una polilínea que se cierra encima de su
+#: primer tramo (`_anillo_montado`), como fracción de su diagonal. Medida el
+#: 2026-09-16: 5,08 % en el único caso real visto; el doble de margen, como se
+#: hizo con `TOLERANCIA_CIERRE` (0,70 % medido, 1 % puesto).
+TOLERANCIA_COLA = 0.10
+
+
+def _diagonal(points: List[Tuple[float, float]]) -> float:
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    return math.hypot(max(xs) - min(xs), max(ys) - min(ys))
+
+
+def _encima_del_tramo(punto, a, b, tolerancia: float) -> bool:
+    """¿Está `punto` a menos de `tolerancia` del tramo `a-b`, **entre sus dos
+    extremos** (no en su prolongación)?"""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    largo2 = dx * dx + dy * dy
+    if largo2 <= 0.0:
+        return False
+    t = ((punto[0] - a[0]) * dx + (punto[1] - a[1]) * dy) / largo2
+    if not 0.0 < t < 1.0:
+        return False
+    return math.hypot(a[0] + t * dx - punto[0], a[1] + t * dy - punto[1]) <= tolerancia
+
+
+def _anillo_montado(points: List[Tuple[float, float]]) -> Optional[List[Tuple[float, float]]]:
+    """El anillo de una polilínea que **se cierra encima de su primer tramo** en
+    vez de en su primer vértice, sin la cola que sobra; o `None`.
+
+    **Medido el 2026-09-16** en el tendedero de una vivienda de un plano del
+    arquitecto (fuera del repositorio): `closed=False`, el último vértice encima
+    del primer tramo —a un 0,12 % de la diagonal— y el primero más allá, como
+    cola. El hueco entre extremos era el 5,08 % de la diagonal y
+    `_extremos_coinciden` lo dejaba abierto; el contorno útil no entraba y su
+    construida exterior ocupaba su sitio. El recinto que encierra no es ambiguo:
+    es el anillo sin la cola. Lo mismo al revés: el primer vértice encima del
+    último tramo, con la cola al final.
+
+    La cercanía se mide con la misma `TOLERANCIA_CIERRE` relativa, y el vértice
+    tiene que caer **entre** los extremos del tramo: en su prolongación no hay
+    ningún anillo cerrado.
+
+    **Con una cola corta: `TOLERANCIA_COLA`.** Una polilínea cuyo último tramo
+    cae a media pared de la primera (`test_cierre_recuperado`, hueco de 5 sobre
+    un tramo de 6) no se ha cerrado mal: se ha dibujado mal, y el recinto que
+    encierra no es el que se quería. Sigue abierta.
+
+    **Y sólo si no cambia la superficie.** Leída como la cerraría AutoCAD —del
+    último vértice al primero— y leída sin la cola, tiene que dar lo mismo, con
+    la misma `TOLERANCIA_CIERRE` relativa: en el tendedero medido, un 0,08 % de
+    diferencia.
+    """
+    if len(points) < 4:
+        return None
+    diagonal = _diagonal(points)
+    tolerancia = TOLERANCIA_CIERRE * diagonal
+    if tolerancia <= 0.0:
+        return None
+    anillo, cola = None, 0.0
+    if _encima_del_tramo(points[-1], points[0], points[1], tolerancia):
+        anillo, cola = points[1:], math.dist(points[0], points[-1])
+    elif _encima_del_tramo(points[0], points[-2], points[-1], tolerancia):
+        anillo, cola = points[:-1], math.dist(points[0], points[-1])
+    if anillo is None or cola > TOLERANCIA_COLA * diagonal:
+        return None
+    sin_cola, como_autocad = abs(_shoelace(anillo)), abs(_shoelace(points))
+    if sin_cola <= 0.0 or abs(sin_cola - como_autocad) > TOLERANCIA_CIERRE * sin_cola:
+        return None
+    return anillo
+
+
+def _shoelace(points: List[Tuple[float, float]]) -> float:
+    return 0.5 * sum(x0 * y1 - x1 * y0
+                     for (x0, y0), (x1, y1) in zip(points, points[1:] + points[:1], strict=True))
+
+
+def _puntos_del_anillo(entity) -> List[Tuple[float, float]]:
+    """Los vértices con los que se construye el recinto de una polilínea que
+    `_esta_cerrada` da por cerrada: los suyos, salvo si se cierra montada sobre
+    su primer tramo (`_anillo_montado`), que va sin la cola."""
+    points = _polyline_points(entity)
+    try:
+        tipo = entity.dxftype()
+        cerrada_por_flag = bool(entity.closed) if tipo == "LWPOLYLINE" else bool(entity.is_closed)
+    except Exception:  # noqa: BLE001 - DXF ajeno: entidad mal formada
+        return points
+    if cerrada_por_flag or _extremos_coinciden(points):
+        return points
+    return _anillo_montado(points) or points
+
+
 def _recuperar_cierre_por_geometria(entity) -> bool:
     """Segunda oportunidad para una polilínea con `closed=False`: si sus
-    extremos casi coinciden (`_extremos_coinciden`), se trata como cerrada.
+    extremos casi coinciden (`_extremos_coinciden`), o si se cierra montada sobre
+    su primer tramo (`_anillo_montado`, 2026-09-16), se trata como cerrada.
 
     La recuperación se registra SIEMPRE con `_log.warning`, nunca en
     silencio: tratar como cerrada una polilínea que el propio archivo declara
@@ -424,7 +521,13 @@ def _recuperar_cierre_por_geometria(entity) -> bool:
     """
     points = _polyline_points(entity)
     if not _extremos_coinciden(points):
-        return False
+        if _anillo_montado(points) is None:
+            return False
+        _log.warning(
+            "Polilinea con closed=False tratada como cerrada: se cierra encima de su "
+            "primer tramo y se mide sin la cola (capa %r, handle %r).",
+            getattr(entity.dxf, "layer", "?"), getattr(entity.dxf, "handle", "?"))
+        return True
     x0, y0 = points[0]
     x1, y1 = points[-1]
     gap = math.hypot(x1 - x0, y1 - y0)
@@ -713,7 +816,7 @@ def _closed_polygons_with_color(
                 descartes.append(EntidadDescartada(
                     motivo=motivo, capa=capa, tipo=tipo, handle=_handle_de(entity)))
             continue
-        points = _polyline_points(entity)
+        points = _puntos_del_anillo(entity)
         if len(points) < 3:
             if descartes is not None:
                 descartes.append(EntidadDescartada(
@@ -807,11 +910,21 @@ def extract_room_polygons(
     doc: Drawing, layer: str = AREA_LAYER, descartes: Optional[List[EntidadDescartada]] = None,
     reparaciones: Optional[List[GeometriaReparada]] = None,
     desplazamiento: Optional[Tuple[float, float]] = None,
+    no_utiles: Optional[Dict[int, str]] = None,
 ) -> List[Polygon]:
     """Busca polilíneas cerradas en el layer indicado, las convierte en
     polígonos shapely y descarta los contornos agrupadores duplicados
     (ver `_discard_container_candidates`). `descartes` y `reparaciones`: ver
-    `_closed_polygons_with_color`."""
+    `_closed_polygons_with_color`.
+
+    **Y ningún contorno rotulado como construida es una estancia** (regla de
+    Pablo del 2026-09-16, `construida_rotulada`). Si un rótulo de construida lo
+    señala y contiene otra estancia que ya lo representa, fuera; si no, se queda
+    —la estancia no puede desaparecer en silencio— y `no_utiles`, si se pasa,
+    recoge `{id(polígono): motivo}` para enseñarla sin cifra. Un contorno en duda
+    se queda igual, con su motivo."""
+    from . import construida_rotulada as cr
+
     entries = _closed_polygons_with_color(
         doc, layer, descartes=descartes, reparaciones=reparaciones)
     labels = extract_labels(doc, con_capa=True, desplazamiento=desplazamiento)
@@ -820,7 +933,31 @@ def extract_room_polygons(
         (polygon, color, match_label_to_room(polygon, labels, capas_validas=capas_validas))
         for polygon, color in entries
     ]
-    return _discard_container_candidates(labeled_entries)
+    kept = _discard_container_candidates(labeled_entries)
+
+    marcas = cr.marcar([p for p, _c in entries], cr.rotulos(doc))
+    if not marcas:
+        return kept
+    por_poligono = {id(entries[i][0]): (marca, labeled_entries[i][2]) for i, marca in marcas.items()}
+    etiquetas = {id(p): _normalize_room_label(label) for p, _c, label in labeled_entries}
+    salida: List[Polygon] = []
+    for polygon in kept:
+        marcado = por_poligono.get(id(polygon))
+        if marcado is None:
+            salida.append(polygon)
+            continue
+        marca, label = marcado
+        propia = _normalize_room_label(label)
+        dentro = [o for o in kept if o is not polygon and cr.contiene(polygon, o)]
+        if marca.tipo == cr.ROTULADA and dentro and (
+                not propia or any(etiquetas.get(id(o)) == propia for o in dentro)):
+            _log.info("Contorno rotulado %r fuera de las estancias: contiene %d estancia(s) "
+                      "que ya lo representan.", marca.rotulo.texto, len(dentro))
+            continue
+        salida.append(polygon)
+        if no_utiles is not None:
+            no_utiles[id(polygon)] = marca.motivo
+    return salida
 
 
 def _punto_de_texto(entity) -> Optional[Tuple[float, float]]:
@@ -1631,9 +1768,10 @@ def build_rooms_from_document(
 
     `descartes` y `reparaciones`: ver `_closed_polygons_with_color`.
     """
+    no_utiles: Dict[int, str] = {}
     polygons = extract_room_polygons(
         doc, layer, descartes=descartes, reparaciones=reparaciones,
-        desplazamiento=desplazamiento)
+        desplazamiento=desplazamiento, no_utiles=no_utiles)
     labels = extract_labels(doc, con_capa=True, desplazamiento=desplazamiento)
     capas_validas, _reparto = _capas_que_nombran(polygons, labels, layer)
 
@@ -1643,7 +1781,8 @@ def build_rooms_from_document(
         label = match_label_to_room(polygon, labels, capas_validas=capas_validas,
                                     conflicto=conflicto)
         rooms.append(Room(label=label, polygon=polygon, layer=layer,
-                          rotulos_en_conflicto=tuple(conflicto)))
+                          rotulos_en_conflicto=tuple(conflicto),
+                          no_es_util=no_utiles.get(id(polygon))))
 
     return rooms
 
@@ -1692,7 +1831,7 @@ def _leer_capa_am(
                 motivo=MOTIVO_POLILINEA_ABIERTA, capa=capa, tipo=tipo,
                 handle=_handle_de(entity)))
             continue
-        points = _polyline_points(entity)
+        points = _puntos_del_anillo(entity)
         if len(points) < 3:
             descartes.append(EntidadDescartada(
                 motivo=MOTIVO_MENOS_DE_3_VERTICES, capa=capa, tipo=tipo,
@@ -1900,6 +2039,7 @@ def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optiona
                 polygon=escalar_geometria(room.polygon, xfact=factor, yfact=factor, origin=(0, 0)),
                 layer=room.layer,
                 rotulos_en_conflicto=room.rotulos_en_conflicto,
+                no_es_util=room.no_es_util,
             )
             for room in rooms
         ]

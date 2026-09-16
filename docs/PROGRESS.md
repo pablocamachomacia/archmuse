@@ -5,6 +5,42 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-16 (7) · Error de cifra: la construida exterior como tendedero (`C-20`)
+
+**Pablo:** en una vivienda del plano maestro el tendedero salía con la superficie de
+la construida exterior («S. construida ext.») en vez de la del contorno útil, y el
+error pasaba al total exterior y al total útil. El resto de la vivienda coincidía.
+
+**Causa, medida en una copia local del plano (fuera del repositorio):**
+1. El contorno útil tiene `closed=False`. No termina en su primer vértice sino
+   **encima de su primer tramo**, a un 0,12 % de la diagonal, con una cola
+   detrás. El hueco entre extremos es el 5,08 % de la diagonal:
+   más que el 1 % de `TOLERANCIA_CIERRE`, así que se descartaba por abierto.
+2. Sin él, la construida exterior (cerrada, color propio, con el nombre del
+   tendedero dentro) ya no contenía a nadie con su nombre: el descarte de
+   agrupadores la dejaba pasar y entraba como «Tendedero».
+3. El rótulo «S. construida ext.» estaba a menos de 3 alturas de texto del borde
+   de la construida y a más de 3 del útil.
+
+**Arreglo** (tests antes, en `tests/test_construida_nunca_es_util.py`, sobre plano
+sintético; el caso salía 5,37 en vez de 3,68):
+- **El cierre montado** se lee sin la cola (`parser._anillo_montado`), con dos
+  límites para no inventar recintos: cola de hasta el 10 % de la diagonal y la
+  misma superficie se lea como se lea. `test_cierre_recuperado` (un último tramo que
+  cae a 5 de 6 por la pared) sigue abierto.
+- **`C-20`, regla de Pablo:** nada rotulado como construida es superficie útil; con
+  duda, celda vacía con motivo. Registrado en los criterios con las cuatro
+  decisiones de lectura como propuestas.
+
+**Todas las viviendas del plano maestro contra su cuadro del arquitecto**, celda a
+celda, por las dos peticiones del clic (script fuera del repositorio): **13 de 23
+coinciden en todo; antes, 12.** La regla nueva marca en ese plano cinco contornos:
+el del error y cuatro de dos viviendas que ya tenían los totales bloqueados por
+solapes. Ninguna de las que coincidían cambia. Las 10 que no coinciden se estudian en
+la entrada siguiente.
+
+---
+
 ## 2026-09-16 (6) · El cuadro sigue al cursor de verdad: la orden MOVER (`.lsp` 3.9.6)
 
 **Pablo, en AutoCAD con la 0.3.17:** dos clics, Ctrl+Z, Esc y colocación funcionan,

@@ -258,15 +258,20 @@ def test_plantasimple_pasa_de_no_medirse_a_medirse():
     más dentro es agrupador. Medido contra lo publicado: los 42 que salen
     contienen entre 2 y 7 piezas cada uno, lo que deja de cubrirse son 344 m² de
     muros entre piezas, y con los rótulos alineados el plano sigue en 157
-    recintos, los mismos."""
+    recintos, los mismos.
+
+    **Y de 164 a 165 con el cierre montado de `C-20` (2026-09-16).** Medido
+    quitando sólo `parser._anillo_montado`: el único recinto nuevo es un tendedero
+    cuya polilínea se cierra encima de su primer tramo, el mismo contorno útil que
+    causó el error de cifra. Ninguno desaparece."""
     ruta = _ruta("plantasimple.dxf")
     if ruta is None:
         pytest.skip("plantasimple.dxf no está en esta máquina")
 
     plano = parser.leer_plano(parser.load_document(ruta), layer="00 areas")
 
-    assert len(plano.rooms) == 164
-    assert sum(r.polygon.area for r in plano.rooms) == pytest.approx(1533.31, abs=0.01)
+    assert len(plano.rooms) == 165
+    assert sum(r.polygon.area for r in plano.rooms) == pytest.approx(1537.37, abs=0.01)
     assert [r for r in plano.rooms if not r.polygon.is_valid] == []
     assert len(plano.geometria_reparada) == 10
 

@@ -172,6 +172,9 @@ class PiezaMedida:
     #: El área **sin redondear**, de la que salen los totales (`C-19`). `area_m2`
     #: es la cifra publicada de la pieza. `None` en una pieza construida a mano.
     area_cruda_m2: Optional[float] = None
+    #: Por qué su contorno no es su superficie útil (rotulado como construida, o
+    #: en duda), o `None`. Con motivo, **ningún total de la vivienda se publica**.
+    no_es_util: Optional[str] = None
 
     @property
     def area_para_totales(self) -> float:
@@ -311,6 +314,16 @@ class ViviendaMedida:
                              % (r.pieza, r.distancia_m, r.asignada_a,
                                 r.distancia_siguiente_m, r.siguiente)
                              for r in self.repartos_dudosos))
+            )
+        # Regla de Pablo del 2026-09-16: lo rotulado como construida nunca es
+        # superficie útil, y un total sin esa pieza estaría corto.
+        construidas = [p for p in self.piezas if p.no_es_util]
+        if construidas:
+            motivos.append(
+                "%d pieza(s) están dibujadas con un contorno rotulado como superficie "
+                "construida, o en duda, y no se sabe su superficie útil (%s)"
+                % (len(construidas), "; ".join("«%s»: %s" % (p.nombre, p.no_es_util)
+                                               for p in construidas))
             )
         sueltas = self.sin_clasificar
         if sueltas:
@@ -492,6 +505,7 @@ def _pieza(room) -> PiezaMedida:
         area_m2=_redondear(room.polygon.area),
         capa=room.layer,
         area_cruda_m2=float(room.polygon.area),
+        no_es_util=getattr(room, "no_es_util", None),
     )
 
 

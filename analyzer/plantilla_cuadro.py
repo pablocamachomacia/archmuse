@@ -366,7 +366,7 @@ def polilineas_del_plano(doc, factor: float) -> List[Tuple[str, Polygon]]:
     for entidad in doc.modelspace().query("LWPOLYLINE"):
         if not parser._esta_cerrada(entidad, recuperar_geometria=True):
             continue
-        puntos = [(x * factor, y * factor) for x, y in parser._polyline_points(entidad)]
+        puntos = [(x * factor, y * factor) for x, y in parser._puntos_del_anillo(entidad)]
         if len(puntos) < 3:
             continue
         poligono = Polygon(puntos)
@@ -588,7 +588,13 @@ def construir(doc, plano, nombre_vivienda: str,
         rooms[ambito].append(room)
         crudas[ambito].append(float(room.polygon.area))
         valor = _m2(pieza.area_m2)
-        if es_superficie_cero(valor):
+        if pieza.no_es_util:
+            # Regla de Pablo del 2026-09-16: un contorno rotulado como construida
+            # nunca es superficie útil; con duda, tampoco. La fila, sin cifra.
+            valor = ""
+            incompleto[ambito] = True
+            notas.add(pieza.nombre, pieza.no_es_util)
+        elif es_superficie_cero(valor):
             valor = ""
             incompleto[ambito] = True
             notas.add(pieza.nombre, "su superficie redondea a cero: una estancia no mide cero y su "

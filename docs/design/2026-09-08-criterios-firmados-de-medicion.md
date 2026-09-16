@@ -1072,6 +1072,60 @@ de orden de `tests/test_dos_vias_leen_igual.py`, ya sin xfail.
 
 ---
 
+## C-20 · Una polilínea rotulada como construida nunca es superficie útil
+
+**Dictaminado por:** Pablo, 2026-09-16, tras un error de cifra. **Criterio firmado**
+en lo que dice Pablo; las cuatro decisiones de cómo se lee, abajo, son **propuestas,
+pendientes de firma**.
+
+**Qué dice (Pablo).** Una polilínea rotulada como construida (interior o exterior)
+nunca puede usarse como superficie útil de una estancia. **Si hay duda sobre cuál es
+la útil, la celda queda vacía con motivo.**
+
+**El caso que lo motiva.** Un tendedero del plano maestro dibujado con dos
+contornos: el útil, con su nombre, y alrededor la construida exterior, rotulada «S.
+construida ext.». ArchMuse escribía la construida como útil, y el error pasaba al
+total exterior y al útil. Medido: el contorno útil tiene `closed=False` y se cierra
+**encima de su primer tramo** con una cola del 5 % de su diagonal; se descartaba por
+abierto y la construida, ya sin nadie dentro con su nombre, ocupaba su sitio.
+
+**Qué es «rotulada»** (la lectura de `C-12`): un rótulo señala los contornos de la
+capa de recintos cuyo borde está a menos de 3 alturas de su texto.
+
+**Decisiones propuestas, pendientes de firma:**
+1. **Formas del rótulo:** las dos firmadas de la cerrada y, de la exterior, «s.
+   construida ext.», «superficie construida exterior» y «s. construida exterior».
+   «Sup. construida» a secas no dice cuál es y no cuenta.
+2. **Contornos anidados al alcance del mismo rótulo:** si uno contiene a los demás,
+   el rotulado es ése (la construida contiene a la útil) y los de dentro no están en
+   duda. Sin esto, la mitad de los tendederos del plano maestro, que hoy coinciden
+   con el arquitecto, quedarían vacíos.
+3. **Dos o más contornos al alcance sin que uno contenga a los otros:** duda, y
+   ninguno se escribe como útil.
+4. **Un contorno rotulado que contiene una estancia que ya lo representa** (sin
+   nombre propio, o con el mismo) sale de las estancias. Si no, se queda como
+   estancia **sin cifra y con motivo**, y ningún total de la vivienda se escribe:
+   la estancia no puede desaparecer en silencio, ni el total salir corto.
+
+**El cierre montado (arreglo, no criterio).** Una polilínea con `closed=False` cuyo
+último vértice cae encima de su primer tramo (a menos del 1 % de su diagonal, entre
+sus extremos) se lee cerrada sin la cola, **si la cola no pasa del 10 % de la
+diagonal** y la superficie no cambia más del 1 % se lea como se lea. Con una cola
+larga está mal dibujada y sigue abierta.
+
+**Dónde se aplica.** `analyzer/construida_rotulada.py`; `parser._anillo_montado`,
+`parser._puntos_del_anillo`, `parser.extract_room_polygons` (`no_utiles`),
+`Room.no_es_util`; `medicion.PiezaMedida.no_es_util` e impedimento de la vivienda;
+`plantilla_cuadro.construir` (celda vacía con nota). No mira el color.
+
+**Cómo se guarda.** `tests/test_construida_nunca_es_util.py`, sobre un plano
+sintético: el tendedero útil abierto con cola dentro de su construida exterior; sin
+contorno útil (celda y totales vacíos, también en la medición); la construida sin
+color propio; la forma larga del rótulo; los dos anidados al alcance; la duda entre
+dos que no se contienen; el rótulo lejos; y que el módulo no lea el color.
+
+---
+
 ## C-19 · Los totales se calculan con las áreas sin redondear
 
 **Dictaminado por:** Pablo, 2026-09-16, siguiendo al arquitecto. **Criterio
