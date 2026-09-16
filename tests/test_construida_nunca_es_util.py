@@ -63,7 +63,7 @@ ROTULO_EXTERIOR = (1.3, -2.2)
 
 def _dibujar(tendedero_util=True, color_construida=150, rotulo_exterior="S. construida ext.",
              punto_rotulo=ROTULO_EXTERIOR, util_cerrado=False, extras=(),
-             con_construida_exterior=True):
+             con_construida_exterior=True, construida=CONSTRUIDA_EXTERIOR):
     doc = ezdxf.new("R2018")
     doc.header["$INSUNITS"] = 6
     doc.header["$LASTSAVEDBY"] = "fixture-sintetico"
@@ -88,7 +88,7 @@ def _dibujar(tendedero_util=True, color_construida=150, rotulo_exterior="S. cons
     if color_construida is not None:
         atributos["color"] = color_construida
     if con_construida_exterior:
-        msp.add_lwpolyline(CONSTRUIDA_EXTERIOR, close=True, dxfattribs=atributos)
+        msp.add_lwpolyline(construida, close=True, dxfattribs=atributos)
     texto("Tendedero", 1.3, -0.9)
     if rotulo_exterior:
         texto(rotulo_exterior, *punto_rotulo)
@@ -233,6 +233,22 @@ def test_con_el_rotulo_al_alcance_de_los_dos_contornos_anidados_la_rotulada_es_l
     p = _plantilla(_dibujar(punto_rotulo=(1.3, -1.95), util_cerrado=True))
     assert _fila(p.exteriores, "Tendedero").valor == pc._m2(Polygon(ANILLO_UTIL).area)
     assert _total_exterior(p) == pc._m2(Polygon(ANILLO_UTIL).area)
+
+
+def test_la_construida_que_no_envuelve_entera_a_la_util_tambien_sale():
+    """Medido el 2026-09-16 en otra vivienda del plano maestro: la construida
+    exterior rotulada cubría el 88 % de la terraza útil (la útil asomaba), por
+    debajo del 90 % con el que se dice que un contorno contiene a otro. Se quedaba
+    como estancia sin cifra, solapada con la útil, y bloqueaba la vivienda. Si
+    todos los nombres que tiene dentro ya están dentro de otra estancia, esa otra
+    la representa y la construida sale."""
+    asomada = [(0.55, -1.9), (2.7, -1.9), (2.7, -0.05), (0.55, -0.05)]
+    util = Polygon(ANILLO_UTIL)
+    assert Polygon(asomada).intersection(util).area < 0.9 * util.area
+    p = _plantilla(_dibujar(util_cerrado=True, construida=asomada))
+    assert _fila(p.exteriores, "Tendedero").valor == pc._m2(util.area)
+    assert len([f for f in p.exteriores if f.rotulo == "Tendedero"]) == 1
+    assert _total_exterior(p) == pc._m2(util.area)
 
 
 def test_con_duda_entre_dos_contornos_que_no_se_contienen_las_celdas_quedan_vacias():

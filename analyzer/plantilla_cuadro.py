@@ -551,7 +551,10 @@ def construir(doc, plano, nombre_vivienda: str,
     # `evaluator` y los mismos `plano.rooms` que `_unidad` aquí. `PiezaMedida` no
     # guarda su `Room`; si algún día los dos agrupados divergen en largo, esto
     # revienta en vez de emparejar una cifra con el recinto de otra.
-    for room, pieza in zip(unidad.rooms, vivienda.piezas, strict=True):
+    #: Las piezas cuyo reparto entre viviendas no es firme, por su posición.
+    dudosas = {d.indice: d for d in vivienda.repartos_dudosos}
+    for posicion_pieza, (room, pieza) in enumerate(
+            zip(unidad.rooms, vivienda.piezas, strict=True)):
         familia, ambito = pieza.familia, pieza.ambito
         if ambito == medicion.AMBITO_SIN_CLASIFICAR:
             clave = clave_de_familia(pieza.rotulo)
@@ -594,6 +597,17 @@ def construir(doc, plano, nombre_vivienda: str,
             valor = ""
             incompleto[ambito] = True
             notas.add(pieza.nombre, pieza.no_es_util)
+        elif posicion_pieza in dudosas:
+            # Con duda, celda vacía con motivo (decisión propuesta, 2026-09-16): si
+            # la pieza es de la vivienda de al lado, su cifra no va en esta tabla.
+            duda = dudosas[posicion_pieza]
+            valor = ""
+            incompleto[ambito] = True
+            notas.add(pieza.nombre, "no se sabe si es de esta vivienda o de %s: está a %s m "
+                                    "de su rótulo y a %s m del de %s. No se escribe su "
+                                    "superficie." % (duda.siguiente, _metros(duda.distancia_m),
+                                                     _metros(duda.distancia_siguiente_m),
+                                                     duda.siguiente))
         elif es_superficie_cero(valor):
             valor = ""
             incompleto[ambito] = True

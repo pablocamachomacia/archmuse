@@ -175,7 +175,9 @@ def _ruta(nombre):
 #: Rótulo a rótulo, no por recuento: el criterio 1 del PRD dice «exactamente los
 #: mismos rótulos que hoy», y dos errores que se compensan dan el mismo total.
 @pytest.mark.parametrize("nombre,piezas,capa", [
-    ("ejemplo.dxf", 40, "00 TEXTO"),
+    # 39 desde el 2026-09-16: `C-20` saca la construida exterior de una terraza
+    # (ver `test_reparacion_geometria_c10.CIFRAS_CONGELADAS`).
+    ("ejemplo.dxf", 39, "00 TEXTO"),
     ("v1plantas.dxf", 8, "00 areas"),
     ("v2s.dxf", 8, "00 areas"),
     ("v3s.dxf", 8, "00 areas"),

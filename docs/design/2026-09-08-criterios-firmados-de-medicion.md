@@ -1102,10 +1102,18 @@ capa de recintos cuyo borde está a menos de 3 alturas de su texto.
    con el arquitecto, quedarían vacíos.
 3. **Dos o más contornos al alcance sin que uno contenga a los otros:** duda, y
    ninguno se escribe como útil.
-4. **Un contorno rotulado que contiene una estancia que ya lo representa** (sin
-   nombre propio, o con el mismo) sale de las estancias. Si no, se queda como
-   estancia **sin cifra y con motivo**, y ningún total de la vivienda se escribe:
-   la estancia no puede desaparecer en silencio, ni el total salir corto.
+4. **Un contorno rotulado sale de las estancias si todos los nombres que tiene
+   dentro están también dentro de otra estancia**, que es la que lo representa (o
+   si no tiene ninguno). Si no, se queda como estancia **sin cifra y con motivo**,
+   y ningún total de la vivienda se escribe: la estancia no puede desaparecer en
+   silencio, ni el total salir corto. *Corregido el mismo día:* la primera versión
+   pedía que contuviera la otra estancia al 90 %, y una construida exterior que
+   cubría el 88 % de su terraza útil se quedaba, solapada con ella.
+5. **Una pieza cuyo reparto entre viviendas no es firme** (`HOLGURA_MINIMA_DE_REPARTO`)
+   se enseña **sin cifra** en la tabla, con la nota de entre qué viviendas duda.
+   Medido en el plano maestro: en cuatro parejas de viviendas vecinas el reparto
+   por cercanía metía un dormitorio o un aseo de una en la tabla de la otra, con
+   su cifra. Los totales ya salían vacíos; la fila no.
 
 **El cierre montado (arreglo, no criterio).** Una polilínea con `closed=False` cuyo
 último vértice cae encima de su primer tramo (a menos del 1 % de su diagonal, entre

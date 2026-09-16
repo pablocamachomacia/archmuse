@@ -203,6 +203,9 @@ class RepartoDudoso:
     distancia_m: float
     siguiente: str
     distancia_siguiente_m: float
+    #: Su posición entre las piezas de la vivienda: dos piezas pueden llamarse
+    #: igual y sólo una tener el reparto dudoso. `-1` si no se sabe.
+    indice: int = -1
 
     @property
     def holgura(self) -> float:
@@ -557,7 +560,7 @@ def _repartos_dudosos(rooms: Sequence, nombre: str,
     lx = np.array([float(x) for _e, x, _y in unit_labels])
     ly = np.array([float(y) for _e, _x, y in unit_labels])
     dudosos: List[RepartoDudoso] = []
-    for room in rooms:
+    for indice, room in enumerate(rooms):
         centro = room.polygon.centroid
         aproximadas = np.hypot(lx - centro.x, ly - centro.y)
         umbral = np.partition(aproximadas, 1)[1] * (1 + 1e-9) + 1e-9
@@ -576,6 +579,7 @@ def _repartos_dudosos(rooms: Sequence, nombre: str,
             distancia_m=d1,
             siguiente=segunda,
             distancia_siguiente_m=d2,
+            indice=indice,
         ))
     return tuple(dudosos)
 

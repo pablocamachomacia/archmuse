@@ -200,8 +200,14 @@ def test_reparar_esta_en_la_lista_de_lo_que_se_comprueba():
 #: memoria: piezas y superficie total de cada plano de referencia. La promesa de
 #: este criterio es que estas cifras no se mueven, así que están aquí escritas y
 #: no calculadas — un test que compara el código consigo mismo no prueba nada.
+#:
+#: **`ejemplo.dxf` cambió el 2026-09-16 por `C-20`, no por `C-10`:** de 40 piezas a
+#: 39 (369,4734 → 363,1759). Medido contra el commit anterior en otra copia del
+#: repositorio: sale un único recinto, rotulado «Terraza», que es la construida
+#: exterior de esa terraza (su rótulo «S. construida ext.» lo señala solo a él y
+#: todos sus nombres están dentro de otra estancia). No entra ninguno.
 CIFRAS_CONGELADAS = {
-    "ejemplo.dxf": (40, 369.4734),
+    "ejemplo.dxf": (39, 363.1759),
     "v1plantas.dxf": (8, 66.3286),
     "v2s.dxf": (8, 66.3286),
     "v3s.dxf": (8, 66.3286),

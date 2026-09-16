@@ -243,7 +243,8 @@ def test_el_dxf_del_disco_no_se_toca():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("nombre,piezas", [
-    ("ejemplo.dxf", 40), ("v1plantas.dxf", 8), ("v2s.dxf", 8),
+    # `ejemplo.dxf`: 39 desde el 2026-09-16 (`C-20`, ver `test_reparacion_geometria_c10`).
+    ("ejemplo.dxf", 39), ("v1plantas.dxf", 8), ("v2s.dxf", 8),
     ("v3s.dxf", 8), ("V5.dxf", 22),
 ])
 def test_los_planos_de_referencia_no_notan_esta_funcion(nombre, piezas):

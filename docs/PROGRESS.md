@@ -5,6 +5,46 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-16 (8) · Todas las viviendas del plano maestro contra el cuadro del arquitecto
+
+Encargo de Pablo: comparar celda a celda cada vivienda con su cuadro y arreglar lo
+que se repita. Script fuera del repositorio, por las dos peticiones del clic. Los
+cuadros «…FN» y «…PMR» se emparejan con la vivienda del dibujo sin el sufijo.
+
+**Resultado: 25 cuadros; 14 viviendas coinciden en todo** (antes de hoy, 12).
+Ninguna celda lleva ya una cifra distinta de la del arquitecto: todas las
+diferencias que quedan son celdas vacías con su motivo.
+
+**Arreglado, porque se repetía (decisiones propuestas 4 y 5 de `C-20`):**
+- **Construida rotulada que no envuelve entera a la útil.** Se quedaba como estancia
+  y se solapaba con la útil: la vivienda entera sin totales. Ahora sale si todos sus
+  nombres están dentro de otra estancia. Una vivienda recupera sus totales.
+- **Piezas de la vivienda de al lado con su cifra.** Con el reparto por cercanía no
+  firme, la fila se escribía con la cifra de una pieza ajena (cuatro parejas de
+  viviendas). Ahora esa fila va sin cifra y dice entre qué dos viviendas duda.
+
+**Lo que sigue sin coincidir, y por qué (11 viviendas):**
+- **3, sólo la construida:** su rótulo está a más de 3 alturas de texto de la
+  envolvente (medido en dos: unas 4,3), y el alcance firmado en `C-12` es 3. **No se
+  toca**: es un parámetro firmado. Hipótesis sin medir: con 5 alturas coincidirían;
+  queda como propuesta para Pablo.
+- **6, reparto entre viviendas no firme:** los rótulos `VT…` están fuera de su
+  vivienda, y por cercanía algunas piezas quedan casi a la misma distancia de dos.
+  Las celdas y los totales se quedan vacíos con motivo. Resolverlo bien pide un
+  criterio nuevo (repartir por la envolvente rotulada de cada vivienda); medido que
+  el rótulo `VT…` no cae dentro de ninguna envolvente, así que tampoco es inmediato.
+- **1, solapes:** un dormitorio dibujado dos veces, uno encima del otro (`C-2`: sin
+  totales).
+- **1, varias cosas a la vez:** dos terrazas que se pisan, un tendedero sin contorno
+  útil (sólo su construida exterior: celda vacía por `C-20`) y un rótulo de
+  construida cerrada entre dos contornos.
+
+Además, uno de los rótulos de vivienda está repetido lejos del resto (otro dibujo en
+el mismo fichero): esa segunda «vivienda» no tiene piezas propias. La de verdad
+coincide.
+
+---
+
 ## 2026-09-16 (7) · Error de cifra: la construida exterior como tendedero (`C-20`)
 
 **Pablo:** en una vivienda del plano maestro el tendedero salía con la superficie de

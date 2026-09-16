@@ -938,26 +938,47 @@ def extract_room_polygons(
     marcas = cr.marcar([p for p, _c in entries], cr.rotulos(doc))
     if not marcas:
         return kept
-    por_poligono = {id(entries[i][0]): (marca, labeled_entries[i][2]) for i, marca in marcas.items()}
-    etiquetas = {id(p): _normalize_room_label(label) for p, _c, label in labeled_entries}
+    por_poligono = {id(entries[i][0]): marca for i, marca in marcas.items()}
     salida: List[Polygon] = []
     for polygon in kept:
-        marcado = por_poligono.get(id(polygon))
-        if marcado is None:
+        marca = por_poligono.get(id(polygon))
+        if marca is None:
             salida.append(polygon)
             continue
-        marca, label = marcado
-        propia = _normalize_room_label(label)
-        dentro = [o for o in kept if o is not polygon and cr.contiene(polygon, o)]
-        if marca.tipo == cr.ROTULADA and dentro and (
-                not propia or any(etiquetas.get(id(o)) == propia for o in dentro)):
-            _log.info("Contorno rotulado %r fuera de las estancias: contiene %d estancia(s) "
-                      "que ya lo representan.", marca.rotulo.texto, len(dentro))
-            continue
+        if marca.tipo == cr.ROTULADA:
+            # **Sale si todos los nombres que tiene dentro están también dentro de
+            # otra estancia**: esa otra la representa. Medido el 2026-09-16: una
+            # construida exterior cubría el 88 % de su terraza útil —la útil
+            # asomaba— y por contención (90 %) se quedaba, solapada con ella.
+            otras = [o for o in kept if o is not polygon]
+            nombres = _nombres_dentro(polygon, labels, capas_validas)
+            if all(any(o.covers(Point(x, y)) for o in otras) for x, y in nombres):
+                _log.info("Contorno rotulado %r fuera de las estancias: sus %d nombre(s) "
+                          "están dentro de otra estancia.", marca.rotulo.texto, len(nombres))
+                continue
         salida.append(polygon)
         if no_utiles is not None:
             no_utiles[id(polygon)] = marca.motivo
     return salida
+
+
+def _nombres_dentro(polygon: Polygon, labels, capas_validas) -> List[Tuple[float, float]]:
+    """Dónde están los nombres de estancia que caen dentro de `polygon`: ni
+    cifras, ni títulos de campo, ni rótulos de construida o de vivienda."""
+    from . import construida_rotulada as cr
+
+    indice = _indice_de(labels)
+    puntos: List[Tuple[float, float]] = []
+    for i in indice.dentro(polygon):
+        texto, x, y = labels[i][0], labels[i][1], labels[i][2]
+        if capas_validas is not None and indice.capas[i] not in capas_validas:
+            continue
+        if (indice.solo_numero[i] or _es_cifra_de_area(texto) or _es_titulo_de_campo(texto)
+                or cr.es_rotulo_de_construida(texto) or UNIT_LABEL_PATTERN.match(texto or "")
+                or not es_nombre_con_sentido(texto)):
+            continue
+        puntos.append((x, y))
+    return puntos
 
 
 def _punto_de_texto(entity) -> Optional[Tuple[float, float]]:
