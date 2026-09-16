@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.4")
-(setq *am:version*  "3.9.4 (2026-09-16, dos clics: la vivienda y dónde va el cuadro)")
+(setq *am:version-corta* "3.9.5")
+(setq *am:version*  "3.9.5 (2026-09-16, ARCHMUSE-ACTUALIZAR busca en ese momento)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -1257,10 +1257,6 @@
   (if texto (setq version (am:valor-json texto "version")))
   (if (and version (wcmatch version "#*.#*.#*")) version nil))
 
-(defun am:actualizacion-pendiente ( / base)
-  (setq base (getenv "LOCALAPPDATA"))
-  (am:actualizacion-pendiente-en (if base (strcat base "\\ArchMuse") nil)))
-
 (defun am:actualizaciones-al-cargar (base / pendiente texto resultado instalada clave
                                              fichero ultimo)
   ;; **Al cargar, como mucho un aviso al día** (3.9.1; corrección de Pablo,
@@ -1300,36 +1296,63 @@
       (am:escribe-fichero fichero clave)))
   (princ))
 
-(defun am:ofrecer-actualizacion ( / version instalado shell r)
-  ;; ARCHMUSE-ACTUALIZAR: «Hay una actualización (x.y.z). ¿Instalar?» y, con un
-  ;; Sí, lanza `actualizador --instalar-pendiente`, que vuelve a verificar la
-  ;; firma. Si no hay nada, lo dice.
+(defun am:ejecutar-y-esperar (orden / shell r)
+  ;; Como `am:lanzar-sin-ventana`, pero ESPERA a que termine (`Run` con
+  ;; bWaitOnReturn). Devuelve T si se ha podido lanzar y ha terminado, nil si no.
+  (setq shell (vl-catch-all-apply 'vlax-create-object (list "WScript.Shell")))
+  (if (or (vl-catch-all-error-p shell) (null shell))
+    nil
+    (progn
+      (setq r (vl-catch-all-apply 'vlax-invoke-method (list shell 'Run orden 0 :vlax-true)))
+      (vl-catch-all-apply 'vlax-release-object (list shell))
+      (not (vl-catch-all-error-p r)))))
+
+
+(defun am:ofrecer-actualizacion ( / instalado base resultado-busqueda lanzado texto resultado
+                                    instalada version)
+  ;; **ARCHMUSE-ACTUALIZAR busca en ese momento** (2026-09-16). Hasta ese día sólo
+  ;; leía `actualizacion.json`, lo que dejó una búsqueda anterior del servidor, y con
+  ;; la 0.3.17 publicada decía «No hay ninguna actualización descargada» (medido: la
+  ;; última búsqueda había sido 22 minutos antes de publicarla).
+  ;;
+  ;; Ahora lanza `actualizador --comprobar` —la misma búsqueda del servidor: lista de
+  ;; GitHub, descarga y firma— y ESPERA a que termine. Para no leer una búsqueda vieja,
+  ;; borra antes el fichero de resultado y exige que exista después. Dice lo que ha
+  ;; encontrado. Teclear el comando ya es decir que sí: si hay versión nueva, instala.
+  ;; La red la usa el actualizador, no este fichero. **Sin probar en AutoCAD:** `Run`
+  ;; con espera.
   (cond
-    ((null (setq version (am:actualizacion-pendiente)))
-      (princ "\nNo hay ninguna actualización de ArchMuse descargada."))
     ((null (setq instalado (am:servidor-instalado)))
       (princ "\nEste ArchMuse no está instalado con el instalador: no se actualiza solo."))
     (T
-      (setq shell (vl-catch-all-apply 'vlax-create-object (list "WScript.Shell")))
-      (if (and shell (not (vl-catch-all-error-p shell)))
-        (progn
-          ;; 4 = botones Sí y No, 32 = interrogación. A los 60 s se cierra sola y
-          ;; devuelve -1, que cuenta como No.
-          (setq r (vl-catch-all-apply 'vlax-invoke-method
-                    (list shell 'Popup (strcat "Hay una actualización (" version "). ¿Instalar?")
-                          60 "ArchMuse" 36)))
-          (vl-catch-all-apply 'vlax-release-object (list shell))
-          (if (= (type r) 'VARIANT) (setq r (vlax-variant-value r)))
-          (if (= r 6)
-            (progn
-              (am:log (strcat "actualizacion " version ": se instala"))
-              (if (am:lanzar-sin-ventana
-                    (strcat "\"" (car instalado) "\" \"" (cdr instalado)
-                            "\" actualizador --instalar-pendiente"))
-                (princ (strcat "\nInstalando ArchMuse " version
-                               ". Cuando termine, cierra y vuelve a abrir AutoCAD."))
-                (princ "\nNo he podido lanzar la instalación. Teclea ARCHMUSE-ACTUALIZAR para intentarlo otra vez.")))
-            (am:log (strcat "actualizacion " version ": no se instala")))))))
+      (setq base (strcat (getenv "LOCALAPPDATA") "\\ArchMuse")
+            resultado-busqueda (strcat base "\\resultado-de-la-busqueda.txt"))
+      (vl-file-delete resultado-busqueda)
+      (princ "\nBuscando actualizaciones de ArchMuse…")
+      (setq lanzado (am:ejecutar-y-esperar
+                      (strcat "\"" (car instalado) "\" \"" (cdr instalado)
+                              "\" actualizador --comprobar --silencioso --resultado \""
+                              resultado-busqueda "\"")))
+      (setq texto     (if (and lanzado (vl-file-size resultado-busqueda))
+                        (am:lee-fichero (strcat base "\\comprobacion.json")))
+            resultado (if texto (am:valor-json texto "resultado"))
+            instalada (if texto (am:valor-json texto "instalada"))
+            version   (if (= resultado "actualizacion") (am:actualizacion-pendiente-en base)))
+      (cond
+        (version
+          (princ (strcat "\nInstalando " version ". Cuando termine, cierra y vuelve a abrir AutoCAD."))
+          (am:log (strcat "actualizacion " version ": se instala"))
+          (if (not (am:lanzar-sin-ventana
+                     (strcat "\"" (car instalado) "\" \"" (cdr instalado)
+                             "\" actualizador --instalar-pendiente")))
+            (princ "\nNo he podido lanzar la instalación. Teclea ARCHMUSE-ACTUALIZAR para intentarlo otra vez.")))
+        ((and (= resultado "al_dia") instalada)
+          (princ (strcat "\nEstás al día (" instalada ")."))
+          (am:log (strcat "actualizaciones: al dia (" instalada "), buscado desde el comando")))
+        (T
+          (princ "\nNo he podido comprobar si hay una versión nueva: sin conexión, o GitHub no responde.")
+          (princ "\n  El motivo está en el registro de ArchMuse. Vuelve a intentarlo en un rato.")
+          (am:log "actualizaciones: no se ha podido buscar desde el comando")))))
   (princ))
 
 ;; `c:ARCHMUSE-ACTUALIZAR` está al final del fichero, detrás de `c:ARCHMUSE`: un

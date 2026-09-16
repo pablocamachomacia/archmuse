@@ -600,12 +600,57 @@ def _defun(nombre: str) -> str:
     return LSP[ini:LSP.index("\n(defun", ini + 10)]
 
 
-def test_archmuse_actualizar_pregunta_y_la_ventana_se_cierra_sola():
+# ── ARCHMUSE-ACTUALIZAR busca en ese momento (2026-09-16) ───────────────────────
+#
+# **Medido en la instalación de Pablo:** servidor 0.3.16, última búsqueda a las 20:57;
+# la 0.3.17 se publicó a las 21:19. ARCHMUSE-ACTUALIZAR sólo leía
+# `actualizacion.json` —lo que dejó una búsqueda anterior— y decía «No hay ninguna
+# actualización de ArchMuse descargada»; un ARCHMUSE cancelado con Esc antes de hablar
+# con el servidor tampoco lanzaba búsqueda. Ahora el comando busca y descarga en ese
+# momento y dice lo que ha encontrado. Teclearlo ya es decir que sí: sin ventana.
+
+def test_archmuse_actualizar_busca_en_ese_momento_y_espera():
     ofrecer = _defun("am:ofrecer-actualizacion")
-    assert '"Hay una actualización ("' in ofrecer and '"). ¿Instalar?"' in ofrecer
-    assert "'Popup" in ofrecer and " 60 " in ofrecer, "la ventana tiene que cerrarse sola"
-    assert "actualizador --instalar-pendiente" in ofrecer
+    buscar = ofrecer.index('\\" actualizador --comprobar')
+    assert "(am:ejecutar-y-esperar" in ofrecer[:buscar + 200], "no espera a que termine la búsqueda"
+    # Lee lo que ha dejado ESA búsqueda, no una anterior.
+    assert ofrecer.index("vl-file-delete") < buscar
+    assert buscar < ofrecer.index("comprobacion.json") and buscar < ofrecer.index("am:actualizacion-pendiente-en")
+    assert "(vl-file-size resultado-busqueda)" in ofrecer, "no comprueba que la búsqueda ha terminado"
+    esperar = _defun("am:ejecutar-y-esperar")
+    assert "'Run" in esperar and ":vlax-true" in esperar
     assert "(defun c:ARCHMUSE-ACTUALIZAR ()" in LSP
+
+
+def test_archmuse_actualizar_dice_lo_que_ha_encontrado():
+    ofrecer = _defun("am:ofrecer-actualizacion")
+    assert '"\\nEstás al día ("' in ofrecer
+    instalar = ofrecer.index('"\\nInstalando "')
+    assert instalar < ofrecer.index("actualizador --instalar-pendiente")
+    assert "No hay ninguna actualización de ArchMuse descargada" not in LSP
+    assert "'Popup" not in ofrecer, "teclear ARCHMUSE-ACTUALIZAR ya es decir que sí"
+    # Si no ha podido buscar, lo dice: ni «al día» ni «instalando» sin haberlo sabido.
+    assert "No he podido comprobar si hay una versión nueva" in ofrecer
+
+
+def test_comprobar_desde_el_comando_deja_el_resultado_y_la_comprobacion(mundo, monkeypatch, tmp_path):
+    """Lo que lee ARCHMUSE-ACTUALIZAR: el fichero de resultado (que la búsqueda ha
+    terminado) y `comprobacion.json` (qué ha encontrado)."""
+    local, firma, act, actualizador, _ = mundo
+    _instalada(local, "0.3.16")
+    act.fijar_canal("prueba")
+    resultado = tmp_path / "resultado.txt"
+    with GitHubFalso() as github:
+        monkeypatch.setenv("ARCHMUSE_URL_ACTUALIZACIONES", github.api)
+        assert actualizador.main(["--comprobar", "--silencioso", "--resultado", str(resultado)]) == 0
+        assert resultado.read_text(encoding="utf-8-sig").startswith("OK")
+        assert _comprobacion(act)["resultado"] == "al_dia" and _comprobacion(act)["instalada"] == "0.3.16"
+        github.publicar("0.3.17", _paquete(firma, tmp_path / "p.archmuse", "0.3.17").read_bytes(), True)
+        resultado.unlink()
+        assert actualizador.main(["--comprobar", "--silencioso", "--resultado", str(resultado)]) == 0
+    assert resultado.exists()
+    assert _comprobacion(act)["resultado"] == "actualizacion"
+    assert act.leer_pendiente()["version"] == "0.3.17"
 
 
 def test_el_lsp_no_sale_a_la_red_para_saber_si_hay_version_nueva():

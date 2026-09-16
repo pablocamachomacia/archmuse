@@ -115,6 +115,9 @@ PRIMITIVAS = {
     #       "en unos segundos aparecera" y no "hecho": no puede saberlo.
     "open", "close", "write-line", "getenv", "vl-mkdir", "vl-file-directory-p",
     "vl-file-size", "vl-directory-files", "menucmd", "startapp",
+    # (vl-file-delete fichero) → T si lo borra, nil si no existe o no puede (2026-09-16:
+    # ARCHMUSE-ACTUALIZAR borra el resultado de una búsqueda anterior antes de buscar).
+    "vl-file-delete",
     # Beta, T4 (2026-09-13): leer `servidor.json` para saber el puerto.
     #   `read-line` -- (read-line [descriptor]) devuelve la siguiente línea del
     #       fichero abierto con `open ... "r"`, sin el salto, o nil al final. Es

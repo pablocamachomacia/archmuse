@@ -5,6 +5,43 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-16 (5) · ARCHMUSE-ACTUALIZAR busca en ese momento (`.lsp` 3.9.5)
+
+**Pablo:** «Mi ArchMuse sigue en comando 3.9.3. ARCHMUSE-ACTUALIZAR dice "No hay
+ninguna actualización de ArchMuse descargada" aunque la 0.3.17 está publicada.»
+
+**Medido en su instalación, antes de tocarla:**
+- El servidor era el **0.3.16**, instalado a las 20:45, no el 0.3.13. El comando 3.9.3
+  es el mismo en 0.3.14, 0.3.15 y 0.3.16.
+- Última búsqueda: **20:57:08**, «al día con la 0.3.16». La 0.3.17 se publicó a las
+  **21:19:21**.
+- Nada volvió a buscar. Su ARCHMUSE de las 21:24 se canceló con Esc antes de hablar con
+  el servidor («srv desconocida»), y la búsqueda por petición sólo salta cuando llega una.
+  **ARCHMUSE-ACTUALIZAR no buscaba**: leía `actualizacion.json`, lo que dejó la búsqueda
+  anterior. La siguiente búsqueda automática tocaba a las 21:45.
+
+**Instalada la 0.3.17** con `actualizador --comprobar` y `--instalar-pendiente`:
+servidor 0.3.17 en marcha, `.lsp` 3.9.4 en el paquete de AutoCAD, FileDialog en 1.
+
+**Arreglo, con tests antes (3 en rojo):** ARCHMUSE-ACTUALIZAR dice «Buscando
+actualizaciones de ArchMuse…», lanza `actualizador --comprobar --silencioso --resultado`
+y **espera** (`WScript.Shell.Run` con espera). Es la misma búsqueda que el servidor:
+lista de GitHub, descarga y firma. Borra antes el fichero de resultado y exige que
+exista después, para no leer una búsqueda vieja. Luego dice lo que ha encontrado:
+- «Instalando x.y.z. Cuando termine, cierra y vuelve a abrir AutoCAD.», e instala;
+- «Estás al día (x.y.z).»;
+- o que no ha podido comprobarlo (sin conexión o GitHub no responde) y dónde está el
+  motivo.
+
+Sin ventana «¿Instalar?»: teclear el comando ya es decir que sí. La red la usa el
+actualizador, no el `.lsp`.
+
+**Comprobado en su instalación:** la misma línea que construye el comando, por
+`WScript.Shell.Run` con espera, tardó 0,9 s, dejó el resultado y «al día (0.3.17)».
+**Sin probar dentro de AutoCAD:** el `Run` con espera desde AutoLISP.
+
+---
+
 ## 2026-09-16 (4) · Dos clics: la vivienda y dónde va el cuadro (`.lsp` 3.9.4)
 
 **Decisión de producto de Pablo.** El clic ya no decide dónde va la tabla: uno elige

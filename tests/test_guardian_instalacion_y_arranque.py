@@ -181,13 +181,16 @@ def test_lo_que_se_ejecuta_al_cargar_no_cambia_autocad():
 
 def test_archmuse_actualizar_y_el_aviso_no_cambian_autocad():
     for nombre in ("c:ARCHMUSE-ACTUALIZAR", "am:ofrecer-actualizacion", "am:actualizaciones-al-cargar",
-                   "am:actualizacion-pendiente-en", "am:lanzar-sin-ventana", "am:escribe-fichero"):
+                   "am:actualizacion-pendiente-en", "am:lanzar-sin-ventana", "am:escribe-fichero",
+                   "am:ejecutar-y-esperar"):
         cuerpo = _defun(CODIGO, nombre)
         for via in _CAMBIAN_AUTOCAD:
             assert via not in cuerpo, "%s usa %s" % (nombre, via)
     ofrecer = _defun(CODIGO, "am:ofrecer-actualizacion")
-    assert re.findall(r'"\\" (\w[^"]*)"', ofrecer) == ["actualizador --instalar-pendiente"], (
-        "ARCHMUSE-ACTUALIZAR lanza algo más que el actualizador")
+    lanzados = [t.rstrip("\\") for t in re.findall(r'"\\" (actualizador[^"]*)', ofrecer)]
+    assert sorted(set(lanzados)) == ["actualizador --comprobar --silencioso --resultado ",
+                                     "actualizador --instalar-pendiente"], (
+        "ARCHMUSE-ACTUALIZAR lanza algo más que el actualizador: %s" % lanzados)
 
 
 def test_solo_el_comando_cambia_variables():
