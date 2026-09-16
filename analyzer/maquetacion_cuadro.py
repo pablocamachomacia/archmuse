@@ -284,8 +284,10 @@ class Maquetacion:
     estilo_tabla: str = ESTILO_DE_TABLA
     capa: str = CAPA
     color_capa: int = COLOR_DE_CAPA
-    #: Si la tabla no va en el punto marcado, dónde y por qué (2026-09-15).
-    colocacion: Optional[str] = None
+    #: Qué tapa en el dibujo, si tapa algo. La tabla va igualmente donde se hizo
+    #: clic (Pablo, 2026-09-16: «si tapa el dibujo, se coloca igualmente y solo se
+    #: avisa»). `None` si no tapa nada.
+    tapa: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -437,83 +439,44 @@ def maquetar(celdas: Sequence[Tuple[int, int, str]], notas: Sequence[str],
     )
 
 
-#: Cuántas veces el tamaño de la tabla se mira alrededor del punto si nadie dice la
-#: zona donde buscar hueco.
-ZONA_POR_DEFECTO_EN_TABLAS = 3.0
-#: Tope de posiciones que se prueban: la rejilla se abre si harían falta más.
-MAX_CANDIDATAS = 250_000
-
-
-def _pisados(huella: Caja, obstaculos, holgura: float) -> list:
+def _pisados(huella: Caja, obstaculos) -> list:
     (ax0, ay0), (ax1, ay1) = huella
-    return [o for o in obstaculos
-            if ax0 < o[2] + holgura and o[0] - holgura < ax1
-            and ay0 < o[3] + holgura and o[1] - holgura < ay1]
+    return [o for o in obstaculos if ax0 < o[2] and o[0] < ax1 and ay0 < o[3] and o[1] < ay1]
 
 
-def _hueco_mas_cercano(ancho: float, alto: float, punto: Punto, obstaculos, zona, holgura: float,
-                       paso: float) -> Optional[Tuple[Punto, float]]:
-    """La esquina de arriba a la izquierda del hueco libre más cercano al punto
-    (distancia del punto a la huella), y esa distancia; None si no hay ninguno.
-
-    Se prueban posiciones en rejilla dentro de `zona` con un índice espacial de los
-    obstáculos, ensanchados con `holgura` para que la tabla no quede pegada a nada."""
-    import numpy as np
-    import shapely
-
-    zx0, zy0, zx1, zy1 = zona
-    if zx1 - zx0 < ancho or zy1 - zy0 < alto:
+def _aviso_de_lo_que_tapa(dibujo: int, cuadros: int) -> Optional[str]:
+    """Qué tapa, dicho sin prometer nada que no se haga: se coloca donde se hizo
+    clic y ahí se queda."""
+    if not dibujo and not cuadros:
         return None
-    columnas = max(int((zx1 - zx0 - ancho) / paso) + 1, 1)
-    filas = max(int((zy1 - zy0 - alto) / paso) + 1, 1)
-    while columnas * filas > MAX_CANDIDATAS:
-        paso *= 1.5
-        columnas = max(int((zx1 - zx0 - ancho) / paso) + 1, 1)
-        filas = max(int((zy1 - zy0 - alto) / paso) + 1, 1)
-    xs = zx0 + np.arange(columnas) * paso
-    ys = zy1 - np.arange(filas) * paso          # la esquina de arriba
-    X, Y = np.meshgrid(xs, ys)
-    X, Y = X.ravel(), Y.ravel()
-    candidatas = shapely.box(X, Y - alto, X + ancho, Y)
-    libres = np.ones(len(X), dtype=bool)
-    if obstaculos:
-        cajas = shapely.box(*np.array([[o[0] - holgura, o[1] - holgura, o[2] + holgura,
-                                        o[3] + holgura] for o in obstaculos]).T)
-        arbol = shapely.STRtree(cajas)
-        pares = arbol.query(candidatas, predicate="intersects")
-        libres[pares[0]] = False
-    if not libres.any():
-        return None
-    px, py = float(punto[0]), float(punto[1])
-    dx = np.maximum(np.maximum(X - px, px - (X + ancho)), 0.0)
-    dy = np.maximum(np.maximum((Y - alto) - py, py - Y), 0.0)
-    distancia = np.where(libres, np.hypot(dx, dy), np.inf)
-    # A igual distancia, la esquina más cerca del punto: el orden de la rejilla no decide.
-    desempate = np.hypot(X - px, Y - py)
-    i = int(np.lexsort((desempate, distancia))[0])
-    return (float(X[i]), float(Y[i])), float(distancia[i])
-
-
-def _hacia(dx: float, dy: float) -> str:
-    if abs(dx) >= abs(dy):
-        return "a la derecha" if dx > 0 else "a la izquierda"
-    return "hacia arriba" if dy > 0 else "hacia abajo"
+    partes = []
+    if dibujo:
+        partes.append("%d elemento%s de tu dibujo" % (dibujo, "" if dibujo == 1 else "s"))
+    if cuadros:
+        partes.append("tu cuadro de superficies")
+    # Ctrl+Z y no «UNDO» ni «U»: en AutoCAD en español «U» abre UNIR y «UNDO» no
+    # deshace (Pablo, 2026-09-16). Ctrl+Z deshace el grupo entero de la tabla.
+    return ("El cuadro tapa %s. Lo he colocado donde has hecho clic: si no te sirve ahí, "
+            "Ctrl+Z lo quita y puedes volver a lanzar ARCHMUSE." % " y ".join(partes))
 
 
 def maquetar_en_punto(celdas: Sequence[Tuple[int, int, str]], notas: Sequence[str],
                       punto: Punto, altura_minima_legible: Optional[float],
                       cajas_prohibidas: Sequence = (), medir=None,
-                      obstaculos: Sequence = (), zona=None):
+                      obstaculos: Sequence = ()):
     """La tabla colgada de un punto: su esquina de arriba a la izquierda.
 
     **El punto único** (Pablo, 2026-09-13): «el arquitecto no debe adivinar cuánto
-    mide la tabla ni recibir "marca una ventana mayor"». Enmienda la primera regla
-    de este módulo: ya no manda una ventana; manda el punto, y el tamaño es el que
-    la tabla y sus notas necesitan **a la altura mínima legible** —la del cuadro
-    del arquitecto o la de sus rótulos—, así que nunca hay nada que no quepa.
+    mide la tabla ni recibir "marca una ventana mayor"». Manda el punto, y el tamaño
+    es el que la tabla y sus notas necesitan **a la altura mínima legible** —la del
+    cuadro del arquitecto o la de sus rótulos—, así que nunca hay nada que no quepa.
 
-    La única negativa que queda es la que no depende del tamaño: si esa huella
-    pisaría uno de sus cuadros, no se dibuja y se pide **otro punto**.
+    **Dos clics** (Pablo, 2026-09-16): el punto es el segundo clic, y la tabla va
+    **exactamente ahí**. Si la tabla, sus notas o la marca tapan algo del dibujo
+    (`obstaculos`) o uno de sus cuadros (`cajas_prohibidas`), se coloca igualmente
+    y sólo se avisa (`tapa`). Hasta ese día se negaba a dibujar sobre su cuadro y,
+    desde el 2026-09-15, buscaba por su cuenta otro sitio donde no pisara nada: las
+    dos cosas se han quitado.
     """
     if altura_minima_legible is None or altura_minima_legible <= 0:
         return NoCabe("No sé con qué altura de texto dibujar: el plano no tiene ni "
@@ -521,44 +484,15 @@ def maquetar_en_punto(celdas: Sequence[Tuple[int, int, str]], notas: Sequence[st
     x, y = float(punto[0]), float(punto[1])
     ancho, alto = tamano_necesario(celdas, notas, altura_minima_legible, medir)
     huella = ((x, y - alto), (x + ancho, y))
-    if not obstaculos and zona is None:
-        for caja in cajas_prohibidas:
-            if _se_solapan(huella, _normalizar_caja(caja)):
-                return NoCabe("La tabla quedaría encima de tu cuadro de superficies: necesita "
-                              "%s de ancho por %s de alto desde el punto marcado. Marca otro "
-                              "punto, fuera de él." % (_num(ancho), _num(alto)), ancho, alto)
-        return maquetar(celdas, notas, huella, altura_minima_legible, medir=medir)
-
-    # **El clic es orientativo** (Pablo, 2026-09-15, tras ver la tabla encima del
-    # plano): si la tabla, sus notas o la marca pisarían algo —el plano o uno de sus
-    # cuadros—, va al hueco libre más cercano y se dice dónde y por qué.
-    todos = [tuple(float(v) for v in o) for o in obstaculos] + [
-        (c[0][0], c[0][1], c[1][0], c[1][1]) for c in (_normalizar_caja(c) for c in cajas_prohibidas)]
-    holgura = altura_minima_legible
-    pisados = _pisados(huella, todos, holgura)
-    colocacion = None
-    if pisados:
-        if zona is None:
-            radio = ZONA_POR_DEFECTO_EN_TABLAS * max(ancho, alto)
-            zona = (x - radio, y - radio, x + radio, y + radio)
-        hueco = _hueco_mas_cercano(ancho, alto, (x, y), todos, zona, holgura,
-                                   paso=ALTO_DE_FILA * altura_minima_legible)
-        if hueco is None:
-            return NoCabe("No hay ningún hueco libre junto a la vivienda donde la tabla y sus "
-                          "notas (%s × %s) quepan sin pisar el plano. Marca otro punto, en una "
-                          "zona despejada." % (_num(ancho), _num(alto)), ancho, alto)
-        (nx, ny), _distancia = hueco
-        movida = ((nx - x) ** 2 + (ny - y) ** 2) ** 0.5
-        colocacion = ("He movido la tabla %s m %s: desde el punto que marcaste pisaba %d "
-                      "elemento%s del plano. Va en el hueco libre más cercano."
-                      % (_num(movida), _hacia(nx - x, ny - y), len(pisados),
-                         "" if len(pisados) == 1 else "s"))
-        huella = ((nx, ny - alto), (nx + ancho, ny))
+    dibujo = _pisados(huella, [tuple(float(v) for v in o) for o in obstaculos])
+    cuadros = _pisados(huella, [(c[0][0], c[0][1], c[1][0], c[1][1])
+                                for c in (_normalizar_caja(c) for c in cajas_prohibidas)])
     m = maquetar(celdas, notas, huella, altura_minima_legible, medir=medir)
-    if colocacion and isinstance(m, Maquetacion):
+    tapa = _aviso_de_lo_que_tapa(len(dibujo), len(cuadros))
+    if tapa and isinstance(m, Maquetacion):
         from dataclasses import replace
 
-        m = replace(m, colocacion=colocacion)
+        m = replace(m, tapa=tapa)
     return m
 
 
@@ -610,8 +544,10 @@ def a_dict(m) -> dict:
         "altura_titulo": m.altura_titulo, "alto_fila_titulo": m.alto_fila_titulo,
         "margen_vertical": m.margen_vertical, "estilo_tabla": m.estilo_tabla,
         "capa": m.capa, "color_capa": m.color_capa,
-        # Antes de `notas`, y sin números: dónde ha ido la tabla si no es el punto.
-        "colocacion": m.colocacion,
+        # Antes de `notas`: el tamaño, para la vista previa que sigue al cursor
+        # (2026-09-16), y qué tapa donde se ha colocado.
+        "ancho_total": m.ancho_total, "alto_tabla": m.alto_tabla, "alto_total": m.alto_total,
+        "tapa": m.tapa,
         "notas": [{"x": x, "y": y, "linea": linea} for x, y, linea in m.notas],
         # Con prefijo y al final a propósito: el cliente lee las notas buscando
         # `("x" . ` a partir de `notas`, y una `x` suelta de la marca detrás

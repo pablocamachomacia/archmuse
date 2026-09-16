@@ -277,15 +277,20 @@ def test_con_un_punto_nunca_falta_sitio_se_mida_en_lo_que_se_mida(altura):
     assert isinstance(m, mq.Maquetacion), m
 
 
-def test_con_un_punto_solo_se_niega_si_pisaria_su_cuadro_y_pide_otro_punto():
+def test_con_un_punto_sobre_su_cuadro_se_coloca_igualmente_y_se_avisa():
+    """**Invertido el 2026-09-16 (dos clics, Pablo):** «se coloca exactamente donde
+    el usuario hace clic. Si tapa el dibujo, se coloca igualmente y solo se avisa».
+    Hasta ese día se llamaba `..._solo_se_niega_si_pisaria_su_cuadro_y_pide_otro_punto`."""
     mq = _mq()
     encima = mq.maquetar_en_punto(CELDAS, NOTAS, (100.0, 50.0), ALTURA_MINIMA,
                                   cajas_prohibidas=[((100.5, 49.5), (101.0, 49.9))])
-    assert isinstance(encima, mq.NoCabe)
-    assert "otro punto" in encima.motivo and "ventana" not in encima.motivo.lower()
+    assert isinstance(encima, mq.Maquetacion)
+    assert encima.esquina == (100.0, 50.0)
+    assert encima.tapa and "tu cuadro de superficies" in encima.tapa
+    assert "ventana" not in encima.tapa.lower()
     lejos = mq.maquetar_en_punto(CELDAS, NOTAS, (100.0, 50.0), ALTURA_MINIMA,
                                  cajas_prohibidas=[((0.0, 0.0), (1.0, 1.0))])
-    assert isinstance(lejos, mq.Maquetacion)
+    assert isinstance(lejos, mq.Maquetacion) and lejos.tapa is None
 
 
 def test_el_servidor_acepta_el_punto_y_devuelve_la_tabla_resuelta():

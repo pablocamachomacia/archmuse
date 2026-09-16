@@ -165,9 +165,11 @@ def test_el_servidor_se_niega_sin_estilo_o_con_medidas_incompletas(cliente):
     respuesta = cliente.post("/api/maquetar-cuadro", json=incompleto)
     assert respuesta.status_code == 400 and respuesta.get_json()["cabe"] is False
 
+    # Dos clics (2026-09-16): sobre su cuadro se coloca igualmente, en el punto, y se avisa.
     encima = cliente.post("/api/maquetar-cuadro", json=dict(
         base, cajas_de_cuadros=[[[40.1, 9.9], [40.2, 9.95]]])).get_json()
-    assert encima["cabe"] is False and "otro punto" in encima["motivo"]
+    assert encima["cabe"] is True and (encima["x"], encima["y"]) == (40.0, 10.0)
+    assert "tu cuadro de superficies" in encima["tapa"]
 
 
 # --- 3. El `.lsp`: ni estilo propio ni fuente; mide y dice por qué ------------
@@ -210,7 +212,7 @@ def test_el_comando_sin_estilo_lo_dice_y_no_dibuja_ni_mide():
     sin_estilo = comando.index('"motivo_sin_estilo"')
     assert sin_estilo < comando.index("(am:medir-textos textos estilo-texto)")
     assert comando.index("(am:medir-textos textos estilo-texto)") < comando.index(
-        "(am:maquetar bloque textos medidos punto cuadros estilo-texto obstaculos zona)")
+        "(am:maquetar bloque textos medidos punto nil estilo-texto nil)")
     assert comando.index("(am:maquetar bloque") < comando.index("(am:dibujar-cuadro m celdas)")
     assert "*am:fallo-de-la-medida*" in comando
 
@@ -255,7 +257,10 @@ def test_la_lectura_del_lsp_sobre_la_respuesta_real_da_lo_que_mando_el_servidor(
 
     bloque = lisp[lisp.index('("cuadro_a_dibujar"'):]
     assert cadenas_tras(bloque, "textos_a_medir") == cuadro["textos_a_medir"]
-    assert textos_de_notas(bloque) == [n["texto"] for n in cuadro["notas"]]
+    # Los mismos textos, sin la cita del criterio: el comando los recibe sin códigos
+    # internos (Pablo, 2026-09-16) y la web con ellos.
+    from analyzer.texto_para_el_arquitecto import sin_codigos
+    assert textos_de_notas(bloque) == [sin_codigos(n["texto"]) for n in cuadro["notas"]]
     # Y el fuente del `.lsp` lee con esas mismas marcas.
     assert '"(\\"notas\\" . ("' in _funcion("am:textos-de-notas")
     assert '"(\\"preguntas_de_ambito\\""' in _funcion("am:textos-de-notas")

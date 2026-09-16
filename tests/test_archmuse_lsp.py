@@ -47,6 +47,11 @@ PRIMITIVAS = {
     "entget", "ssget", "ssname", "sslength", "getvar", "setvar",
     # Interacción
     "getstring", "getpoint",
+    # La vista previa del segundo clic (3.9.4, 2026-09-16), firmas de la referencia de
+    # AutoLISP: (grread [track [allkeys [curtype]]]) → (tipo valor), 2 tecla, 3 clic,
+    # 5 cursor con track; (grvecs vlist [trans]) con (color desde hasta …) y matriz
+    # 4×4; (redraw [ename [modo]]) repinta y borra los vectores temporales.
+    "grread", "grvecs", "redraw",
     # Visual LISP
     "vl-load-com", "vl-string-search", "vl-string-subst", "vl-catch-all-apply",
     "vl-catch-all-error-p", "vl-catch-all-error-message",
@@ -532,11 +537,14 @@ def test_marcar_el_punto_es_decir_que_si_y_lo_dibujado_se_deshace_de_una_vez(fue
     el punto ya es decir que sí, y un Enter sin leer se quedaba en el <No>, no
     dibujaba nada y parecía un fallo. La red son ahora dos cosas: el punto se
     pide antes de dibujar (Esc ahí no dibuja nada) y todo lo que se escribe va en
-    un grupo de deshacer. Este test impide que vuelva la pregunta sin decidirlo."""
+    un grupo de deshacer. Este test impide que vuelva la pregunta sin decidirlo.
+
+    **Con dos clics (2026-09-16)** marcar el punto es el segundo clic, el que coloca
+    el cuadro: entre él y el dibujo tampoco hay pregunta."""
     codigo = _sin_comentarios_ni_cadenas(fuente)
     comando = codigo[codigo.index("(defun c:ARCHMUSE ("):]
     dibujar = comando.index("(am:dibujar-cuadro")
-    punto = comando.rindex("(am:pedir-punto)", 0, dibujar)
+    punto = comando.rindex("(am:colocar-cuadro", 0, dibujar)
     assert "getkword" not in comando[punto:dibujar], (
         "ha vuelto una pregunta entre marcar el punto y dibujar")
     assert "vla-StartUndoMark" in comando[punto:dibujar], (

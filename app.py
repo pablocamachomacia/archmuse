@@ -3756,7 +3756,9 @@ def vivienda_en_punto_endpoint():
     def responder(datos, estado=200):
         datos = dict(datos, version=version_de_archmuse(), lsp=version_del_lsp())
         if (request.args.get("formato") or "").lower() == "lisp":
-            return Response(a_sexpresion(datos), status=estado,
+            # Para el comando, los mensajes sin códigos internos (Pablo, 2026-09-16).
+            from analyzer.texto_para_el_arquitecto import para_el_comando
+            return Response(a_sexpresion(para_el_comando(datos)), status=estado,
                             mimetype="text/plain; charset=utf-8")
         return jsonify(datos), estado
 
@@ -3798,9 +3800,6 @@ def vivienda_en_punto_endpoint():
         if eleccion.vivienda is not None:
             datos["zonas"] = [round(n, 6) for z in vp.zonas_de_otras_capas(doc, plano) for n in z]
             datos["capas_enteras"] = enteras
-            # Dónde mirar lo que hay dibujado para no poner la tabla encima (2026-09-15).
-            datos["zona_de_colocacion"] = [round(n, 6) for n in
-                                           vp.zona_de_colocacion(eleccion.vivienda, plano)]
         return responder(datos)
     finally:
         shutil.rmtree(carpeta, ignore_errors=True)
@@ -3989,7 +3988,10 @@ def medicion_geometria_endpoint():
         # documento. Se declara en vez de mandarlo troceado.
         sin_pdf = {k: v for k, v in respuesta.items() if k != "informe_pdf_base64"}
         sin_pdf["informe_pdf_base64"] = None
-        return Response(a_sexpresion(sin_pdf), mimetype="text/plain; charset=utf-8")
+        # Para el comando, los mensajes sin códigos internos (Pablo, 2026-09-16): el
+        # motivo en palabras. Los códigos siguen en la respuesta de la web.
+        from analyzer.texto_para_el_arquitecto import para_el_comando
+        return Response(a_sexpresion(para_el_comando(sin_pdf)), mimetype="text/plain; charset=utf-8")
 
     return jsonify(respuesta)
 
@@ -4007,8 +4009,9 @@ def maquetar_cuadro_endpoint():
 
     No vuelve a medir el plano: recibe lo que el propio servidor mandó en
     `/api/medicion-geometria` —celdas, notas, altura mínima, estilo— más las
-    medidas y el punto. Si el punto pisa un cuadro del arquitecto, devuelve
-    `cabe: false` con el motivo, y el cliente pide otro punto sin volver a medir.
+    medidas y el punto. **La tabla va exactamente en el punto** (dos clics, Pablo,
+    2026-09-16): si tapa algo del dibujo o uno de sus cuadros, `tapa` lo dice y se
+    coloca igualmente. `cabe: false` sólo si no hay altura de texto con la que dibujar.
 
     Sin estilo de texto: **422**, con el motivo, y no se maqueta: no se inventa
     una fuente. `?formato=lisp` como el resto de la vía del comando.
@@ -4022,7 +4025,8 @@ def maquetar_cuadro_endpoint():
 
     def responder(datos, estado=200):
         if lisp:
-            return Response(a_sexpresion(datos), status=estado,
+            from analyzer.texto_para_el_arquitecto import para_el_comando
+            return Response(a_sexpresion(para_el_comando(datos)), status=estado,
                             mimetype="text/plain; charset=utf-8")
         return jsonify(datos), estado
 
@@ -4051,16 +4055,16 @@ def maquetar_cuadro_endpoint():
         return responder({"cabe": False, "motivo": "Falta el punto donde colocar la tabla."}, 400)
     cajas = [c for c in (_caja_de_payload(b) for b in (cuerpo.get("cajas_de_cuadros") or []))
              if c is not None]
-    # **Lo que hay dibujado alrededor** (2026-09-15, Pablo: «el clic es orientativo»):
-    # cajas `[x0, y0, x1, y1]` que manda el comando, y la zona donde buscar hueco.
+    # **Lo que hay dibujado bajo la tabla** (2026-09-16): cajas `[x0, y0, x1, y1]` que
+    # manda el comando para decir qué tapa. No mueven la tabla. Un cliente anterior
+    # que aún mande `zona_de_colocacion` no cambia nada: se ignora.
     obstaculos = [o for o in (_rectangulo_de_payload(b) for b in (cuerpo.get("obstaculos") or []))
                   if o is not None]
-    zona = _rectangulo_de_payload(cuerpo.get("zona_de_colocacion"))
 
     try:
         maquetacion = mq.maquetar_en_punto(celdas, notas, punto,
                                            _numero_positivo(cuerpo.get("altura_minima")),
-                                           cajas, medir=medir, obstaculos=obstaculos, zona=zona)
+                                           cajas, medir=medir, obstaculos=obstaculos)
     except mq.MedidaIncompleta as exc:
         return responder({"cabe": False, "motivo": "No se puede maquetar: %s" % exc}, 400)
 

@@ -43,19 +43,8 @@ DISTANCIA_MAXIMA_M = 30.0
 HOLGURA_DE_ZONA = 0.01
 #: Dos rótulos a menos de esto son el mismo (en metros).
 TOLERANCIA_DE_ROTULO_M = 0.01
-#: Hasta dónde alrededor de la vivienda se busca hueco para la tabla, y de dónde
-#: manda el comando lo que hay dibujado (2026-09-15: «al lado de la vivienda»).
-RADIO_DE_COLOCACION_M = 20.0
-
-
-def zona_de_colocacion(vivienda: "ViviendaDelPlano", plano) -> Tuple[float, float, float, float]:
-    """La caja de la vivienda ensanchada `RADIO_DE_COLOCACION_M`, en unidades de dibujo."""
-    from shapely.ops import unary_union
-
-    factor = factor_a_metros(plano)
-    x0, y0, x1, y1 = unary_union([r.polygon for r in vivienda.rooms]).bounds
-    r = RADIO_DE_COLOCACION_M
-    return tuple(v / factor for v in (x0 - r, y0 - r, x1 + r, y1 + r))
+#: (La zona donde buscar hueco para la tabla, `zona_de_colocacion`, se quitó el
+#: 2026-09-16: con dos clics la tabla va donde se hace el segundo, no en un hueco.)
 
 
 def _metros(valor: float) -> str:

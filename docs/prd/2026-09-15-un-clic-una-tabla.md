@@ -2,6 +2,25 @@
 
 **Estado:** Aprobado en el encargo · **Fecha:** 2026-09-15 · **Autor:** ArchMuse (CTO) · **Aprobado por:** Pablo, en el mismo encargo («Trabaja de forma autónoma. PRD primero»), con sus ocho condiciones. El criterio nuevo (`C-17`) queda **propuesto, pendiente de firma**.
 
+> **Enmienda del 2026-09-16 — dos clics** (decisión de producto de Pablo, que
+> sustituye al clic único para colocar la tabla y a la colocación automática en el
+> hueco libre del 2026-09-15):
+>
+> 1. «Haz clic dentro de la vivienda que quieres medir.» — elige la vivienda; ya no
+>    decide dónde va la tabla.
+> 2. «Vivienda VTx seleccionada. Mueve el cursor y haz clic donde quieres el cuadro
+>    de superficies.» — el contorno de la tabla sigue al cursor, como al insertar un
+>    bloque, y la tabla queda **exactamente** donde se hace clic. Si tapa el dibujo
+>    (o el cuadro del arquitecto), se coloca igual y sólo se avisa.
+>
+> Condiciones: se mide antes del paso 2 (el cursor no se queda esperando); Esc en
+> cualquier paso no deja nada dibujado, dice «Cancelado con Esc» y deja AutoCAD
+> como estaba (`C-16`); ningún mensaje dice algo que el programa no haga; Ctrl+Z
+> una vez borra la tabla entera («U» y «UNDO» no sirven en AutoCAD en español); y
+> lo que ve el arquitecto no lleva códigos internos, que se quedan en el registro.
+> Implementado en el `.lsp` 3.9.4; `tests/test_dos_clics.py`. **Sin probar en la
+> interfaz de AutoCAD:** la vista previa con `grread`/`grvecs` y el Esc en el paso 2.
+
 ---
 
 ## 1. Problema que resuelve

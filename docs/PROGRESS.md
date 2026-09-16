@@ -5,6 +5,61 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-16 (4) · Dos clics: la vivienda y dónde va el cuadro (`.lsp` 3.9.4)
+
+**Decisión de producto de Pablo.** El clic ya no decide dónde va la tabla: uno elige
+la vivienda y otro coloca el cuadro, con el contorno siguiendo al cursor. Se quita la
+colocación automática en el hueco libre (2026-09-15). Enmienda en
+`docs/prd/2026-09-15-un-clic-una-tabla.md`.
+
+**Qué hace ahora el comando:**
+1. «Haz clic dentro de la vivienda que quieres medir: ».
+2. Lee, elige, mide, pregunta lo que haga falta y mide los textos. Maqueta en el primer
+   clic **sólo para saber el tamaño**. Todo lo lento va antes de la vista previa.
+3. «Vivienda VTx seleccionada. Mueve el cursor y haz clic donde quieres el cuadro de
+   superficies.» El contorno —borde, filas, columnas y, en gris, notas y marca— sigue
+   al cursor con `grread` y `grvecs`: vectores temporales, **ninguna entidad**.
+4. Con el clic: mira qué hay bajo esa huella (`am:obstaculos`) y el servidor maqueta
+   **en ese punto**. Si tapa algo, `tapa` lo dice («El cuadro tapa N elementos de tu
+   dibujo…»); si no, «El cuadro va donde has hecho clic.».
+5. Grupo de deshacer, tabla, notas y marca. «Ctrl+Z deshace todo lo que acabo de
+   escribir.»
+
+**Servidor.** `maquetar_en_punto` coloca siempre en el punto: ya no mueve la tabla ni
+se niega sobre el cuadro del arquitecto (avisa de las dos cosas en `tapa`). Fuera
+`_hueco_mas_cercano`, la zona de colocación y `colocacion`. La respuesta añade
+`ancho_total`, `alto_tabla` y `alto_total` para la vista previa.
+
+**Mensajes (Pablo, durante el encargo):**
+- **Ctrl+Z, nunca «U» ni «UNDO»:** en AutoCAD en español «U» abre UNIR. Cambiados los
+  cuatro mensajes que lo nombraban. Un test impide órdenes en inglés sin guion bajo en
+  cualquier texto visible, del `.lsp` o del servidor.
+- **Sin códigos internos en lo que ve el arquitecto.** Los motivos del servidor ya
+  explican el porqué y terminaban citando el criterio («(C-12)», «(C-17,
+  propuesto)»). `analyzer/texto_para_el_arquitecto.py` quita esas citas en la
+  respuesta que recibe el comando, y sólo en las claves de mensaje: celdas, rótulos y
+  piezas no se tocan. La web sigue recibiéndolas. El `.lsp` tenía un texto con «(C-12)»:
+  reescrito. El registro conserva sus códigos.
+
+**Esc en cualquier paso** llega al *error* del comando, que ahora borra también la
+vista previa (`redraw`) y dice «Cancelado con Esc. No se ha dibujado nada.». Nada se
+dibuja antes del segundo clic (test).
+
+**Tests antes del arreglo** (`tests/test_dos_clics.py`, 14 en rojo al empezar, 26 al
+terminar). Tests que recogían la decisión retirada, cambiados y dicho en su docstring:
+los del hueco libre (`test_presentacion_de_la_tabla`), negarse sobre su cuadro
+(`test_d14_maquetacion_cuadro`, `test_anchos_medidos_en_autocad`), y «ninguna pregunta
+entre marcar el punto y dibujar», que ahora cuenta desde el segundo clic.
+`grread`, `grvecs` y `redraw` añadidas a las primitivas verificadas con su firma.
+
+**Comprobado en Core Console** (por la puerta aislada, registro sin cambios): cargadas
+las 122 funciones del `.lsp`, `am:contorno-del-cuadro` sobre una respuesta real da 19
+vectores bien formados, la huella coincide con las medidas del servidor y `grvecs` los
+acepta con la matriz de traslación. **Sin probar en la interfaz de AutoCAD:** que el
+contorno siga al cursor, el clic, y el Esc durante la vista previa.
+
+---
+
 ## 2026-09-16 (3) · FILEDIA a 0: la causa era Core Console, no la instalación
 
 **Pablo:** FILEDIA volvió a 0 tras ARCHMUSE-ACTUALIZAR y reiniciar AutoCAD, la

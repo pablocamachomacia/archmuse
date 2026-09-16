@@ -141,7 +141,10 @@ def test_las_viviendas_indistinguibles_no_se_ofrecen_y_se_dice_por_que(cliente):
     respuesta = _lisp(cliente, _dos_viviendas())
     assert _viviendas_de(respuesta) == []
     motivos = _motivos_indistinguibles(respuesta)
-    assert len(motivos) == 1 and "C-13" in motivos[0] and "VT1/3" in motivos[0]
+    # Sin el código «C-13» (Pablo, 2026-09-16: nada de códigos internos en lo que ve el
+    # arquitecto): el motivo se entiende con palabras.
+    assert len(motivos) == 1 and "VT1/3" in motivos[0] and "no las distingue" in motivos[0]
+    assert "C-13" not in motivos[0]
 
 
 def test_el_comando_no_llama_fallo_a_un_criterio_firmado():
