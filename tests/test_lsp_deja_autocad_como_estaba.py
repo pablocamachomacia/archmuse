@@ -5,8 +5,10 @@ lo encontró, pase lo que pase.
 **Por qué existe.** Pablo pidió el 2026-09-15 una auditoría acotada del comando.
 Encontró un hueco de verdad: un Esc o un error sin capturar mientras dibujaba
 dejaba **el grupo de deshacer abierto** y la tabla a medias sin marca de borrador.
-(FILEDIA apareció a 0 ese día en su AutoCAD; ArchMuse quedó descartado y la causa
-es desconocida: ver `docs/PROGRESS.md`.)
+(FILEDIA apareció a 0 ese día en su AutoCAD. El comando no lo toca; la causa,
+reproducida el 2026-09-16, fueron Core Console matados de las herramientas de
+desarrollo: ver `docs/audits/2026-09-16-incidente-filedia-a-cero.md` y
+`tests/test_core_console_no_toca_autocad.py`.)
 
 Es `C-7` otra vez: el servidor no ve el estado de AutoCAD, así que ningún test
 del servidor podía verlo. **Estos tests tampoco lo ven**: leen el código. Cazan

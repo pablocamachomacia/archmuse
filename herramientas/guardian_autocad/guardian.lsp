@@ -77,6 +77,15 @@
     ("VSMAX" . "la zona regenerada")
     ("LASTPOINT" . "el punto que se marca para el cuadro")))
 
+;; Cambian solas de una sesión de AutoCAD a otra, y no son ajustes de AutoCAD.
+;; SÓLO se ignoran al comparar con una foto guardada en otra sesión (2026-09-16,
+;; medido en Core Console: salían en una pasada entre sesiones sin tocar nada).
+(setq *amg:por-otra-sesion*
+  '(("LOGFILENAME" . "cada sesión abre su propio fichero de registro")
+    ("TDCREATE" . "la fecha de creación del dibujo, nuevo en cada sesión de Core Console")
+    ("TDUCREATE" . "la fecha de creación del dibujo, nuevo en cada sesión de Core Console")
+    ("TDUUPDATE" . "la fecha de guardado del dibujo, nuevo en cada sesión de Core Console")))
+
 ;; *amg:foto* NO se pone a nil al cargar (2026-09-15). Volver a cargar el
 ;; guardián entre los dos pasos convertía el segundo ARCHMUSE-GUARDIAN en otra
 ;; foto de antes, que no compara ni deja informe: de dos pasadas de Pablo no
@@ -147,23 +156,85 @@
       ruta)
     nil))
 
-(defun c:ARCHMUSE-GUARDIAN ( / despues vars reg malas dibujo reloj lineas ruta)
-  (if (null *amg:foto*)
+;; La foto de antes también se guarda en un fichero (2026-09-16). En memoria se
+;; pierde al cerrar AutoCAD, y FILEDIA apareció a 0 justo después de instalar y
+;; reiniciar: sin fichero no había forma de comparar a través de un reinicio ni
+;; de ARCHMUSE-ACTUALIZAR. Los reales van con 16 decimales, no con prin1, que
+;; escribe 6 cifras y daría falsos avisos al leerlos.
+(defun amg:ruta-foto ()
+  (strcat (getenv "TEMP") "\\archmuse-guardian-foto.txt"))
+(defun amg:unir (textos / res)
+  (setq res "")
+  (foreach t1 textos (setq res (if (= res "") t1 (strcat res " " t1))))
+  res)
+(defun amg:a-texto (v / s)
+  (cond ((null v) "nil")
+        ((= (type v) 'STR) (vl-prin1-to-string v))
+        ((= (type v) 'INT) (itoa v))
+        ((= (type v) 'REAL)
+          (setq s (rtos v 2 16))
+          (if (vl-string-search "." s) s (strcat s ".0")))
+        ((= (type v) 'LIST) (strcat "(" (amg:unir (mapcar 'amg:a-texto v)) ")"))
+        (T (vl-prin1-to-string (vl-princ-to-string v)))))
+(defun amg:guardar-foto (foto / f)
+  (setq f (vl-catch-all-apply 'open (list (amg:ruta-foto) "w")))
+  (if (and f (not (vl-catch-all-error-p f)))
+    (progn
+      (write-line (menucmd "M=$(edtime,$(getvar,date),YYYY-MO-DD HH:MM:SS)") f)
+      (foreach par (car foto)
+        (write-line (strcat "(\"V\" " (amg:a-texto (car par)) " " (amg:a-texto (cdr par)) ")") f))
+      (foreach par (cadr foto)
+        (write-line (strcat "(\"R\" " (amg:a-texto (car par)) " " (amg:a-texto (cdr par)) ")") f))
+      (close f)
+      T)
+    nil))
+(defun amg:leer-foto ( / f fecha linea d vars reg)
+  (if (findfile (amg:ruta-foto))
+    (progn
+      (setq f (vl-catch-all-apply 'open (list (amg:ruta-foto) "r")))
+      (if (and f (not (vl-catch-all-error-p f)))
+        (progn
+          (setq fecha (read-line f) vars nil reg nil)
+          (while (setq linea (read-line f))
+            (setq d (vl-catch-all-apply 'read (list linea)))
+            (if (and d (listp d) (not (vl-catch-all-error-p d)))
+              (if (= (car d) "V")
+                (setq vars (cons (cons (cadr d) (caddr d)) vars))
+                (setq reg (cons (cons (cadr d) (caddr d)) reg)))))
+          (close f)
+          (list fecha (reverse vars) (reverse reg)))
+        nil))
+    nil))
+;; La comparación va en su propia función (2026-09-16): cada forma se incrusta
+;; en UNA línea del .scr de la prueba, y Core Console corta las líneas de unos
+;; 2048 caracteres. Con todo dentro del comando medía 2235 y se cortaba (medido).
+(defun c:ARCHMUSE-GUARDIAN ( / guardada)
+  (setq guardada (if (null *amg:foto*) (amg:leer-foto) nil))
+  (if (and (null *amg:foto*) (null guardada))
     (progn
       (setq *amg:foto* (amg:foto))
+      (amg:guardar-foto *amg:foto*)
       (princ (strcat "\nGuardián: foto de antes hecha, "
                      (itoa (length (car *amg:foto*))) " variables y "
                      (itoa (length (cadr *amg:foto*))) " valores del registro."))
-      (princ "\n  Ahora teclea ARCHMUSE y úsalo como quieras probar: hasta el final, o con Esc.")
-      (princ "\n  Sin otros comandos entre medias. Después, ARCHMUSE-GUARDIAN otra vez."))
+      (princ "\n  Ahora usa ARCHMUSE como quieras probar (hasta el final, o con Esc), o ARCHMUSE-ACTUALIZAR,")
+      (princ "\n  o cierra y abre AutoCAD con el mismo dibujo. Sin otros comandos entre medias.")
+      (princ "\n  Después, ARCHMUSE-GUARDIAN otra vez: la foto queda guardada en un fichero."))
     (progn
-      (setq despues (amg:foto)
-            vars    (amg:diferencias (car *amg:foto*) (car despues))
-            reg     (amg:diferencias (cadr *amg:foto*) (cadr despues))
-            malas nil dibujo nil reloj nil)
+      (if (and guardada (null *amg:foto*))
+        (princ (strcat "\nGuardián: comparo con la foto guardada de " (car guardada) ".")))
+      (amg:comparar (if *amg:foto* *amg:foto* (cdr guardada)) (null *amg:foto*))
       (setq *amg:foto* nil)
+      (vl-file-delete (amg:ruta-foto))))
+  (princ))
+(defun amg:comparar (antes otra-sesion / despues vars reg malas dibujo reloj lineas ruta)
+      (setq despues (amg:foto)
+            vars    (amg:diferencias (car antes) (car despues))
+            reg     (amg:diferencias (cadr antes) (cadr despues))
+            malas nil dibujo nil reloj nil)
       (foreach d vars
         (cond ((assoc (car d) *amg:por-el-reloj*) (setq reloj (cons d reloj)))
+              ((and otra-sesion (assoc (car d) *amg:por-otra-sesion*)) (setq reloj (cons d reloj)))
               ((assoc (car d) *amg:por-lo-dibujado*) (setq dibujo (cons d dibujo)))
               (T (setq malas (cons d malas)))))
       (setq lineas (list (strcat "ArchMuse · guardián · "
@@ -187,7 +258,7 @@
       (setq lineas (append lineas (list "" (strcat "Ignoradas por cambiar solas: " (itoa (length reloj))))))
       (foreach l lineas (princ (strcat "\n" l)))
       (setq ruta (amg:informe lineas))
-      (if ruta (princ (strcat "\n\nInforme en: " ruta)))))
+      (if ruta (princ (strcat "\n\nInforme en: " ruta)))
   (princ))
 
 (princ "\nGuardián de ArchMuse cargado. Teclea ARCHMUSE-GUARDIAN para la foto de antes.")

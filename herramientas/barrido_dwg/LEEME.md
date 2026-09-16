@@ -15,6 +15,10 @@ niega a escribir la salida dentro del repositorio. Los del 2026-09-15 están en
    conservando la estructura de carpetas: las xref con ruta relativa sólo se
    resuelven así.
 2. Core Console abre cada fichero con `/readonly`, y la sonda no guarda nada.
+   **Y se lanza sólo por `herramientas/core_console.py`** (2026-09-16): Core Console
+   escribe FILEDIA a 0 en el perfil de AutoCAD del usuario al arrancar y sólo lo
+   devuelve si sale limpio; un barrido que mata una consola colgada lo dejaba a 0.
+   La puerta la aísla con `/isolate` y devuelve lo que cambie.
 3. Lanzar desde **PowerShell**. Desde Git Bash los argumentos `/i` y `/s` llegan
    rotos: la consola abre un dibujo en blanco sin script y se queda esperando.
 

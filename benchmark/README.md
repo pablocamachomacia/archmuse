@@ -16,9 +16,11 @@ No es un test del repositorio: los planos son de terceros y **no entran en git**
        venv\Scripts\python.exe benchmark\ejecutar.py C:\ArchMuse-Benchmark\planos
 
 Los DWG se convierten a DXF en un temporal fuera del repositorio con ODA File
-Converter o, si no está, con AutoCAD Core Console (`accoreconsole.exe`). Las
-variables `ARCHMUSE_ODA` y `ARCHMUSE_ACCORECONSOLE` fijan la ruta si no está en
-la de siempre. Sin ninguno de los dos, cada DWG sale como FAIL con ese motivo.
+Converter o, si no está, con AutoCAD Core Console. Las variables `ARCHMUSE_ODA` y
+`ARCHMUSE_ACCORECONSOLE` fijan la ruta si no está en la de siempre. Sin ninguno de
+los dos, cada DWG sale como FAIL con ese motivo. **Core Console se lanza por
+`herramientas/core_console.py`**, aislado (`/isolate`): lanzado a mano y matado por
+un plazo deja FILEDIA a 0 en el AutoCAD de quien lo ejecuta.
 
 El banco se niega a leer planos de una carpeta del repositorio, y a escribir
 resultados en él fuera de `benchmark/resultados/`.

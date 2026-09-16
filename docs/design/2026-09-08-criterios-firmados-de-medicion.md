@@ -971,9 +971,20 @@ dibujo no se ha ejecutado en AutoCAD todavía.**
 pedir el punto, «AutoCAD está exactamente como estaba», sin «Registro cambiado».
 Esc en la capa y servidor parado: sin informe, así que sin medir.
 
-> **Nota sobre FILEDIA.** Apareció a 0 el 15-sep; ArchMuse descartado; causa
-> desconocida. El comando no lo toca, y Pablo comprobó que Abrir enseña el
-> explorador después de ARCHMUSE, al terminar y tras Esc.
+> **Nota sobre FILEDIA — CORREGIDA el 2026-09-16.** Aquí ponía «ArchMuse
+> descartado; causa desconocida», y el descarte estaba mal hecho: sólo se miró el
+> comando. **Causa reproducida:** AutoCAD Core Console escribe `FileDialog = 0` en
+> el perfil del usuario al arrancar y sólo lo devuelve si sale limpio. Los Core
+> Console matados de las herramientas de desarrollo lo dejaron a 0 el 14 y el
+> 15-sep, y cada reinicio de AutoCAD tras instalar lo leía. El comando sigue sin
+> tocarlo. Informe: `docs/audits/2026-09-16-incidente-filedia-a-cero.md`.
+>
+> **Ampliación propuesta el 2026-09-16, pendiente de firma:** `C-16` vale también
+> para **la instalación, la actualización (con ARCHMUSE-ACTUALIZAR), el arranque de
+> AutoCAD y cualquier herramienta del repositorio que lance AutoCAD o Core
+> Console**. Lo único que pueden cambiar es lo que el instalador ya dice:
+> `TRUSTEDPATHS`, para añadir o quitar la carpeta de ArchMuse. Core Console sólo se
+> lanza por `herramientas/core_console.py`, con `/isolate`.
 
 **Dónde se aplica.** `autocad/archmuse.lsp` 3.7.1: el *error* de `c:ARCHMUSE` y
 la bandera `grupo-abierto`.
@@ -983,7 +994,12 @@ la bandera `grupo-abierto`.
 variable o una orden nueva, el grupo sin cerrar); y
 `herramientas/guardian_autocad/guardian.lsp`, que lo comprueba **ejecutando
 ARCHMUSE en un AutoCAD real**: foto de las variables y del registro antes, el
-comando como se quiera probar, y foto después.
+comando como se quiera probar, y foto después. Desde el 2026-09-16 la foto se
+guarda en un fichero, y el guardián sirve también para ARCHMUSE-ACTUALIZAR y para
+cerrar y abrir AutoCAD. Lo que pasa fuera de AutoCAD lo vigilan
+`tests/test_guardian_instalacion_y_arranque.py`,
+`tests/test_core_console_no_toca_autocad.py` y
+`herramientas/guardian_autocad/guardian_registro.py`.
 
 ---
 

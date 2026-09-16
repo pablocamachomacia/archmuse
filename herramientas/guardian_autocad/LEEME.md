@@ -13,24 +13,55 @@ Con un plano abierto en AutoCAD, y el servidor de ArchMuse en marcha si se quier
 probar la pasada completa:
 
 1. `APPLOAD` → `herramientas/guardian_autocad/guardian.lsp`.
-2. `ARCHMUSE-GUARDIAN` — foto de antes.
-3. `ARCHMUSE` — como se quiera probar. Una pasada por prueba:
-   - hasta el final;
-   - **Esc** en la pregunta de la capa;
-   - **Esc** al pedir el punto;
-   - **Esc** en interior/exterior, si sale;
-   - con el servidor parado.
+2. `ARCHMUSE-GUARDIAN` — foto de antes. Se guarda también en
+   `%TEMP%\archmuse-guardian-foto.txt`.
+3. Lo que se quiera probar. Una pasada por prueba:
+   - `ARCHMUSE` hasta el final;
+   - `ARCHMUSE` con **Esc** en la pregunta de la capa, al pedir el punto, o en
+     interior/exterior si sale;
+   - `ARCHMUSE` con el servidor parado;
+   - **`ARCHMUSE-ACTUALIZAR`**, contestando que sí (instala una versión);
+   - **cerrar y abrir AutoCAD** con el mismo dibujo (el arranque: el `.lsp` se
+     carga y revisa si hay actualización).
 4. `ARCHMUSE-GUARDIAN` — foto de después. Dice el resultado y deja el informe en
-   `%TEMP%\archmuse-guardian-<fecha>.txt`.
+   `%TEMP%\archmuse-guardian-<fecha>.txt`. Si la foto de antes ya no está en
+   memoria —AutoCAD se ha cerrado—, compara con la guardada y lo dice: «comparo
+   con la foto guardada de…».
 
 **Entre 2 y 4, ningún otro comando.** Cualquier comando cambia variables por su
-cuenta y saldría como si fuera de ArchMuse. **Y en el mismo dibujo:** la foto vive
-en el dibujo en el que se hizo. Si el paso 4 dice «foto de antes hecha» en vez
-del resultado, no ha comparado: hay que repetir la pasada.
+cuenta y saldría como si fuera de ArchMuse. **Y en el mismo dibujo.** Si el paso 4
+dice «foto de antes hecha» en vez del resultado, no ha comparado: hay que repetir
+la pasada. Si dice que compara con una foto guardada **de otro día**, era una
+pasada que quedó a medias: tras comparar se borra, y la siguiente vez hace foto nueva.
 
-Volver a cargar el guardián ya no borra la foto (2026-09-15). Antes sí, y es la
-causa probable, sin medir, de que dos pasadas de la primera prueba no dejaran
-informe.
+Volver a cargar el guardián no borra la foto (2026-09-15).
+
+## Fuera de AutoCAD: instalar y actualizar
+
+La instalación (`.archmuse` con doble clic, o el instalador) corre fuera de
+AutoCAD. `guardian_registro.py` hace la foto de **todo** el registro de AutoCAD del
+usuario antes y después:
+
+```powershell
+venv\Scripts\python.exe -m herramientas.guardian_autocad.guardian_registro foto
+# … instalar, actualizar, o cerrar y abrir AutoCAD …
+venv\Scripts\python.exe -m herramientas.guardian_autocad.guardian_registro comparar
+```
+
+Lo único que puede cambiar es `TRUSTEDPATHS`, y sólo para añadir o quitar la
+carpeta de ArchMuse. **Con AutoCAD en el mismo estado en las dos fotos**: AutoCAD
+escribe su perfil al cerrarse. La suite lo prueba con el actualizador de verdad
+sobre un perfil de prueba (`tests/test_guardian_instalacion_y_arranque.py`).
+
+## Core Console: sólo por `herramientas/core_console.py`
+
+**Medido el 2026-09-16:** Core Console escribe `FileDialog = 0` en el perfil de
+AutoCAD del usuario **al arrancar** y lo devuelve **sólo si sale limpio**. Matado
+—por un plazo o a mano— o con un script que no llega a su `QUIT`, el 0 se queda; y
+un AutoCAD que se abra mientras corre lo lee. Así apareció FILEDIA a 0 el 15 y el
+16-sep. `herramientas/core_console.py` la lanza con `/isolate` (medido: no toca el
+registro, ni matada) y devuelve lo que cambie. **Ningún otro sitio del repositorio
+la lanza**: un test lo exige.
 
 ## Qué mira
 
@@ -59,11 +90,13 @@ exige escribir el motivo**, no sólo el nombre.
 powershell -NoProfile -ExecutionPolicy Bypass -File herramientas\guardian_autocad\probar_en_core_console.ps1
 ```
 
-Lo ejecuta en AutoCAD Core Console, sin AutoCAD con ventanas, en dos pruebas:
-cambiar FILEDIA entre las dos fotos (tiene que decir **NO está como estaba** y
-nombrar FILEDIA) y no hacer nada (tiene que decir **exactamente como estaba**).
-Una sirve para ver que caza y la otra para ver que no da falsos avisos. Trabaja
-en `%TEMP%`, nunca en el repositorio.
+Lo ejecuta en AutoCAD Core Console, sin AutoCAD con ventanas, en cuatro pruebas:
+cambiar FILEDIA entre las dos fotos en la misma sesión (tiene que decir **NO está
+como estaba** y nombrar FILEDIA); no hacer nada (**exactamente como estaba**); y
+las dos mismas **entre dos sesiones distintas**, que es lo que pasa al cerrar y
+abrir AutoCAD o al instalar con ARCHMUSE-ACTUALIZAR: la segunda sesión tiene que
+comparar con la foto guardada. Las pruebas 1 y 3 rompen a propósito lo que vigila.
+Trabaja en una carpeta de `%TEMP%`, nunca en el repositorio.
 
 **Medido el 2026-09-15:** prueba 1, `FILEDIA: 0 -> 1` y «NO está como estaba»;
 prueba 2, «exactamente como estaba»; sin errores de AutoLISP. El registro no se

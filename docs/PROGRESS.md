@@ -5,6 +5,53 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-16 (3) · FILEDIA a 0: la causa era Core Console, no la instalación
+
+**Pablo:** FILEDIA volvió a 0 tras ARCHMUSE-ACTUALIZAR y reiniciar AutoCAD, la
+segunda vez que pasaba justo después de instalar.
+
+**Reproducido, midiendo el registro antes, durante y después** (informe completo en
+`docs/audits/2026-09-16-incidente-filedia-a-cero.md`):
+- AutoCAD Core Console escribe `FileDialog = 0` en `FixedProfile\General
+  Configuration` del usuario **al arrancar** y lo devuelve **sólo si sale limpio**.
+  Matado a mitad, el 0 se queda.
+- Con `/isolate` no toca el registro, ni matado.
+- Reinstalar con el actualizador (el camino de ARCHMUSE-ACTUALIZAR) no escribe ni
+  la clave. El `.lsp`, el instalador y el actualizador están limpios: medido y leído.
+- La clave se escribió por última vez el 15-sep a las 19:08:33, tres segundos
+  después de arrancar una sonda de desarrollo en Core Console que no salió limpia;
+  cada reinicio de AutoCAD posterior leyó ese 0. «Después de instalar» era «después
+  de reiniciar AutoCAD».
+
+**Por qué el descarte del 15-sep estuvo mal:** sólo se miró el comando, y se midió
+Core Console saliendo limpio. La nota corregida está en su sitio (más abajo, en la
+entrada de `C-16`, y en los criterios).
+
+**Arreglo, con los tests antes (13 en rojo):**
+- `herramientas/core_console.py`, la única puerta a Core Console: `/isolate`
+  siempre, y devuelve lo que cambie en `FixedProfile\General Configuration`
+  aunque haya que matarlo. La usan el banco de compatibilidad, el barrido de DWG y
+  la prueba del guardián; un test exige que nadie más nombre Core Console.
+- `guardian_registro.py`: foto y comparación de todo el registro de AutoCAD para
+  lo que pasa fuera de AutoCAD. En la suite, con el actualizador de verdad sobre un
+  perfil de prueba: instalar sólo añade nuestra ruta a `TRUSTEDPATHS`.
+- `guardian.lsp` guarda la foto en un fichero: compara también tras
+  ARCHMUSE-ACTUALIZAR y tras cerrar y abrir AutoCAD. Dos lecciones medidas al
+  probarlo: Core Console corta las líneas de un `.scr` hacia los 2048 caracteres
+  (la forma del comando se partió en dos, con test), y entre sesiones cambian solas
+  `LOGFILENAME` y las fechas del dibujo (ignoradas con motivo, sólo entre sesiones).
+- Tests del `.lsp`: el arranque y ARCHMUSE-ACTUALIZAR no cambian nada; sólo el
+  comando toca variables.
+- `C-16` (propuesto) ampliado a instalación, actualización, arranque y
+  herramientas que lanzan AutoCAD, pendiente de firma.
+
+**Guardianes rotos a propósito:** nueve roturas, las nueve en rojo.
+`probar_en_core_console.ps1` con Core Console de verdad: las cuatro pruebas bien,
+dos de ellas entre sesiones. Registro de Pablo sin cambios en todas las pruebas, y
+`FileDialog` otra vez en 1.
+
+---
+
 ## 2026-09-16 (2) · `C-19`: los totales, con las áreas sin redondear
 
 **Firmado por Pablo, siguiendo al arquitecto:** los totales se calculan con las
@@ -571,12 +618,13 @@ en tres pasadas, y la segunda exportación web escribe las mismas 33 casillas.
 (`C-16`, **propuesto, pendiente de firma**) y un guardián que lo compruebe de
 verdad.
 
-> **Nota sobre FILEDIA — no es un bug abierto.** Apareció a 0 el 15-sep;
-> ArchMuse descartado; causa desconocida. El comando no lo toca, y Pablo comprobó
-> que Abrir enseña el explorador después de ARCHMUSE, al terminar y tras Esc. De
-> paso quedó medido que FILEDIA vive en `FixedProfile\General
-> Configuration\FileDialog` y que AutoCAD Core Console arranca siempre con
-> FILEDIA en 0 sin guardarlo en el perfil.
+> **Nota sobre FILEDIA — CORREGIDA el 2026-09-16.** Aquí se escribió «ArchMuse
+> descartado; causa desconocida» y «Core Console arranca siempre con FILEDIA en 0
+> sin guardarlo en el perfil». **La segunda frase era falsa:** Core Console escribe
+> `FileDialog = 0` en el perfil al arrancar y sólo lo devuelve si sale limpio; los
+> Core Console matados de las herramientas de desarrollo lo dejaron a 0, y cada
+> reinicio de AutoCAD tras instalar lo leía. El comando, en efecto, no lo toca.
+> Informe: `docs/audits/2026-09-16-incidente-filedia-a-cero.md`.
 
 ### Auditoría del `.lsp`: un hueco, arreglado
 

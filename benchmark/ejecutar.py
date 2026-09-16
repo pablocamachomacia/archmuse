@@ -40,6 +40,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
+from herramientas import core_console  # noqa: E402
 from analyzer import cuadro_superficies as cs  # noqa: E402
 from analyzer import evaluator, medicion, parser  # noqa: E402
 from analyzer import plantilla_cuadro as pc  # noqa: E402
@@ -183,18 +184,19 @@ def leer_clasificacion(ruta: Optional[str]) -> Dict[Tuple[str, str, str], Tuple[
 # ---------------------------------------------------------------------------
 
 def buscar_conversor() -> Optional[Tuple[str, str]]:
-    """`("oda" | "accoreconsole", ruta)`, o `None`."""
-    for tipo, variable, patron in (
-            ("oda", "ARCHMUSE_ODA", r"C:\Program Files\ODA\ODAFileConverter*\ODAFileConverter.exe"),
-            ("accoreconsole", "ARCHMUSE_ACCORECONSOLE",
-             r"C:\Program Files\Autodesk\AutoCAD *\accoreconsole.exe")):
-        ruta = os.environ.get(variable)
-        if ruta and os.path.isfile(ruta):
-            return tipo, ruta
-        encontrados = sorted(glob.glob(patron))
-        if encontrados:
-            return tipo, encontrados[-1]
-    return None
+    """`("oda" | "core_console", ruta)`, o `None`.
+
+    Core Console se busca y se lanza **sólo** por `herramientas/core_console.py`
+    (2026-09-16): lanzado a mano y matado por un plazo deja FILEDIA a 0 en el
+    AutoCAD del usuario."""
+    ruta = os.environ.get("ARCHMUSE_ODA")
+    if ruta and os.path.isfile(ruta):
+        return "oda", ruta
+    encontrados = sorted(glob.glob(r"C:\Program Files\ODA\ODAFileConverter*\ODAFileConverter.exe"))
+    if encontrados:
+        return "oda", encontrados[-1]
+    consola = core_console.buscar_consola()
+    return ("core_console", consola) if consola else None
 
 
 def convertir_dwg(ruta: str, temporal: str, conversor: Optional[Tuple[str, str]],
@@ -220,8 +222,10 @@ def convertir_dwg(ruta: str, temporal: str, conversor: Optional[Tuple[str, str]]
             guion = os.path.join(temporal, "convertir.scr")
             with open(guion, "w", encoding="cp1252", newline="\r\n") as f:
                 f.write('_.DXFOUT\n"%s"\n16\n_.QUIT\n_Y\n' % dxf.replace("\\", "/"))
-            subprocess.run([programa, "/i", copia, "/s", guion],
-                           cwd=temporal, capture_output=True, timeout=limite_s)
+            r = core_console.ejecutar(guion, dibujo=copia, consola=programa, cwd=temporal,
+                                      plazo_s=limite_s)
+            if r.agotado:
+                raise subprocess.TimeoutExpired(programa, limite_s)
     except subprocess.TimeoutExpired:
         return None, "no se ha podido convertir el DWG: el conversor no ha terminado en %d s." % limite_s
     except OSError as exc:

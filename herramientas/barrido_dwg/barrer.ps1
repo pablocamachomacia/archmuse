@@ -1,4 +1,9 @@
 # Barrido de solo lectura de DWG con AutoCAD Core Console. Ver LEEME.md.
+#
+# Core Console se lanza SOLO por herramientas/core_console.py (2026-09-16): escribe
+# FileDialog = 0 en el perfil de AutoCAD del usuario al arrancar y sólo lo devuelve
+# si sale limpio. Un barrido que mata una consola colgada por el plazo dejaba
+# FILEDIA a 0. La puerta la aísla (/isolate) y devuelve lo que cambie.
 param(
   [Parameter(Mandatory = $true)] [string]$Copias,
   [Parameter(Mandatory = $true)] [string]$Sonda,
@@ -6,7 +11,7 @@ param(
   [Parameter(Mandatory = $true)] [string]$Salida,
   [switch]$UnoPorHuella,
   [int]$PlazoS = 240,
-  [string]$Consola = "C:\Program Files\Autodesk\AutoCAD 2027\accoreconsole.exe"
+  [string]$Consola = ""
 )
 
 # La salida lleva rutas de planos de clientes y el repositorio es público.
@@ -16,9 +21,10 @@ if ($salidaAbs.StartsWith($repo + '\', [System.StringComparison]::OrdinalIgnoreC
   Write-Error "La salida tiene que quedar FUERA del repositorio ($repo): lleva rutas de planos de clientes."
   exit 1
 }
+$python = Join-Path $repo "venv\Scripts\python.exe"
 
 $scr = Join-Path $env:TEMP "archmuse-sonda.scr"
-python (Join-Path $PSScriptRoot "incrustar.py") $Sonda $Funcion $salidaAbs $scr
+& $python (Join-Path $PSScriptRoot "incrustar.py") $Sonda $Funcion $salidaAbs $scr
 if (-not $?) { exit 1 }
 
 $huellas = "$salidaAbs.huellas.tsv"
@@ -35,10 +41,14 @@ foreach ($f in $ficheros) {
   }
   $vistos[$hash] = $true
   $antes = if (Test-Path $salidaAbs) { (Get-Content $salidaAbs).Count } else { 0 }
-  $p = Start-Process -FilePath $Consola -ArgumentList "/i `"$($f.FullName)`" /s `"$scr`" /readonly" `
-                     -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $env:TEMP "archmuse-sonda.log")
-  $estado = "ok"
-  if (-not $p.WaitForExit($PlazoS * 1000)) { try { $p.Kill() } catch {}; $estado = "TIMEOUT" }
+  $opciones = @("-m", "herramientas.core_console", "--script", $scr, "--dibujo", $f.FullName,
+                "--solo-lectura", "--plazo", $PlazoS, "--carpeta", $env:TEMP,
+                "--salida", (Join-Path $env:TEMP "archmuse-sonda.log"))
+  if ($Consola) { $opciones += @("--consola", $Consola) }
+  Push-Location $repo
+  try { $aviso = & $python @opciones; $codigo = $LASTEXITCODE } finally { Pop-Location }
+  $aviso | Where-Object { $_ -match 'DEVUELTO' } | ForEach-Object { Write-Warning $_ }
+  $estado = switch ($codigo) { 0 { "ok" } 2 { "TIMEOUT" } default { "ERROR" } }
   $despues = if (Test-Path $salidaAbs) { (Get-Content $salidaAbs).Count } else { 0 }
   if ($estado -eq "ok" -and $despues -eq $antes) { $estado = "SIN_LINEA" }
   Add-Content $huellas "$($f.FullName)`t$hash`t$estado" -Encoding utf8
