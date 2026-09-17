@@ -1124,6 +1124,16 @@ capa de recintos cuyo borde está a menos de 3 alturas de su texto.
    por cercanía metía un dormitorio o un aseo de una en la tabla de la otra, con
    su cifra. Los totales ya salían vacíos; la fila no.
 
+**Regla de Pablo del 2026-09-17, propuesta y pendiente de firma: si ArchMuse no puede
+demostrar que una cifra pertenece a esa vivienda, no la muestra.** Aplicada sin
+heurísticas nuevas, cruzando dos señales que ya existen: el reparto firme y la
+construida rotulada leída con `C-12`. Una construida rotulada es de una vivienda
+cuando contiene todas sus piezas interiores de reparto firme y ninguna exterior. Si una
+pieza está dentro de la construida de otra vivienda y no de la suya, su celda queda
+vacía con motivo («puede ser de …»). Sin construida rotulada no cambia nada.
+Dónde: `plantilla_cuadro.piezas_de_otra_vivienda`. Test:
+`tests/test_pieza_de_otra_vivienda.py`.
+
 **El cierre montado (arreglo, no criterio).** Una polilínea con `closed=False` cuyo
 último vértice cae encima de su primer tramo (a menos del 1 % de su diagonal, entre
 sus extremos) se lee cerrada sin la cola, **si la cola no pasa del 10 % de la

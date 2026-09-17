@@ -5,6 +5,50 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-17 (7) · Una cifra que no se puede demostrar de esa vivienda no sale
+
+**Pablo:** una vivienda del plano maestro escribía en su tabla, con cifra, una pieza que
+según el cuadro del arquitecto es de la vecina. Regla nueva, **propuesta y pendiente de
+su firma**: si ArchMuse no puede demostrar que una cifra pertenece a esa vivienda, no la
+muestra. Sin heurísticas nuevas.
+
+**Medido (copia local, fuera del repositorio).** Es un aseo. El reparto por cercanía lo
+daba por firme: el rótulo de la vecina estaba 2,11 veces más lejos, y el umbral es 2.
+Pero está dentro de la construida que el plano rotula (`C-12`) y que contiene todas las
+piezas de reparto firme de la vecina; la construida de su propia vivienda no lo contiene.
+
+**Arreglo:** si una pieza está dentro de la construida rotulada de otra vivienda
+(contiene todas sus piezas interiores firmes y ninguna exterior) y no de la suya, la
+celda queda vacía: «puede ser de …». Sólo cruza dos señales que ya existían; sin
+construida rotulada no cambia nada. Registrada en `C-20` como propuesta.
+
+**Indicador nuevo del banco: cifras incorrectas, objetivo 0.** Cuenta las cifras
+distintas de su cuadro sin explicar **y** las filas con cifra que su cuadro no respalda
+(sin celda, o con la celda vacía). Medido al hacerlo: el cuadro de esa vivienda tiene la
+fila «aseo» **vacía**, y contar sólo las filas sin celda no veía el caso; corregido con
+test. Una vivienda con una de esas filas no cuenta como resuelta. **Límite, dicho en el
+resumen:** una estancia bien medida que el arquitecto no puso en su cuadro también cuenta,
+así que hay que revisarlas una a una.
+
+**Plano maestro, por el banco:**
+
+| | Coinciden en todo | Cifras incorrectas | AUTOMÁTICO / UN CLIC / VACÍO |
+|---|---|---|---|
+| Sin la regla (desactivada a propósito) | 14 de 25 | 1 (el aseo) | 201 / 34 / 15 |
+| Con la regla | 14 de 25 | **0** | 201 / 34 / 15 |
+
+Ninguna otra celda con referencia cambia.
+
+**Rendimiento, medido por la suite:** calcular las construidas rotuladas y sus dueñas
+para cada vivienda llevaba el plano grande de la prueba de rendimiento a 22,3 s (límite
+20). Se calcula una vez por plano; vuelve a pasar.
+
+**Sin resolver:** la vista de medición de la web (`medicion`) no tiene el dibujo y sigue
+listando la pieza en esa vivienda. La tabla, que es lo que se dibuja y se exporta, ya no
+la escribe.
+
+---
+
 ## 2026-09-17 (6) · Habitaciones en otro dibujo: dicho como arquitecto, y ofrece abrirlo (`.lsp` 3.9.9)
 
 **Pablo:** en hojas con las habitaciones en una referencia externa, ARCHMUSE salía con

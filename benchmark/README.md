@@ -103,6 +103,12 @@ test comprueba que cada fragmento existe en el código). Con varias causas gana 
 peor. Un motivo que sólo dice que otra cifra está bloqueada (el útil total, un total
 de lado) toma la categoría de lo que lo bloquea.
 
+**Cifras incorrectas (objetivo: 0).** Las cifras distintas de su cuadro sin explicar,
+más las filas de la tabla con cifra que su cuadro no respalda (sin celda, o con la celda
+vacía). Una vivienda con una de esas filas no cuenta como resuelta. **Límite:** una
+estancia bien medida que el arquitecto no puso en su cuadro también cuenta: se revisan
+una a una.
+
 El resumen trae, por plano y en total: las tres categorías, **intervenciones por
 vivienda** (celdas UN CLIC / viviendas con cuadro: cuenta de más, porque una pregunta
 puede resolver varias celdas), **% de viviendas sin ninguna intervención** y **% de

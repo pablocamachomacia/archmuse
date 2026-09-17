@@ -195,6 +195,44 @@ def test_dos_filas_iguales_se_emparejan_por_su_cifra(carpetas):
     assert terrazas == {"terraza_1": banco.COINCIDENCIA, "terraza_2": banco.COINCIDENCIA}
 
 
+def test_una_fila_con_cifra_que_su_cuadro_no_tiene_es_cifra_incorrecta(carpetas):
+    """Pablo, 2026-09-17: una vivienda escribía una pieza de la vecina con su cifra, y
+    su cuadro no tenía esa fila. Objetivo del indicador: 0."""
+    planos, salida = carpetas
+    recintos = RECINTOS + (("Baño", 11.3, 0.0, 12.3, 2.0),)
+    _dibujar(planos / "a.dxf", CIFRAS_BUENAS, recintos=recintos)
+    fila, detalle = _uno(banco.ejecutar(str(planos), str(salida)))
+    # La fila del baño, y el total interior que la suma y ya no es el de su cuadro.
+    assert fila["filas_sin_celda"] == 1 and fila["cifras_incorrectas"] == 2
+    [vivienda] = detalle["intervenciones"]
+    assert vivienda["filas_sin_celda"] == ["bano"]
+
+
+def test_una_cifra_en_una_fila_que_su_cuadro_deja_sin_cifra_tambien_es_incorrecta(carpetas):
+    """Medido en el plano maestro: el cuadro de la vivienda tiene la fila «aseo» vacía, y
+    la tabla escribía ahí el aseo de la vecina. Contar sólo las filas sin celda no lo veía."""
+    planos, salida = carpetas
+    recintos = RECINTOS + (("Baño", 11.3, 0.0, 12.3, 2.0),)
+    cabecera = list(CABECERA) + [(4, 2, "baño")]
+    _dibujar(planos / "a.dxf", CIFRAS_BUENAS, cabecera=cabecera, recintos=recintos)
+    fila, detalle = _uno(banco.ejecutar(str(planos), str(salida)))
+    assert fila["filas_sin_celda"] == 1, detalle["intervenciones"]
+    assert detalle["intervenciones"][0]["filas_sin_celda"] == ["bano"]
+
+
+def test_una_cifra_distinta_tambien_es_incorrecta_y_una_explicada_no(carpetas):
+    planos, salida = carpetas
+    _dibujar(planos / "a.dxf", {**CIFRAS_BUENAS, (4, 1): "9,40"})
+    fila, _d = _uno(banco.ejecutar(str(planos), str(salida)))
+    assert fila["cifras_incorrectas"] == 1 and fila["filas_sin_celda"] == 0
+
+
+def test_la_pieza_que_puede_ser_de_otra_vivienda_es_un_clic():
+    motivo = ("puede ser de VT2/1: está dentro de la superficie construida que el plano rotula "
+              "para esa vivienda. No se escribe su superficie.")
+    assert banco.categoria_de_motivo(motivo) == "UN CLIC"
+
+
 def test_el_resumen_trae_las_intervenciones_por_plano_y_en_total(carpetas):
     planos, salida = carpetas
     _dibujar(planos / "a.dxf", CIFRAS_BUENAS)
@@ -203,5 +241,6 @@ def test_el_resumen_trae_las_intervenciones_por_plano_y_en_total(carpetas):
     with open(hecho["resumen"], encoding="utf-8") as f:
         resumen = f.read()
     seccion = resumen.split("## Intervenciones")[1].split("\n## ")[0]
-    assert "| Total | 2 | 9 | 1 | 0 | 0 | 0,50 | 50,0 % | 100,0 % |" in seccion, seccion
+    assert "| Total | 2 | 9 | 1 | 0 | 0 | 0 | 0,50 | 50,0 % | 100,0 % |" in seccion, seccion
+    assert "Cifras incorrectas" in seccion and "objetivo: 0" in seccion
     assert "supone que la respuesta basta" in seccion

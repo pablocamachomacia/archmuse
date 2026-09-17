@@ -480,14 +480,115 @@ class ViviendaIndistinguible(ValueError):
     no permite el cuadro» a una pregunta lo haga también con esto."""
 
 
-def _unidad(plano, nombre: str, posicion: Optional[int] = None):
+def _unidades(plano):
     from . import evaluator
 
     rooms = list(plano.rooms)
     if plano.unit_labels:
-        unidades = evaluator.group_rooms_by_unit_label(rooms, list(plano.unit_labels))
-    else:
-        unidades = evaluator.group_rooms_by_proximity(rooms)
+        return evaluator.group_rooms_by_unit_label(rooms, list(plano.unit_labels))
+    return evaluator.group_rooms_by_proximity(rooms)
+
+
+def construidas_rotuladas(doc, plano) -> List[Polygon]:
+    """Las polilíneas que un rótulo de construida cerrada señala sin duda: la única a
+    su alcance (la lectura de `C-12`). En metros."""
+    factor = _factor_a_metros(plano)
+    polilineas = polilineas_del_plano(doc, factor)
+    salida: Dict[str, Polygon] = {}
+    for rotulo in rotulos_de_construida(doc, factor):
+        if rotulo.alcance_m is None:
+            continue
+        punto = Point(rotulo.punto)
+        al_alcance = [(h, p) for h, p in polilineas if p.exterior.distance(punto) <= rotulo.alcance_m]
+        if len(al_alcance) == 1:
+            salida[al_alcance[0][0]] = al_alcance[0][1]
+    return list(salida.values())
+
+
+def piezas_de_otra_vivienda(doc, plano, medida, posicion_vivienda: int) -> Dict[int, str]:
+    """`{índice de pieza: vivienda}` de las piezas que el reparto da a esta vivienda y
+    que el plano atribuye a otra.
+
+    **Regla de Pablo, 2026-09-17, propuesta y pendiente de firma:** si ArchMuse no puede
+    demostrar que una cifra es de esa vivienda, no la muestra. **Sin heurísticas
+    nuevas:** una construida rotulada es de una vivienda cuando la contiene como pide
+    `C-12` —todas sus piezas interiores, ninguna exterior—, contando sólo las piezas de
+    reparto firme (las dudosas ya van sin cifra). Si una pieza de esta vivienda está
+    dentro de la construida de otra y no de la suya, el plano contradice al reparto:
+    la pieza puede ser de la otra.
+
+    Medido en el plano maestro: un aseo con reparto firme (holgura 2,11) dentro de la
+    construida rotulada que contiene todas las piezas firmes de la vecina."""
+    reparto = _construidas_y_duenas(doc, plano, medida)
+    if reparto is None:
+        return {}
+    unidades, construidas, duenas_de = reparto
+    salida: Dict[int, str] = {}
+    for k, room in enumerate(unidades[posicion_vivienda].rooms):
+        ajenas = []
+        for construida, suyas in zip(construidas, duenas_de, strict=True):
+            if suyas and construida.buffer(TOLERANCIA_CONTENCION_M).contains(room.polygon):
+                if posicion_vivienda in suyas:
+                    ajenas = []
+                    break
+                ajenas.extend(medida.viviendas[i].nombre for i in suyas)
+        if ajenas:
+            salida[k] = ", ".join(sorted(set(ajenas)))
+    return salida
+
+
+#: La última lectura de construidas y dueñas: `(doc, plano, medida, resultado)`. Se
+#: calcula una vez por plano y no una por vivienda: medido el 2026-09-17, en el plano
+#: grande (52 viviendas, 9.220 polilíneas) rehacerla por vivienda pasaba el servidor de
+#: menos de 20 s a 22,3 s.
+_ULTIMA_LECTURA: List = []
+
+
+def _construidas_y_duenas(doc, plano, medida):
+    if _ULTIMA_LECTURA and _ULTIMA_LECTURA[0] is doc and _ULTIMA_LECTURA[1] is plano \
+            and _ULTIMA_LECTURA[2] is medida:
+        return _ULTIMA_LECTURA[3]
+    resultado = _calcular_construidas_y_duenas(doc, plano, medida)
+    _ULTIMA_LECTURA[:] = [doc, plano, medida, resultado]
+    return resultado
+
+
+def _calcular_construidas_y_duenas(doc, plano, medida):
+    construidas = construidas_rotuladas(doc, plano)
+    if not construidas:
+        return None
+    unidades = _unidades(plano)
+    if len(unidades) != len(medida.viviendas):
+        return None
+
+    def dentro(poligono, construida):
+        return construida.buffer(TOLERANCIA_CONTENCION_M).contains(poligono)
+
+    def firmes(i):
+        dudosas = {d.indice for d in medida.viviendas[i].repartos_dudosos}
+        interiores, exteriores = [], []
+        for k, (room, pieza) in enumerate(zip(unidades[i].rooms, medida.viviendas[i].piezas,
+                                              strict=True)):
+            if k in dudosas:
+                continue
+            if pieza.ambito == medicion.AMBITO_INTERIOR:
+                interiores.append(room.polygon)
+            elif pieza.ambito == medicion.AMBITO_EXTERIOR:
+                exteriores.append(room.polygon)
+        return interiores, exteriores
+
+    piezas_firmes = [firmes(i) for i in range(len(unidades))]
+
+    def duenas(construida):
+        return [i for i, (interiores, exteriores) in enumerate(piezas_firmes)
+                if interiores and all(dentro(p, construida) for p in interiores)
+                and not any(dentro(p, construida) for p in exteriores)]
+
+    return unidades, construidas, [duenas(c) for c in construidas]
+
+
+def _unidad(plano, nombre: str, posicion: Optional[int] = None):
+    unidades = _unidades(plano)
     if posicion is not None:
         if 0 <= posicion < len(unidades) and unidades[posicion].name == nombre:
             return unidades[posicion]
@@ -553,6 +654,9 @@ def construir(doc, plano, nombre_vivienda: str,
     # revienta en vez de emparejar una cifra con el recinto de otra.
     #: Las piezas cuyo reparto entre viviendas no es firme, por su posición.
     dudosas = {d.indice: d for d in vivienda.repartos_dudosos}
+    #: Y las que el plano atribuye a otra vivienda con su construida rotulada.
+    posicion_vivienda = next(i for i, v in enumerate(medida.viviendas) if v is vivienda)
+    ajenas = piezas_de_otra_vivienda(doc, plano, medida, posicion_vivienda)
     for posicion_pieza, (room, pieza) in enumerate(
             zip(unidad.rooms, vivienda.piezas, strict=True)):
         familia, ambito = pieza.familia, pieza.ambito
@@ -597,6 +701,12 @@ def construir(doc, plano, nombre_vivienda: str,
             valor = ""
             incompleto[ambito] = True
             notas.add(pieza.nombre, pieza.no_es_util)
+        elif posicion_pieza in ajenas:
+            valor = ""
+            incompleto[ambito] = True
+            notas.add(pieza.nombre, "puede ser de %s: está dentro de la superficie construida que "
+                                    "el plano rotula para esa vivienda. No se escribe su superficie."
+                      % ajenas[posicion_pieza])
         elif posicion_pieza in dudosas:
             # Con duda, celda vacía con motivo (decisión propuesta, 2026-09-16): si
             # la pieza es de la vivienda de al lado, su cifra no va en esta tabla.
