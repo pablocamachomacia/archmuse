@@ -5,6 +5,41 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-17 (6) · Habitaciones en otro dibujo: dicho como arquitecto, y ofrece abrirlo (`.lsp` 3.9.9)
+
+**Pablo:** en hojas con las habitaciones en una referencia externa, ARCHMUSE salía con
+«referencia externa», «677 polilínea(s)» y «No te ofrezco medir otra capa». Ahora:
+
+    ArchMuse no puede medir este plano: las habitaciones están dibujadas en «…dwg».
+    ¿Abro «…dwg»? [Si/No] <Si>:
+
+- **Sí o Enter:** abre ese dibujo con `Documents.Open`, sin cerrar el actual (si ya está
+  abierto, lo pone delante), y dice «Abierto. Escribe ARCHMUSE allí.».
+- **No:** «De acuerdo: no dibujo nada.». **Esc:** el «Cancelado con Esc» de siempre.
+  En los dos casos, nada dibujado.
+- **Varias referencias con habitaciones:** las nombra y no ofrece abrir ninguna.
+- **El detalle técnico** (cuántas referencias y polilíneas, en ellas y en el dibujo) va
+  sólo al registro, con cifras y sin nombres ni rutas.
+- `C-16`: no cambia ninguna variable; abrir un dibujo es lo que se ha pedido.
+- *Decisión sin preguntar:* la opción se escribe «Si» sin tilde, como la otra pregunta
+  del comando, porque AutoCAD empareja el texto de la opción con su palabra clave.
+
+**Medido en Core Console** (puerta aislada, copias de una hoja real y de su dibujo
+referenciado): detecta una referencia con habitaciones, el registro guarda sólo las
+cifras, sale el mensaje nuevo y, con Enter, encuentra el dibujo. **No se puede medir
+ahí** contestar «No» (`getkword` no lee la línea siguiente del guion, como `pause`),
+ni abrir el dibujo (Core Console no tiene documentos).
+
+**«Si el fichero no se encuentra»: medido, es otro caso.** Sin el dibujo referenciado
+en su sitio AutoCAD no carga la referencia, y entonces no se puede saber si las
+habitaciones están dentro. Eso lo cubre el aviso de referencias sin cargar, que también
+pasa a lenguaje de arquitecto y ahora **enseña la ruta completa de cada dibujo que no
+encuentra** (sólo en pantalla; la regla de no mostrar carpetas se levanta aquí porque
+Pablo lo pide para poder ir a buscarlo). Sigue sin parar el comando, como decidió Pablo
+el 2026-09-15.
+
+---
+
 ## 2026-09-17 (5) · El banco clasifica cada fallo: AUTOMÁTICO, UN CLIC o VACÍO
 
 **Pablo:** que el banco clasifique cada celda que no coincide o queda vacía, y que el

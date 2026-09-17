@@ -186,7 +186,16 @@ def test_dwgprefix_solo_aparece_donde_se_manda_el_plano_a_proposito(codigo):
     fichero: el que copia el DWG cuando él ha tecleado `ARCHMUSE-INFORME-PLANO`.
     Si aparece en otro, alguien está a punto de mandar una ruta sin saberlo."""
     con_ruta = [n for n, cuerpo in codigo.items() if "DWGPREFIX" in cuerpo]
-    assert con_ruta == ["am:lanza-el-empaquetado"], con_ruta
+    # **Excepción** (3.9.9, 2026-09-17): `am:ruta-de-xref` busca el dibujo donde están
+    # las habitaciones junto a éste, para abrirlo o decir en pantalla dónde debería
+    # estar (Pablo lo pide). Su resultado no puede ir al registro ni a ningún envío.
+    assert sorted(con_ruta) == ["am:lanza-el-empaquetado", "am:ruta-de-xref"], con_ruta
+    for nombre, cuerpo in codigo.items():
+        if "(am:ruta-de-xref" in cuerpo:
+            assert nombre in ("am:recintos-en-xref-p", "am:avisar-xrefs-sin-cargar"), nombre
+            for linea in cuerpo.splitlines():
+                if "am:log" in linea:
+                    assert "ruta" not in linea and "am:ruta-de-xref" not in linea, (nombre, linea)
 
 
 def test_el_entorno_no_declara_la_ruta_del_dibujo(codigo):

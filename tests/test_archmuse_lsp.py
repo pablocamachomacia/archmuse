@@ -130,6 +130,13 @@ PRIMITIVAS = {
     #       70 banderas, bit 1 inutilizada), o nil;
     #   (minusp n) → T si n < 0;  (logior a b) → «o» bit a bit.
     "inters", "tblsearch", "minusp", "logior",
+    # Abrir el dibujo donde están las habitaciones (3.9.9, 2026-09-17), contra la
+    # referencia de AutoLISP y ActiveX:
+    #   (findfile nombre) → la ruta completa si existe (también en la ruta de soporte), o nil;
+    #   (vlax-for elemento colección …) → recorre una colección ActiveX;
+    #   Documents.Open(Name, ReadOnly) → el documento abierto, sin cerrar el activo;
+    #   Document.Activate, Document.FullName, Application.Documents.
+    "findfile", "vlax-for", "vla-get-Documents", "vla-Open", "vla-Activate", "vla-get-FullName",
     # Beta, T4 (2026-09-13): leer `servidor.json` para saber el puerto.
     #   `read-line` -- (read-line [descriptor]) devuelve la siguiente línea del
     #       fichero abierto con `open ... "r"`, sin el salto, o nil al final. Es

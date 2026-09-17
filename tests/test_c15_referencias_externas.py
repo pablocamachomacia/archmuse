@@ -68,7 +68,9 @@ def test_el_cuadro_dentro_de_la_xref_se_reconoce_por_su_titulo():
 
 
 def test_del_fichero_referenciado_solo_se_ensena_el_nombre_nunca_la_carpeta():
-    """La carpeta de un proyecto suele llevar el nombre del cliente."""
+    """La carpeta de un proyecto suele llevar el nombre del cliente. **Salvo** cuando
+    no se encuentra el fichero (Pablo, 2026-09-17): entonces se enseña la ruta en
+    pantalla, nunca en el registro (`test_el_detalle_tecnico_va_al_registro_y_sin_nombres`)."""
     cuerpo = _defun("am:fichero-de-xref")
     assert "vl-filename-base" in cuerpo
     assert "DWGPREFIX" not in cuerpo
@@ -97,15 +99,61 @@ def test_con_la_capa_que_el_elija_se_vuelve_a_comprobar_antes_de_recoger():
     assert "(exit)" in rama
 
 
-def test_el_mensaje_dice_donde_estan_y_no_culpa_a_la_capa():
-    cuerpo = LSP[LSP.index("(defun am:recintos-en-xref-p "):]
-    cuerpo = cuerpo[:cuerpo.find("\n(defun ", 1)]
-    assert "Este dibujo referencia «" in cuerpo
-    assert "y el cuadro de superficies" in cuerpo
-    assert "Abre " in cuerpo and "teclea ARCHMUSE allí" in cuerpo
-    assert "No te ofrezco medir otra capa" in cuerpo
-    # Recintos aquí y en la xref: medir sólo los de aquí es una cifra de menos.
-    assert "cifra de menos" in cuerpo
+def _mensajes(cuerpo):
+    return re.findall(r'\(princ\s+(?:\(strcat\s+)?"([^"]*)"', cuerpo) + \
+        re.findall(r'\(getkword\s+(?:\(strcat\s+)?"([^"]*)"', cuerpo)
+
+
+def test_el_mensaje_habla_como_un_arquitecto_y_ofrece_abrir_el_dibujo():
+    """Pablo, 2026-09-17: «referencia externa», «677 polilínea(s)» y «No te ofrezco
+    medir otra capa» no los entiende un arquitecto. Ahora:
+
+        ArchMuse no puede medir este plano: las habitaciones están dibujadas
+        en «maestro.dwg».
+        ¿Abro «maestro.dwg»? [Si/No] <Si>:
+    """
+    cuerpo = " ".join(_defun("am:recintos-en-xref-p").split())
+    assert '"\\nArchMuse no puede medir este plano: las habitaciones están dibujadas en «"' in cuerpo
+    assert '(initget "Si No")' in cuerpo
+    assert '"\\n¿Abro «" fichero "»? [Si/No] <Si>: "' in cuerpo
+    # Enter es Sí; No termina sin dibujar; Esc llega a *error* («Cancelado con Esc»).
+    assert '(/= respuesta "No")' in cuerpo
+    assert '"\\nDe acuerdo: no dibujo nada."' in cuerpo
+    for tecnico in ("referencia externa", "polilínea", "No te ofrezco", "capa", "NO MIDO"):
+        assert not any(tecnico in m for m in _mensajes(cuerpo)), tecnico
+
+
+def test_si_abre_el_dibujo_lo_abre_sin_cerrar_el_actual_y_lo_dice():
+    abrir = " ".join(_defun("am:abrir-dibujo").split())
+    assert "(vla-Open (vla-get-Documents (vlax-get-acad-object)) ruta :vlax-false)" in abrir
+    assert "vla-Close" not in abrir and "_.OPEN" not in abrir
+    assert '"\\nAbierto. Escribe ARCHMUSE allí."' in abrir
+
+
+def test_si_el_fichero_no_se_encuentra_lo_dice_con_su_ruta_completa():
+    """Aquí sí la ruta: Pablo lo pide para poder ir a buscarlo. Sólo en pantalla."""
+    cuerpo = " ".join(_defun("am:recintos-en-xref-p").split())
+    assert "(am:ruta-de-xref (nth 3 x))" in cuerpo or "(am:ruta-de-xref ruta)" in cuerpo
+    assert '"\\nNo encuentro «" fichero "». Debería estar en: "' in cuerpo
+    ruta = " ".join(_defun("am:ruta-de-xref").split())
+    assert "findfile" in ruta and '(getvar "DWGPREFIX")' in ruta
+
+
+def test_con_varias_referencias_con_habitaciones_las_nombra_y_no_ofrece_abrir():
+    cuerpo = " ".join(_defun("am:recintos-en-xref-p").split())
+    varias = cuerpo[cuerpo.index("(> (length en-xref) 1)"):]
+    varias = varias[:varias.index("(am:abrir-dibujo")] if "(am:abrir-dibujo" in varias else varias
+    assert '"\\nArchMuse no puede medir este plano: las habitaciones están dibujadas en varios dibujos:"' in varias
+    assert "(getkword" not in varias.split("(progn", 2)[1] if "(progn" in varias else True
+
+
+def test_el_detalle_tecnico_va_al_registro_y_sin_nombres():
+    cuerpo = _defun("am:recintos-en-xref-p")
+    logs = re.findall(r"\(am:log[^\n]*", cuerpo)
+    assert logs, "el detalle técnico no va al registro"
+    for linea in logs:
+        assert "fichero" not in linea and "ruta" not in linea and "capa" not in linea.split('"')[0], linea
+    assert "polilineas" in " ".join(logs)
 
 
 def test_el_registro_de_c15_no_lleva_nombres_de_fichero():
@@ -116,6 +164,17 @@ def test_el_registro_de_c15_no_lleva_nombres_de_fichero():
     assert len(llamadas) == 3, llamadas
     for llamada in llamadas:
         assert re.fullmatch(r'\(am:log "C-15:[^"]*"\)\)*', llamada.strip()), llamada
+
+
+def test_si_no_encuentra_un_dibujo_referenciado_lo_dice_con_su_ruta_completa():
+    """Medido en Core Console (2026-09-17): si el fichero no está, AutoCAD no carga la
+    referencia y no se puede ver si las habitaciones están ahí. Es este aviso, no el
+    de arriba, el que tiene que decir «no lo encuentro» y dónde debería estar."""
+    aviso = " ".join(_defun("am:avisar-xrefs-sin-cargar").split())
+    assert '"\\n\\nAVISO — No encuentro estos dibujos que usa el plano:"' in aviso
+    assert "(cadr (am:ruta-de-xref" in aviso
+    for tecnico in ("referencia", "cargar", "capa"):
+        assert not any(tecnico in m for m in _mensajes(aviso)), tecnico
 
 
 def test_la_xref_sin_cargar_avisa_pero_no_para():

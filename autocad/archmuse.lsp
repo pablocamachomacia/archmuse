@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.8")
-(setq *am:version*  "3.9.8 (2026-09-17, avisos cortos de lo reparado y lo no medido)")
+(setq *am:version-corta* "3.9.9")
+(setq *am:version*  "3.9.9 (2026-09-17, ofrece abrir el dibujo donde están las habitaciones)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -540,7 +540,8 @@
     (if (= 4 (logand 4 fl))
       (setq res (cons (list (cdr (assoc 2 b))
                             (am:fichero-de-xref (if (assoc 1 b) (cdr (assoc 1 b)) (cdr (assoc 2 b))))
-                            (= 32 (logand 32 fl)))
+                            (= 32 (logand 32 fl))
+                            (if (assoc 1 b) (cdr (assoc 1 b)) (cdr (assoc 2 b))))
                       res)))
     (setq b (tblnext "BLOCK")))
   (reverse res))
@@ -565,22 +566,53 @@
   (list recintos cuadros))
 
 (defun am:xrefs-con-recintos (capa / res c)
-  ;; Las xref CARGADAS con polilíneas en `capa`: ((fichero recintos cuadros) ...).
+  ;; Las xref CARGADAS con polilíneas en `capa`: ((fichero recintos cuadros ruta) ...).
   (setq res nil)
   (foreach x (am:xrefs)
     (if (caddr x)
       (progn
         (setq c (am:contenido-de-xref (car x) capa))
         (if (> (car c) 0)
-          (setq res (cons (list (cadr x) (car c) (cadr c)) res))))))
+          (setq res (cons (list (cadr x) (car c) (cadr c) (nth 3 x)) res))))))
   (reverse res))
 
+(defun am:ruta-de-xref (ruta / prefijo encontrada)
+  ;; `(encontrada mostrada)`: la ruta del dibujo referenciado si existe, o nil, y la
+  ;; ruta completa que se le enseña si no está. La guardada puede ser relativa a la
+  ;; carpeta de este dibujo, o estar sólo por su nombre.
+  (setq prefijo (getvar "DWGPREFIX")
+        encontrada (or (findfile ruta)
+                       (findfile (strcat prefijo ruta))
+                       (findfile (strcat prefijo (am:fichero-de-xref ruta)))))
+  (list encontrada
+        (if (or (wcmatch ruta "?:*") (wcmatch ruta "\\\\*")) ruta (strcat prefijo ruta))))
+
+(defun am:abrir-dibujo (ruta / docs doc abierto)
+  ;; Abre `ruta` en AutoCAD **sin cerrar el dibujo actual** (Pablo, 2026-09-17). Si ya
+  ;; está abierto, lo pone delante. No cambia ninguna variable (`C-16`).
+  (setq docs (vla-get-Documents (vlax-get-acad-object)) abierto nil)
+  (vlax-for d docs
+    (if (= (strcase (vla-get-FullName d)) (strcase ruta)) (setq abierto d)))
+  (setq doc (if abierto
+              abierto
+              (vl-catch-all-apply
+                '(lambda () (vla-Open (vla-get-Documents (vlax-get-acad-object)) ruta :vlax-false)))))
+  (if (vl-catch-all-error-p doc)
+    (progn
+      (princ (strcat "\nNo he podido abrir «" (am:fichero-de-xref ruta) "»: "
+                     (vl-catch-all-error-message doc)))
+      (am:log "C-15: no se ha podido abrir el dibujo referenciado"))
+    (progn
+      (vl-catch-all-apply 'vla-Activate (list doc))
+      (princ "\nAbierto. Escribe ARCHMUSE allí.")
+      (am:log "C-15: abierto el dibujo referenciado"))))
+
 (defun am:xrefs-sin-cargar ( / res)
-  ;; Los ficheros de las xref que AutoCAD no ha podido cargar: de ésas no se
+  ;; Las xref que AutoCAD no ha podido cargar, `((fichero ruta) ...)`: de ésas no se
   ;; puede saber qué tienen.
   (setq res nil)
   (foreach x (am:xrefs)
-    (if (not (caddr x)) (setq res (cons (cadr x) res))))
+    (if (not (caddr x)) (setq res (cons (list (cadr x) (nth 3 x)) res))))
   (reverse res))
 
 (defun am:polilineas-en-capa (capa / ss)
@@ -588,41 +620,60 @@
   (setq ss (ssget "_X" (list '(0 . "LWPOLYLINE") (cons 8 capa))))
   (if ss (sslength ss) 0))
 
-(defun am:recintos-en-xref-p (capa / en-xref propios x)
+(defun am:recintos-en-xref-p (capa / en-xref propios x fichero ruta respuesta n)
   ;; `C-15`. Si los recintos de `capa` están, todos o en parte, en una xref
-  ;; cargada, lo dice y devuelve T: el comando se para sin ofrecer otra capa.
+  ;; cargada, lo dice y devuelve T: el comando se para sin ofrecer otra capa y sin
+  ;; dibujar nada, conteste lo que conteste.
+  ;;
+  ;; **En lenguaje de arquitecto** (Pablo, 2026-09-17): hasta la 3.9.8 decía «NO MIDO
+  ;; ESTE DIBUJO», «referencia externa», «677 polilínea(s)» y «No te ofrezco medir otra
+  ;; capa». Ahora dice dónde están las habitaciones y ofrece abrir ese dibujo. El
+  ;; detalle técnico (cuántas polilíneas, en la referencia y en el dibujo) va sólo al
+  ;; registro, con cifras y sin nombres. Con varias referencias con habitaciones, las
+  ;; nombra y no ofrece abrir ninguna.
   (setq en-xref (am:xrefs-con-recintos capa))
   (if (null en-xref)
     nil
     (progn
-      (setq propios (am:polilineas-en-capa capa))
-      (princ "\n\nNO MIDO ESTE DIBUJO.")
-      (foreach x en-xref
-        (princ (strcat "\n  Este dibujo referencia «" (car x) "», y los recintos de «" capa
-                       "» (" (itoa (cadr x)) " polilínea(s))"
-                       (if (> (caddr x) 0) " y el cuadro de superficies" "")
-                       " están ahí.")))
-      (if (> propios 0)
-        (princ (strcat "\n  En este dibujo hay otras " (itoa propios) " en «" capa
-                       "»: medir sólo ésas daría una cifra de menos.")))
-      (princ (strcat "\n  Abre "
-                     (if (= (length en-xref) 1) (strcat "«" (car (car en-xref)) "»") "esos ficheros")
-                     " y teclea ARCHMUSE allí."))
-      (princ "\n  No te ofrezco medir otra capa: con los recintos en una referencia externa,")
-      (princ "\n  cualquier otra daría una cifra falsa.")
+      (setq propios (am:polilineas-en-capa capa) n 0)
+      (foreach x en-xref (setq n (+ n (cadr x))))
+      (am:log (strcat "C-15: habitaciones en " (itoa (length en-xref)) " referencia(s); " (itoa n) " polilineas en ellas y " (itoa propios) " en el dibujo"))
+      (if (> (length en-xref) 1)
+        (progn
+          (princ "\nArchMuse no puede medir este plano: las habitaciones están dibujadas en varios dibujos:")
+          (foreach x en-xref (princ (strcat "\n  · " (car x))))
+          (princ "\nÁbrelos uno a uno y escribe ARCHMUSE en cada uno."))
+        (progn
+          (setq x (car en-xref) fichero (car x))
+          (princ (strcat "\nArchMuse no puede medir este plano: las habitaciones están dibujadas en «"
+                         fichero "»."))
+          (initget "Si No")
+          (setq respuesta (getkword (strcat "\n¿Abro «" fichero "»? [Si/No] <Si>: ")))
+          (if (/= respuesta "No")
+            (progn
+              (setq ruta (am:ruta-de-xref (nth 3 x)))
+              (if (car ruta)
+                (am:abrir-dibujo (car ruta))
+                (progn
+                  (princ (strcat "\nNo encuentro «" fichero "». Debería estar en: " (cadr ruta)))
+                  (am:log "C-15: el dibujo referenciado no se encuentra"))))
+            (princ "\nDe acuerdo: no dibujo nada."))))
       T)))
 
 (defun am:avisar-xrefs-sin-cargar ( / sin-cargar)
   ;; `C-15`, la parte que NO para. Xrefs sin cargar y ningún recinto en la capa
   ;; por defecto: pueden estar ahí, pero no se puede saber. Se avisa y se sigue.
+  ;; En lenguaje de arquitecto y con la ruta completa de lo que no encuentra (Pablo,
+  ;; 2026-09-17): medido en Core Console, un dibujo referenciado que no está en su
+  ;; sitio no se carga, y ésta es la única forma de decírselo.
   (setq sin-cargar (am:xrefs-sin-cargar))
   (if (and sin-cargar (= 0 (am:polilineas-en-capa *am:capa-por-defecto*)))
     (progn
-      (princ (strcat "\n\nAVISO — Este dibujo referencia " (itoa (length sin-cargar))
-                     " fichero(s) que AutoCAD no ha podido cargar:"))
-      (foreach f sin-cargar (princ (strcat "\n  · " f)))
-      (princ "\n  Si los recintos están en uno de ellos, ábrelo y teclea ARCHMUSE allí:")
-      (princ "\n  desde aquí no se pueden ver. Elige capa sólo si están dibujados en ESTE dibujo.")
+      (princ "\n\nAVISO — No encuentro estos dibujos que usa el plano:")
+      (foreach f sin-cargar
+        (princ (strcat "\n  · «" (car f) "», que debería estar en: " (cadr (am:ruta-de-xref (cadr f))))))
+      (princ "\n  Si las habitaciones están dibujadas en uno de ellos, ábrelo y escribe ARCHMUSE allí.")
+      (princ "\n  Si están en este plano, sigue.")
       T)
     nil))
 

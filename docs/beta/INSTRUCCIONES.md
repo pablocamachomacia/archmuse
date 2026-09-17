@@ -62,8 +62,8 @@ la capa «ARCHMUSE - BORRADOR» para imprimir.
 
 ## 4 · Lo que todavía no hace
 
-- **No mide hojas con referencias externas.** Si las estancias están dibujadas
-  en otro fichero, ArchMuse te dice cuál: ábrelo y escribe `ARCHMUSE` allí.
+- **No mide hojas cuyas habitaciones están en otro dibujo.** ArchMuse te dice
+  cuál y te ofrece abrirlo: escribe `ARCHMUSE` allí.
 - **La casilla NUMERO UDS sale vacía.** Rellénala tú.
 - **No funciona en AutoCAD LT**: hace falta AutoCAD completo.
 
