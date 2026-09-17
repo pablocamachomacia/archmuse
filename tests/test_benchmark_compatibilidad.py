@@ -58,10 +58,10 @@ CIFRAS_BUENAS = {(2, 1): "20,00 m²", (3, 1): "12.00m²", (4, 1): "9,00 m2", (5,
                  (7, 1): "49.30"}
 
 
-def _dibujar(destino, cifras=None, con_cuadro=True, recintos=RECINTOS):
+def _dibujar(destino, cifras=None, con_cuadro=True, recintos=RECINTOS, cabecera=CABECERA):
     generador = _cargar("generar_cuadro_sintetico_banco", GENERADOR)
     generador.RECINTOS = recintos
-    cuadro = list(CABECERA) + [(f, c, t) for (f, c), t in (cifras or {}).items()]
+    cuadro = list(cabecera) + [(f, c, t) for (f, c), t in (cifras or {}).items()]
     generador.CUADRO = tuple(cuadro)
     if con_cuadro:
         return generador.guardar(str(destino))
@@ -144,14 +144,25 @@ def test_la_clase_la_pone_una_persona_y_decide_el_resultado(carpetas, clase, esp
     assert fila["resultado"] == esperado
 
 
+#: Su cuadro trae una terraza que el plano no dibuja: la tabla de ArchMuse no tiene
+#: esa fila. Hasta el 2026-09-17 el caso era el útil total, que el reparto viejo no
+#: rellenaba; la tabla que se dibuja sí lo calcula (`C-14`).
+TERRAZA_QUE_NO_ESTA = {(2, 3): "4,50"}
+
+
+def _con_terraza(cifras):
+    return list(CABECERA) + [(2, 2, "terraza 1")], {**cifras, **TERRAZA_QUE_NO_ESTA}
+
+
 def test_un_campo_que_archmuse_deja_vacio_lleva_su_motivo(carpetas):
-    """`C-1`: el útil total no se rellena nunca. Si su cuadro lo trae, ArchMuse
-    queda vacío con motivo: PARTIAL, no PASS y no MISMATCH."""
+    """Si su cuadro trae una cifra que ArchMuse no da, queda vacío con motivo:
+    PARTIAL, no PASS y no MISMATCH."""
     planos, salida = carpetas
-    _dibujar(planos / "a.dxf", {**CIFRAS_BUENAS, (6, 1): "45,50"})
+    cabecera, cifras = _con_terraza(CIFRAS_BUENAS)
+    _dibujar(planos / "a.dxf", cifras, cabecera=cabecera)
     fila, detalle = _uno(banco.ejecutar(str(planos), str(salida)))
     [vacio] = [c for c in detalle["comparaciones"] if c["estado"] == banco.VACIO_CON_MOTIVO]
-    assert vacio["campo"] == "total_util" and vacio["motivo"]
+    assert vacio["campo"] == "terraza_1" and vacio["motivo"]
     assert fila["resultado"] == banco.PARTIAL and fila["mismatches"] == 0
 
 
@@ -235,8 +246,9 @@ def test_el_resumen_solo_lista_causas_que_aparecen(carpetas):
 
 def test_un_patron_repetido_es_el_que_sale_en_dos_planos(carpetas):
     planos, salida = carpetas
+    cabecera, cifras = _con_terraza(CIFRAS_BUENAS)
     for nombre in ("a.dxf", "b.dxf"):
-        _dibujar(planos / nombre, {**CIFRAS_BUENAS, (6, 1): "45,50"})
+        _dibujar(planos / nombre, cifras, cabecera=cabecera)
     hecho = banco.ejecutar(str(planos), str(salida))
     with open(hecho["resumen"], encoding="utf-8") as f:
         repetidos = f.read().split("## Patrones repetidos")[1].split("##")[0]

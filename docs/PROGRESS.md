@@ -5,6 +5,69 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-17 (5) · El banco clasifica cada fallo: AUTOMÁTICO, UN CLIC o VACÍO
+
+**Pablo:** que el banco clasifique cada celda que no coincide o queda vacía, y que el
+resumen dé, por plano y en total, las tres categorías, intervenciones por vivienda, %
+de viviendas sin intervención y % completas si se respondieran los UN CLIC. Sólo
+medir: el «modo preguntar» no se desarrolla.
+
+**Primero, un hallazgo que cambiaba las cifras.** Ejecutado tal cual sobre el plano
+maestro, el banco daba 0 viviendas correctas. Comparaba con
+`reparto_cuadro.calcular_reparto` sobre el cuadro del arquitecto, un camino que **sólo
+usaba el banco**: el producto dibuja la plantilla fija desde el 2026-09-13. Ese camino
+no aplica `C-14` al útil, bloquea las terrazas sin número y no emparejaba los cuadros
+con sufijo («…FN», «…PMR»). **Decisión:** el banco compara con la tabla que dibuja
+ArchMuse, que es lo que recibe el arquitecto. Filas repetidas del mismo campo se
+emparejan por cifra, nunca por orden; con viviendas del mismo rótulo se toma la que
+distinguiría el clic. Con eso, el banco da las mismas 14 viviendas correctas que la
+comparación por el clic.
+
+**La clasificación** sale del motivo de ArchMuse (`PATRONES_DE_MOTIVO`, cada fragmento
+vigilado por un test contra el código); gana la peor causa, lo desconocido es VACÍO y
+los motivos derivados («no se calcula sobre una cifra bloqueada») toman la categoría
+de lo que los bloquea. Revisado a mano sobre el plano maestro antes de dar las
+cifras: dos fallos corregidos con test (la fila que falta porque la pieza duda en la
+vivienda de al lado salía VACÍO; el útil total heredaba la categoría de una construida
+sin relación).
+
+**Plano maestro (1 plano, 25 viviendas con cuadro, 250 celdas con cifra):**
+
+| AUTOMÁTICO | UN CLIC | VACÍO | Cifras distintas | Intervenciones por vivienda | Sin intervención | Completas con los UN CLIC |
+|---|---|---|---|---|---|---|
+| 201 | 34 | 15 | 0 | 1,36 | 56,0 % | 72,0 % |
+
+**Hallazgo sin resolver:** una vivienda escribe en su tabla, con cifra, una pieza que
+según el cuadro del arquitecto es de la vecina, y su reparto por cercanía pasa la
+holgura (no es «dudoso»). Su cuadro no tiene esa fila, así que el banco no lo ve como
+cifra distinta. Medir «filas de la tabla sin celda en su cuadro» lo haría visible.
+
+Carpeta lista: `C:\ArchMuse-Benchmark\planos\` (fuera del repositorio).
+
+---
+
+## 2026-09-17 (4) · Alcance del rótulo de construida: 5 alturas, medido y descartado
+
+**Pablo propuso** ampliar el alcance de `C-12` de 3 a 5 alturas de texto, sólo si en
+el plano maestro no aparecía ninguna cifra distinta de la del arquitecto. Medido
+cambiando el parámetro en memoria, por las dos peticiones del clic, contra los 25
+cuadros del arquitecto (script fuera del repositorio):
+
+| Alcance | Cifras distintas del arquitecto | Viviendas que coinciden en todo |
+|---|---|---|
+| 3 alturas (firmado) | 0 | 14 de 25 |
+| 5 alturas | 0 | 10 de 25 |
+
+Con 5 alturas, dos viviendas ganan la construida y siete la pierden: su rótulo pasa a
+alcanzar dos polilíneas y, por la condición 1 de `C-12`, no se elige ninguna. Una
+más sigue vacía (su rótulo señala una polilínea que no contiene la vivienda). Con la
+lectura de `C-20` también a 5 alturas, el resultado es el mismo.
+
+**Decisión de Pablo (2026-09-17): se queda en 3.** No repetir esta medición salvo que
+cambie la condición 1 de `C-12`.
+
+---
+
 ## 2026-09-17 (3) · Pendientes antiguos: marca, referencias en la web, terraza, folio, LT
 
 1. **La marca de borrador de la exportación web caía en 1e+20 (`C-3`). Arreglado.**

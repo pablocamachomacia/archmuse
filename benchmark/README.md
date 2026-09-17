@@ -49,13 +49,17 @@ repositorio. Lo que se comparte es `resumen.md`, y aun así conviene leerlo ante
 
 Por cada cuadro de superficies del plano:
 
-1. Se busca su vivienda con la regla de siempre (`reparto_cuadro.elegir_vivienda`:
-   por el código de su fila `VIVIENDA TIPO`). Si no se encuentra, todas sus cifras
-   quedan como «ArchMuse vacío con motivo», con el motivo del emparejamiento.
-2. Las superficies útiles y sus totales salen de `reparto_cuadro.calcular_reparto`
-   sobre el cuadro vaciado (`como_plantilla`); la construida cerrada, de la tabla
-   de ArchMuse (`C-12`). Si el reparto y la tabla dicen cosas distintas, el plano
-   queda PENDIENTE DE REVISIÓN: la comparación no valdría.
+1. Se busca su vivienda por el código de su fila `VIVIENDA TIPO`, sin espacios y sin
+   las letras que el estudio añade tras la tipología («VT13/3FN» es la «VT13/3»). Si
+   no se encuentra, todas sus cifras quedan como «ArchMuse vacío con motivo». Si hay
+   varias con ese rótulo, se mide cada una como la distinguiría el clic del comando y
+   se toma la que mejor coincide: es la que el arquitecto marcaría.
+2. Se compara con **la tabla que dibuja ArchMuse** para esa vivienda (la plantilla
+   fija: piezas, totales, útil de `C-14` y construida de `C-12`). Cada celda de su
+   cuadro va con la fila de su mismo campo; si hay varias filas con el mismo campo
+   —dos «Terraza» sin número—, se emparejan **por la cifra**, nunca por el orden.
+   *Hasta el 2026-09-17 se comparaba con `reparto_cuadro.calcular_reparto`, un
+   camino que el producto dejó de usar con la plantilla fija.*
 3. Cada celda con una superficie escrita se compara con una tolerancia de
    **0,01 m²**:
 
@@ -81,6 +85,30 @@ El banco **no clasifica**: copia filas de `mismatches.csv` a `clasificacion.csv`
 
 Cualquier otro texto cuenta como sin clasificar.
 
+## Intervenciones: AUTOMÁTICO, UN CLIC o VACÍO
+
+Además, **el banco sí clasifica solo** cada celda comparada según cuánto haría falta
+del arquitecto (sólo se mide: ArchMuse todavía no pregunta):
+
+| Categoría | Cuándo |
+|---|---|
+| AUTOMÁTICO | coincide, o la diferencia está clasificada como `redondeo` o `cuadro desactualizado` |
+| UN CLIC | vacía por algo que resolvería una pregunta cerrada: pieza entre dos viviendas, rótulo de construida que alcanza dos polilíneas, cuál de dos contornos es la construida, cuál de dos nombres, interior o exterior, cuál de dos viviendas con el mismo rótulo |
+| VACÍO | vacía por algo que ninguna pregunta arregla: estancia dibujada dos veces, contorno que no existe, construida sin rótulo a su alcance, fila que la tabla no tiene… **y cualquier motivo que el banco no reconozca** |
+
+Aparte, *cifras distintas*: MISMATCH sin explicar.
+
+La categoría sale del motivo de ArchMuse (`PATRONES_DE_MOTIVO` en `ejecutar.py`; un
+test comprueba que cada fragmento existe en el código). Con varias causas gana la
+peor. Un motivo que sólo dice que otra cifra está bloqueada (el útil total, un total
+de lado) toma la categoría de lo que lo bloquea.
+
+El resumen trae, por plano y en total: las tres categorías, **intervenciones por
+vivienda** (celdas UN CLIC / viviendas con cuadro: cuenta de más, porque una pregunta
+puede resolver varias celdas), **% de viviendas sin ninguna intervención** y **% de
+viviendas completas si se respondieran los UN CLIC** (supone que la respuesta basta;
+no está medido).
+
 ## Resultado de cada plano
 
 Son criterios del banco, no de arquitectura. Ninguno añade ni cambia un criterio
@@ -90,7 +118,7 @@ aquí sólo se cuenta. Se aplican en este orden:
 | Resultado | Cuándo |
 |---|---|
 | FAIL | no se ha podido abrir, convertir, leer o medir el plano por un fallo; o hay un MISMATCH clasificado `error de ArchMuse` |
-| PENDIENTE DE REVISIÓN | hay un MISMATCH sin clasificar o `pendiente de determinar`, un campo vacío sin motivo, o el reparto y la tabla de ArchMuse no coinciden |
+| PENDIENTE DE REVISIÓN | hay un MISMATCH sin clasificar o `pendiente de determinar`, o un campo vacío sin motivo |
 | FAIL | tiene cuadro con cifras y ArchMuse no da ninguna igual; o no tiene cuadro y ArchMuse no ha sabido leerlo (capa o escala sin resolver) |
 | SIN REFERENCIA | no tiene un cuadro con cifras; se anota la cobertura |
 | PARTIAL | hay MISMATCH explicados (`redondeo`, `cuadro desactualizado`), campos vacíos con motivo, o cuadros sin vivienda emparejada |

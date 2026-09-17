@@ -42,9 +42,8 @@ if RAIZ not in sys.path:
 
 from herramientas import core_console  # noqa: E402
 from analyzer import cuadro_superficies as cs  # noqa: E402
-from analyzer import evaluator, medicion, parser  # noqa: E402
+from analyzer import medicion, parser  # noqa: E402
 from analyzer import plantilla_cuadro as pc  # noqa: E402
-from analyzer import reparto_cuadro as rc  # noqa: E402
 from analyzer.texto_dxf import decodificar_escapes  # noqa: E402
 
 SALIDA_POR_DEFECTO = os.path.join(RAIZ, "benchmark", "resultados")
@@ -79,8 +78,112 @@ CAMPOS_COMPARABLES = cs.CAMPOS_SUMANDOS_UTIL + cs.CAMPOS_TOTAL_UTIL + cs.CAMPOS_
 COLUMNAS = ("plano", "formato", "viviendas_detectadas", "viviendas_con_cuadro",
             "viviendas_emparejadas", "viviendas_correctas", "estancias", "superficies",
             "campos_vacios", "preguntas", "cifras_comparadas", "coincidencias", "mismatches",
-            "vacios_con_motivo", "referencias_inexistentes", "errores", "tiempo_s",
+            "vacios_con_motivo", "referencias_inexistentes", "automatico", "un_clic", "vacio",
+            "cifras_distintas", "intervenciones_por_vivienda", "viviendas_sin_intervencion_pct",
+            "viviendas_completas_con_un_clic_pct", "errores", "tiempo_s",
             "tiempo_conversion_s", "resultado", "motivo")
+
+# ---------------------------------------------------------------------------
+# Cuánta intervención haría falta (Pablo, 2026-09-17). **Sólo se mide**: el
+# «modo preguntar» no existe todavía.
+# ---------------------------------------------------------------------------
+
+AUTOMATICO = "AUTOMÁTICO"
+UN_CLIC = "UN CLIC"
+VACIO = "VACÍO"
+#: Una celda con cifra distinta de la del arquitecto que nadie ha explicado como
+#: redondeo o cuadro desactualizado. No es ninguna de las tres: es un error por mirar.
+CIFRA_DISTINTA = "CIFRA DISTINTA"
+#: Un motivo que sólo repite que otra cifra está bloqueada («ver sus notas»): toma la
+#: categoría de lo que la bloquea (`resolver_derivadas`).
+DERIVADO = "derivado"
+
+#: `(fragmento, categoría)`. Cada fragmento es texto literal de un motivo de
+#: `analyzer/` (lo vigila un test: si cambia la redacción, se pone rojo). Si un motivo
+#: trae varias causas, gana la peor: VACÍO sobre UN CLIC sobre derivado. **Un motivo
+#: que no casa con ninguno es VACÍO**: no se cuenta como resoluble lo que no se sabe.
+PATRONES_DE_MOTIVO = (
+    # UN CLIC: una pregunta con respuesta cerrada.
+    ("no se sabe si es de esta vivienda o de", UN_CLIC),          # reparto dudoso (tabla)
+    ("entre viviendas no es firme", UN_CLIC),                     # reparto dudoso (medición)
+    ("hay una pieza que duda si es de esta vivienda", UN_CLIC),   # fila que falta por eso
+    ("polilíneas a menos de", UN_CLIC),                           # C-12: dos al alcance
+    ("polilíneas rotuladas como construida cerrada que", UN_CLIC),  # C-12: dos rotuladas
+    ("no se sabe cuál de los dos es la construida", UN_CLIC),     # C-20: duda
+    ("tiene dos nombres dentro", UN_CLIC),                        # C-18
+    ("no sabe si es un espacio interior o exterior", UN_CLIC),    # ámbito (tabla)
+    ("no se sabe si son superficie interior o exterior", UN_CLIC),  # ámbito (medición)
+    ("ArchMuse no las distingue", UN_CLIC),                       # C-13: lo resuelve el clic
+    # VACÍO: no hay pregunta que lo arregle.
+    ("dibujados dos veces", VACIO),
+    ("se solapa con otra pieza dibujada", VACIO),
+    ("es superficie construida, no útil", VACIO),
+    ("redondea a cero", VACIO),
+    ("no tiene rótulo", VACIO),
+    ("no es un nombre de estancia", VACIO),
+    ("no rotula ninguna polilínea", VACIO),
+    ("de una sola polilínea que contenga", VACIO),
+    ("no trae altura de texto", VACIO),
+    ("no hay ningún espacio de este lado", VACIO),
+    ("no tiene ningún espacio interior", VACIO),
+    ("no tiene fila para", VACIO),
+    # Derivados: repiten que otra cifra está bloqueada.
+    ("no se calcula sobre una cifra bloqueada", DERIVADO),
+    ("alguna fila de este lado no lleva cifra", DERIVADO),
+    ("no contiene todas las piezas interiores", DERIVADO),
+    ("con un contorno rotulado como superficie", DERIVADO),
+)
+_GRAVEDAD = {DERIVADO: 0, UN_CLIC: 1, VACIO: 2}
+
+
+def categoria_de_motivo(motivo: Optional[str]) -> str:
+    encontradas = {categoria for fragmento, categoria in PATRONES_DE_MOTIVO
+                   if fragmento in (motivo or "")}
+    if not encontradas:
+        return VACIO
+    return max(encontradas, key=_GRAVEDAD.get)
+
+
+TOTALES_DE_LADO = ("total_util_interior", "total_util_exterior")
+
+
+def resolver_derivadas(categorias: List[str], campos: Optional[List[str]] = None) -> List[str]:
+    """Las derivadas toman la peor categoría de lo que las bloquea; si no hay nada,
+    VACÍO.
+
+    Con `campos`, lo que bloquea depende de la celda: el útil total, de los dos
+    totales de lado (`C-14`); un total de lado o la construida, de las piezas. Sin
+    `campos`, de todas las demás."""
+    def peor(indices):
+        propias = [categorias[i] for i in indices if categorias[i] in (UN_CLIC, VACIO)]
+        return max(propias, key=_GRAVEDAD.get) if propias else None
+
+    todas = range(len(categorias))
+    if campos is None:
+        comun = peor(todas) or VACIO
+        return [comun if c == DERIVADO else c for c in categorias]
+    piezas = [i for i in todas if campos[i] not in TOTALES_DE_LADO + ("total_util",
+                                                                      "superficie_construida_cerrada")]
+    salida = list(categorias)
+    for i in todas:
+        if salida[i] == DERIVADO and campos[i] != "total_util":
+            salida[i] = peor(piezas) or peor(todas) or VACIO
+    for i in todas:
+        if salida[i] == DERIVADO:
+            lados = [j for j in todas if campos[j] in TOTALES_DE_LADO]
+            categorias_lados = [salida[j] for j in lados if salida[j] in (UN_CLIC, VACIO)]
+            salida[i] = (max(categorias_lados, key=_GRAVEDAD.get) if categorias_lados
+                         else peor(piezas) or VACIO)
+    return salida
+
+
+def motivo_de_fila_que_falta(campo: str, vecina: Optional[str]) -> str:
+    """La tabla no tiene fila para una celda de su cuadro. Si en otra vivienda hay una
+    pieza de esa familia que duda si es de ésta, una respuesta la traería."""
+    if vecina:
+        return ("la tabla de ArchMuse no lleva «%s»: en %s hay una pieza que duda si es de "
+                "esta vivienda" % (campo, vecina))
+    return "la tabla de ArchMuse no tiene fila para «%s»" % campo
 
 
 class CarpetaNoPermitida(ValueError):
@@ -239,13 +342,6 @@ def convertir_dwg(ruta: str, temporal: str, conversor: Optional[Tuple[str, str]]
 # Un plano
 # ---------------------------------------------------------------------------
 
-def _unidades(plano):
-    rooms = list(plano.rooms)
-    if plano.unit_labels:
-        return evaluator.group_rooms_by_unit_label(rooms, list(plano.unit_labels))
-    return evaluator.group_rooms_by_proximity(rooms)
-
-
 def _motivo_de(plantilla, etiqueta: str) -> Optional[str]:
     for etiquetas, motivo in plantilla.notas_por_motivo:
         if etiqueta in etiquetas:
@@ -272,7 +368,7 @@ def analizar_dxf(ruta: str, plano_id: str, clasificacion) -> dict:
     r = {"plano": plano_id, "viviendas_detectadas": 0, "viviendas_con_cuadro": 0,
          "viviendas_emparejadas": 0, "viviendas_correctas": 0, "estancias": 0, "superficies": 0,
          "campos_vacios": 0, "preguntas": 0, "errores": [], "causas": [], "comparaciones": [],
-         "discrepancias_internas": [], "lectura": None}
+         "intervenciones": [], "lectura": None}
     try:
         doc = parser.load_document(ruta)
     except Exception as exc:  # noqa: BLE001 - un plano ajeno puede fallar de cualquier forma
@@ -297,14 +393,13 @@ def analizar_dxf(ruta: str, plano_id: str, clasificacion) -> dict:
         plano = None
 
     plantillas: Dict[str, object] = {}
-    unidades, medida = [], None
+    medida = None
     if plano is not None:
         try:
             medida = medicion.medir_planta(plano)
-            unidades = _unidades(plano)
         except Exception as exc:  # noqa: BLE001
             r["errores"].append("fallo al medir: %s" % exc.__class__.__name__)
-            medida, unidades = None, []
+            medida = None
     if medida is not None:
         r["viviendas_detectadas"] = len(medida.viviendas)
         for vivienda in medida.viviendas:
@@ -326,91 +421,225 @@ def analizar_dxf(ruta: str, plano_id: str, clasificacion) -> dict:
                 r[clave] += cobertura[clave]
             r["causas"].extend(cobertura["causas"])
 
+    viviendas = []
     for cuadro in cuadros:
-        _comparar_cuadro(r, cuadro, unidades, medida, plantillas, clasificacion)
+        viviendas.append(_comparar_cuadro(r, doc, plano, cuadro, medida, plantillas, clasificacion))
+    r["intervenciones"] = [v for v in viviendas if v is not None]
     return r
 
 
-def _comparar_cuadro(r, cuadro, unidades, medida, plantillas, clasificacion) -> None:
-    celdas = [c for c in cuadro.celdas if c.campo in CAMPOS_COMPARABLES]
-    if medida is None:
-        unidad, motivo = None, r["lectura"] or "el plano no se ha podido medir."
-    else:
-        unidad, motivo = rc.elegir_vivienda(unidades, cuadro)
-    tipo = cuadro.celda("vivienda_tipo")
-    nombre = unidad.name if unidad is not None else ((tipo.texto_actual or "").strip()
-                                                     if tipo is not None else "") or "?"
-    if unidad is None:
-        r["causas"].append(motivo)
-        for celda in celdas:
-            _anotar(r, nombre, celda, None, motivo, clasificacion)
-        return
-    r["viviendas_emparejadas"] += 1
-    posicion = next(i for i, u in enumerate(unidades) if u is unidad)
-    impedimentos = tuple(medida.viviendas[posicion].impedimentos)
-    reparto = rc.calcular_reparto(unidad, cuadro.como_plantilla(), unidad.rooms,
-                                  medicion_limpia=not impedimentos, impedimentos=impedimentos)
-    escritas = {c.campo: c.texto for c in reparto.celdas}
-    motivos = {n.campo: n.motivo for n in reparto.no_escritas}
-    plantilla = plantillas.get(unidad.name)
+def _clave_de_vivienda(texto: Optional[str]) -> str:
+    """«VT1 /3» y «VT13/3FN» del cuadro son la «VT1/3» y la «VT13/3» del dibujo: sin
+    espacios, y sin las letras que el estudio añade tras la tipología (decisión del
+    banco, 2026-09-17: medido en el plano maestro, «FN» y «PMR» en 3 de 25 cuadros)."""
+    limpio = "".join((texto or "").split()).upper()
+    return re.sub(r"^(VT\d+/\d+)[A-Z]+$", r"\1", limpio)
 
-    for celda in celdas:
-        if celda.campo == "superficie_construida_cerrada":
-            # La construida sale de `C-12` (la tabla de ArchMuse), no del reparto.
-            if isinstance(plantilla, pc.Plantilla):
-                texto = plantilla.cierre[2][1]
-                motivo_celda = _motivo_de(plantilla, pc.CONSTRUIDA)
+
+def _lecturas_de_la_tabla(plantilla) -> Dict[str, List[dict]]:
+    """Lo que dibuja ArchMuse, por campo del cuadro: `{campo: [{texto, motivo}]}`."""
+    lecturas: Dict[str, List[dict]] = {}
+    for fila in list(plantilla.interiores) + list(plantilla.exteriores):
+        campo = cs.campo_de_la_pieza(fila.rotulo)
+        if campo:
+            lecturas.setdefault(campo, []).append(
+                {"campo": campo, "texto": fila.valor,
+                 "motivo": None if fila.valor else _motivo_de(plantilla, fila.rotulo)})
+    for campo, texto, etiqueta in (
+            ("total_util_interior", plantilla.cierre[0][1], pc.TOTAL_INTERIOR),
+            ("total_util_exterior", plantilla.cierre[0][3], pc.TOTAL_EXTERIOR),
+            ("total_util", plantilla.cierre[1][1], pc.TOTAL_UTIL),
+            ("superficie_construida_cerrada", plantilla.cierre[2][1], pc.CONSTRUIDA)):
+        lecturas[campo] = [{"campo": campo, "texto": texto,
+                            "motivo": None if texto else _motivo_de(plantilla, etiqueta)}]
+    return lecturas
+
+
+def _familia(campo: str) -> str:
+    return re.sub(r"_\d+$", "", campo)
+
+
+def _emparejar(celdas, lecturas) -> Dict[int, Optional[dict]]:
+    """Qué fila de la tabla va con cada celda del cuadro.
+
+    Por su campo si sólo hay una fila con ese campo. Si hay varias con el mismo
+    campo —dos «Terraza» sin número dan las dos `terraza_1`— o la del número no
+    existe, entre las de su familia **por la cifra**: nunca por el orden, que sería
+    inventar cuál es cuál. Sin ninguna que coincida, la más cercana (y sale como
+    cifra distinta), y si no, una sin cifra."""
+    usadas = set()
+    elegidas: Dict[int, Optional[dict]] = {}
+    todas = [f for filas in lecturas.values() for f in filas]
+    for pasada in (1, 2):
+        for i, celda in enumerate(celdas):
+            if i in elegidas:
+                continue
+            referencia = cifra_de_referencia(celda.texto_actual)
+            exactas = [f for f in lecturas.get(celda.campo, []) if id(f) not in usadas]
+            if len(lecturas.get(celda.campo, [])) == 1:
+                candidatas = exactas
             else:
-                texto, motivo_celda = "", plantilla or "no hay tabla de ArchMuse para esta vivienda."
+                candidatas = [f for f in todas if id(f) not in usadas
+                              and _familia(f["campo"]) == _familia(celda.campo)
+                              and (f["campo"] == celda.campo or len(lecturas[f["campo"]]) > 1)]
+            valor = lambda f: cs.superficie_en_m2(f["texto"]) if f["texto"] else None  # noqa: E731
+            iguales = [f for f in candidatas if referencia is not None and valor(f) is not None
+                       and coinciden(valor(f), referencia)]
+            if pasada == 1:
+                elegida = iguales[0] if iguales else None
+            elif not candidatas:
+                elegida = None
+                elegidas[i] = None
+                continue
+            else:
+                con_cifra = [f for f in candidatas if valor(f) is not None]
+                if con_cifra and referencia is not None:
+                    elegida = min(con_cifra, key=lambda f: abs(valor(f) - referencia))
+                else:
+                    elegida = (con_cifra or candidatas)[0]
+            if elegida is not None:
+                usadas.add(id(elegida))
+                elegidas[i] = elegida
+    return elegidas
+
+
+def _comparar_con_plantilla(r, nombre, celdas, plantilla, medida, clasificacion) -> List[dict]:
+    lecturas = _lecturas_de_la_tabla(plantilla)
+    elegidas = _emparejar(celdas, lecturas)
+    filas = []
+    for i, celda in enumerate(celdas):
+        lectura = elegidas.get(i)
+        if lectura is None:
+            vecinas = [v.nombre for v in (medida.viviendas if medida else ())
+                       for d in v.repartos_dudosos
+                       if d.siguiente == nombre and cs.campo_de_la_pieza(d.pieza)
+                       and _familia(cs.campo_de_la_pieza(d.pieza) or "") == _familia(celda.campo)]
+            motivo = motivo_de_fila_que_falta(celda.campo, vecinas[0] if vecinas else None)
+            filas.append(_anotar(r, nombre, celda, "", motivo, clasificacion))
         else:
-            texto, motivo_celda = escritas.get(celda.campo, ""), motivos.get(celda.campo)
-        _anotar(r, unidad.name, celda, texto, motivo_celda, clasificacion)
+            filas.append(_anotar(r, nombre, celda, lectura["texto"], lectura["motivo"], clasificacion))
+    return filas
 
-    if isinstance(plantilla, pc.Plantilla):
-        _contrastar_con_la_tabla(r, unidad.name, escritas, plantilla)
 
-    propias = [c for c in r["comparaciones"] if c["vivienda"] == unidad.name]
-    if propias and all(c["estado"] in (COINCIDENCIA, REFERENCIA_INEXISTENTE) for c in propias) \
-            and any(c["estado"] == COINCIDENCIA for c in propias):
+def _comparar_cuadro(r, doc, plano, cuadro, medida, plantillas, clasificacion) -> Optional[dict]:
+    """Compara su cuadro con **la tabla que dibuja ArchMuse** para su vivienda.
+
+    Hasta el 2026-09-17 se comparaba con `reparto_cuadro.calcular_reparto` sobre su
+    cuadro vaciado, un camino que el producto dejó de usar con la plantilla fija
+    (2026-09-13): medido en el plano maestro, sin `C-14` en el útil, bloqueando las
+    terrazas sin número y sin emparejar los cuadros «…FN». Ahora se mide lo que el
+    arquitecto recibe.
+
+    Con varias viviendas del mismo rótulo, el comando las distingue por el clic
+    (enmienda de `C-13`); aquí se mide cada una como distinguida y se toma la que
+    mejor coincide, que es la que él marcaría con el clic."""
+    celdas = [c for c in cuadro.celdas if c.campo in CAMPOS_COMPARABLES]
+    tipo = cuadro.celda("vivienda_tipo")
+    declarado = (tipo.texto_actual or "").strip() if tipo is not None else ""
+    if medida is None:
+        candidatas, motivo = [], r["lectura"] or "el plano no se ha podido medir."
+    else:
+        clave = _clave_de_vivienda(declarado)
+        if clave:
+            candidatas = [i for i, v in enumerate(medida.viviendas) if _clave_de_vivienda(v.nombre) == clave]
+        else:
+            candidatas = [0] if len(medida.viviendas) == 1 else []
+        motivo = ("el cuadro dice ser de la vivienda «%s» y el plano no tiene ninguna con ese "
+                  "rótulo" % declarado if declarado else
+                  "el cuadro no dice de qué vivienda es y el plano tiene %d" % len(medida.viviendas))
+    if not candidatas:
+        r["causas"].append(motivo)
+        filas = [_anotar(r, declarado or "?", celda, None, motivo, clasificacion) for celda in celdas]
+        r["comparaciones"].extend(filas)
+        return _intervenciones(declarado or "?", filas)
+
+    mejor = None
+    for posicion in candidatas:
+        vivienda = medida.viviendas[posicion]
+        try:
+            if vivienda.viviendas_con_el_mismo_rotulo > 1:
+                distinguida = medicion.medir_planta(plano, distinguida=posicion)
+                plantilla = pc.construir(doc, plano, vivienda.nombre, medida=distinguida,
+                                         posicion=posicion)
+            else:
+                plantilla = plantillas.get(vivienda.nombre)
+                if not isinstance(plantilla, pc.Plantilla):
+                    raise ValueError(plantilla or "no hay tabla de ArchMuse para esta vivienda.")
+            filas = _comparar_con_plantilla(r, vivienda.nombre, celdas, plantilla, medida, clasificacion)
+        except ValueError as exc:
+            filas = [_anotar(r, vivienda.nombre, celda, None, str(exc), clasificacion) for celda in celdas]
+        except Exception as exc:  # noqa: BLE001
+            r["errores"].append("fallo al preparar la tabla: %s" % exc.__class__.__name__)
+            continue
+        puntos = (sum(1 for f in filas if f["estado"] == COINCIDENCIA),
+                  -sum(1 for f in filas if f["estado"] == MISMATCH))
+        if mejor is None or puntos > mejor[0]:
+            mejor = (puntos, vivienda.nombre, filas)
+    if mejor is None:
+        return None
+    _puntos, nombre, filas = mejor
+    r["viviendas_emparejadas"] += 1
+    for f in filas:
+        if f["estado"] == VACIO_CON_MOTIVO and f["motivo"]:
+            r["causas"].append(f["motivo"])
+    r["comparaciones"].extend(filas)
+    con_referencia = [f for f in filas if f["estado"] != REFERENCIA_INEXISTENTE]
+    if con_referencia and all(f["estado"] == COINCIDENCIA for f in con_referencia):
         r["viviendas_correctas"] += 1
+    return _intervenciones(nombre, filas)
 
 
-def _anotar(r, vivienda, celda, texto, motivo, clasificacion) -> None:
+def _intervenciones(nombre, filas) -> dict:
+    """Pone la categoría a cada celda comparada y resume la vivienda."""
+    comparadas = [f for f in filas if f["estado"] != REFERENCIA_INEXISTENTE]
+    categorias = []
+    for f in comparadas:
+        if f["estado"] == COINCIDENCIA or f["clase"] in (REDONDEO, CUADRO_DESACTUALIZADO):
+            categorias.append(AUTOMATICO)
+        elif f["estado"] == MISMATCH:
+            categorias.append(CIFRA_DISTINTA)
+        else:
+            categorias.append(categoria_de_motivo(f["motivo"]))
+    categorias = resolver_derivadas(categorias, [f["campo"] for f in comparadas])
+    for f, categoria in zip(comparadas, categorias, strict=True):
+        f["categoria"] = categoria
+    return {"vivienda": nombre, "celdas": len(comparadas),
+            **{clave: categorias.count(valor) for clave, valor in (
+                ("automatico", AUTOMATICO), ("un_clic", UN_CLIC), ("vacio", VACIO),
+                ("cifras_distintas", CIFRA_DISTINTA))}}
+
+
+def _anotar(r, vivienda, celda, texto, motivo, clasificacion) -> dict:
     referencia = cifra_de_referencia(celda.texto_actual)
     archmuse = cs.superficie_en_m2(texto) if texto else None
     fila = {"vivienda": vivienda, "campo": celda.campo, "referencia": referencia,
-            "archmuse": archmuse, "motivo": None, "clase": None, "nota": None}
+            "archmuse": archmuse, "motivo": None, "clase": None, "nota": None, "categoria": None}
     if referencia is None:
         fila["estado"] = REFERENCIA_INEXISTENTE
     elif archmuse is None:
         fila["estado"] = VACIO_CON_MOTIVO
         fila["motivo"] = motivo
-        if motivo:
-            r["causas"].append(motivo)
     elif coinciden(archmuse, referencia):
         fila["estado"] = COINCIDENCIA
     else:
         fila["estado"] = MISMATCH
         clase, nota = clasificacion.get((r["plano"], vivienda, celda.campo), (None, None))
         fila["clase"], fila["nota"] = clase, nota
-    r["comparaciones"].append(fila)
+    return fila
 
 
-def _contrastar_con_la_tabla(r, vivienda, escritas, plantilla) -> None:
-    """Las cifras se comparan por campo con el reparto; lo que se dibuja es la
-    tabla de ArchMuse. Si las dos no dicen lo mismo, la comparación no vale y se
-    anota para revisarla."""
-    de_la_tabla = {f.valor for f in list(plantilla.interiores) + list(plantilla.exteriores) if f.valor}
-    for campo, texto in escritas.items():
-        if campo in cs.CAMPOS_SUMANDOS_UTIL and texto not in de_la_tabla:
-            r["discrepancias_internas"].append(
-                "%s · %s: el reparto da %s y la tabla de ArchMuse no lleva esa cifra"
-                % (vivienda, campo, texto))
-    for campo, indice in (("total_util_interior", 1), ("total_util_exterior", 3)):
-        if campo in escritas and escritas[campo] != plantilla.cierre[0][indice]:
-            r["discrepancias_internas"].append(
-                "%s · %s: el reparto da %s y la tabla de ArchMuse %s"
-                % (vivienda, campo, escritas[campo], plantilla.cierre[0][indice] or "lo deja vacío"))
+def resumen_de_intervenciones(viviendas: List[dict]) -> dict:
+    """Recuentos y porcentajes de un conjunto de viviendas (un plano o todos)."""
+    n = len(viviendas)
+    suma = lambda k: sum(v[k] for v in viviendas)  # noqa: E731
+    sin_intervencion = sum(1 for v in viviendas if v["celdas"] and v["automatico"] == v["celdas"])
+    con_un_clic = sum(1 for v in viviendas
+                      if v["celdas"] and v["automatico"] + v["un_clic"] == v["celdas"])
+    return {"viviendas": n, "automatico": suma("automatico"), "un_clic": suma("un_clic"),
+            "vacio": suma("vacio"), "cifras_distintas": suma("cifras_distintas"),
+            "intervenciones_por_vivienda": suma("un_clic") / n if n else 0.0,
+            "sin_intervencion_pct": 100.0 * sin_intervencion / n if n else 0.0,
+            "completas_con_un_clic_pct": 100.0 * con_un_clic / n if n else 0.0}
 
 
 # ---------------------------------------------------------------------------
@@ -431,15 +660,12 @@ def resultado_del_plano(r) -> Tuple[str, str]:
         return FAIL, r["errores"][0]
     if de_archmuse:
         return FAIL, "%d cifra(s) distinta(s) del cuadro por error de ArchMuse" % len(de_archmuse)
-    if sin_explicar or sin_motivo or r["discrepancias_internas"]:
+    if sin_explicar or sin_motivo:
         partes = []
         if sin_explicar:
             partes.append("%d MISMATCH sin explicar" % len(sin_explicar))
         if sin_motivo:
             partes.append("%d campo(s) vacío(s) sin motivo" % len(sin_motivo))
-        if r["discrepancias_internas"]:
-            partes.append("%d diferencia(s) entre el reparto y la tabla de ArchMuse"
-                          % len(r["discrepancias_internas"]))
         return PENDIENTE, "; ".join(partes)
     if not r["viviendas_con_cuadro"]:
         if r["lectura"]:
@@ -508,6 +734,32 @@ def escribir_resumen(filas: List[dict], detalles: List[dict], carpeta: str) -> s
                % (f["plano"], f["formato"], f["viviendas_detectadas"], f["viviendas_con_cuadro"],
                   f["viviendas_correctas"], f["estancias"], f["resultado"], causa(f["motivo"]))
                for f in filas]
+
+    def coma(valor, decimales):
+        return ("%.*f" % (decimales, valor)).replace(".", ",")
+
+    def fila_de_intervenciones(etiqueta, i):
+        return "| %s | %d | %d | %d | %d | %d | %s | %s %% | %s %% |" % (
+            etiqueta, i["viviendas"], i["automatico"], i["un_clic"], i["vacio"],
+            i["cifras_distintas"], coma(i["intervenciones_por_vivienda"], 2),
+            coma(i["sin_intervencion_pct"], 1), coma(i["completas_con_un_clic_pct"], 1))
+
+    lineas += ["", "## Intervenciones", "",
+               "Cada celda de su cuadro con cifra: **AUTOMÁTICO** (ArchMuse lo resuelve solo), "
+               "**UN CLIC** (lo resolvería una pregunta simple al arquitecto) o **VACÍO** (queda "
+               "vacío con motivo). *Cifras distintas*: distintas de su cuadro y sin explicar.", "",
+               "| Plano | Viviendas | AUTOMÁTICO | UN CLIC | VACÍO | Cifras distintas | "
+               "Intervenciones por vivienda | Sin ninguna intervención | Completas con los UN CLIC |",
+               "|---|---|---|---|---|---|---|---|---|"]
+    lineas += [fila_de_intervenciones(d["plano"], resumen_de_intervenciones(d.get("intervenciones", [])))
+               for d in detalles]
+    lineas += [fila_de_intervenciones(
+        "Total", resumen_de_intervenciones([v for d in detalles for v in d.get("intervenciones", [])])),
+        "",
+        "*Intervenciones por vivienda* = celdas UN CLIC / viviendas con cuadro. Una pregunta puede "
+        "resolver varias celdas, así que cuenta de más. *Completas con los UN CLIC* supone que la "
+        "respuesta basta para que la celda salga bien: no se ha medido, porque ArchMuse todavía "
+        "no pregunta."]
     lineas += ["", "## MISMATCH por clase", ""]
     lineas += (["- %s: %d" % (k, v) for k, v in sorted(clases.items())] or ["Ninguno."])
     repetidas = sorted((k for k in veces if len(en_planos[k]) >= 2),
@@ -562,7 +814,7 @@ def ejecutar(planos: str, salida: str = SALIDA_POR_DEFECTO, clasificacion: Optio
                 inicio = time.perf_counter()
                 if dxf is None:
                     d = {"plano": plano_id, "errores": [motivo], "causas": [], "comparaciones": [],
-                         "discrepancias_internas": [], "lectura": None, "viviendas_detectadas": 0,
+                         "intervenciones": [], "lectura": None, "viviendas_detectadas": 0,
                          "viviendas_con_cuadro": 0, "viviendas_emparejadas": 0,
                          "viviendas_correctas": 0, "estancias": 0, "superficies": 0,
                          "campos_vacios": 0, "preguntas": 0}
@@ -573,6 +825,7 @@ def ejecutar(planos: str, salida: str = SALIDA_POR_DEFECTO, clasificacion: Optio
                 shutil.rmtree(temporal, ignore_errors=True)
             resultado, motivo = resultado_del_plano(d)
             estados = [c["estado"] for c in d["comparaciones"]]
+            intervenciones = resumen_de_intervenciones(d["intervenciones"])
             fila = {"plano": plano_id, "formato": formato,
                     "viviendas_detectadas": d["viviendas_detectadas"],
                     "viviendas_con_cuadro": d["viviendas_con_cuadro"],
@@ -584,6 +837,13 @@ def ejecutar(planos: str, salida: str = SALIDA_POR_DEFECTO, clasificacion: Optio
                     "coincidencias": estados.count(COINCIDENCIA), "mismatches": estados.count(MISMATCH),
                     "vacios_con_motivo": estados.count(VACIO_CON_MOTIVO),
                     "referencias_inexistentes": estados.count(REFERENCIA_INEXISTENTE),
+                    "automatico": intervenciones["automatico"], "un_clic": intervenciones["un_clic"],
+                    "vacio": intervenciones["vacio"],
+                    "cifras_distintas": intervenciones["cifras_distintas"],
+                    "intervenciones_por_vivienda": "%.2f" % intervenciones["intervenciones_por_vivienda"],
+                    "viviendas_sin_intervencion_pct": "%.1f" % intervenciones["sin_intervencion_pct"],
+                    "viviendas_completas_con_un_clic_pct":
+                        "%.1f" % intervenciones["completas_con_un_clic_pct"],
                     "errores": len(d["errores"]), "tiempo_s": "%.2f" % tiempo,
                     "tiempo_conversion_s": "%.2f" % conversion if formato == "DWG" else "",
                     "resultado": resultado, "motivo": motivo}
