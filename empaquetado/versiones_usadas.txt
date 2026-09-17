@@ -25,3 +25,4 @@
 0.3.22  construida el 2026-09-17
 0.3.23  construida el 2026-09-17
 0.3.24  construida el 2026-09-17
+0.3.25  construida el 2026-09-17
