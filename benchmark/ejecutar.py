@@ -44,6 +44,7 @@ from herramientas import core_console  # noqa: E402
 from analyzer import cuadro_superficies as cs  # noqa: E402
 from analyzer import medicion, parser  # noqa: E402
 from analyzer import plantilla_cuadro as pc  # noqa: E402
+from analyzer import respuestas_del_arquitecto as rda  # noqa: E402
 from analyzer.texto_dxf import decodificar_escapes  # noqa: E402
 
 SALIDA_POR_DEFECTO = os.path.join(RAIZ, "benchmark", "resultados")
@@ -116,6 +117,10 @@ PATRONES_DE_MOTIVO = (
     ("no se sabe si son superficie interior o exterior", UN_CLIC),  # ámbito (medición)
     ("ArchMuse no las distingue", UN_CLIC),                       # C-13: lo resuelve el clic
     ("dentro de la superficie construida que el plano rotula para", UN_CLIC),  # de otra vivienda
+    # Modo preguntar (2026-09-17): una pregunta de pertenencia o un clic en la construida.
+    ("linda con la superficie construida que el plano rotula para", UN_CLIC),  # C-21, de otra
+    ("puede ser de esta vivienda", UN_CLIC),                      # pieza de la vecina en duda
+    ("que has marcado", UN_CLIC),                                 # construida marcada que no vale
     # VACÍO: no hay pregunta que lo arregle.
     ("dibujados dos veces", VACIO),
     ("se solapa con otra pieza dibujada", VACIO),
@@ -578,11 +583,13 @@ def _comparar_cuadro(r, doc, plano, cuadro, medida, plantillas, clasificacion) -
     for posicion in candidatas:
         vivienda = medida.viviendas[posicion]
         sobrantes: List[str] = []
+        plantilla, medida_usada, distinguida_en = None, medida, None
         try:
             if vivienda.viviendas_con_el_mismo_rotulo > 1:
                 distinguida = medicion.medir_planta(plano, distinguida=posicion)
                 plantilla = pc.construir(doc, plano, vivienda.nombre, medida=distinguida,
                                          posicion=posicion)
+                medida_usada, distinguida_en = distinguida, posicion
             else:
                 plantilla = plantillas.get(vivienda.nombre)
                 if not isinstance(plantilla, pc.Plantilla):
@@ -597,10 +604,12 @@ def _comparar_cuadro(r, doc, plano, cuadro, medida, plantillas, clasificacion) -
         puntos = (sum(1 for f in filas if f["estado"] == COINCIDENCIA),
                   -sum(1 for f in filas if f["estado"] == MISMATCH) - len(sobrantes))
         if mejor is None or puntos > mejor[0]:
-            mejor = (puntos, vivienda.nombre, filas, sobrantes)
+            mejor = (puntos, vivienda.nombre, filas, sobrantes,
+                     (plantilla if isinstance(plantilla, pc.Plantilla) else None,
+                      medida_usada, distinguida_en))
     if mejor is None:
         return None
-    _puntos, nombre, filas, sobrantes = mejor
+    _puntos, nombre, filas, sobrantes, (plantilla, medida_usada, distinguida_en) = mejor
     r["viviendas_emparejadas"] += 1
     for f in filas:
         if f["estado"] == VACIO_CON_MOTIVO and f["motivo"]:
@@ -609,7 +618,41 @@ def _comparar_cuadro(r, doc, plano, cuadro, medida, plantillas, clasificacion) -
     con_referencia = [f for f in filas if f["estado"] != REFERENCIA_INEXISTENTE]
     if con_referencia and all(f["estado"] == COINCIDENCIA for f in con_referencia) and not sobrantes:
         r["viviendas_correctas"] += 1
-    return _intervenciones(nombre, filas, sobrantes)
+    resumen = _intervenciones(nombre, filas, sobrantes)
+
+    # Número de unidades (`C-8`): lo que dice su cuadro y lo que escribe ArchMuse.
+    unidades = cuadro.celda("numero_unidades")
+    resumen["unidades"] = {"referencia": (unidades.texto_actual or "").strip() if unidades else "",
+                           "archmuse": plantilla.cierre[3][3] if plantilla is not None else ""}
+
+    # Modo preguntar, con el arquitecto simulado.
+    if plantilla is not None:
+        try:
+            despues, hechas = preguntar_y_responder(doc, plano, nombre, medida_usada,
+                                                    distinguida_en, celdas)
+            filas_despues, sobrantes_despues = _comparar_con_plantilla(
+                r, nombre, celdas, despues, medida_usada, clasificacion)
+        except Exception as exc:  # noqa: BLE001
+            r["errores"].append("fallo al preguntar: %s" % exc.__class__.__name__)
+        else:
+            vacias = lambda fs: [f for f in fs if f["estado"] == VACIO_CON_MOTIVO]  # noqa: E731
+            resumen["preguntar"] = {
+                "preguntas": [list(h) for h in hechas],
+                "sin_respuesta": sum(1 for _t, v in hechas if v is None),
+                "celdas_vacias_antes": len(vacias(filas)),
+                "celdas_vacias_despues": len(vacias(filas_despues)),
+                "completa_antes": _completa(filas, sobrantes),
+                "completa_despues": _completa(filas_despues, sobrantes_despues),
+                "cifras_distintas_despues": sum(1 for f in filas_despues if f["estado"] == MISMATCH
+                                                and f["clase"] not in (REDONDEO, CUADRO_DESACTUALIZADO)),
+                "filas_sin_celda_despues": list(sobrantes_despues),
+                "vacias_despues": [{"campo": f["campo"], "motivo": f["motivo"]}
+                                   for f in vacias(filas_despues)],
+                "nota_de_preguntas": [m for etiquetas, m in despues.notas_por_motivo
+                                      if "Preguntas" in etiquetas],
+                "confirmadas": pc.a_dict(despues)["confirmadas_por_el_arquitecto"],
+            }
+    return resumen
 
 
 def _intervenciones(nombre, filas, sobrantes) -> dict:
@@ -669,6 +712,139 @@ def resumen_de_intervenciones(viviendas: List[dict]) -> dict:
             "intervenciones_por_vivienda": suma("un_clic") / n if n else 0.0,
             "sin_intervencion_pct": 100.0 * sin_intervencion / n if n else 0.0,
             "completas_con_un_clic_pct": 100.0 * con_un_clic / n if n else 0.0}
+
+
+# ---------------------------------------------------------------------------
+# Modo preguntar: un arquitecto simulado que contesta con su cuadro (2026-09-17)
+# ---------------------------------------------------------------------------
+#
+# PRD `docs/prd/2026-09-17-modo-preguntar.md`, §12. **Lo que mide y lo que no.** Mide
+# cuántas preguntas haría ArchMuse y si, contestadas, la tabla sale completa y sin cifras
+# incorrectas. No mide si el arquitecto contestaría así: contesta **con su propio
+# cuadro**, que es lo que él sabe, y cuando su cuadro no basta para contestar, no
+# contesta (como un Esc). Las cifras siguen saliendo de la medición: una respuesta sólo
+# dice pertenencia, nombre o qué polilínea es la construida.
+#
+# - **¿Esta pieza es de VTx?** «Sí» si su cuadro tiene, en esa familia, una cifra libre
+#   (que no lleve ya otra pieza de la tabla) igual a la de la pieza; «No» si su cuadro
+#   no tiene ninguna cifra libre de esa familia; si tiene otra cifra, no contesta.
+# - **La construida:** la polilínea del plano, de cualquier capa, cuya superficie es la
+#   de su cuadro. Si no hay exactamente una, no contesta. La comprobación de `C-12` la
+#   hace ArchMuse con la respuesta (D-6), no el arquitecto simulado.
+# - **Nombre:** el que, en su cuadro, tiene una cifra libre igual a la de la pieza.
+# - **Interior o exterior:** su cuadro no dice de qué familia es un nombre que ArchMuse no
+#   reconoce, así que no contesta.
+
+def _referencias_por_familia(celdas) -> Dict[str, List[float]]:
+    salida: Dict[str, List[float]] = {}
+    for celda in celdas:
+        if celda.campo in CAMPOS_DE_CIERRE:
+            continue
+        valor = cifra_de_referencia(celda.texto_actual)
+        if valor is not None:
+            salida.setdefault(_familia(celda.campo), []).append(valor)
+    return salida
+
+
+class ArquitectoSimulado:
+    def __init__(self, doc, plano, celdas, vecinas=()):
+        self.doc, self.plano = doc, plano
+        #: Las piezas de otras viviendas por las que ArchMuse puede preguntar (sus `Room`).
+        self.vecinas = list(vecinas)
+        self.referencias = _referencias_por_familia(celdas)
+        construida = next((c for c in celdas if c.campo == "superficie_construida_cerrada"), None)
+        self.construida = cifra_de_referencia(construida.texto_actual) if construida else None
+        self.recintos = {r.handle: r for r in plano.rooms if getattr(r, "handle", None)}
+        self._polilineas = None
+
+    def _libres(self, plantilla) -> Dict[str, List[float]]:
+        libres = {f: list(v) for f, v in self.referencias.items()}
+        for fila in list(plantilla.interiores) + list(plantilla.exteriores):
+            if not fila.valor:
+                continue
+            valor = cs.superficie_en_m2(fila.valor)
+            lista = libres.get(_familia(cs.campo_de_la_pieza(fila.rotulo) or ""), [])
+            igual = next((x for x in lista if valor is not None and coinciden(x, valor)), None)
+            if igual is not None:
+                lista.remove(igual)
+        return libres
+
+    def contestar(self, pregunta, plantilla) -> Optional[dict]:
+        """`{"id", "valor"}` como la manda el comando, o `None` (no contesta)."""
+        if pregunta.tipo == rda.PERTENENCIA:
+            recinto = self.recintos.get(pregunta.resaltar[0]) if pregunta.resaltar else None
+            familia = _familia(cs.campo_de_la_pieza(recinto.label or "") or "") if recinto else ""
+            if not familia:
+                return None
+            libres = self._libres(plantilla).get(familia, [])
+            area = round(recinto.polygon.area + 1e-9, 2)
+            iguales = [x for x in libres if coinciden(x, area)]
+            if iguales:
+                # **Sin adivinar cuál** (medido en el banco, 2026-09-17): en plantas simétricas
+                # su baño y el de la vecina miden lo mismo, y su cuadro no dice cuál de los dos
+                # es el suyo. Si hay más piezas posibles con esa cifra que cifras libres, no
+                # contesta.
+                posibles = [f for f in list(plantilla.interiores) + list(plantilla.exteriores)
+                            if not f.valor and _familia(cs.campo_de_la_pieza(f.rotulo) or "") == familia
+                            and coinciden(round(f.area_m2 + 1e-9, 2), area)]
+                posibles += [r for r in self.vecinas
+                             if _familia(cs.campo_de_la_pieza(r.label or "") or "") == familia
+                             and coinciden(round(r.polygon.area + 1e-9, 2), area)]
+                return {"id": pregunta.id, "valor": "Si"} if len(posibles) <= len(iguales) else None
+            return None if libres else {"id": pregunta.id, "valor": "No"}
+        if pregunta.tipo == rda.CONSTRUIDA:
+            if self.construida is None:
+                return None
+            if self._polilineas is None:
+                self._polilineas = pc.polilineas_del_plano(self.doc, pc._factor_a_metros(self.plano))
+            iguales = [h for h, poligono in self._polilineas
+                       if coinciden(round(poligono.area + 1e-9, 2), self.construida)]
+            return {"id": pregunta.id, "valor": iguales[0]} if len(iguales) == 1 else None
+        if pregunta.tipo == rda.NOMBRE:
+            recinto = self.recintos.get(pregunta.resaltar[0]) if pregunta.resaltar else None
+            if recinto is None:
+                return None
+            area = round(recinto.polygon.area + 1e-9, 2)
+            libres = self._libres(plantilla)
+            buenas = [i for i, opcion in enumerate(pregunta.opciones, start=1)
+                      if any(coinciden(x, area) for x in
+                             libres.get(_familia(cs.campo_de_la_pieza(opcion) or ""), []))]
+            return {"id": pregunta.id, "valor": str(buenas[0])} if len(buenas) == 1 else None
+        return None
+
+
+def preguntar_y_responder(doc, plano, nombre, medida, posicion, celdas):
+    """El turno del comando con el arquitecto simulado: `(plantilla, preguntas)`, con
+    `preguntas` = `[(tipo, contestación o None)]` en el orden en que se hicieron."""
+    plantilla = pc.construir(doc, plano, nombre, medida=medida, posicion=posicion, preguntar=True)
+    lugar = posicion if posicion is not None else next(
+        i for i, v in enumerate(medida.viviendas) if v.nombre == nombre)
+    yo = rda.Vivienda(plantilla.vivienda, plantilla.rotulo_de_la_vivienda)
+    vecinas = [r for r, *_ in pc._piezas_vecinas_en_duda(plano, medida, lugar, yo, rda.Respuestas())]
+    arquitecto = ArquitectoSimulado(doc, plano, celdas, vecinas)
+    registros: List[dict] = []
+    sin, respondidas, hechas = set(), set(), []
+    while plantilla.preguntas_al_arquitecto and len(hechas) < rda.MAXIMO_DE_PREGUNTAS:
+        for pregunta in plantilla.preguntas_al_arquitecto:
+            contestacion = arquitecto.contestar(pregunta, plantilla)
+            hechas.append((pregunta.tipo, contestacion["valor"] if contestacion else None))
+            if contestacion is None:
+                sin.add(pregunta.id)
+                continue
+            respondidas.add(pregunta.id)
+            registros = rda.fusionar(registros, rda.desde_peticion(
+                {"respuestas_del_arquitecto": [contestacion]})[1])
+        plantilla = pc.construir(doc, plano, nombre, medida=medida, posicion=posicion,
+                                 preguntar=True, respuestas=rda.Respuestas(
+                                     tuple(registros), frozenset(sin), len(hechas), {},
+                                     frozenset(respondidas)))
+    return plantilla, hechas
+
+
+def _completa(filas, sobrantes) -> bool:
+    con_referencia = [f for f in filas if f["estado"] != REFERENCIA_INEXISTENTE]
+    return bool(con_referencia) and not sobrantes and all(
+        f["estado"] == COINCIDENCIA for f in con_referencia)
 
 
 # ---------------------------------------------------------------------------
@@ -793,6 +969,37 @@ def escribir_resumen(filas: List[dict], detalles: List[dict], carpeta: str) -> s
         "no pregunta. Una vivienda con una fila que su cuadro no tiene no cuenta como resuelta. "
         "**Límite de las filas que su cuadro no tiene:** una estancia bien medida que el "
         "arquitecto no puso en su cuadro también sale ahí; hay que revisarlas una a una."]
+    viviendas = [v for d in detalles for v in d.get("intervenciones", [])]
+    con_preguntas = [v for v in viviendas if "preguntar" in v]
+    lineas += ["", "## Modo preguntar (arquitecto simulado con su cuadro)", "",
+               "Contesta con su propio cuadro; si su cuadro no basta, no contesta (como un Esc). "
+               "Las cifras siguen saliendo de la medición. Ver `benchmark/ejecutar.py`.", "",
+               "| Viviendas | Completas antes | Preguntas hechas | Sin respuesta | Completas después "
+               "| Celdas vacías antes | Celdas vacías después | Cifras incorrectas después |",
+               "|---|---|---|---|---|---|---|---|"]
+    if con_preguntas:
+        pr = [v["preguntar"] for v in con_preguntas]
+        lineas.append("| %d | %d | %d | %d | %d | %d | %d | %d |" % (
+            len(pr), sum(x["completa_antes"] for x in pr), sum(len(x["preguntas"]) for x in pr),
+            sum(x["sin_respuesta"] for x in pr), sum(x["completa_despues"] for x in pr),
+            sum(x["celdas_vacias_antes"] for x in pr), sum(x["celdas_vacias_despues"] for x in pr),
+            sum(x["cifras_distintas_despues"] + len(x["filas_sin_celda_despues"]) for x in pr)))
+        lineas += ["", "| Vivienda | Preguntas | Sin respuesta | Completa antes | Completa después "
+                       "| Vacías antes → después |", "|---|---|---|---|---|---|"]
+        for v in con_preguntas:
+            x = v["preguntar"]
+            lineas.append("| %s | %s | %d | %s | %s | %d → %d |" % (
+                v["vivienda"], ", ".join("%s: %s" % (t, c or "sin respuesta") for t, c in x["preguntas"])
+                or "ninguna", x["sin_respuesta"], "sí" if x["completa_antes"] else "no",
+                "sí" if x["completa_despues"] else "no", x["celdas_vacias_antes"],
+                x["celdas_vacias_despues"]))
+    unidades = [v["unidades"] for v in viviendas if "unidades" in v]
+    lineas += ["", "## Número de unidades (C-8)", "",
+               "| Cuadros | Coinciden | Vacías en ArchMuse | Distintas |", "|---|---|---|---|",
+               "| %d | %d | %d | %d |" % (
+                   len(unidades), sum(1 for u in unidades if u["archmuse"] and u["archmuse"] == u["referencia"]),
+                   sum(1 for u in unidades if not u["archmuse"]),
+                   sum(1 for u in unidades if u["archmuse"] and u["archmuse"] != u["referencia"]))]
     lineas += ["", "## MISMATCH por clase", ""]
     lineas += (["- %s: %d" % (k, v) for k, v in sorted(clases.items())] or ["Ninguno."])
     repetidas = sorted((k for k in veces if len(en_planos[k]) >= 2),

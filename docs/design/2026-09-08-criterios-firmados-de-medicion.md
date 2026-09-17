@@ -457,6 +457,15 @@ está bloqueado.
 toca `medicion.py`, los totales y la forma en que `C-2` bloquea, así que va en
 sesión propia.
 
+> **Implementado para `NUMERO UDS` el 2026-09-17** (Pablo: «Extraer el número del
+> rótulo de cada vivienda cuando aparezca, por ejemplo `VT1/3 8 uds`»). Cómo se lee
+> —en el rótulo o en un texto suelto a menos de 3 alturas, más cerca de él que de
+> otro rótulo; dos números distintos, ninguno— es la decisión D-9 del PRD
+> `docs/prd/2026-09-17-modo-preguntar.md`, **propuesta, pendiente de firma**. Medido
+> en el plano maestro: 25 textos «N ud(s).» a 1,5-1,7 alturas debajo del rótulo de
+> su tipo. `analyzer/unidades_declaradas.py`; `tests/test_c8_numero_de_unidades.py`.
+> La parte de la magnitud declarada de cada recinto (abajo) sigue sin implementar.
+
 **Qué dice.** Cuando el plano **declara** en qué magnitud entra un recinto, esa
 declaración manda. La deducción por familia —«terraza» → exterior, «dormitorio»
 → interior— **sólo actúa cuando no hay declaración**.
@@ -1190,6 +1199,42 @@ sigue dando por dudosas esas piezas; la tabla, que es lo que se dibuja, ya no.
 **Dónde se aplica.** `plantilla_cuadro.exteriores_por_contacto` y
 `plantilla_cuadro.construir`. **Cómo se guarda.** `tests/test_exterior_por_contacto.py`
 (plano sintético con una terraza alargada cuyo rótulo de vivienda queda lejos).
+
+---
+
+## C-22 · Lo que ArchMuse no puede determinar, lo pregunta; y lo que contesta el arquitecto se marca
+
+**Dictaminado por:** Pablo, 2026-09-17 (PRD `docs/prd/2026-09-17-modo-preguntar.md`).
+**Firmado** en lo que dice Pablo; **cómo se lee cada respuesta (D-1 a D-12) es
+propuesta, pendiente de firma.**
+
+**Qué dice (Pablo).** «Cuando ArchMuse no pueda determinar un dato con suficiente
+certeza, no lo inventa ni deja la celda vacía automáticamente»: pregunta si una pieza
+es de la vivienda (resaltada), pide un clic en la polilínea de la superficie construida
+y la mide, y ofrece opciones claras para un nombre dudoso. «Evitar preguntas
+innecesarias: antes de preguntar, aplicar todas las deducciones deterministas
+disponibles.» «Como máximo 3 preguntas por vivienda. Si harían falta más, pregunta las
+3 más importantes y di en la nota cuántas celdas quedan vacías.» «Esc = el arquitecto
+rechaza/no responde: mantener la celda vacía y registrar el motivo.» «Las respuestas
+deben persistir asociadas al plano/proyecto para no volver a preguntar.» «Todo dato
+obtenido mediante interacción del arquitecto debe quedar identificado como "Confirmado
+por el arquitecto".» «La prioridad es: 0 cifras inventadas.»
+
+**Lo que no cambia.** Una respuesta nunca es una cifra (`C-11`): dice pertenencia,
+nombre, ámbito o qué polilínea es la construida, y la superficie se mide. La construida
+marcada tiene que pasar la comprobación de `C-12`. Sin respuesta, todo sigue como antes
+de este criterio.
+
+**Medido al implementarlo (banco del maestro), y por eso D-13:** una pieza de otra
+vivienda cuyo reparto por cercanía duda hacia ésta bloquea también los totales de ésta. Sin
+eso, contestar la única pieza dudosa de una vivienda escribía totales sin dos piezas que su
+cuadro le da. Con arquitecto simulado: de 15 a 18 viviendas completas, 0 cifras incorrectas.
+
+**Dónde.** `analyzer/respuestas_del_arquitecto.py` (modelo, lectura, almacén),
+`plantilla_cuadro.construir` (`respuestas`, `preguntar`, `elegir_preguntas`),
+`app._cuadros_de_archmuse`, `autocad/archmuse.lsp` 3.10.0 (`am:preguntar-al-arquitecto`).
+**Cómo se guarda.** `tests/test_modo_preguntar.py`, `tests/test_modo_preguntar_endpoint.py`,
+`tests/test_banco_arquitecto_simulado.py`.
 
 ---
 

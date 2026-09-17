@@ -36,8 +36,9 @@ El cuadro del arquitecto ya no entra aquí: sólo sirve para no dibujar encima
 - **Ninguna cifra es `0,00 m²`** (`D-13`) y **ninguna cifra que no haya medido
   ArchMuse** (`C-11`).
 - **Totales:** `C-2` (un impedimento bloquea los dos) y `C-6` (una pieza sin
-  fila también). `NUMERO UDS` vacía: el plano lo declara y leerlo es `C-8`, sin
-  implementar.
+  fila también).
+- **`NUMERO UDS`: `C-8`** (2026-09-17, `unidades_declaradas`): lo que el plano
+  declara junto al rótulo de la vivienda; si no lo declara, vacía con motivo.
 - **`TOTAL S. UTIL`: `C-14`, firmado por un arquitecto colegiado el
   2026-09-13**, que deroga la parte de `C-1` que la dejaba vacía: la interior
   más el menor entre la mitad de la exterior y el 10 % de la interior. Si una de
@@ -53,6 +54,8 @@ qué tamaño, `maquetacion_cuadro`.
 from __future__ import annotations
 
 import dataclasses
+import itertools
+import math
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -61,7 +64,7 @@ from typing import Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from shapely.geometry import Point, Polygon
 
-from . import medicion
+from . import medicion, unidades_declaradas
 from .cuadro_superficies import _normalizar, es_superficie_cero
 
 TITULO = "CUADRO DE SUPERFICIES POR TIPO DE VIVIENDA"
@@ -95,8 +98,6 @@ TOLERANCIA_CONTENCION_M = 0.05
 PARTE_DEL_EXTERIOR = Decimal("0.50")
 TOPE_SOBRE_EL_INTERIOR = Decimal("0.10")
 _CENTESIMA = Decimal("0.01")
-MOTIVO_NUMERO_UDS = ("el plano lo declara, pero leer lo que el plano declara (C-8) "
-                     "no está implementado todavía: se escribe a mano.")
 
 #: **`C-12` FIRMADO el 2026-09-13** (Pablo, con el arquitecto): la construida es
 #: la polilínea que el arquitecto **rotula**, no la que ArchMuse deduce por su
@@ -142,6 +143,19 @@ class PreguntaDeAmbito:
 
 
 @dataclass(frozen=True)
+class PreguntaAlArquitecto:
+    """Una pregunta del modo preguntar (PRD 2026-09-17), redactada aquí; el comando la
+    enseña, resalta `resaltar` y devuelve `id` con la respuesta."""
+
+    id: str
+    tipo: str                    # `respuestas_del_arquitecto.PERTENENCIA`, ...
+    contexto: str
+    texto: str
+    opciones: Tuple[str, ...]
+    resaltar: Tuple[str, ...]    # handles del dibujo
+
+
+@dataclass(frozen=True)
 class Construida:
     valor: str
     motivo: Optional[str]
@@ -171,6 +185,12 @@ class Plantilla:
     notas_por_motivo: Tuple[Tuple[Tuple[str, ...], str], ...] = ()
     #: Las familias que clasificó el arquitecto con su respuesta, no ArchMuse.
     declaradas: Tuple[str, ...] = ()
+    #: Modo preguntar (PRD 2026-09-17): lo que hay que preguntarle en esta pasada.
+    preguntas_al_arquitecto: Tuple["PreguntaAlArquitecto", ...] = ()
+    #: Las respuestas que ha usado esta tabla, listas para guardar (nunca una cifra).
+    registros_aplicados: Tuple[dict, ...] = ()
+    #: Dónde está el rótulo de la vivienda, en metros: su identidad en las respuestas.
+    rotulo_de_la_vivienda: Optional[Tuple[float, float]] = None
 
     @property
     def filas_de_cuerpo(self) -> int:
@@ -620,6 +640,262 @@ def _calcular_construidas_y_duenas(doc, plano, medida):
     return unidades, construidas, [duenas(c) for c in construidas]
 
 
+#: Los textos del último plano leído para `C-8`: `(doc, textos)`. Una pasada por plano,
+#: no una por vivienda (el plano grande tiene 6.280 textos).
+_ULTIMOS_TEXTOS: List = []
+
+
+def numero_de_unidades(doc, plano, posicion_vivienda: int) -> Tuple[str, Optional[str]]:
+    """`C-8`: la celda `NUMERO UDS` de la vivienda en esa posición del agrupador, leída
+    de lo que el plano declara junto a su rótulo (`unidades_declaradas`)."""
+    etiqueta = _etiqueta_de_la_vivienda(plano, posicion_vivienda)
+    if etiqueta is None:
+        return unidades_declaradas.numero_de_unidades((), "", None)
+    texto, x, y = etiqueta
+    if not (_ULTIMOS_TEXTOS and _ULTIMOS_TEXTOS[0] is doc and _ULTIMOS_TEXTOS[1] is plano):
+        alineados = getattr(plano, "rotulos_alineados", None)
+        desplazamiento = (alineados.dx, alineados.dy) if alineados is not None else None
+        _ULTIMOS_TEXTOS[:] = [doc, plano, unidades_declaradas.textos_del_plano(doc, desplazamiento)]
+    factor = _factor_a_metros(plano)
+    return unidades_declaradas.numero_de_unidades(_ULTIMOS_TEXTOS[2], texto,
+                                                  (float(x) / factor, float(y) / factor))
+
+
+#: El último agrupado por rótulo: `(plano, grupos)`.
+_ULTIMO_AGRUPADO: List = []
+
+
+def _agrupado(plano):
+    from . import evaluator
+
+    if not (_ULTIMO_AGRUPADO and _ULTIMO_AGRUPADO[0] is plano):
+        etiquetas = list(getattr(plano, "unit_labels", None) or [])
+        grupos = evaluator.agrupar_por_rotulo(list(plano.rooms), etiquetas) if etiquetas else []
+        _ULTIMO_AGRUPADO[:] = [plano, grupos]
+    return _ULTIMO_AGRUPADO[1]
+
+
+def _etiqueta_de_la_vivienda(plano, posicion_vivienda: int) -> Optional[Tuple[str, float, float]]:
+    """`(texto, x, y)` en metros del rótulo de la vivienda en esa posición, o `None` si el
+    plano no rotula sus viviendas."""
+    etiquetas = list(getattr(plano, "unit_labels", None) or [])
+    grupos = _agrupado(plano)
+    if not etiquetas or not 0 <= posicion_vivienda < len(grupos):
+        return None
+    texto, x, y = etiquetas[grupos[posicion_vivienda][0]][:3]
+    return texto, float(x), float(y)
+
+
+def _registro_de_pertenencia(handle, vivienda, suya: bool) -> dict:
+    from . import respuestas_del_arquitecto as rda
+
+    return {"tipo": rda.PERTENENCIA, "pieza": handle, "vivienda": vivienda.a_dict(),
+            "es_suya": bool(suya)}
+
+
+def _pregunta_de_pertenencia(candidatas, id_pregunta, vivienda, handle, contexto):
+    """Apunta la pregunta «¿Esta pieza es de …?» y devuelve lo que necesita la celda."""
+    from . import respuestas_del_arquitecto as rda
+
+    if not id_pregunta:
+        return None
+    candidatas.setdefault(id_pregunta, PreguntaAlArquitecto(
+        id=id_pregunta, tipo=rda.PERTENENCIA, contexto=contexto,
+        texto="¿Esta pieza es de %s?" % vivienda.nombre, opciones=("Si", "No"),
+        resaltar=(handle,)))
+    return frozenset([id_pregunta])
+
+
+#: `(plano, {posición de vivienda: [(recinto, índice del 2.º rótulo, d1, d2)]})`.
+_ULTIMAS_DUDAS: List = []
+
+
+def _dudas_por_distancia(plano):
+    """Para cada vivienda, sus piezas cuyo reparto por cercanía no es firme, con el índice
+    del segundo rótulo más cercano (el de la otra vivienda posible). Una vez por plano."""
+    if _ULTIMAS_DUDAS and _ULTIMAS_DUDAS[0] is plano:
+        return _ULTIMAS_DUDAS[1]
+    import numpy as np
+
+    etiquetas = list(getattr(plano, "unit_labels", None) or [])
+    salida: Dict[int, List] = {}
+    if len(etiquetas) >= 2:
+        lx = np.array([float(e[1]) for e in etiquetas])
+        ly = np.array([float(e[2]) for e in etiquetas])
+        for j, (indice, piezas) in enumerate(_agrupado(plano)):
+            for room in piezas:
+                centro = room.polygon.centroid
+                distancias = np.hypot(lx - centro.x, ly - centro.y)
+                orden = np.argsort(distancias, kind="stable")
+                d1 = float(distancias[indice])
+                segundo = next(int(k) for k in orden if int(k) != indice)
+                d2 = float(distancias[segundo])
+                if d1 > 0 and d2 / d1 < medicion.HOLGURA_MINIMA_DE_REPARTO:
+                    salida.setdefault(j, []).append((room, segundo, d1, d2))
+    _ULTIMAS_DUDAS[:] = [plano, salida]
+    return salida
+
+
+def _piezas_vecinas_en_duda(plano, medida, posicion_vivienda, vivienda, respuestas):
+    """Las piezas de **otras** viviendas cuyo reparto por cercanía no es firme y cuyo segundo
+    rótulo más cercano es el de ésta: `(recinto, vecina, contexto, motivo)`, sin las que el
+    arquitecto ya ha contestado para esta vivienda.
+
+    **Bloquean los totales de ésta** (regla de Pablo del 2026-09-17 y `C-5`: una ambigüedad
+    de reparto no se reparte ni se suma, y es de las dos viviendas). Medido en el banco del
+    plano maestro: sin esto, al contestar «Sí» a la única pieza dudosa de una vivienda, sus
+    totales salían sin dos piezas que su cuadro le da y que se habían medido con la vecina."""
+    grupos = _agrupado(plano)
+    if not 0 <= posicion_vivienda < len(grupos):
+        return []
+    mia = grupos[posicion_vivienda][0]
+    salida = []
+    for j, dudas in _dudas_por_distancia(plano).items():
+        if j == posicion_vivienda:
+            continue
+        for room, segundo, d1, d2 in dudas:
+            if segundo != mia or respuestas.pertenencia(getattr(room, "handle", None),
+                                                        vivienda) is not None:
+                continue
+            nombre = room.label or "(sin rótulo)"
+            vecina = medida.viviendas[j].nombre
+            salida.append((room, vecina,
+                           "«%s» (resaltada) se ha medido con %s, pero está casi igual de cerca del "
+                           "rótulo de %s: a %s m del de %s y a %s m del de %s."
+                           % (nombre, vecina, vivienda.nombre, _metros(d1), vecina, _metros(d2),
+                              vivienda.nombre),
+                           "«%s», medida con %s, puede ser de esta vivienda: está a %.2f m de su "
+                           "rótulo y a %.2f m del de %s" % (nombre, vecina, d2, d1, vecina)))
+    return salida
+
+
+def _piezas_vecinas_en_mi_construida(doc, plano, medida, posicion_vivienda, vivienda, respuestas):
+    """D-11 también para lo que el plano atribuye a esta vivienda: piezas de otra que están
+    dentro de la construida rotulada de ésta (la misma lectura de `piezas_de_otra_vivienda`)."""
+    reparto = _construidas_y_duenas(doc, plano, medida)
+    if reparto is None:
+        return []
+    unidades, construidas, duenas_de = reparto
+    mias = [c.buffer(TOLERANCIA_CONTENCION_M) for c, suyas in zip(construidas, duenas_de, strict=True)
+            if suyas == [posicion_vivienda]]
+    if not mias:
+        return []
+    salida = []
+    for j, unidad in enumerate(unidades):
+        if j == posicion_vivienda:
+            continue
+        for room in unidad.rooms:
+            handle = getattr(room, "handle", None)
+            if not handle or respuestas.pertenencia(handle, vivienda) is not None:
+                continue
+            if any(zona.contains(room.polygon) for zona in mias):
+                salida.append((handle, "«%s» (resaltada) se ha medido con %s, pero está dentro de "
+                                       "la superficie construida que el plano rotula para %s."
+                               % (room.label or "(sin rótulo)", medida.viviendas[j].nombre,
+                                  vivienda.nombre)))
+    return salida
+
+
+def _contiene_la_vivienda(poligono, interiores, exteriores) -> bool:
+    """La comprobación de `C-12`: todas las piezas interiores dentro y ninguna exterior."""
+    zona = poligono.buffer(TOLERANCIA_CONTENCION_M)
+    return (all(zona.contains(r.polygon) for r in interiores)
+            and not any(zona.contains(r.polygon) for r in exteriores))
+
+
+def _construida_marcada(doc, plano, deducida: Construida, marcada: str, interiores,
+                        exteriores) -> Construida:
+    """D-6: la polilínea que él ha marcado como construida, medida y comprobada con `C-12`."""
+    factor = _factor_a_metros(plano)
+    poligono = next((p for h, p in polilineas_del_plano(doc, factor) if h == marcada), None)
+    if poligono is None:
+        # No ha llegado (o ya no existe): la respuesta no se aplica y se vuelve a preguntar.
+        return deducida
+    if deducida.valor and deducida.handle and deducida.handle != marcada:
+        return Construida("", "el plano rotula como construida la polilínea %s y la que has marcado "
+                              "es %s: no se elige ninguna (C-12)." % (deducida.handle, marcada), None)
+    if not interiores or not _contiene_la_vivienda(poligono, interiores, exteriores):
+        return Construida("", "la polilínea que has marcado (%s) no contiene todas las piezas "
+                              "interiores de esta vivienda sin ninguna exterior: no se escribe "
+                              "(C-12)." % marcada, None)
+    if es_superficie_cero(_m2(poligono.area)):
+        return Construida("", "la polilínea que has marcado mide cero: no es una superficie "
+                              "(D-13).", None)
+    return Construida(_m2(poligono.area), None, marcada, (marcada,))
+
+
+def elegir_preguntas(candidatas, necesita, lado_de, bloqueo_comun, vacias_totales,
+                     cupo: int) -> Tuple[Tuple[PreguntaAlArquitecto, ...], int]:
+    """D-7: el conjunto de hasta `cupo` preguntas que más celdas rellena, si cada respuesta
+    es la que completa la tabla. A igualdad, el de menos preguntas; después, el orden en
+    que aparecen en la tabla. **La construida se pregunta la última** (D-8): depende de
+    qué piezas son de la vivienda, así que sólo se pide cuando no queda ninguna otra
+    pregunta que rellene algo. Devuelve `(elegidas, cuántas útiles quedan sin hacer)`.
+
+    `necesita`: `{celda: frozenset(ids) | None}` de las celdas vacías (`None`, ninguna
+    respuesta la arregla). `lado_de`: interior o exterior de cada celda de pieza.
+    `bloqueo_comun`: lo que bloquea los dos totales (impedimentos de `C-2`)."""
+    from . import respuestas_del_arquitecto as rda
+
+    por_id = {p.id: p for p in candidatas}
+    ids = [p.id for p in candidatas]
+    if not ids:
+        return (), 0
+
+    def puntos(conjunto) -> int:
+        respondidas = frozenset(conjunto)
+        n = 0
+        lado_libre = {INTERIOR: True, EXTERIOR: True}
+        for celda, requisito in necesita.items():
+            resuelta = requisito is not None and requisito <= respondidas
+            n += resuelta
+            lado = lado_de.get(celda)
+            if lado in lado_libre and not resuelta:
+                lado_libre[lado] = False
+        comun = all(r is not None and r <= respondidas for r in bloqueo_comun)
+        libres = {lado: comun and lado_libre[lado] for lado in lado_libre}
+        n += bool(vacias_totales.get(TOTAL_INTERIOR)) and libres[INTERIOR]
+        n += bool(vacias_totales.get(TOTAL_EXTERIOR)) and libres[EXTERIOR]
+        n += bool(vacias_totales.get(TOTAL_UTIL)) and libres[INTERIOR] and libres[EXTERIOR]
+        return int(n)
+
+    base = puntos(())
+
+    def mejor(grupo):
+        elegido, ganancia = (), 0
+        for k in range(1, min(cupo, len(grupo)) + 1):
+            for conjunto in itertools.combinations(grupo, k):
+                g = puntos(conjunto) - base
+                if g > ganancia:
+                    elegido, ganancia = conjunto, g
+        return elegido, ganancia
+
+    elegido, ganancia = (), 0
+    if cupo:
+        elegido, ganancia = mejor([i for i in ids if por_id[i].tipo != rda.CONSTRUIDA])
+        if not ganancia:
+            elegido, ganancia = mejor(ids)
+    # Cuántas respuestas más harían falta para rellenar todo lo que se puede rellenar,
+    # contadas sin repetir: se añaden de una en una, la que más rellena primero.
+    todas, hechas, quedan = puntos(ids), list(elegido), 0
+    while puntos(hechas) < todas:
+        resto = [i for i in ids if i not in hechas]
+        hechas.append(max(resto, key=lambda i: puntos(hechas + [i])))
+        quedan += 1
+    return tuple(por_id[i] for i in elegido), quedan
+
+
+def _celdas_vacias(filas, sin_fila, valores_de_total, util_total, construida, unidades) -> int:
+    """Las celdas de la tabla que se quedan sin cifra por algo (no un lado sin espacios)."""
+    n = sum(1 for lado in filas.values() for f in lado if not f.valor) + len(sin_fila)
+    n += sum(1 for ambito in (INTERIOR, EXTERIOR) if not valores_de_total[ambito]
+             and filas[ambito])
+    n += not util_total
+    n += not construida
+    n += not unidades
+    return int(n)
+
+
 def _unidad(plano, nombre: str, posicion: Optional[int] = None):
     unidades = _unidades(plano)
     if posicion is not None:
@@ -635,14 +911,26 @@ def viviendas(plano) -> Tuple[str, ...]:
 
 def construir(doc, plano, nombre_vivienda: str,
               ambitos: Optional[Mapping[str, str]] = None, medida=None,
-              posicion: Optional[int] = None) -> Plantilla:
+              posicion: Optional[int] = None, respuestas=None,
+              preguntar: bool = False) -> Plantilla:
     """La plantilla de una vivienda. `ambitos` son las respuestas del arquitecto
     a las preguntas de `PreguntaDeAmbito`: `{"TRASTERO": "interior"}`.
 
     `medida` es la `Medicion` de la planta si ya se ha hecho: en un plano de 25
-    viviendas, medirlo una vez por vivienda son 25 mediciones iguales."""
-    respuestas = {clave_de_familia(k): str(v).strip().lower()
-                  for k, v in (ambitos or {}).items()}
+    viviendas, medirlo una vez por vivienda son 25 mediciones iguales.
+
+    **Modo preguntar** (PRD `docs/prd/2026-09-17-modo-preguntar.md`): `respuestas`
+    (`respuestas_del_arquitecto.Respuestas`) son las que ha dado el arquitecto —
+    guardadas o de esta pasada— y se aplican antes de escribir nada. Con `preguntar`,
+    la plantilla lleva además las preguntas que completarían la tabla, como mucho
+    `MAXIMO_DE_PREGUNTAS` por pasada, y la nota de lo que queda si hacen falta más."""
+    from . import respuestas_del_arquitecto as rda
+
+    respuestas = respuestas if respuestas is not None else rda.Respuestas()
+    if ambitos:
+        sueltos = {clave_de_familia(k): str(v).strip().lower() for k, v in ambitos.items()}
+        sueltos.update(respuestas.ambitos_sueltos)
+        respuestas = dataclasses.replace(respuestas, ambitos_sueltos=sueltos)
     medida = medida if medida is not None else medicion.medir_planta(plano, distinguida=posicion)
     if posicion is not None:
         # **Un clic la ha distinguido por su posición** (enmienda de `C-13`, Pablo,
@@ -667,7 +955,6 @@ def construir(doc, plano, nombre_vivienda: str,
         raise ValueError("no hay ninguna vivienda «%s» en este plano (hay: %s)"
                          % (nombre_vivienda, ", ".join(v.nombre for v in medida.viviendas)))
 
-    solapadas = {s.una for s in vivienda.solapes} | {s.otra for s in vivienda.solapes}
     notas = _Notas()
     filas: Dict[str, List[FilaDePieza]] = {INTERIOR: [], EXTERIOR: []}
     rooms: Dict[str, List] = {INTERIOR: [], EXTERIOR: []}
@@ -686,107 +973,269 @@ def construir(doc, plano, nombre_vivienda: str,
     # guarda su `Room`; si algún día los dos agrupados divergen en largo, esto
     # revienta en vez de emparejar una cifra con el recinto de otra.
     posicion_vivienda = next(i for i, v in enumerate(medida.viviendas) if v is vivienda)
+    etiqueta = _etiqueta_de_la_vivienda(plano, posicion_vivienda)
+    yo = rda.Vivienda(vivienda.nombre, None if etiqueta is None else (float(etiqueta[1]),
+                                                                      float(etiqueta[2])))
+    originales = list(zip(unidad.rooms, vivienda.piezas, strict=True))
     #: `C-21`: las exteriores de reparto dudoso que lindan con la construida rotulada de
     #: una sola vivienda. Si es ésta, dejan de ser dudosas; si es otra, celda vacía.
     lindantes = exteriores_por_contacto(doc, plano, medida, posicion_vivienda)
-    resueltas = {k for k, suyas in lindantes.items() if suyas == {posicion_vivienda}}
-    if resueltas:
-        vivienda = dataclasses.replace(vivienda, repartos_dudosos=tuple(
-            d for d in vivienda.repartos_dudosos if d.indice not in resueltas))
-    contradichas = {k: ", ".join(sorted(medida.viviendas[j].nombre for j in suyas))
+    resueltas = {id(originales[k][0]) for k, suyas in lindantes.items()
+                 if suyas == {posicion_vivienda}}
+    contradichas = {id(originales[k][0]): ", ".join(sorted(medida.viviendas[j].nombre
+                                                           for j in suyas))
                     for k, suyas in lindantes.items()
                     if len(suyas) == 1 and posicion_vivienda not in suyas}
-    #: Las piezas cuyo reparto entre viviendas no es firme, por su posición.
-    dudosas = {d.indice: d for d in vivienda.repartos_dudosos}
     #: Y las que el plano atribuye a otra vivienda con su construida rotulada.
-    ajenas = piezas_de_otra_vivienda(doc, plano, medida, posicion_vivienda)
-    for posicion_pieza, (room, pieza) in enumerate(
-            zip(unidad.rooms, vivienda.piezas, strict=True)):
+    ajenas = {id(originales[k][0]): otra
+              for k, otra in piezas_de_otra_vivienda(doc, plano, medida, posicion_vivienda).items()}
+
+    # **Las respuestas de pertenencia** (D-4, D-5, D-11). «Sí» la deja firme; «No» —o
+    # «Sí» a otra vivienda— la saca de la tabla con su nota; una pieza de otra vivienda
+    # a la que él ha dicho «Sí» para ésta, entra.
+    confirmadas: set = set()
+    aplicados: List[dict] = []
+    salen: Dict[int, Optional[str]] = {}
+    for room, _pieza in originales:
+        suya = respuestas.pertenencia(getattr(room, "handle", None), yo)
+        if suya is True:
+            confirmadas.add(id(room))
+        elif suya is False:
+            salen[id(room)] = respuestas.de_otra(room.handle, yo)
+        if suya is not None:
+            aplicados.append(_registro_de_pertenencia(room.handle, yo, suya))
+    entran = [room for j, otra in enumerate(_unidades(plano)) if j != posicion_vivienda
+              for room in otra.rooms
+              if respuestas.pertenencia(getattr(room, "handle", None), yo) is True]
+    for room in entran:
+        confirmadas.add(id(room))
+        aplicados.append(_registro_de_pertenencia(room.handle, yo, True))
+    if salen or entran:
+        lista = [room for room, _p in originales if id(room) not in salen] + entran
+        piezas = tuple(p for room, p in originales if id(room) not in salen) + tuple(
+            medicion._pieza(room) for room in entran)
+        from shapely.ops import unary_union
+
+        vivienda = dataclasses.replace(
+            vivienda, piezas=piezas, solapes=medicion._solapes(lista),
+            repartos_dudosos=medicion._repartos_dudosos(
+                lista, vivienda.nombre, list(getattr(plano, "unit_labels", None) or [])),
+            superficie_por_union_m2=unary_union([r.polygon for r in lista]).area if lista else 0.0,
+            suma_cruda_m2=sum(r.polygon.area for r in lista))
+        for id_room, otra in salen.items():
+            nombre = next(p.nombre for room, p in originales if id(room) == id_room)
+            notas.add(nombre, ("es de %s: no va en esta tabla. %s" % (otra, rda.CONFIRMADO)) if otra
+                      else "no es de esta vivienda: no va en esta tabla. %s" % rda.CONFIRMADO)
+    else:
+        lista = [room for room, _p in originales]
+    # Firmes por respuesta o por `C-21`: ya no son dudosas, y su impedimento se retira.
+    vivienda = dataclasses.replace(vivienda, repartos_dudosos=tuple(
+        d for d in vivienda.repartos_dudosos
+        if not (0 <= d.indice < len(lista) and id(lista[d.indice]) in confirmadas | resueltas)))
+    #: Las piezas cuyo reparto entre viviendas no es firme, por su recinto.
+    dudosas = {id(lista[d.indice]): d for d in vivienda.repartos_dudosos if 0 <= d.indice < len(lista)}
+
+    solapadas = {s.una for s in vivienda.solapes} | {s.otra for s in vivienda.solapes}
+    #: Para elegir las preguntas (D-7): qué respuestas necesita cada celda vacía para
+    #: tener cifra. `None` = ninguna respuesta cerrada la arregla (D-12).
+    necesita: Dict[str, Optional[frozenset]] = {}
+    lado_de: Dict[str, str] = {}
+    candidatas: Dict[str, "PreguntaAlArquitecto"] = {}
+    #: Lo que bloquea los dos totales a la vez (los impedimentos de `C-2`).
+    bloqueo_comun: List[Optional[frozenset]] = []
+
+    def celda_vacia(etiqueta_celda, ambito, requisito):
+        necesita[etiqueta_celda] = requisito
+        lado_de[etiqueta_celda] = ambito
+
+    def con_respuesta_pendiente(motivo, id_pregunta):
+        return motivo + (" " + rda.SIN_RESPUESTA if id_pregunta in respuestas.sin_respuesta else "")
+
+    for room, pieza in zip(lista, vivienda.piezas, strict=True):
+        handle = getattr(room, "handle", None)
         familia, ambito = pieza.familia, pieza.ambito
+        #: Los solapes se nombran por el rótulo del plano: si él elige otro nombre, la
+        #: pieza sigue siendo la que se solapa.
+        nombre_en_el_plano = pieza.nombre
+        if pieza.no_es_util:
+            bloqueo_comun.append(None)
+        conflicto = tuple(getattr(room, "rotulos_en_conflicto", ()) or ())
+        if ambito == medicion.AMBITO_SIN_CLASIFICAR and conflicto and not pieza.no_es_util:
+            # `C-18` con respuesta: él ha dicho cuál de los nombres es.
+            opciones = tuple(sorted(conflicto, key=_normalizar))
+            elegido = respuestas.nombre(handle, opciones)
+            if elegido is not None:
+                familia, ambito = medicion.clasificar(elegido)
+                if ambito != medicion.AMBITO_SIN_CLASIFICAR:
+                    pieza = dataclasses.replace(pieza, rotulo=elegido)
+                    confirmadas.add(id(room))
+                    aplicados.append({"tipo": rda.NOMBRE, "pieza": handle, "nombre": elegido})
+                else:
+                    familia, ambito = pieza.familia, pieza.ambito
         if ambito == medicion.AMBITO_SIN_CLASIFICAR:
             clave = clave_de_familia(pieza.rotulo)
-            respuesta = respuestas.get(clave) if clave else None
+            respuesta = respuestas.ambito(clave) if clave and not conflicto else None
             if respuesta in (INTERIOR, EXTERIOR):
                 ambito, familia = respuesta, ""
+                confirmadas.add(id(room))
+                aplicados.append({"tipo": rda.AMBITO, "familia": clave, "ambito": respuesta})
                 if clave not in declaradas:
                     declaradas.append(clave)
             else:
-                etiqueta = "%s (%s)" % (pieza.nombre, _m2(pieza.area_m2))
+                etiqueta_nota = "%s (%s)" % (pieza.nombre, _m2(pieza.area_m2))
                 sin_fila.append(pieza.nombre)
-                conflicto = tuple(getattr(room, "rotulos_en_conflicto", ()) or ())
+                requisito: Optional[frozenset] = None
                 if conflicto:
                     # `C-18`: dos nombres distintos dentro, y no se elige ninguno.
-                    notas.add(etiqueta, "tiene dos nombres dentro (%s): no se elige ninguno. "
-                                        "Está medida y no tiene fila (C-18)."
-                              % " y ".join("«%s»" % n for n in conflicto))
+                    id_pregunta = rda.id_nombre(handle) if handle else None
+                    notas.add(etiqueta_nota, con_respuesta_pendiente(
+                        "tiene dos nombres dentro (%s): no se elige ninguno. Está medida y no "
+                        "tiene fila (C-18)." % " y ".join("«%s»" % n for n in conflicto), id_pregunta))
+                    if id_pregunta and not pieza.no_es_util:
+                        opciones = tuple(sorted(conflicto, key=_normalizar))
+                        candidatas.setdefault(id_pregunta, PreguntaAlArquitecto(
+                            id=id_pregunta, tipo=rda.NOMBRE,
+                            contexto="La pieza resaltada tiene dos nombres dentro: %s."
+                                     % " y ".join("«%s»" % n for n in opciones),
+                            texto="¿Qué estancia es?", opciones=opciones, resaltar=(handle,)))
+                        requisito = frozenset([id_pregunta])
                 elif clave and not _es_nombre(pieza.rotulo):
                     # `C-18`: nunca se pregunta por un rótulo sin sentido («M», «LD»).
-                    notas.add(etiqueta, "su rótulo «%s» no es un nombre de estancia: no se sabe "
-                                        "qué es ni en qué lado va. Está medida y no tiene "
-                                        "fila (C-6)." % pieza.nombre)
+                    notas.add(etiqueta_nota, "su rótulo «%s» no es un nombre de estancia: no se "
+                                             "sabe qué es ni en qué lado va. Está medida y no "
+                                             "tiene fila (C-6)." % pieza.nombre)
                 elif not clave:
-                    notas.add(etiqueta, "no tiene rótulo: no se sabe qué estancia es ni en "
-                                        "qué lado del cuadro va. Está medida y no tiene fila (C-6).")
+                    notas.add(etiqueta_nota, "no tiene rótulo: no se sabe qué estancia es ni en "
+                                             "qué lado del cuadro va. Está medida y no tiene "
+                                             "fila (C-6).")
                 else:
-                    preguntas.setdefault(clave, []).append(etiqueta)
-                    notas.add(etiqueta, "ArchMuse no reconoce «%s» y no sabe si es un espacio "
-                                        "interior o exterior; sin respuesta no tiene fila (C-6)."
-                              % pieza.nombre)
+                    id_pregunta = rda.id_ambito(clave)
+                    preguntas.setdefault(clave, []).append(etiqueta_nota)
+                    notas.add(etiqueta_nota, con_respuesta_pendiente(
+                        "ArchMuse no reconoce «%s» y no sabe si es un espacio interior o "
+                        "exterior; sin respuesta no tiene fila (C-6)." % pieza.nombre, id_pregunta))
+                    anterior = candidatas.get(id_pregunta)
+                    candidatas[id_pregunta] = PreguntaAlArquitecto(
+                        id=id_pregunta, tipo=rda.AMBITO,
+                        contexto="ArchMuse no reconoce «%s»." % clave.capitalize(),
+                        texto="¿Es un espacio interior o exterior?",
+                        opciones=("Interior", "Exterior"),
+                        resaltar=(anterior.resaltar if anterior else ()) + ((handle,) if handle else ()))
+                    requisito = frozenset([id_pregunta])
+                celda_vacia("fila:%d" % id(room), None, requisito)
+                bloqueo_comun.append(requisito)
                 reclasificadas.append(pieza)
                 continue
         reclasificadas.append(dataclasses.replace(pieza, familia=familia, ambito=ambito))
         rooms[ambito].append(room)
         crudas[ambito].append(float(room.polygon.area))
         valor = _m2(pieza.area_m2)
+        clave_celda = "fila:%d" % id(room)
         if pieza.no_es_util:
             # Regla de Pablo del 2026-09-16: un contorno rotulado como construida
             # nunca es superficie útil; con duda, tampoco. La fila, sin cifra.
             valor = ""
             incompleto[ambito] = True
             notas.add(pieza.nombre, pieza.no_es_util)
-        elif posicion_pieza in ajenas:
+            celda_vacia(clave_celda, ambito, None)
+        elif id(room) in ajenas and id(room) not in confirmadas:
             valor = ""
             incompleto[ambito] = True
-            notas.add(pieza.nombre, "puede ser de %s: está dentro de la superficie construida que "
-                                    "el plano rotula para esa vivienda. No se escribe su superficie."
-                      % ajenas[posicion_pieza])
-        elif posicion_pieza in contradichas:
+            id_pregunta = rda.id_pertenencia(handle, yo) if handle else None
+            notas.add(pieza.nombre, con_respuesta_pendiente(
+                "puede ser de %s: está dentro de la superficie construida que el plano rotula "
+                "para esa vivienda. No se escribe su superficie." % ajenas[id(room)], id_pregunta))
+            celda_vacia(clave_celda, ambito, _pregunta_de_pertenencia(
+                candidatas, id_pregunta, yo, handle,
+                "«%s» (resaltada) está dentro de la superficie construida que el plano rotula "
+                "para %s." % (pieza.nombre, ajenas[id(room)])))
+        elif id(room) in contradichas and id(room) not in confirmadas:
             # `C-21`: el borde la da a otra vivienda y la cercanía a ésta.
             valor = ""
             incompleto[ambito] = True
-            notas.add(pieza.nombre, "linda con la superficie construida que el plano rotula para "
-                                    "%s, pero está más cerca del rótulo de esta vivienda. No se "
-                                    "escribe su superficie." % contradichas[posicion_pieza])
-        elif posicion_pieza in dudosas:
+            id_pregunta = rda.id_pertenencia(handle, yo) if handle else None
+            notas.add(pieza.nombre, con_respuesta_pendiente(
+                "linda con la superficie construida que el plano rotula para %s, pero está más "
+                "cerca del rótulo de esta vivienda. No se escribe su superficie."
+                % contradichas[id(room)], id_pregunta))
+            celda_vacia(clave_celda, ambito, _pregunta_de_pertenencia(
+                candidatas, id_pregunta, yo, handle,
+                "«%s» (resaltada) linda con la superficie construida que el plano rotula para %s, "
+                "pero está más cerca del rótulo de %s." % (pieza.nombre, contradichas[id(room)],
+                                                          yo.nombre)))
+        elif id(room) in dudosas:
             # Con duda, celda vacía con motivo (decisión propuesta, 2026-09-16): si
             # la pieza es de la vivienda de al lado, su cifra no va en esta tabla.
-            duda = dudosas[posicion_pieza]
+            duda = dudosas[id(room)]
             valor = ""
             incompleto[ambito] = True
-            notas.add(pieza.nombre, "no se sabe si es de esta vivienda o de %s: está a %s m "
-                                    "de su rótulo y a %s m del de %s. No se escribe su "
-                                    "superficie." % (duda.siguiente, _metros(duda.distancia_m),
-                                                     _metros(duda.distancia_siguiente_m),
-                                                     duda.siguiente))
+            id_pregunta = rda.id_pertenencia(handle, yo) if handle else None
+            notas.add(pieza.nombre, con_respuesta_pendiente(
+                "no se sabe si es de esta vivienda o de %s: está a %s m de su rótulo y a %s m "
+                "del de %s. No se escribe su superficie." % (
+                    duda.siguiente, _metros(duda.distancia_m), _metros(duda.distancia_siguiente_m),
+                    duda.siguiente), id_pregunta))
+            requisito = _pregunta_de_pertenencia(
+                candidatas, id_pregunta, yo, handle,
+                "«%s» (resaltada) no se sabe si es de %s o de %s: está a %s m del rótulo de %s y "
+                "a %s m del de %s." % (pieza.nombre, yo.nombre, duda.siguiente,
+                                       _metros(duda.distancia_m), yo.nombre,
+                                       _metros(duda.distancia_siguiente_m), duda.siguiente))
+            celda_vacia(clave_celda, ambito, requisito)
         elif es_superficie_cero(valor):
             valor = ""
             incompleto[ambito] = True
             notas.add(pieza.nombre, "su superficie redondea a cero: una estancia no mide cero y su "
                                     "cifra no se escribe (D-13).")
-        elif pieza.nombre in solapadas:
+            celda_vacia(clave_celda, ambito, None)
+        elif nombre_en_el_plano in solapadas:
             valor = ""
             incompleto[ambito] = True
             notas.add(pieza.nombre, "se solapa con otra pieza dibujada: cuenta metros dos veces "
                                     "y no se escribe su cifra.")
+            celda_vacia(clave_celda, ambito, None)
+        if id(room) in dudosas:
+            # El impedimento de reparto (`C-2`) bloquea los dos totales, aunque la celda la
+            # explique otra rama (una pieza dentro de la construida de otra vivienda que
+            # además duda por cercanía). Medido en el banco: sin esto, la prioridad elegía
+            # preguntas sobre piezas de la vecina antes que la de la propia tabla.
+            ident = rda.id_pertenencia(handle, yo) if handle else None
+            bloqueo_comun.append(frozenset([ident]) if ident in candidatas else None)
+        if valor and id(room) in confirmadas:
+            notas.add(pieza.nombre, rda.CONFIRMADO)
         filas[ambito].append(FilaDePieza(pieza.nombre, valor, familia, pieza.area_m2))
+    if vivienda.solapes:
+        bloqueo_comun.append(None)
+
+    # Piezas de otra vivienda que pueden ser de ésta (D-11). **La duda de reparto por
+    # cercanía bloquea también los totales de ésta** (`C-5`): un total que no demuestra
+    # que no le falta una pieza no se escribe. Con la respuesta del arquitecto se resuelve.
+    vecinas_en_duda = []
+    for room, _vecina, contexto, motivo in _piezas_vecinas_en_duda(plano, medida, posicion_vivienda,
+                                                                  yo, respuestas):
+        handle = getattr(room, "handle", None)
+        id_pregunta = rda.id_pertenencia(handle, yo) if handle else None
+        requisito = _pregunta_de_pertenencia(candidatas, id_pregunta, yo, handle, contexto)
+        celda_vacia("vecina:%d" % id(room), None, requisito)
+        bloqueo_comun.append(requisito)
+        vecinas_en_duda.append(con_respuesta_pendiente(motivo, id_pregunta or ""))
+    # Y las que el plano mete en la construida rotulada de ésta: una respuesta las traería.
+    if preguntar:
+        for handle, contexto in _piezas_vecinas_en_mi_construida(doc, plano, medida,
+                                                                 posicion_vivienda, yo, respuestas):
+            id_pregunta = rda.id_pertenencia(handle, yo)
+            celda_vacia("vecina:%s" % handle, None, _pregunta_de_pertenencia(
+                candidatas, id_pregunta, yo, handle, contexto))
 
     impedimentos = dataclasses.replace(vivienda, piezas=tuple(reclasificadas)).impedimentos
+    impedimentos = tuple(impedimentos) + tuple(vecinas_en_duda)
 
     valores_de_total = {}
+    bloqueados: Dict[str, bool] = {}
     #: Lo que `C-14` puede sumar de cada lado: la cifra que se escribe; `0` si el
     #: lado no tiene ningún espacio; `None` si no se puede afirmar.
     sumandos: Dict[str, Optional[float]] = {}
-    for ambito, etiqueta in ((INTERIOR, TOTAL_INTERIOR), (EXTERIOR, TOTAL_EXTERIOR)):
+    for ambito, etiqueta_total in ((INTERIOR, TOTAL_INTERIOR), (EXTERIOR, TOTAL_EXTERIOR)):
         total = ""
         sumandos[ambito] = None
         if impedimentos:
@@ -812,27 +1261,68 @@ def construir(doc, plano, nombre_vivienda: str,
             else:
                 sumandos[ambito] = cruda
         if motivo:
-            notas.add(etiqueta, motivo)
+            notas.add(etiqueta_total, motivo)
             valores_de_total[ambito] = ""
         else:
             valores_de_total[ambito] = total
+        #: Vacío porque algo lo bloquea, no porque el lado no tenga espacios.
+        bloqueados[etiqueta_total] = bool(impedimentos or incompleto[ambito])
 
-    if C12_FIRMADO:
-        construida = medir_construida(doc, plano, rooms[INTERIOR], rooms[EXTERIOR])
-    else:
-        construida = Construida("", MOTIVO_C12_SIN_FIRMAR, None)
+    construida = medir_construida(doc, plano, rooms[INTERIOR], rooms[EXTERIOR]) \
+        if C12_FIRMADO else Construida("", MOTIVO_C12_SIN_FIRMAR, None)
+    marcada = respuestas.construida(yo)
+    id_construida = rda.id_construida(yo)
+    if marcada and C12_FIRMADO:
+        construida = _construida_marcada(doc, plano, construida, marcada, rooms[INTERIOR],
+                                         rooms[EXTERIOR])
+        if construida.handle == marcada and construida.valor:
+            aplicados.append({"tipo": rda.CONSTRUIDA, "vivienda": yo.a_dict(), "polilinea": marcada})
     util_total, motivo_util_total = _total_util(sumandos)
     if motivo_util_total:
         notas.add(TOTAL_UTIL, motivo_util_total)
     if construida.motivo:
-        notas.add(CONSTRUIDA, construida.motivo)
-    notas.add(NUMERO_UDS.rstrip(":"), MOTIVO_NUMERO_UDS)
+        notas.add(CONSTRUIDA, con_respuesta_pendiente(construida.motivo, id_construida))
+        if not rooms[INTERIOR] or es_superficie_cero(construida.valor or "") or                 "mide cero" in construida.motivo:
+            necesita[CONSTRUIDA] = None
+        else:
+            necesita[CONSTRUIDA] = frozenset([id_construida])
+            candidatas.setdefault(id_construida, PreguntaAlArquitecto(
+                id=id_construida, tipo=rda.CONSTRUIDA,
+                contexto="El plano no identifica una sola polilínea como superficie construida "
+                         "cerrada de %s." % yo.nombre,
+                texto="Haz clic en la polilínea de superficie construida de %s" % yo.nombre,
+                opciones=(), resaltar=()))
+    elif marcada and construida.handle == marcada:
+        notas.add(CONSTRUIDA, rda.CONFIRMADO)
+    unidades, motivo_unidades = numero_de_unidades(doc, plano, posicion_vivienda)
+    if motivo_unidades:
+        notas.add(NUMERO_UDS.rstrip(":"), motivo_unidades)
+
+    # **Qué preguntar** (D-7, D-8): el conjunto de hasta el cupo que más celdas rellena.
+    elegidas: Tuple["PreguntaAlArquitecto", ...] = ()
+    if preguntar:
+        cupo = max(0, rda.MAXIMO_DE_PREGUNTAS - respuestas.preguntas_hechas)
+        disponibles = [p for i, p in candidatas.items()
+                       if i not in respuestas.sin_respuesta and i not in respuestas.respondidas]
+        vacias_totales = {TOTAL_INTERIOR: bloqueados[TOTAL_INTERIOR],
+                          TOTAL_EXTERIOR: bloqueados[TOTAL_EXTERIOR],
+                          TOTAL_UTIL: not util_total and (bloqueados[TOTAL_INTERIOR]
+                                                          or bloqueados[TOTAL_EXTERIOR])}
+        elegidas, pendientes = elegir_preguntas(disponibles, necesita, lado_de, bloqueo_comun,
+                                                vacias_totales, cupo)
+        vacias = _celdas_vacias(filas, sin_fila, valores_de_total, util_total, construida.valor,
+                                unidades)
+        if pendientes and not elegidas and vacias:
+            notas.add("Preguntas", "harían falta %d respuesta(s) más del arquitecto y ArchMuse "
+                                   "pregunta como mucho %d cosas por vivienda: quedan %d celda(s) "
+                                   "vacía(s) en la tabla." % (pendientes, rda.MAXIMO_DE_PREGUNTAS,
+                                                              vacias))
 
     cierre = (
         (TOTAL_INTERIOR, valores_de_total[INTERIOR], TOTAL_EXTERIOR, valores_de_total[EXTERIOR]),
         (TOTAL_UTIL, util_total, "", ""),
         (CONSTRUIDA, construida.valor, "", ""),
-        (VIVIENDA_TIPO, vivienda.nombre, NUMERO_UDS, ""),
+        (VIVIENDA_TIPO, unidades_declaradas.sin_unidades(vivienda.nombre), NUMERO_UDS, unidades),
     )
 
     return Plantilla(
@@ -853,6 +1343,9 @@ def construir(doc, plano, nombre_vivienda: str,
         construida_rotuladas=construida.rotuladas,
         notas_por_motivo=notas.pares(),
         declaradas=tuple(declaradas),
+        preguntas_al_arquitecto=elegidas,
+        registros_aplicados=tuple(aplicados),
+        rotulo_de_la_vivienda=yo.rotulo,
     )
 
 
@@ -877,11 +1370,21 @@ def notas_del_dibujo(plantilla: "Plantilla") -> Tuple[str, ...]:
     motivo y como mucho `MAX_NOTAS_EN_EL_DIBUJO` líneas. Ni un criterio (`C-…`),
     ni un handle, ni un nombre de pieza: eso es el detalle, y va a la línea de
     comandos y al registro con `plantilla.notas`."""
+    from .respuestas_del_arquitecto import CONFIRMADO
+
     piezas = [0] * len(_NOTAS_DE_PIEZAS)
     totales = construida = unidades = False
+    confirmados = 0
     lados_vacios: List[str] = []
     otros = 0
     for etiquetas, motivo in plantilla.notas_por_motivo:
+        if motivo == CONFIRMADO:
+            # Trazabilidad (Pablo, 2026-09-17): siempre en el dibujo, y la primera.
+            confirmados += len(etiquetas)
+            continue
+        if motivo.endswith(CONFIRMADO):
+            # Piezas que él ha dicho que no son de esta vivienda: no son una celda.
+            continue
         for i, (patron, _uno, _varios) in enumerate(_NOTAS_DE_PIEZAS):
             if patron.search(motivo):
                 piezas[i] += len(etiquetas)
@@ -899,6 +1402,9 @@ def notas_del_dibujo(plantilla: "Plantilla") -> Tuple[str, ...]:
                 else:
                     otros += 1
     lineas: List[str] = []
+    if confirmados:
+        lineas.append("Confirmado por el arquitecto: %d dato%s" % (confirmados,
+                                                                "" if confirmados == 1 else "s"))
     for cuenta, (_patron, uno, varios) in zip(piezas, _NOTAS_DE_PIEZAS, strict=True):
         if cuenta:
             lineas.append((uno if cuenta == 1 else varios) % cuenta)
@@ -939,4 +1445,12 @@ def a_dict(plantilla: Plantilla) -> dict:
         "impedimentos": list(plantilla.impedimentos),
         "construida_handle": plantilla.construida_handle,
         "declaradas": list(plantilla.declaradas),
+        # Modo preguntar (PRD 2026-09-17).
+        "preguntas_al_arquitecto": [
+            {"id": p.id, "tipo": p.tipo, "contexto": p.contexto, "texto": p.texto,
+             "opciones": list(p.opciones), "resaltar": list(p.resaltar)}
+            for p in plantilla.preguntas_al_arquitecto],
+        "confirmadas_por_el_arquitecto": [
+            etiqueta for etiquetas, motivo in plantilla.notas_por_motivo
+            if motivo == "Confirmado por el arquitecto." for etiqueta in etiquetas],
     }

@@ -3533,9 +3533,19 @@ def _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear=False):
     from analyzer import maquetacion_cuadro as mq
     from analyzer import parser
     from analyzer import plantilla_cuadro as pc
+    from analyzer import respuestas_del_arquitecto as rda
     from analyzer.geometria_recibida import SubidaMaterializada
 
-    ambitos = cuerpo.get("ambitos") if isinstance(cuerpo.get("ambitos"), dict) else {}
+    # **Modo preguntar** (PRD `docs/prd/2026-09-17-modo-preguntar.md`). Las respuestas
+    # se guardan por plano —la ruta del DWG que manda el comando— fuera de su dibujo
+    # (D-2), y sólo las que la tabla ha usado. Sin `plano` (la web, un plano sin
+    # guardar) se aplican las de la petición y no se guarda nada. Sin `preguntar`, no
+    # se pregunta: el comando anterior y la web siguen igual.
+    plano_id = cuerpo.get("plano") if isinstance(cuerpo.get("plano"), str) else ""
+    plano_id = plano_id.strip()
+    preguntar = cuerpo.get("preguntar") is True
+    almacen = rda.Almacen() if plano_id else None
+    respuestas, _nuevas = rda.desde_peticion(cuerpo, almacen.cargar(plano_id) if almacen else ())
     # El punto único (3.4.0) manda sobre la ventana; la ventana se sigue
     # aceptando para un cliente anterior.
     punto = _punto_de_payload(cuerpo.get("punto"))
@@ -3612,8 +3622,15 @@ def _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear=False):
                                                   vivienda.viviendas_con_el_mismo_rotulo),
                 })
                 continue
-            plantilla = pc.construir(doc, plano, vivienda.nombre, ambitos=ambitos, medida=medida,
-                                     posicion=solo)
+            plantilla = pc.construir(doc, plano, vivienda.nombre, medida=medida, posicion=solo,
+                                     respuestas=respuestas, preguntar=preguntar)
+            guardadas = 0
+            if almacen is not None and plantilla.registros_aplicados:
+                try:
+                    guardadas = almacen.guardar(plano_id, plantilla.registros_aplicados)
+                except OSError:
+                    # Una respuesta que no se guarda sólo hace que se vuelva a preguntar.
+                    guardadas = 0
             dibujo = pc.a_dict(plantilla)
             # En el plano, las notas cortas y agrupadas; el detalle viaja en `notas`
             # para la línea de comandos (Pablo, 2026-09-15).
@@ -3643,6 +3660,9 @@ def _cuadros_de_archmuse(geometria, cuerpo, capa, factor_escala, alinear=False):
                 "medicion_limpia": plantilla.medicion_limpia,
                 "impedimentos": list(plantilla.impedimentos),
                 "preguntas_de_ambito": dibujo["preguntas_de_ambito"],
+                "preguntas_al_arquitecto": dibujo["preguntas_al_arquitecto"],
+                "confirmadas_por_el_arquitecto": dibujo["confirmadas_por_el_arquitecto"],
+                "respuestas_guardadas": guardadas,
                 "no_escritas": [{"motivo": n} for n in plantilla.notas],
                 "piezas_sin_fila": [{"motivo": p} for p in plantilla.sin_fila],
                 "cuadro_a_dibujar": dibujo,
@@ -3800,6 +3820,14 @@ def vivienda_en_punto_endpoint():
         if eleccion.vivienda is not None:
             datos["zonas"] = [round(n, 6) for z in vp.zonas_de_otras_capas(doc, plano) for n in z]
             datos["capas_enteras"] = enteras
+            # Modo preguntar: las construidas que él ya marcó en este plano. El comando
+            # las manda para que se midan (D-6); sin ellas, se volvería a preguntar.
+            from analyzer import respuestas_del_arquitecto as rda
+
+            plano_id = cuerpo.get("plano") if isinstance(cuerpo.get("plano"), str) else ""
+            datos["polilineas_del_arquitecto"] = sorted({
+                r["polilinea"] for r in rda.Almacen().cargar(plano_id.strip())
+                if r.get("tipo") == rda.CONSTRUIDA}) if plano_id.strip() else []
         return responder(datos)
     finally:
         shutil.rmtree(carpeta, ignore_errors=True)
@@ -3841,6 +3869,25 @@ def medicion_geometria_endpoint():
         cuerpo = None
     if cuerpo is None:
         return jsonify(error="Manda un cuerpo JSON con «recintos»."), 400
+
+    # **Modo preguntar** (PRD 2026-09-17): la polilínea que él marca como construida
+    # llega con su respuesta y se mide con el lector de siempre, como una más de las
+    # otras capas.
+    if isinstance(cuerpo, dict):
+        from analyzer.respuestas_del_arquitecto import polilineas_de_la_peticion
+
+        marcadas = polilineas_de_la_peticion(cuerpo)
+        if marcadas:
+            # Una vez cada handle: si la marcada ya viajaba en las zonas, dos copias
+            # serían dos polilíneas al alcance de un rótulo (`C-12`) donde hay una.
+            vistas, otras = set(), []
+            for polilinea in list(cuerpo.get("otras_polilineas") or []) + marcadas:
+                handle = polilinea.get("handle") if isinstance(polilinea, dict) else None
+                if handle and handle in vistas:
+                    continue
+                vistas.add(handle)
+                otras.append(polilinea)
+            cuerpo = dict(cuerpo, otras_polilineas=otras)
 
     try:
         geometria = validar(cuerpo)

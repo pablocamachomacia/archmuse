@@ -5,7 +5,7 @@
     - «un clic y Sí»: `getpoint` de la esquina y después «¿Te dibujo el cuadro?».
     - Ctrl+Z: todo va en un grupo de deshacer (StartUndoMark/EndUndoMark).
       Sin probar en AutoCAD.
-    - NUMERO UDS vacía: `analyzer/plantilla_cuadro.py`, motivo C-8.
+    - NUMERO UDS: lo que el plano declara junto al rótulo («8 uds.»), `analyzer/unidades_declaradas.py` (C-8); vacía con motivo si no lo declara.
     - Referencias externas: C-15, el comando dice qué fichero abrir.
   Sin medir: el título exacto del aviso de Control Inteligente de Aplicaciones.
   Fuera a propósito, para que quepa en una hoja: actualizar, volver a la versión
@@ -54,9 +54,12 @@ Hay **dos avisos distintos**, y se resuelven distinto:
 2. **Haz clic dentro de la vivienda** que quieres medir.
 3. **Mueve el cursor** —el cuadro va pegado a él— y **haz clic** donde lo quieras.
 
-Si antes te pregunta algo (qué capa, qué vivienda), contesta: prefiere
-preguntar a adivinar. El cuadro sale marcado como **borrador**; puedes apagar
-la capa «ARCHMUSE - BORRADOR» para imprimir.
+Si antes te pregunta algo (qué capa, si una pieza es de esa vivienda, cuál es
+la polilínea de la superficie construida), contesta: prefiere preguntar a
+adivinar. Como mucho tres preguntas por vivienda; con **Esc** esa casilla se
+queda vacía. Lo que contestas sale como **«Confirmado por el arquitecto»** y no
+te lo vuelve a preguntar en ese plano. El cuadro sale marcado como
+**borrador**; puedes apagar la capa «ARCHMUSE - BORRADOR» para imprimir.
 
 **Ctrl+Z** justo después lo deshace todo de una vez.
 

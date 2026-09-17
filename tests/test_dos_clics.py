@@ -315,15 +315,17 @@ def test_el_mensaje_final_dice_ctrl_z():
 
 
 def test_esc_en_cualquier_paso_llega_al_mismo_aviso():
-    """Todas las preguntas del comando (capa, primer clic, alinear rótulos, interior o
-    exterior, segundo clic) cancelan con Esc a través de *error*: nada se dibuja antes
-    del segundo clic, y *error* dice «Cancelado con Esc» y devuelve CMDECHO."""
+    """Las preguntas del comando (capa, primer clic, alinear rótulos, segundo clic)
+    cancelan con Esc a través de *error*: nada se dibuja antes del segundo clic, y
+    *error* dice «Cancelado con Esc» y devuelve CMDECHO. **Las del modo preguntar
+    (3.10.0) no**: ahí Esc es «sin contestar» (Pablo, 2026-09-17), y también van antes
+    de dibujar nada."""
     comando = _defun("c:ARCHMUSE")
     error = comando[comando.index("(defun *error*"):comando.index('(setq eco (getvar "CMDECHO"))')]
     assert '"*BREAK*,*CANCEL*"' in error and '(setvar "CMDECHO"' in error
     cuerpo = comando[comando.index('(setq eco (getvar "CMDECHO"))'):]
     primer_dibujo = cuerpo.index("vla-StartUndoMark")
-    for pregunta in ("(am:elegir-capa)", "(am:pedir-punto)", "getkword", "(am:preguntar-ambitos"):
+    for pregunta in ("(am:elegir-capa)", "(am:pedir-punto)", "getkword", "(am:preguntar-al-arquitecto"):
         assert cuerpo.index(pregunta) < primer_dibujo, pregunta
     # El segundo clic va con la tabla ya dibujada, dentro del grupo: un Esc ahí lo deshace
     # (`test_esc_en_el_arrastre_deshace_lo_dibujado_y_lo_dice`).

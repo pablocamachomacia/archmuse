@@ -471,7 +471,7 @@
       },
       {
         "etiqueta": "NUMERO UDS",
-        "motivo": "el plano lo declara, pero leer lo que el plano declara (C-8) no está implementado todavía: se escribe a mano."
+        "motivo": "el plano no declara el número de unidades junto al rótulo de esta vivienda, y no se cuenta (C-8)."
       }
     ],
     "completo": true,
@@ -516,7 +516,7 @@
     "notas": [
       "TOTAL SUP. EXTERIOR (m2): no hay ningún espacio de este lado, y un total vacío no se escribe como cero (D-13).",
       "S. CONSTRUIDA C.: el plano no rotula ninguna polilínea como «Superficie construida cerrada» ni «S. construida cerrada», y sin ese rótulo no se escribe (C-12).",
-      "NUMERO UDS: el plano lo declara, pero leer lo que el plano declara (C-8) no está implementado todavía: se escribe a mano."
+      "NUMERO UDS: el plano no declara el número de unidades junto al rótulo de esta vivienda, y no se cuenta (C-8)."
     ],
     "ok": true,
     "preguntas_pendientes": [],

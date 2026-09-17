@@ -76,6 +76,8 @@ PRIMITIVAS = {
     "vla-get-Layers", "vla-Add", "vla-AddMText", "vla-put-Layer", "vla-Move",
     "vla-get-InsertionPoint", "vlax-safearray->list", "vlax-variant-value",
     "logand", "member", "initget", "getkword", "atoi", "vla-put-Height",
+    # Modo preguntar (3.10.0): el clic en la construida y el resaltado por handle.
+    "entsel", "handent",
     # Colocar la marca de borrador debajo del cuadro (2026-09-11).
     # `vla-GetBoundingBox` devuelve sus dos esquinas POR REFERENCIA, en
     # dos símbolos citados que luego hay que sacar del variant.

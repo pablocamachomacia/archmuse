@@ -5,6 +5,82 @@ hizo, qué se dejó fuera y qué decisiones se tomaron. Lo más reciente arriba.
 
 ---
 
+## 2026-09-17 (8) · Modo preguntar: tablas completas sin inventar ninguna cifra (`.lsp` 3.10.0)
+
+**Pablo** descongela el código: «conseguir tablas completas sin inventar ninguna cifra,
+combinando mejor deducción + preguntas al arquitecto». PRD
+`docs/prd/2026-09-17-modo-preguntar.md` (aprobado en el encargo; D-1 a D-13, cómo se lee
+cada respuesta, **propuestas, pendientes de firma**). Criterio `C-22`.
+
+**Qué hace.** Lo que el servidor no puede determinar se pregunta en AutoCAD, como mucho 3
+cosas por vivienda y por pasada, las que más celdas rellenan: «¿Esta pieza es de VT15/3?
+[Si/No]» con la pieza resaltada; «Haz clic en la polilínea de superficie construida de
+VT15/3» (se mide y tiene que pasar la comprobación de `C-12`); el nombre de una pieza con
+dos (numerado); interior o exterior. Con las respuestas se vuelve a medir la misma
+geometría; si aparece otra pregunta y queda cupo, otra vuelta. Esc o Enter: la celda
+queda vacía y su nota termina «El arquitecto no ha respondido.». Las respuestas se
+guardan por plano (huella de la ruta del DWG) en `respuestas-del-arquitecto/` de la
+carpeta de datos, **sin la ruta y sin ninguna cifra**; la siguiente pasada no pregunta.
+Todo dato que depende de una respuesta lleva «Confirmado por el arquitecto.» en el
+detalle, y el dibujo lo cuenta («Confirmado por el arquitecto: N datos»). Si harían falta
+más de 3, la nota dice cuántas respuestas faltan y cuántas celdas quedan vacías. La web y
+el agente no preguntan (sin `preguntar`, todo igual que antes).
+
+**`C-8`, número de unidades.** Se lee del rótulo («VT1/3 8 uds», «VT1/3 - 8 uds.»,
+«VT1/3 (8 uds)», MTEXT en dos líneas) o de un texto suelto «8uds.»/«1 ud.» a menos de 3
+alturas del rótulo y más cerca de él que de otro. Dos números distintos, o ninguno:
+vacía con motivo. Banco del maestro: **25 de 25** coinciden con su cuadro.
+
+**Tres cosas que salieron al medir, y cambiaron el diseño:**
+1. **Un agujero previo que las respuestas destapan (D-13).** Se probó a no preguntar por
+   piezas de la vecina que sólo dudan por distancia (parecían preguntas de más). En una
+   vivienda, contestar «Sí» a su única pieza dudosa escribía sus totales **sin dos piezas
+   que su cuadro le da** y que se habían medido con la vecina: 2 cifras incorrectas.
+   Ahora una pieza de otra vivienda cuyo reparto duda hacia ésta **bloquea también los
+   totales de ésta** (`C-5`: la ambigüedad es de las dos), y se pregunta. Afecta a la web y
+   al agente; en el banco no cambia ninguna cifra de «antes» (205 coincidencias, 15 de 25).
+2. **Prioridad:** una pieza propia dentro de la construida de la vecina y además dudosa no
+   contaba como bloqueo de los totales, y se elegían preguntas sobre piezas de la vecina
+   antes que la suya. Arreglado con test.
+3. **El arquitecto simulado del banco** contestaba «Sí» a dos baños de plantas simétricas
+   con la misma superficie. Ahora, si hay más piezas posibles con esa cifra que cifras
+   libres en su cuadro, no contesta.
+
+**Banco del plano maestro (copia local, fuera del repositorio), arquitecto simulado que
+contesta con su propio cuadro** (si su cuadro no basta, no contesta):
+
+| Viviendas | Completas antes | Preguntas | Sin respuesta | Completas después | Celdas vacías antes → después | Cifras incorrectas después |
+|---|---|---|---|---|---|---|
+| 25 | 15 | 21 | 3 | 18 | 45 → 28 | **0** |
+
+Las cuatro pedidas:
+- **VT7/2:** 1 celda indeterminada (construida: ningún rótulo alcanza una sola polilínea
+  que la contenga). 1 pregunta (clic en la construida). **Completa.**
+- **VT17/1:** 3 celdas. 3 preguntas (dos piezas dentro de la construida de VT16/3: «No»;
+  una pieza de VT16/3 que duda: «No»). La construida sale sola al quitar esas piezas.
+  Quedan los dos totales: otras dos piezas de VT16/3 dudan si son de VT17/1 y ya no hay
+  cupo. **No completa: harían falta 2 respuestas más.**
+- **VT15/3:** 6 celdas. 3 preguntas (dos dormitorios dudosos con VT16/3, un baño dentro de
+  la construida de VT14/3). El simulador no contesta ninguna: en plantas simétricas hay
+  piezas de la vecina con la misma cifra y su cuadro no dice cuál es la suya. Sin medir:
+  si el arquitecto real las contestaría (él ve la pieza resaltada). Aunque contestara las
+  tres, harían falta más: la construida y piezas de las vecinas que dudan hacia ella.
+- **VT6/2:** 6 celdas. 1 pregunta (clic en la construida: la escribe). Quedan 5 que
+  ninguna pregunta cerrada arregla: dos terrazas dibujadas solapadas, el tendedero sin
+  contorno útil (sólo su construida exterior, rotulada, `C-20`) y los totales.
+
+**Probado en AutoCAD Core Console** (puerta aislada, plano sintético, servidor del repo en
+otro puerto): el `.lsp` lee las preguntas, resalta con `redraw`, arma las respuestas,
+manda la polilínea marcada, la tabla sale con la construida y «Confirmado por el
+arquitecto», la segunda pasada pide la polilínea guardada y no pregunta. **Sin probar:**
+`getkword`, `getint` y `entsel` dentro de `vl-catch-all-apply` con un Esc real (Core
+Console no contesta preguntas), ni el resaltado visible en pantalla.
+
+**Sin resolver:** la vista de medición de la web no sabe de respuestas. Las respuestas de
+un plano no viajan si el DWG se copia o se renombra (vuelve a preguntar).
+
+---
+
 ## 2026-09-17 (7) · Una cifra que no se puede demostrar de esa vivienda no sale
 
 **Pablo:** una vivienda del plano maestro escribía en su tabla, con cifra, una pieza que

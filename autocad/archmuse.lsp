@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.11")
-(setq *am:version*  "3.9.11 (2026-09-17, pregunta si instalar la versión nueva antes de medir)")
+(setq *am:version-corta* "3.10.0")
+(setq *am:version*  "3.10.0 (2026-09-17, modo preguntar: pide lo que falta para completar la tabla)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -1849,6 +1849,8 @@
     (if (/= json "") (setq json (strcat json ",")))
     (setq json (strcat json (am:json-cad (car par)) ":" (am:json-cad (cdr par)))))
   (strcat "{"
+          ;; Modo preguntar (3.10.0): con qué plano van sus respuestas, y que se pregunte.
+          "\"plano\":" (am:plano-json) ",\"preguntar\":true,"
           (if punto
             (strcat "\"punto\":[" (am:json-num (car punto)) "," (am:json-num (cadr punto)) "],")
             "")
@@ -1875,6 +1877,7 @@
   ;; capas del dibujo. `otras` son las polilíneas de las capas que el servidor
   ;; haya pedido enteras, si las ha pedido.
   (strcat "{\"punto\":[" (am:json-num (car punto)) "," (am:json-num (cadr punto)) "],"
+          "\"plano\":" (am:plano-json) ","
           "\"capas_del_dibujo\":" capas ","
           "\"capas_enteras_enviadas\":" (if enviadas "true" "false") ","
           "\"otras_polilineas\":[" otras "],"
@@ -2004,33 +2007,164 @@
     (list (car despues) (cadr despues))))
 
 
-(defun am:ultima-pos (patron s / p ultima)
-  (setq p 0 ultima nil)
-  (while (setq p (am:pos patron s p))
-    (setq ultima p p (1+ p)))
-  ultima)
+;;; ---------------------------------------------------------------------------
+;;; Modo preguntar (3.10.0; PRD 2026-09-17)
+;;; ---------------------------------------------------------------------------
+;;;
+;;; Cuando el servidor no puede determinar un dato, pregunta: si una pieza es de esta
+;;; vivienda, cuál es la polilínea de la superficie construida, qué nombre tiene una
+;;; pieza con dos o si una familia es interior o exterior. **Qué se pregunta, cómo se
+;;; redacta y cuántas preguntas (como mucho 3 por vivienda) lo decide el servidor**;
+;;; aquí se enseñan, se resalta la pieza y se devuelve la respuesta. Esc o Enter sin
+;;; contestar NO cancela el comando: esa celda queda vacía con su motivo (Pablo).
+;;;
+;;; **SIN EJECUTAR EN AUTOCAD** (2026-09-17): `vl-catch-all-apply` sobre `getkword`,
+;;; `getint` y `entsel` para que Esc no llegue a *error*, y `redraw` con 3/4 para
+;;; resaltar. Lo prueba Pablo.
+
+(defun am:plano-json ( / titulado)
+  ;; La ruta completa del dibujo, que es con lo que se guardan sus respuestas. Un dibujo
+  ;; que nunca se ha guardado no tiene ruta: se pregunta igual, pero no se guarda nada.
+  (setq titulado (getvar "DWGTITLED"))
+  (if (and titulado (/= titulado 0))
+    (am:json-cad (strcat (getvar "DWGPREFIX") (getvar "DWGNAME")))
+    "null"))
 
 
-(defun am:preguntar-ambitos (respuesta / ini bloque p familia texto r res)
-  ;; Las preguntas de interior/exterior que ha decidido el SERVIDOR, una por
-  ;; familia (decisión 4 de Pablo). Aquí se enseñan y se recoge la respuesta; no
-  ;; se decide nada. Devuelve `((familia . "interior") ...)` con las contestadas.
-  ;; La lista de arriba es la última clave de la respuesta: por eso la última.
-  (setq ini (am:ultima-pos "(\"preguntas_de_ambito\"" respuesta) res nil)
+(defun am:polilinea-json (ename / datos flags)
+  ;; Una LWPOLYLINE en el formato de `am:otras-polilineas`, o nil si no lo es.
+  (setq datos (if ename (entget ename)))
+  (if (and datos (= (cdr (assoc 0 datos)) "LWPOLYLINE"))
+    (progn
+      (setq flags (if (assoc 70 datos) (cdr (assoc 70 datos)) 0))
+      (strcat "{\"handle\":" (am:json-cad (cdr (assoc 5 datos)))
+              ",\"capa\":" (am:json-cad (cdr (assoc 8 datos)))
+              ",\"cerrada\":" (if (= 1 (logand flags 1)) "true" "false")
+              ",\"vertices\":" (am:json-vertices (am:vertices-de ename)) "}"))
+    nil))
+
+
+(defun am:polilineas-del-arquitecto (eleccion / json e trozo)
+  ;; Las construidas que él marcó en otra pasada, por su handle: el servidor las pide
+  ;; para medirlas. Devuelve el JSON para añadir a `otras_polilineas` ("" si ninguna).
+  (setq json "")
+  (foreach h (am:cadenas-tras eleccion "polilineas_del_arquitecto" 0)
+    (if (and (setq e (handent h)) (setq trozo (am:polilinea-json e)))
+      (setq json (strcat json "," trozo))))
+  json)
+
+
+(defun am:con-respuestas (cuerpo respuestas sin hechas)
+  ;; El mismo cuerpo, con las respuestas de esta pasada delante (como `am:con-alineado`).
+  (strcat "{\"respuestas_del_arquitecto\":[" respuestas "],"
+          "\"sin_respuesta\":[" sin "],"
+          "\"preguntas_hechas\":" (itoa hechas) ","
+          (substr cuerpo 2)))
+
+
+(defun am:preguntas-de (respuesta / zona ini fin p siguiente res)
+  ;; Cada pregunta de `preguntas_al_arquitecto` (la de la tabla, en `repartos`) como su
+  ;; trozo de texto. nil si el servidor no pregunta nada (o es anterior a la 3.10.0).
+  (setq zona (am:zona-de-repartos respuesta)
+        ini  (am:pos "(\"preguntas_al_arquitecto\" . ((" zona 0)
+        res  nil)
   (if ini
     (progn
-      (setq bloque (am:trozo respuesta ini nil) p 0)
-      (while (setq p (am:pos "(\"familia\" . " bloque p))
-        (setq familia (am:valor-tras bloque "familia" p)
-              texto   (am:valor-tras bloque "texto" p))
-        (if (and familia texto)
-          (progn
-            (princ (strcat "\n\n" texto))
-            (initget "Interior Exterior")
-            (setq r (getkword "\n[Interior/Exterior] <sin contestar>: "))
-            (if r (setq res (cons (cons familia (strcase r T)) res)))))
-        (setq p (1+ p)))))
+      (setq fin (am:pos "(\"confirmadas_por_el_arquitecto\"" zona ini)
+            zona (am:trozo zona ini fin)
+            p (am:pos "((\"id\" . " zona 0))
+      (while p
+        (setq siguiente (am:pos "((\"id\" . " zona (1+ p))
+              res (cons (am:trozo zona p siguiente) res)
+              p siguiente))))
   (reverse res))
+
+
+(defun am:resaltar (handles modo / e)
+  ;; 3 resalta, 4 devuelve el dibujo normal. Sólo cambia cómo se ve en pantalla.
+  (foreach h handles
+    (if (setq e (handent h)) (redraw e modo))))
+
+
+(defun am:respuesta-json (id valor extra)
+  (strcat "{\"id\":" (am:json-cad id) ",\"valor\":" (am:json-cad valor)
+          (if extra (strcat ",\"polilinea\":" extra) "") "}"))
+
+
+(defun am:pregunta-construida (texto / intentos r e json res)
+  ;; «Haz clic en la polilínea de superficie construida de …». Devuelve
+  ;; (handle . json-de-la-polilinea), o nil sin respuesta (Esc, o tres clics en vacío).
+  (setq intentos 0 res nil)
+  (while (and (null res) (< intentos 3))
+    (setq intentos (1+ intentos)
+          r (vl-catch-all-apply 'entsel (list (strcat "\n" texto ": "))))
+    (cond
+      ((vl-catch-all-error-p r) (setq intentos 3))
+      ((null r) (princ "\nNo has marcado nada."))
+      ((setq json (am:polilinea-json (car r)))
+        (setq res (cons (cdr (assoc 5 (entget (car r)))) json)))
+      (T (princ "\nEso no es una polilínea: marca la de la superficie construida."))))
+  res)
+
+
+(defun am:preguntar-al-arquitecto (respuesta / preguntas vivienda id tipo texto opciones
+                                               resaltar r n i respuestas sin hechas par)
+  ;; Hace las preguntas del servidor. Devuelve (respuestas-json sin-respuesta-json hechas)
+  ;; o nil si no hay ninguna. Nunca llama a `am:log`: tiene el plano a mano (el
+  ;; recuento lo registra el comando).
+  (setq preguntas (am:preguntas-de respuesta)
+        respuestas "" sin "" hechas 0)
+  (if preguntas
+    (progn
+      (setq vivienda (am:valor-tras (am:zona-de-repartos respuesta) "vivienda" 0))
+      (princ (strcat "\n\nArchMuse necesita " (itoa (length preguntas))
+                     " respuesta(s) para completar la tabla de " (if vivienda vivienda "esta vivienda")
+                     ". Esc o Enter: la dejo sin contestar."))
+      (foreach pregunta preguntas
+        (setq id       (am:valor-tras pregunta "id" 0)
+              tipo     (am:valor-tras pregunta "tipo" 0)
+              texto    (am:valor-tras pregunta "texto" 0)
+              opciones (am:cadenas-tras pregunta "opciones" 0)
+              resaltar (am:cadenas-tras pregunta "resaltar" 0)
+              r nil
+              hechas (1+ hechas))
+        (princ (strcat "\n\n" (am:valor-tras pregunta "contexto" 0)))
+        (am:resaltar resaltar 3)
+        (cond
+          ((= tipo "pertenencia")
+            (initget "Si No")
+            (setq r (vl-catch-all-apply 'getkword (list (strcat "\n" texto " [Si/No] <sin contestar>: ")))))
+          ((= tipo "ambito")
+            (initget "Interior Exterior")
+            (setq r (vl-catch-all-apply 'getkword
+                      (list (strcat "\n" texto " [Interior/Exterior] <sin contestar>: ")))))
+          ((= tipo "nombre")
+            (setq i 0)
+            (foreach opcion opciones
+              (setq i (1+ i))
+              (princ (strcat "\n  " (itoa i) ". " opcion)))
+            (initget 6)
+            (setq n (vl-catch-all-apply 'getint
+                      (list (strcat "\n" texto " Número (1-" (itoa (length opciones))
+                                    ") <sin contestar>: "))))
+            (setq r (if (and (not (vl-catch-all-error-p n)) n (<= n (length opciones)))
+                      (itoa n))))
+          ((= tipo "construida")
+            (setq par (am:pregunta-construida texto))))
+        (am:resaltar resaltar 4)
+        (cond
+          ((and (= tipo "construida") par)
+            (setq respuestas (strcat respuestas (if (= respuestas "") "" ",")
+                                     (am:respuesta-json id (car par) (cdr par)))))
+          ((and (/= tipo "construida") r (not (vl-catch-all-error-p r)))
+            (setq respuestas (strcat respuestas (if (= respuestas "") "" ",")
+                                     (am:respuesta-json id r nil))))
+          (T
+            (princ "\nSin contestar: esa celda se queda vacía.")
+            (setq sin (strcat sin (if (= sin "") "" ",") (am:json-cad id)))))
+        (setq par nil))
+      (list respuestas sin hechas))
+    nil))
 
 
 (defun am:zona-de-repartos (respuesta / ini fin)
@@ -2802,6 +2936,7 @@
                       trozos ini fin bloque dibujadas tabla
                       filas cols notas i n
                       punto geometria ambitos alineado nombres elegida m intentos
+                      hechas turno respuestas-json sin-json
                       estilo-texto textos medidos eleccion otras obstaculos
                       colocado tapa detalle linea antes-de-dibujar propios arrastre-libre)
 
@@ -2960,7 +3095,13 @@
   (if (null eleccion)
     (progn (setvar "CMDECHO" eco) (princ) (exit)))
   (setq otras (am:otras-polilineas capa (am:en-cuatros (am:numeros-tras eleccion "zonas" 0))
-                                   (am:cadenas-tras eleccion "capas_enteras" 0))
+                                   (am:cadenas-tras eleccion "capas_enteras" 0)))
+  ;; Modo preguntar (3.10.0): las construidas que él ya marcó en este plano, por su handle.
+  (setq otras (cons (strcat (car otras)
+                            (if (= (car otras) "")
+                              (substr (am:polilineas-del-arquitecto eleccion) 2)
+                              (am:polilineas-del-arquitecto eleccion)))
+                    (cdr otras))
         geometria (am:con-vivienda geometria (car otras)
                                    (am:valor-tras eleccion "vivienda_json" 0)))
   (princ (strcat "\nEnvío " (itoa (cdr otras)) " polilínea(s) de otras capas: las que están "
@@ -3101,22 +3242,30 @@
               (princ "\n  Esto es un fallo suyo, no tuyo: avisa con esta línea.")))))
       (setvar "CMDECHO" eco) (princ) (exit)))
 
-  ;; 2c. **Interior o exterior**, si el servidor lo pregunta (decisión 4 de
-  ;;     Pablo): una pregunta por familia, redactada allí. Con las respuestas se
-  ;;     vuelve a medir la MISMA geometría con una instrucción más, como al
-  ;;     alinear los rótulos.
-  (setq ambitos (am:preguntar-ambitos respuesta))
-  (if ambitos
-    (progn
-      (am:log (strcat "el usuario contesta " (itoa (length ambitos))
-                      " pregunta(s) de interior o exterior"))
-      (setq cuerpo (am:con-dibujo geometria cuadros punto ambitos))
-      (if alineado (setq cuerpo (am:con-alineado cuerpo)))
-      (setq respuesta (am:post cuerpo))
-      (if (null respuesta)
-        (progn
-          (am:log "el servidor no ha respondido al volver a medir con las respuestas")
-          (setvar "CMDECHO" eco) (princ) (exit)))))
+  ;; 2c. **Modo preguntar** (3.10.0; PRD 2026-09-17). Lo que el servidor no puede
+  ;;     determinar, se lo pregunta: como mucho 3 cosas por vivienda, las que decide
+  ;;     allí, incluida la de interior o exterior. Con las respuestas se vuelve a medir
+  ;;     la MISMA geometría con una instrucción más, como al alinear los rótulos; si
+  ;;     aparece algo nuevo que preguntar y queda cupo, otra vuelta. Esc o Enter en una
+  ;;     pregunta no cancela: esa celda queda vacía y lo dice la tabla.
+  (setq hechas 0 respuestas-json "" sin-json "")
+  (while (and (< hechas 3) (setq turno (am:preguntar-al-arquitecto respuesta)))
+    (if (/= (car turno) "")
+      (setq respuestas-json (strcat respuestas-json (if (= respuestas-json "") "" ",") (car turno))))
+    (if (/= (cadr turno) "")
+      (setq sin-json (strcat sin-json (if (= sin-json "") "" ",") (cadr turno))))
+    (setq hechas (+ hechas (caddr turno)))
+    (am:log (strcat "modo preguntar: " (itoa (caddr turno)) " pregunta(s) en este turno, "
+                    (itoa hechas) " en total"))
+    (setq cuerpo (am:con-respuestas (am:con-dibujo geometria cuadros punto nil)
+                                    respuestas-json sin-json hechas))
+    (if alineado (setq cuerpo (am:con-alineado cuerpo)))
+    (princ "\nVuelvo a medir con tus respuestas…")
+    (setq respuesta (am:post cuerpo))
+    (if (null respuesta)
+      (progn
+        (am:log "el servidor no ha respondido al volver a medir con las respuestas")
+        (setvar "CMDECHO" eco) (princ) (exit))))
 
   ;; 2d. **De qué vivienda**, si el plano tiene varias: él elige. Las que llevan
   ;;     el mismo rótulo que otra no se ofrecen (`C-13`), y se dice por qué: dos

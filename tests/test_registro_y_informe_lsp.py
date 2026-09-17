@@ -151,11 +151,15 @@ TOCAN_EL_PROYECTO = ("am:recolectar", "am:json-vertices", "am:celdas-json",
                      "am:vertices-de", "am:texto-de", "am:cuadros-json",
                      "am:celdas-del-cuadro", "am:notas-colocadas",
                      "am:dibujar-cuadro", "am:con-dibujo", "am:alturas-de-cuadro",
-                     "am:preguntar-ambitos", "am:viviendas-de",
+                     "am:viviendas-de",
                      "am:bloque-de-vivienda", "am:zona-de-repartos",
                      "am:motivos-indistinguibles", "am:estilos-de-cuadro",
                      "am:cadenas-tras", "am:textos-de-notas", "am:medir-textos",
-                     "am:json-celdas", "am:maquetar")
+                     "am:json-celdas", "am:maquetar",
+                     # Modo preguntar (3.10.0): nombres de piezas, viviendas y handles.
+                     "am:preguntar-al-arquitecto", "am:preguntas-de", "am:polilinea-json",
+                     "am:polilineas-del-arquitecto", "am:pregunta-construida",
+                     "am:respuesta-json", "am:con-respuestas")
 
 
 @pytest.mark.parametrize("nombre", TOCAN_EL_PROYECTO)
@@ -189,7 +193,13 @@ def test_dwgprefix_solo_aparece_donde_se_manda_el_plano_a_proposito(codigo):
     # **Excepción** (3.9.9, 2026-09-17): `am:ruta-de-xref` busca el dibujo donde están
     # las habitaciones junto a éste, para abrirlo o decir en pantalla dónde debería
     # estar (Pablo lo pide). Su resultado no puede ir al registro ni a ningún envío.
-    assert sorted(con_ruta) == ["am:lanza-el-empaquetado", "am:ruta-de-xref"], con_ruta
+    # **Excepción** (3.10.0, 2026-09-17): `am:plano-json` manda la ruta al servidor
+    # LOCAL para guardar las respuestas del modo preguntar con su plano; el servidor sólo
+    # guarda su huella. Sólo la usan los dos cuerpos de las peticiones, nunca el registro.
+    assert sorted(con_ruta) == ["am:lanza-el-empaquetado", "am:plano-json",
+                                "am:ruta-de-xref"], con_ruta
+    usan_la_ruta = sorted(n for n, cuerpo in codigo.items() if "(am:plano-json" in cuerpo)
+    assert usan_la_ruta == ["am:con-clic", "am:con-dibujo"], usan_la_ruta
     for nombre, cuerpo in codigo.items():
         if "(am:ruta-de-xref" in cuerpo:
             assert nombre in ("am:recintos-en-xref-p", "am:avisar-xrefs-sin-cargar"), nombre

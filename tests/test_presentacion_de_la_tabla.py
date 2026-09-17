@@ -23,6 +23,7 @@ import pytest
 
 from analyzer import maquetacion_cuadro as mq
 from analyzer import plantilla_cuadro as pc
+from analyzer.unidades_declaradas import MOTIVO_NO_DECLARA as MOTIVO_NUMERO_UDS
 
 CELDAS = [(0, 0, pc.TITULO)] + [(1, c, t) for c, t in enumerate(pc.ENCABEZADOS)] + [
     (2, 0, "Salón/cocina"), (2, 1, "23,24 m²"), (2, 2, "Terraza"), (2, 3, "3,32 m²"),
@@ -51,7 +52,7 @@ MUCHAS = [
                       "notas), y el total no se calcula sobre una cifra bloqueada (C-14)."),
     ([pc.CONSTRUIDA], "el rótulo de la construida (A1) tiene 2 polilíneas a menos de 0,38 m de "
                       "su borde (A2, A3): no se elige ninguna (C-12)."),
-    ([pc.NUMERO_UDS.rstrip(":")], pc.MOTIVO_NUMERO_UDS),
+    ([pc.NUMERO_UDS.rstrip(":")], MOTIVO_NUMERO_UDS),
 ]
 
 
@@ -72,7 +73,7 @@ def test_en_el_dibujo_van_como_mucho_cuatro_lineas_cortas():
 
 
 def test_una_sola_nota_sin_nada_mas_no_manda_a_la_linea_de_comandos():
-    notas = pc.notas_del_dibujo(_plantilla([([pc.NUMERO_UDS.rstrip(":")], pc.MOTIVO_NUMERO_UDS)]))
+    notas = pc.notas_del_dibujo(_plantilla([([pc.NUMERO_UDS.rstrip(":")], MOTIVO_NUMERO_UDS)]))
     assert notas == ("Nº de unidades: a mano",), notas
 
 

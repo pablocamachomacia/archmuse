@@ -32,7 +32,7 @@ _PREFIJO = re.compile(r"^\s*%s\s*:\s*" % _CODIGO)
 _MENSAJES = {"motivo", "motivos", "aviso", "avisos", "consejo", "texto", "linea", "tapa",
              "impedimentos", "advertencias", "motivo_sin_estilo", "pregunta", "preguntas",
              "detalle", "nota", "notas", "notas_del_dibujo", "geometria_descartada",
-             "motivos_indistinguibles"}
+             "motivos_indistinguibles", "contexto"}
 #: Lo que es del plano: ni se mira.
 _DEL_PLANO = {"celdas", "filas", "piezas", "recintos", "textos", "rotulos", "rotulo", "vivienda",
               "nombre", "etiqueta", "etiquetas", "capa", "capas", "handle", "textos_a_medir",

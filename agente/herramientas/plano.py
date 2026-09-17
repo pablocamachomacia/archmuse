@@ -689,8 +689,9 @@ CAPACIDADES = (
             "no escribe el DXF: sólo calcula qué llevaría cada celda",
             "no lee el cuadro que el arquitecto tenga dibujado: la tabla es la plantilla "
             "de ArchMuse y sus filas salen de las estancias medidas",
-            "la superficie construida (C-12, sin confirmar por un arquitecto) y el número "
-            "de unidades (C-8, sin implementar) salen vacíos con su nota; la útil total "
+            "la superficie construida (C-12, sin confirmar por un arquitecto) sale vacía con "
+            "su nota, y el número de unidades (C-8) también si el plano no lo declara junto "
+            "al rótulo de la vivienda; la útil total "
             "(C-14) sale vacía con su nota cuando la interior o la exterior no se pueden "
             "afirmar",
             "no comprueba lo que el arquitecto declara en `respuestas`: lo registra como "

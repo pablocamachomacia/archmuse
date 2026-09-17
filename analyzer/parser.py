@@ -177,6 +177,10 @@ class Room:
     #: construida lo señala o lo deja en duda (`construida_rotulada`, regla de
     #: Pablo del 2026-09-16). `None` es lo normal. La pieza se enseña sin cifra.
     no_es_util: Optional[str] = None
+    #: El handle de su polilínea en el dibujo del arquitecto (el de origen si llega
+    #: por el comando). Con él se guarda y se aplica una respuesta suya sobre esta
+    #: pieza (modo preguntar, PRD 2026-09-17, D-1). `None` si no se sabe.
+    handle: Optional[str] = None
 
     @property
     def area_m2(self) -> float:
@@ -821,6 +825,7 @@ def _validar_o_reparar(polygon, capa, tipo, handle, descartes, reparaciones):
 def _closed_polygons_with_color(
     doc: Drawing, layer: str, descartes: Optional[List[EntidadDescartada]] = None,
     reparaciones: Optional[List[GeometriaReparada]] = None,
+    handles: Optional[Dict[int, str]] = None,
 ) -> List[Tuple[Polygon, int]]:
     """Polilíneas cerradas del layer indicado como (polígono, color DXF),
     bloques incluidos.
@@ -844,7 +849,12 @@ def _closed_polygons_with_color(
 
     `reparaciones`, si se pasa una lista, recoge lo que ha entrado reparado.
     Aditivo y opcional igual que `descartes`, y por el mismo motivo.
+
+    `handles`, si se pasa, recoge `{id(polígono): handle}` con el handle con el que
+    el arquitecto encuentra la polilínea en su dibujo (modo preguntar, 2026-09-17).
     """
+    from .geometria_recibida import handle_de_origen
+
     entries: List[Tuple[Polygon, int]] = []
     for entity, capa in _recorrer_plano(doc):
         if capa != layer:
@@ -872,6 +882,13 @@ def _closed_polygons_with_color(
             Polygon(points), capa, tipo, _handle_de(entity), descartes, reparaciones)
         if polygon is not None:
             entries.append((polygon, entity.dxf.color))
+            if handles is not None:
+                try:
+                    handle = handle_de_origen(entity)
+                except Exception:  # noqa: BLE001 - entidad virtual de un bloque
+                    handle = None
+                if handle:
+                    handles[id(polygon)] = handle
     return entries
 
 
@@ -956,6 +973,7 @@ def extract_room_polygons(
     reparaciones: Optional[List[GeometriaReparada]] = None,
     desplazamiento: Optional[Tuple[float, float]] = None,
     no_utiles: Optional[Dict[int, str]] = None,
+    handles: Optional[Dict[int, str]] = None,
 ) -> List[Polygon]:
     """Busca polilíneas cerradas en el layer indicado, las convierte en
     polígonos shapely y descarta los contornos agrupadores duplicados
@@ -971,7 +989,7 @@ def extract_room_polygons(
     from . import construida_rotulada as cr
 
     entries = _closed_polygons_with_color(
-        doc, layer, descartes=descartes, reparaciones=reparaciones)
+        doc, layer, descartes=descartes, reparaciones=reparaciones, handles=handles)
     labels = extract_labels(doc, con_capa=True, desplazamiento=desplazamiento)
     capas_validas, _reparto = _capas_que_nombran([p for p, _c in entries], labels, layer)
     labeled_entries = [
@@ -1835,9 +1853,10 @@ def build_rooms_from_document(
     `descartes` y `reparaciones`: ver `_closed_polygons_with_color`.
     """
     no_utiles: Dict[int, str] = {}
+    handles: Dict[int, str] = {}
     polygons = extract_room_polygons(
         doc, layer, descartes=descartes, reparaciones=reparaciones,
-        desplazamiento=desplazamiento, no_utiles=no_utiles)
+        desplazamiento=desplazamiento, no_utiles=no_utiles, handles=handles)
     labels = extract_labels(doc, con_capa=True, desplazamiento=desplazamiento)
     capas_validas, _reparto = _capas_que_nombran(polygons, labels, layer)
 
@@ -1848,7 +1867,8 @@ def build_rooms_from_document(
                                     conflicto=conflicto)
         rooms.append(Room(label=label, polygon=polygon, layer=layer,
                           rotulos_en_conflicto=tuple(conflicto),
-                          no_es_util=no_utiles.get(id(polygon))))
+                          no_es_util=no_utiles.get(id(polygon)),
+                          handle=handles.get(id(polygon))))
 
     return rooms
 
@@ -2115,6 +2135,7 @@ def leer_plano(doc: Drawing, layer: Optional[str] = None, factor_escala: Optiona
                 layer=room.layer,
                 rotulos_en_conflicto=room.rotulos_en_conflicto,
                 no_es_util=room.no_es_util,
+                handle=room.handle,
             )
             for room in rooms
         ]
