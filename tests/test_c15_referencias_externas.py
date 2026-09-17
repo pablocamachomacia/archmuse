@@ -137,6 +137,10 @@ def test_si_el_fichero_no_se_encuentra_lo_dice_con_su_ruta_completa():
     assert '"\\nNo encuentro «" fichero "». Debería estar en: "' in cuerpo
     ruta = " ".join(_defun("am:ruta-de-xref").split())
     assert "findfile" in ruta and '(getvar "DWGPREFIX")' in ruta
+    # 3.9.9 en forzada.dwg: `(or (findfile ...))` devuelve T, no la ruta, y abrir
+    # acababa en «stringp T». La ruta encontrada tiene que ser la cadena.
+    assert "(or (findfile" not in ruta
+    assert "(cond ((findfile ruta))" in ruta
 
 
 def test_con_varias_referencias_con_habitaciones_las_nombra_y_no_ofrece_abrir():

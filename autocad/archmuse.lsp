@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.9")
-(setq *am:version*  "3.9.9 (2026-09-17, ofrece abrir el dibujo donde están las habitaciones)")
+(setq *am:version-corta* "3.9.10")
+(setq *am:version*  "3.9.10 (2026-09-17, abrir el dibujo de las habitaciones ya no falla con «stringp T»)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -580,10 +580,11 @@
   ;; `(encontrada mostrada)`: la ruta del dibujo referenciado si existe, o nil, y la
   ;; ruta completa que se le enseña si no está. La guardada puede ser relativa a la
   ;; carpeta de este dibujo, o estar sólo por su nombre.
+  ;; `cond` y no `or`: en AutoLISP `or` devuelve T, no la ruta (3.9.9: «stringp T»).
   (setq prefijo (getvar "DWGPREFIX")
-        encontrada (or (findfile ruta)
-                       (findfile (strcat prefijo ruta))
-                       (findfile (strcat prefijo (am:fichero-de-xref ruta)))))
+        encontrada (cond ((findfile ruta))
+                         ((findfile (strcat prefijo ruta)))
+                         ((findfile (strcat prefijo (am:fichero-de-xref ruta))))))
   (list encontrada
         (if (or (wcmatch ruta "?:*") (wcmatch ruta "\\\\*")) ruta (strcat prefijo ruta))))
 
