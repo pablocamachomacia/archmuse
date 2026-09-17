@@ -57,7 +57,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from shapely.geometry import Point, Polygon
 
@@ -537,6 +537,39 @@ def piezas_de_otra_vivienda(doc, plano, medida, posicion_vivienda: int) -> Dict[
     return salida
 
 
+def exteriores_por_contacto(doc, plano, medida, posicion_vivienda: int) -> Dict[int, Set[int]]:
+    """`{índice de pieza: posiciones de vivienda}` de las piezas **exteriores de reparto
+    dudoso** de esta vivienda, con las viviendas con cuya construida rotulada lindan.
+
+    **`C-21`, firmado por Pablo el 2026-09-17:** una pieza exterior pertenece a la
+    vivienda con cuya construida cerrada rotulada comparte borde, o de la que queda
+    separada únicamente por la tolerancia geométrica existente
+    (`TOLERANCIA_CONTENCION_M`, sin umbral nuevo). Si linda con más de una, queda
+    dudosa. Sólo decide cuando el reparto por cercanía es dudoso. La dueña de cada
+    construida es la de `C-12`, la misma que usa `piezas_de_otra_vivienda`.
+
+    Medido en el plano maestro: una terraza en franja larga y su tendedero lindan con
+    la construida de su vivienda y con ninguna otra."""
+    vivienda = medida.viviendas[posicion_vivienda]
+    candidatas = [d.indice for d in vivienda.repartos_dudosos
+                  if 0 <= d.indice < len(vivienda.piezas)
+                  and vivienda.piezas[d.indice].ambito == medicion.AMBITO_EXTERIOR]
+    if not candidatas:
+        return {}
+    reparto = _construidas_y_duenas(doc, plano, medida)
+    if reparto is None:
+        return {}
+    unidades, construidas, duenas_de = reparto
+    salida: Dict[int, Set[int]] = {}
+    for k in candidatas:
+        borde = unidades[posicion_vivienda].rooms[k].polygon.exterior
+        salida[k] = {i for construida, suyas in zip(construidas, duenas_de, strict=True)
+                     if suyas and borde.intersection(
+                         construida.exterior.buffer(TOLERANCIA_CONTENCION_M)).length > 0
+                     for i in suyas}
+    return salida
+
+
 #: La última lectura de construidas y dueñas: `(doc, plano, medida, resultado)`. Se
 #: calcula una vez por plano y no una por vivienda: medido el 2026-09-17, en el plano
 #: grande (52 viviendas, 9.220 polilíneas) rehacerla por vivienda pasaba el servidor de
@@ -652,10 +685,20 @@ def construir(doc, plano, nombre_vivienda: str,
     # `evaluator` y los mismos `plano.rooms` que `_unidad` aquí. `PiezaMedida` no
     # guarda su `Room`; si algún día los dos agrupados divergen en largo, esto
     # revienta en vez de emparejar una cifra con el recinto de otra.
+    posicion_vivienda = next(i for i, v in enumerate(medida.viviendas) if v is vivienda)
+    #: `C-21`: las exteriores de reparto dudoso que lindan con la construida rotulada de
+    #: una sola vivienda. Si es ésta, dejan de ser dudosas; si es otra, celda vacía.
+    lindantes = exteriores_por_contacto(doc, plano, medida, posicion_vivienda)
+    resueltas = {k for k, suyas in lindantes.items() if suyas == {posicion_vivienda}}
+    if resueltas:
+        vivienda = dataclasses.replace(vivienda, repartos_dudosos=tuple(
+            d for d in vivienda.repartos_dudosos if d.indice not in resueltas))
+    contradichas = {k: ", ".join(sorted(medida.viviendas[j].nombre for j in suyas))
+                    for k, suyas in lindantes.items()
+                    if len(suyas) == 1 and posicion_vivienda not in suyas}
     #: Las piezas cuyo reparto entre viviendas no es firme, por su posición.
     dudosas = {d.indice: d for d in vivienda.repartos_dudosos}
     #: Y las que el plano atribuye a otra vivienda con su construida rotulada.
-    posicion_vivienda = next(i for i, v in enumerate(medida.viviendas) if v is vivienda)
     ajenas = piezas_de_otra_vivienda(doc, plano, medida, posicion_vivienda)
     for posicion_pieza, (room, pieza) in enumerate(
             zip(unidad.rooms, vivienda.piezas, strict=True)):
@@ -707,6 +750,13 @@ def construir(doc, plano, nombre_vivienda: str,
             notas.add(pieza.nombre, "puede ser de %s: está dentro de la superficie construida que "
                                     "el plano rotula para esa vivienda. No se escribe su superficie."
                       % ajenas[posicion_pieza])
+        elif posicion_pieza in contradichas:
+            # `C-21`: el borde la da a otra vivienda y la cercanía a ésta.
+            valor = ""
+            incompleto[ambito] = True
+            notas.add(pieza.nombre, "linda con la superficie construida que el plano rotula para "
+                                    "%s, pero está más cerca del rótulo de esta vivienda. No se "
+                                    "escribe su superficie." % contradichas[posicion_pieza])
         elif posicion_pieza in dudosas:
             # Con duda, celda vacía con motivo (decisión propuesta, 2026-09-16): si
             # la pieza es de la vivienda de al lado, su cifra no va en esta tabla.

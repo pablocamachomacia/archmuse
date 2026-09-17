@@ -1153,6 +1153,46 @@ dos que no se contienen; el rótulo lejos; y que el módulo no lea el color.
 
 ---
 
+## C-21 · Una pieza exterior es de la vivienda con cuya construida cerrada linda
+
+**Dictaminado por Pablo:** 2026-09-17. **Estado:** implementado.
+
+**El criterio, en sus palabras.** «Una pieza exterior pertenece a la vivienda con
+cuya construida cerrada rotulada comparte borde, o de la que queda separada
+únicamente por la tolerancia geométrica existente. Si cumple esto con más de una
+vivienda, queda dudosa.»
+
+**Cómo se aplica (firmado con él).**
+1. **Sólo decide cuando el reparto por cercanía es dudoso** (`HOLGURA_MINIMA_DE_REPARTO`).
+   Un reparto firme no se toca.
+2. **Sin umbral nuevo:** «separada únicamente por la tolerancia» es
+   `TOLERANCIA_CONTENCION_M`, la que ya usa la contención de `C-12`. Lindar es que un
+   tramo del borde de la pieza quede a esa distancia del borde de la construida.
+3. La dueña de cada construida rotulada es la de `C-12`: contiene todas sus piezas
+   interiores de reparto firme y ninguna exterior.
+4. Linda sólo con la de la vivienda a la que la da la cercanía: deja de ser dudosa, y
+   su cifra y los totales se escriben.
+5. **Linda sólo con la de otra vivienda:** celda vacía con motivo («linda con la
+   superficie construida que el plano rotula para …»), y los totales siguen vacíos.
+6. Linda con más de una, o con ninguna: sigue dudosa, como hasta ahora.
+
+**El caso, medido en el plano maestro (copia local, fuera del repositorio).** Una
+terraza en franja larga y su tendedero, de una vivienda cuyo rótulo queda lejos: la
+cercanía dudaba y la tabla salía sin las dos piezas y sin
+totales. Lindan con la construida de su vivienda y con ninguna otra, ni a 0,50 m. En las 45 piezas exteriores del plano: 32
+lindan con la construida de su vivienda y con ninguna otra; 13 son de viviendas sin
+construida rotulada propia; ninguna linda con dos. Banco del plano maestro: de 14 a
+**15 viviendas que coinciden en todo, 0 cifras incorrectas** (205 coincidencias).
+
+**Sin resolver:** la vista de medición de la web (`medicion`) no tiene el dibujo y
+sigue dando por dudosas esas piezas; la tabla, que es lo que se dibuja, ya no.
+
+**Dónde se aplica.** `plantilla_cuadro.exteriores_por_contacto` y
+`plantilla_cuadro.construir`. **Cómo se guarda.** `tests/test_exterior_por_contacto.py`
+(plano sintético con una terraza alargada cuyo rótulo de vivienda queda lejos).
+
+---
+
 ## C-19 · Los totales se calculan con las áreas sin redondear
 
 **Dictaminado por:** Pablo, 2026-09-16, siguiendo al arquitecto. **Criterio
