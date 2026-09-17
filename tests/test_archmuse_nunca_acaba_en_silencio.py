@@ -35,6 +35,7 @@ DICEN_EL_MOTIVO = {
     "am:recolectar",         # «no hay ninguna polilínea en la capa …»
     "am:recintos-en-xref-p", # «NO MIDO ESTE DIBUJO…»
     "am:elegir-por-clic",    # la duda, la distancia o C-13 que redacta el servidor (3.9.0)
+    "am:preguntar-actualizacion",  # T tras «Instalada…» o «No se ha podido instalar…» (3.9.11)
 }
 
 

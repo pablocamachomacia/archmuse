@@ -788,3 +788,61 @@ def test_el_comando_ensena_el_aviso_del_dia_al_terminar():
     final = comando[comando.rindex("(setvar \"CMDECHO\" eco)"):]
     assert "am:actualizaciones-al-cargar" in final
     assert "vl-catch-all-apply" in final, "un fallo aquí no puede estropear un comando que ha ido bien"
+
+
+# ── ARCHMUSE pregunta antes de medir (Pablo, 2026-09-17) ─────────────────────
+#
+# «Mi padre va a probarlo una semana y no sabrá cuándo teclear ARCHMUSE-ACTUALIZAR.»
+# Al lanzar ARCHMUSE, si hay versión nueva descargada en su canal, pregunta ANTES de
+# medir. Sí (o Intro): la instala, lo dice y no sigue. No o Esc: mide con la versión
+# actual y no vuelve a preguntar hasta mañana. Sin red en el `.lsp`: lee lo que dejó el
+# servidor, así que sin internet o con la comprobación fallida no pregunta ni espera.
+
+def test_archmuse_pregunta_antes_de_medir_si_hay_version_nueva():
+    comando = LSP[LSP.index("(defun c:ARCHMUSE ("):LSP.index("(defun c:ARCHMUSE-ACTUALIZAR")]
+    pregunta = comando.index("am:preguntar-actualizacion")
+    assert pregunta < comando.index("(am:recintos-en-xref-p *am:capa-por-defecto*)"), "antes de medir"
+    assert pregunta < comando.index("(am:post")
+    tras = comando[pregunta:pregunta + 400]
+    assert "vl-catch-all-apply" in comando[pregunta - 80:pregunta], "un fallo aquí no puede impedir medir"
+    assert '(setvar "CMDECHO" eco)' in tras and "(exit)" in tras, "tras instalar no sigue midiendo"
+
+
+def test_la_pregunta_dice_la_version_y_si_es_lo_de_por_defecto():
+    cuerpo = _defun("am:preguntar-actualizacion")
+    assert '"\\nHay una versión nueva de ArchMuse ("' in cuerpo
+    assert '"). ¿Instalarla ahora? [Sí/No] <Sí>: "' in cuerpo
+    assert '(initget "Sí Si No")' in cuerpo
+    # Esc no cancela el comando: se captura y cuenta como No.
+    assert "(vl-catch-all-apply 'getkword" in cuerpo
+    assert "(vl-catch-all-error-p respuesta)" in cuerpo and '(= respuesta "No")' in cuerpo
+
+
+def test_si_instala_espera_y_dice_que_reabra_autocad():
+    cuerpo = _defun("am:preguntar-actualizacion")
+    instalar = cuerpo.index("actualizador --instalar-pendiente --silencioso --resultado")
+    assert "(am:ejecutar-y-esperar" in cuerpo[instalar - 200:instalar]
+    assert cuerpo.index("vl-file-delete") < instalar, "no lee el resultado de una instalación anterior"
+    assert '"\\nInstalada. Cierra y vuelve a abrir AutoCAD."' in cuerpo
+    assert "No se ha podido instalar" in cuerpo, "si falla, lo dice: no «Instalada»"
+
+
+def test_con_no_o_esc_no_vuelve_a_preguntar_hasta_manana():
+    cuerpo = _defun("am:preguntar-actualizacion")
+    assert "respuesta-a-la-actualizacion.txt" in cuerpo
+    assert "(= (am:lee-fichero fichero) (am:hoy))" in cuerpo
+    assert "(am:escribe-fichero fichero (am:hoy))" in cuerpo
+
+
+def test_la_pregunta_no_sale_a_la_red_ni_cambia_autocad():
+    cuerpo = _defun("am:preguntar-actualizacion")
+    assert "(am:actualizacion-pendiente-en base)" in cuerpo
+    for red in ("WinHttp", "http", "github", "am:peticion", "--comprobar"):
+        assert red not in cuerpo, red
+    assert "setvar" not in cuerpo, "C-16: la pregunta no cambia ninguna variable"
+
+
+def test_el_aviso_al_cargar_ya_no_pide_teclear_archmuse_actualizar():
+    cuerpo = _defun("am:actualizaciones-al-cargar")
+    assert "Teclea ARCHMUSE-ACTUALIZAR" not in cuerpo
+    assert "Lanza ARCHMUSE" in cuerpo

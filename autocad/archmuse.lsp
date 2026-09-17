@@ -79,8 +79,8 @@
 ;; larga es la que se le enseña a él al arrancar el comando. Un test comprueba
 ;; que la larga empieza por la corta, porque dos números que se separan son
 ;; peor que uno solo.
-(setq *am:version-corta* "3.9.10")
-(setq *am:version*  "3.9.10 (2026-09-17, abrir el dibujo de las habitaciones ya no falla con «stringp T»)")
+(setq *am:version-corta* "3.9.11")
+(setq *am:version*  "3.9.11 (2026-09-17, pregunta si instalar la versión nueva antes de medir)")
 ;; **Cuánto espera la rama C a que el servidor conteste** (D-1). Eran 20 s, y
 ;; salían de una máquina rápida (`import app` en 2,75 s). Medido el 2026-09-14
 ;; en la VM de Windows 11 limpia: `import app` en 15,6 s en caliente y 21,5 s al
@@ -1383,7 +1383,7 @@
       (if pendiente
         (progn
           (princ (strcat "\nHay una actualización de ArchMuse (" pendiente
-                         "). Teclea ARCHMUSE-ACTUALIZAR para instalarla."))
+                         "). Lanza ARCHMUSE y te pregunto si la instalo."))
           (am:log (strcat "actualizaciones: hay una actualizacion (" pendiente "); aviso del dia")))
         (am:log (strcat "actualizaciones: "
                         (cond
@@ -1453,6 +1453,54 @@
           (princ "\n  El motivo está en el registro de ArchMuse. Vuelve a intentarlo en un rato.")
           (am:log "actualizaciones: no se ha podido buscar desde el comando")))))
   (princ))
+
+(defun am:preguntar-actualizacion ( / instalado base version fichero respuesta resultado
+                                       texto ok)
+  ;; **Al lanzar ARCHMUSE, antes de medir** (Pablo, 2026-09-17: «mi padre va a probarlo
+  ;; una semana y no sabrá cuándo teclear ARCHMUSE-ACTUALIZAR»). Si el servidor ha dejado
+  ;; una versión nueva descargada y verificada de su canal, pregunta. Sí o Intro: la
+  ;; instala esperando a que termine, lo dice y devuelve T (el comando no sigue). No o
+  ;; Esc: devuelve nil, se mide con la versión actual y no se vuelve a preguntar hasta
+  ;; mañana (`respuesta-a-la-actualizacion.txt`).
+  ;;
+  ;; **Sin red**: sólo lee `actualizacion.json`. Sin internet, o si la comprobación del
+  ;; servidor falló, no hay fichero, no pregunta y no espera nada. No cambia ninguna
+  ;; variable (`C-16`). **Sin probar en AutoCAD:** la espera de `Run` durante la
+  ;; instalación y el Esc capturado en `getkword`.
+  (setq instalado (am:servidor-instalado)
+        base      (if (getenv "LOCALAPPDATA") (strcat (getenv "LOCALAPPDATA") "\\ArchMuse"))
+        version   (if (and instalado base) (am:actualizacion-pendiente-en base))
+        fichero   (if base (strcat base "\\respuesta-a-la-actualizacion.txt")))
+  (cond
+    ((null version) nil)
+    ((= (am:lee-fichero fichero) (am:hoy)) nil)
+    (T
+      (initget "Sí Si No")
+      (setq respuesta (vl-catch-all-apply 'getkword
+                        (list (strcat "\nHay una versión nueva de ArchMuse (" version
+                                      "). ¿Instalarla ahora? [Sí/No] <Sí>: "))))
+      (if (or (vl-catch-all-error-p respuesta) (= respuesta "No"))
+        (progn
+          (am:escribe-fichero fichero (am:hoy))
+          (am:log (strcat "actualizacion " version ": ahora no; se vuelve a preguntar manana"))
+          nil)
+        (progn
+          (setq resultado (strcat base "\\resultado-de-la-instalacion.txt"))
+          (vl-file-delete resultado)
+          (princ (strcat "\nInstalando " version ". Puede tardar un minuto..."))
+          (am:log (strcat "actualizacion " version ": se instala desde el comando"))
+          (setq ok (and (am:ejecutar-y-esperar
+                          (strcat "\"" (car instalado) "\" \"" (cdr instalado)
+                                  "\" actualizador --instalar-pendiente --silencioso --resultado \""
+                                  resultado "\""))
+                        (setq texto (am:lee-fichero resultado))
+                        (setq texto (vl-string-search "OK" texto))
+                        (< texto 4)))
+          (if ok
+            (princ "\nInstalada. Cierra y vuelve a abrir AutoCAD.")
+            (princ "\nNo se ha podido instalar. Teclea ARCHMUSE-ACTUALIZAR para intentarlo otra vez."))
+          (am:log (strcat "actualizacion " version (if ok ": instalada" ": no se ha podido instalar")))
+          T)))))
 
 ;; `c:ARCHMUSE-ACTUALIZAR` está al final del fichero, detrás de `c:ARCHMUSE`: un
 ;; test busca el primer «(defun c:ARCHMUSE» y mira desde ahí hasta el final.
@@ -2815,6 +2863,13 @@
   (setvar "CMDECHO" 0)
 
   (princ (strcat "\nArchMuse " *am:version*))
+
+  ;; Antes de medir: si hay versión nueva, se pregunta (2026-09-17). Un fallo aquí
+  ;; no impide medir; con Sí se instala y el comando no sigue.
+  (if (= T (vl-catch-all-apply '(lambda () (am:preguntar-actualizacion))))
+    (progn
+      (am:log "actualizacion: el comando no mide tras instalar")
+      (setvar "CMDECHO" eco) (princ) (exit)))
 
   ;; 0. **`C-15`: los recintos en una referencia externa.** Va lo primero, antes
   ;;    incluso de buscar el cuadro: en una hoja montada sobre un maestro el
