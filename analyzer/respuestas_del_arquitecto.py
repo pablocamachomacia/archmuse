@@ -44,7 +44,11 @@ CARPETA = "respuestas-del-arquitecto"
 VERSION_DEL_FICHERO = 1
 
 CONFIRMADO = "Confirmado por el arquitecto."
-SIN_RESPUESTA = "El arquitecto no ha respondido."
+# No responder es una decisión válida de revisión, no un error atribuible al
+# arquitecto. El estado conserva la cifra bloqueada hasta una revisión posterior.
+PENDIENTE_DE_CONFIRMAR = "Pendiente de confirmar."
+# Alias de compatibilidad para clientes 3.10.0 y para los registros ya emitidos.
+SIN_RESPUESTA = PENDIENTE_DE_CONFIRMAR
 
 
 @dataclass(frozen=True)
@@ -205,7 +209,7 @@ def fusionar(anteriores: Iterable[dict], nuevos: Iterable[dict]) -> List[dict]:
 @dataclass(frozen=True)
 class Respuestas:
     registros: Tuple[dict, ...] = ()
-    #: Ids de las preguntas que el arquitecto dejó sin contestar en esta pasada.
+    #: Ids que el arquitecto ha decidido revisar más adelante en esta pasada.
     sin_respuesta: FrozenSet[str] = frozenset()
     #: Preguntas ya hechas en esta pasada del comando (D-8).
     preguntas_hechas: int = 0
@@ -285,7 +289,12 @@ def desde_peticion(cuerpo: Mapping, guardadas: Sequence[dict] = ()) -> Tuple[Res
     nuevas = [r for r in (_registro_desde_respuesta(b)
                           for b in (cuerpo.get("respuestas_del_arquitecto") or []))
               if r is not None]
-    sin = frozenset(str(i) for i in (cuerpo.get("sin_respuesta") or []) if isinstance(i, str))
+    # El nombre nuevo describe el estado al arquitecto. Se acepta el anterior
+    # para que una versión del LISP ya instalada no pierda su revisión pendiente.
+    pendientes = cuerpo.get("pendientes_de_confirmar")
+    if pendientes is None:
+        pendientes = cuerpo.get("sin_respuesta") or []
+    sin = frozenset(str(i) for i in pendientes if isinstance(i, str))
     try:
         hechas = max(0, int(cuerpo.get("preguntas_hechas") or 0))
     except (TypeError, ValueError):

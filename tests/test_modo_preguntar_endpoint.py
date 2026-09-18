@@ -81,7 +81,8 @@ def test_de_la_primera_pregunta_a_la_tabla_completa_y_la_segunda_vez_sin_pregunt
 
     primera = _medir(client, payload, uno)
     (pregunta,) = primera["preguntas_al_arquitecto"]
-    assert pregunta["tipo"] == rda.PERTENENCIA and pregunta["texto"] == "¿Esta pieza es de VT1/1?"
+    assert pregunta["tipo"] == rda.PERTENENCIA and pregunta["texto"] == "¿Pertenece a esta vivienda?"
+    assert pregunta["opciones"] == ["Si", "No", "RevisarDespues"]
     assert _celda(primera, "Dormitorio 1") == ""
 
     segunda = _medir(client, payload, uno, preguntas_hechas=1,
@@ -142,16 +143,18 @@ def test_sin_preguntar_el_comando_anterior_recibe_lo_mismo_que_antes(client, cue
     assert reparto["preguntas_al_arquitecto"] == []
 
 
-def test_esc_deja_la_celda_vacia_con_el_motivo_y_no_se_guarda(client, cuerpo, datos):
+def test_revisar_despues_deja_la_celda_pendiente_y_no_se_guarda(client, cuerpo, datos):
     payload, _doc = cuerpo
     uno = _clic(client, payload, plano=PLANO)
     (pregunta,) = _medir(client, payload, uno)["preguntas_al_arquitecto"]
-    reparto = _medir(client, payload, uno, preguntas_hechas=1, sin_respuesta=[pregunta["id"]])
+    reparto = _medir(client, payload, uno, preguntas_hechas=1,
+                      pendientes_de_confirmar=[pregunta["id"]])
     assert _celda(reparto, "Dormitorio 1") == ""
-    assert any("Dormitorio 1" in n["motivo"] and n["motivo"].endswith(rda.SIN_RESPUESTA)
+    assert any("Dormitorio 1" in n["motivo"] and n["motivo"].endswith(rda.PENDIENTE_DE_CONFIRMAR)
                for n in reparto["no_escritas"])
     assert pregunta["id"] not in [q["id"] for q in reparto["preguntas_al_arquitecto"]]
     assert reparto["respuestas_guardadas"] == 0
+    assert "1 pendiente de confirmar" in reparto["cuadro_a_dibujar"]["notas_del_dibujo"]
 
 
 def test_la_respuesta_para_el_comando_lleva_las_preguntas_en_lisp(client, cuerpo, datos):
@@ -162,5 +165,5 @@ def test_la_respuesta_para_el_comando_lleva_las_preguntas_en_lisp(client, cuerpo
     texto = client.post("/api/medicion-geometria?formato=lisp",
                         json=datos_peticion).get_data(as_text=True)
     assert '("preguntas_al_arquitecto" . ((' in texto
-    assert '("texto" . "¿Esta pieza es de VT1/1?")' in texto
+    assert '("texto" . "¿Pertenece a esta vivienda?")' in texto
     assert '("resaltar" . ("' in texto

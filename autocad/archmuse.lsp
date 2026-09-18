@@ -128,6 +128,9 @@
 (setq *am:dibujo-empezado* nil)
 ;; Por qué no se han podido medir los textos de la tabla con `textbox` (3.5.0).
 (setq *am:fallo-de-la-medida* nil)
+;; La revisión normal no muestra el diagnóstico celda a celda. Para soporte se
+;; puede activar explícitamente desde la consola de AutoLISP.
+(setq *am:mostrar-detalle-tecnico* nil)
 
 ;; Leyenda de `C3`, literal y sin opción de desactivarla. Es la misma frase que
 ;; `analyzer/marca_borrador.py` estampa en el resto de entregables: si cambia
@@ -2054,10 +2057,10 @@
   json)
 
 
-(defun am:con-respuestas (cuerpo respuestas sin hechas)
+(defun am:con-respuestas (cuerpo respuestas pendientes hechas)
   ;; El mismo cuerpo, con las respuestas de esta pasada delante (como `am:con-alineado`).
   (strcat "{\"respuestas_del_arquitecto\":[" respuestas "],"
-          "\"sin_respuesta\":[" sin "],"
+          "\"pendientes_de_confirmar\":[" pendientes "],"
           "\"preguntas_hechas\":" (itoa hechas) ","
           (substr cuerpo 2)))
 
@@ -2117,9 +2120,9 @@
   (if preguntas
     (progn
       (setq vivienda (am:valor-tras (am:zona-de-repartos respuesta) "vivienda" 0))
-      (princ (strcat "\n\nArchMuse necesita " (itoa (length preguntas))
-                     " respuesta(s) para completar la tabla de " (if vivienda vivienda "esta vivienda")
-                     ". Esc o Enter: la dejo sin contestar."))
+      (princ (strcat "\n\nNecesito revisar " (itoa (length preguntas))
+                     " decisión(es) para completar la tabla de " (if vivienda vivienda "esta vivienda")
+                     ". Puedes dejar cualquiera para revisar después."))
       (foreach pregunta preguntas
         (setq id       (am:valor-tras pregunta "id" 0)
               tipo     (am:valor-tras pregunta "tipo" 0)
@@ -2132,35 +2135,43 @@
         (am:resaltar resaltar 3)
         (cond
           ((= tipo "pertenencia")
-            (initget "Si No")
-            (setq r (vl-catch-all-apply 'getkword (list (strcat "\n" texto " [Si/No] <sin contestar>: ")))))
+            (initget "Si No RevisarDespues")
+            (setq r (vl-catch-all-apply 'getkword (list (strcat "\n" texto " [Si/No/Revisar después] <Revisar después>: ")))))
           ((= tipo "ambito")
-            (initget "Interior Exterior")
+            (initget "Interior Exterior RevisarDespues")
             (setq r (vl-catch-all-apply 'getkword
-                      (list (strcat "\n" texto " [Interior/Exterior] <sin contestar>: ")))))
+                      (list (strcat "\n" texto " [Interior/Exterior/Revisar después] <Revisar después>: ")))))
           ((= tipo "nombre")
             (setq i 0)
             (foreach opcion opciones
               (setq i (1+ i))
               (princ (strcat "\n  " (itoa i) ". " opcion)))
+            (princ "\n  0. Revisar después")
             (initget 6)
             (setq n (vl-catch-all-apply 'getint
                       (list (strcat "\n" texto " Número (1-" (itoa (length opciones))
-                                    ") <sin contestar>: "))))
-            (setq r (if (and (not (vl-catch-all-error-p n)) n (<= n (length opciones)))
+                                    ", o 0 para Revisar después) <Revisar después>: "))))
+            (setq r (if (and (not (vl-catch-all-error-p n)) n (> n 0) (<= n (length opciones)))
                       (itoa n))))
           ((= tipo "construida")
             (setq par (am:pregunta-construida texto))))
+        ;; «Revisar después» conserva el estado pendiente; no es una respuesta.
+        (if (= r "RevisarDespues") (setq r nil))
         (am:resaltar resaltar 4)
         (cond
           ((and (= tipo "construida") par)
             (setq respuestas (strcat respuestas (if (= respuestas "") "" ",")
-                                     (am:respuesta-json id (car par) (cdr par)))))
+                                     (am:respuesta-json id (car par) (cdr par))))
+            (princ "\nConfirmado: comprobaré ese contorno de superficie construida."))
           ((and (/= tipo "construida") r (not (vl-catch-all-error-p r)))
             (setq respuestas (strcat respuestas (if (= respuestas "") "" ",")
-                                     (am:respuesta-json id r nil))))
+                                     (am:respuesta-json id r nil)))
+            (cond ((= r "Si") (princ "\nConfirmado: la estancia se incorpora a esta vivienda."))
+                  ((= r "No") (princ "\nConfirmado: la estancia no se incorpora a esta vivienda."))
+                  ((= tipo "ambito") (princ "\nConfirmado: actualizaré el cuadro con esta clasificación."))
+                  (T (princ "\nConfirmado: actualizaré el cuadro con esta decisión."))))
           (T
-            (princ "\nSin contestar: esa celda se queda vacía.")
+            (princ "\nPendiente de confirmar: mantengo la cifra bloqueada y lo indicaré en el cuadro.")
             (setq sin (strcat sin (if (= sin "") "" ",") (am:json-cad id)))))
         (setq par nil))
       (list respuestas sin hechas))
@@ -2938,7 +2949,7 @@
                       punto geometria ambitos alineado nombres elegida m intentos
                       hechas turno respuestas-json sin-json
                       estilo-texto textos medidos eleccion otras obstaculos
-                      colocado tapa detalle linea antes-de-dibujar propios arrastre-libre)
+                      colocado tapa detalle linea resumen-notas antes-de-dibujar propios arrastre-libre)
 
   (defun *error* (msg)
     ;; **ArchMuse nunca acaba en silencio** (Pablo, 2026-09-15). Tres casos:
@@ -3330,6 +3341,9 @@
       (setvar "CMDECHO" eco) (princ) (exit)))
 
   (setq notas (am:notas-colocadas m))
+  ;; Las notas ya son el resumen profesional del resultado: confirmadas y
+  ;; pendientes, sin exponer el razonamiento interno de cada celda.
+  (setq resumen-notas (am:cadenas-tras bloque "notas_del_dibujo" 0))
 
   ;; 3. **Sin volver a preguntar** (3.7.1, Pablo, 2026-09-15). Hasta la 3.7.0
   ;;    aquí se preguntaba «¿Te dibujo el cuadro de ArchMuse? [Si/No] <No>».
@@ -3344,10 +3358,9 @@
   ;; los recuentos y no el detalle: lleva nombres de piezas, y el registro viaja
   ;; en ARCHMUSE-INFORME (§4.4).
   (setq detalle (am:textos-de-notas bloque))
-  (if detalle
+  (if (and detalle *am:mostrar-detalle-tecnico*)
     (progn
-      (princ (strcat "\n\nEn el plano, " (itoa (length notas))
-                     " línea(s) de nota. El detalle, celda a celda:"))
+      (princ (strcat "\n\nDetalle técnico de " (itoa (length notas)) " incidencia(s):"))
       (foreach linea detalle (princ (strcat "\n   - " linea)))))
   (am:log (strcat "notas: " (itoa (length notas)) " en el plano, " (itoa (length detalle))
                   " de detalle"))
@@ -3467,7 +3480,11 @@
                   " obstaculo(s) bajo la tabla; "
                   (if (and tapa (/= tapa "nil")) "tapa parte del dibujo" "no tapa nada")))
 
-  (princ "\nEs un BORRADOR para revisión de un colegiado. La marca está en la capa")
+  (if resumen-notas
+    (progn
+      (princ "\n\nResumen de revisión:")
+      (foreach linea resumen-notas (princ (strcat "\n  - " linea)))))
+  (princ "\nEs un borrador de apoyo para revisión profesional. La marca está en la capa")
   ;; El nombre de la capa sale de la variable y no escrito a mano:
   ;; un mensaje que nombra una capa distinta de donde se escribe de
   ;; verdad es otra forma de mandar al arquitecto a mirar donde no es.
@@ -3475,6 +3492,7 @@
   ;; Ctrl+Z, no «UNDO» ni «U»: en AutoCAD en español «U» abre UNIR y «UNDO» no
   ;; deshace (Pablo, 2026-09-16). Todo va en un solo grupo de deshacer.
   (princ "\nCtrl+Z deshace todo lo que acabo de escribir.")
+  (princ "\nPara revisar incidencias pendientes, ejecuta ARCHMUSE de nuevo y elige la vivienda.")
   ;; Hasta el 2026-09-13 esta línea leía `resultado`, que no se asignaba en
   ;; ninguna parte: `(itoa (car nil))` revienta, así que el comando terminaba
   ;; en «se ha detenido» después de haber dibujado y marcado bien.

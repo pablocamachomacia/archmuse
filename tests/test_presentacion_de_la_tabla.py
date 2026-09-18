@@ -125,17 +125,32 @@ def test_el_comando_manda_lo_que_hay_bajo_la_tabla_y_las_notas_cortas():
     assert "zona_de_colocacion" not in cuerpo
 
 
-def test_el_detalle_de_las_notas_va_a_la_linea_de_comandos_y_al_registro_solo_recuentos():
+def test_el_detalle_tecnico_no_se_muestra_en_la_revision_normal_y_el_registro_solo_guarda_recuentos():
     comando = _defun("c:ARCHMUSE")
     assert "(setq detalle (am:textos-de-notas bloque))" in comando
+    assert "(and detalle *am:mostrar-detalle-tecnico*)" in comando
     assert '(foreach linea detalle (princ (strcat "\\n   - " linea)))' in comando
     registro = comando[comando.index('(am:log (strcat "notas: "'):]
     registro = registro[:registro.index("\n  (setq") if "\n  (setq" in registro else 400]
     assert "linea" not in registro and "detalle)" not in registro.replace("(length detalle)", "")
 
 
+def test_las_notas_profesionales_no_filtran_detalles_tecnicos():
+    notas = pc.notas_del_dibujo(_plantilla([
+        (["Baño"], "no se sabe si es de esta vivienda o de VT2/1: está a 2,00 m del rótulo. "
+                    "Pendiente de confirmar."),
+    ]))
+    assert notas == ("1 pendiente de confirmar",)
+    assert all("m del rótulo" not in nota and "VT2/1" not in nota for nota in notas)
+
+
+def test_cancelar_una_pregunta_la_deja_pendiente_y_permite_seguir():
+    preguntas = _defun("am:preguntar-al-arquitecto")
+    assert "Revisar después" in preguntas
+    assert "Pendiente de confirmar" in preguntas
+    assert "pendientes_de_confirmar" in _defun("am:con-respuestas")
+
+
 def test_leer_lo_que_hay_alrededor_no_escribe_nada_en_el_registro():
     for nombre in ("am:obstaculos", "am:caja-de-datos", "am:caja-de-insert", "am:mas-caja"):
         assert "(am:log" not in _defun(nombre), nombre
-
-

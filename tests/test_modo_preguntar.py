@@ -115,10 +115,11 @@ def test_la_pieza_que_puede_ser_de_dos_viviendas_se_pregunta_resaltada():
     p = pc.construir(doc, plano, "VT1/1", preguntar=True)
     (pregunta,) = p.preguntas_al_arquitecto
     assert pregunta.tipo == rda.PERTENENCIA
-    assert pregunta.texto == "¿Esta pieza es de VT1/1?"
-    assert pregunta.opciones == ("Si", "No")
+    assert pregunta.texto == "¿Pertenece a esta vivienda?"
+    assert pregunta.opciones == ("Si", "No", "RevisarDespues")
     assert pregunta.resaltar == (_handle(doc, x0=10, y0=0),)
-    assert "Dormitorio 1" in pregunta.contexto and "VT2/1" in pregunta.contexto
+    assert "Dormitorio 1" in pregunta.contexto and "16,00 m²" in pregunta.contexto
+    assert "VT1/1" in pregunta.contexto and "m de" not in pregunta.contexto
 
 
 def test_la_construida_se_pregunta_despues_de_las_piezas():
@@ -131,7 +132,7 @@ def test_la_construida_se_pregunta_despues_de_las_piezas():
         _si(h), preguntas_hechas=1, respondidas=frozenset([rda.id_pertenencia(h, _vivienda())])))
     (pregunta,) = despues.preguntas_al_arquitecto
     assert pregunta.tipo == rda.CONSTRUIDA
-    assert pregunta.texto == "Haz clic en la polilínea de superficie construida de VT1/1"
+    assert pregunta.texto == "Marca el contorno de superficie construida o revísalo después."
 
 
 def test_como_maximo_tres_preguntas_y_la_nota_dice_cuantas_celdas_quedan():
@@ -218,7 +219,7 @@ def test_la_pieza_de_la_vecina_que_duda_bloquea_los_totales_y_se_pregunta():
     con_preguntas = pc.construir(doc, plano, "VT2/1", preguntar=True)
     (pertenencia,) = [q for q in con_preguntas.preguntas_al_arquitecto if q.tipo == rda.PERTENENCIA]
     assert pertenencia.resaltar == (_handle(doc, x0=10, y0=0),)
-    assert pertenencia.texto == "¿Esta pieza es de VT2/1?"
+    assert pertenencia.texto == "¿Pertenece a esta vivienda?"
     h = _handle(doc, x0=10, y0=0)
     resuelta = pc.construir(doc, plano, "VT2/1", respuestas=_respuestas(_si(h, "VT2/1", suya=False)))
     assert resuelta.cierre[0][1] == "34,00 m²", "con su «No», el total se demuestra y se escribe"
@@ -229,19 +230,20 @@ def test_la_vecina_pregunta_por_la_pieza_que_el_plano_mete_en_su_construida():
     p = pc.construir(doc, plano, "VT2/1", preguntar=True)
     (pertenencia,) = [q for q in p.preguntas_al_arquitecto if q.tipo == rda.PERTENENCIA]
     assert pertenencia.resaltar == (_handle(doc, x0=10, y0=0),)
-    assert pertenencia.texto == "¿Esta pieza es de VT2/1?"
+    assert pertenencia.texto == "¿Pertenece a esta vivienda?"
 
 
-def test_sin_respuesta_la_celda_queda_vacia_con_el_motivo_y_no_se_repite_en_la_pasada():
+def test_revisar_despues_deja_la_celda_pendiente_y_no_la_repite_en_la_pasada():
     doc, plano = _plano()
     h = _handle(doc, x0=10, y0=0)
     ident = rda.id_pertenencia(h, _vivienda())
     p = pc.construir(doc, plano, "VT1/1", preguntar=True, respuestas=_respuestas(
         preguntas_hechas=1, sin_respuesta=frozenset([ident])))
     assert _fila(p, "Dormitorio 1").valor == ""
-    assert _notas(p, "Dormitorio 1")[0].endswith(rda.SIN_RESPUESTA)
+    assert _notas(p, "Dormitorio 1")[0].endswith(rda.PENDIENTE_DE_CONFIRMAR)
     assert ident not in [q.id for q in p.preguntas_al_arquitecto]
     assert not p.registros_aplicados
+    assert "1 pendiente de confirmar" in pc.notas_del_dibujo(p)
 
 
 def test_la_construida_marcada_se_mide_y_se_confirma():
@@ -284,7 +286,7 @@ def test_interior_o_exterior_entra_en_el_mismo_turno_y_se_confirma():
     doc, plano = _plano(extras=(("Trastero", 6, 2, 8, 5),))
     p = pc.construir(doc, plano, "VT1/1", preguntar=True)
     (ambito,) = [q for q in p.preguntas_al_arquitecto if q.tipo == rda.AMBITO]
-    assert ambito.opciones == ("Interior", "Exterior")
+    assert ambito.opciones == ("Interior", "Exterior", "RevisarDespues")
     respondida = pc.construir(doc, plano, "VT1/1", respuestas=_respuestas(
         {"tipo": rda.AMBITO, "familia": ambito.id.split("|", 1)[1], "ambito": "interior"}))
     assert _fila(respondida, "Trastero").valor == "6,00 m²"
